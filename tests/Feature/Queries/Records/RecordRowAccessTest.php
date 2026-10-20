@@ -13,7 +13,7 @@ use Tests\Support\TransactionalTestCase;
 
 /**
  * 行の判定の 1 か所(docs の 設計/業務データの入れ物/認可とメニュー/README.md 2.4)に渡す業務モジュールの確かめ: 見える範囲か親の列を読んでいない
- * 業務モジュールと明細のモジュールは、絞らない側に倒さず作りの誤りとして止める。
+ * 業務モジュールと明細のモジュールは、絞らない側に倒さず作りの誤りとして止める。関係する人を返す口は、ほかの業務モジュールのレコードに空を返す。
  */
 final class RecordRowAccessTest extends TransactionalTestCase
 {
@@ -48,6 +48,24 @@ final class RecordRowAccessTest extends TransactionalTestCase
 
         $this->expectException(LogicException::class);
         $this->rowAccess()->constrain(Record::query(), new Requester(null, null), $child, $this->today());
+    }
+
+    public function test_the_related_users_of_another_modules_record_are_empty(): void
+    {
+        $meetings = $this->recordModule('meetings')->refresh();
+        $notes = $this->recordModule('notes');
+        $note = Record::factory()->byUsers()->create(['record_module_id' => $notes->id]);
+
+        $this->assertSame([], $this->rowAccess()->relatedUserIds($meetings, $note->id, $this->today()));
+    }
+
+    public function test_the_related_users_of_a_detail_module_are_refused(): void
+    {
+        $details = $this->detailsField($this->recordModule('meetings'), 'agenda');
+        $child = RecordModule::query()->findOrFail($details->child_record_module_id);
+
+        $this->expectException(LogicException::class);
+        $this->rowAccess()->relatedUserIds($child, 1, $this->today());
     }
 
     private function today(): CarbonImmutable

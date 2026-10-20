@@ -7,18 +7,22 @@ use App\Enums\Records\RowAccessScope;
 use App\Models\Records\Record;
 use App\Models\Records\RecordField;
 use App\Models\Records\RecordModule;
+use App\Models\Records\RecordReference;
 use App\Queries\Authz\Api\Requester;
 use App\Queries\Master\Api\DepartmentMembers;
 use App\Queries\Master\Api\EffectiveUsers;
+use App\Queries\Records\Api\RecordAudience;
 use Closure;
 use DateTimeInterface;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Query\Builder as QueryBuilder;
 use LogicException;
 
 /**
  * 行の権限の判定の 1 か所(docs の 設計/業務データの入れ物/認可とメニュー/README.md 2.4、ADR 0018)。
- * 口は 2 つ: 問い合わせに条件を足す {@see self::constrain()} と、1 件の可否 {@see self::allows()}。
+ * 口は 3 つ: 問い合わせに条件を足す {@see self::constrain()} と、1 件の可否 {@see self::allows()} は、判定を求める者と d を受ける。
+ * 関係する人の式の右辺を満たすユーザーを返す {@see self::relatedUserIds()} は、判定を求める者を受けない(Records の中だけで使う。2.4 の「通知」の宛先の候補)。
  * 業務モジュールの read の判定は呼び手が先に済ませる(2.2)。
  *
  * 所属の組織は Master の公開の口で先に引き、条件は department_id IN (…) にする(Master の表を SQL に書かないため)。
@@ -89,6 +93,34 @@ class RecordRowAccess
     }
 
     /**
+     * 2.4 の「関係する人」の式の右辺を満たすユーザー。d に有効なユーザーへの絞り込みは呼び手が行う(所属する人だけは、所属が d に成り立つ人)。
+     * {@see self::constrain()} と同じ旗の付いた項目と明細の行の結び方で引く(定義を 1 か所にする)。通知の宛先の候補({@see RecordAudience})が使う。
+     *
+     * @param  RecordModule  $module  親の無い業務モジュール(表から全部の列を読んだもの)
+     * @return list<int> ユーザーの id(昇順・重ねない)。この業務モジュールのレコードが無ければ空
+     *
+     * @throws LogicException 業務モジュールが見える範囲か親の列を読んでいない・明細のモジュールのとき(作りの誤り)
+     */
+    public function relatedUserIds(RecordModule $module, int $recordId, DateTimeInterface $date): array
+    {
+        $this->ensureLoadedTopLevel($module);
+        $record = Record::query()->where('record_module_id', $module->id)->whereKey($recordId)->first();
+
+        if ($record === null) {
+            return [];
+        }
+
+        $references = $this->flaggedReferences($module, $record->id);
+        $departmentIds = $this->idsIn($references, 'department_id');
+        $memberIds = $departmentIds === [] ? [] : $this->members->userIdsOn($departmentIds, null, $date);
+        $creatorIds = array_filter([$record->created_by_user_id]);
+        $userIds = array_unique([...$creatorIds, ...$this->idsIn($references, 'user_id'), ...$memberIds]);
+        sort($userIds);
+
+        return $userIds;
+    }
+
+    /**
      * 値の欠けを「全員」と読んで絞らない側に倒さないため、読み込んでいない列と明細のモジュールを作りの誤りとして止める。
      * 列の有無は生の属性で見る(キャストの宣言があると hasAttribute() はいつも真)。
      */
@@ -147,5 +179,39 @@ class RecordRowAccess
                 ->where('record_references.user_id', $userId)
                 ->when($departmentIds !== [], fn (QueryBuilder $departments) => $departments
                     ->orWhereIn('record_references.department_id', $departmentIds)));
+    }
+
+    /**
+     * レコード(own の項目)とその明細の行(details の項目)の、旗の付いた項目の参照の値の行。
+     *
+     * @return Collection<int, RecordReference>
+     */
+    private function flaggedReferences(RecordModule $module, int $recordId): Collection
+    {
+        $flagged = $this->flaggedFieldIds($module);
+        $rows = Record::query()->select('id')
+            ->where('parent_record_module_id', $module->id)
+            ->where('parent_record_id', $recordId);
+
+        return RecordReference::query()
+            ->where(fn (Builder $own) => $own
+                ->where('record_module_id', $module->id)
+                ->where('record_id', $recordId)
+                ->whereIn('record_field_id', $flagged['own']))
+            ->orWhere(fn (Builder $details) => $details
+                ->whereIn('record_id', $rows)
+                ->whereIn('record_field_id', $flagged['details']))
+            ->get(['user_id', 'department_id']);
+    }
+
+    /**
+     * 参照の値の行の、相手の列(user_id か department_id)の値のうち null でないもの。
+     *
+     * @param  Collection<int, RecordReference>  $references
+     * @return list<int>
+     */
+    private function idsIn(Collection $references, string $column): array
+    {
+        return array_values($references->pluck($column)->filter()->map(fn (mixed $id) => intval($id))->all());
     }
 }
