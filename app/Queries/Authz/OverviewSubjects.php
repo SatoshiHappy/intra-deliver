@@ -15,30 +15,49 @@ use Illuminate\Database\Eloquent\Relations\Relation;
  * (用途 selection は除く。ポリシーの有無で決めない)。並びはカテゴリの sort_key・code、次に対象者の sort_key・id。カテゴリのコードは
  * {@see SubjectType::categoryCode()}(業務処理と同じ)で、表示名はカテゴリ・対象者のロケールの行(無ければ null)。
  * matches = 判定を求める者が d にその対象者に合う(列の対象者を {@see SubjectQuery::matchingSubjectGroupIds()} に 1 回渡して作る)。
+ * builtin = 組み込みの列({@see BuiltinSubjects})。policyCount・fingerprint = 列の削除の確かめの件数と指紋
+ * ({@see SubjectGroupPolicyFingerprints}。列を削除できない人には null = docs の 設計/ワークフロー/申請の周辺/認可設定の編集.md 5.3)。
  *
- * @phpstan-type GridSubject array{id: int, name: string|null, category: array{code: string, name: string|null}, matches: bool}
+ * @phpstan-type GridSubject array{
+ *     id: int,
+ *     name: string|null,
+ *     category: array{code: string, name: string|null},
+ *     matches: bool,
+ *     builtin: bool,
+ *     policyCount: int|null,
+ *     fingerprint: string|null,
+ * }
  */
 class OverviewSubjects
 {
     public function __construct(
         private SubjectQuery $subjects,
         private SubjectTypeQuery $subjectTypes,
+        private BuiltinSubjects $builtinSubjects,
+        private SubjectGroupPolicyFingerprints $fingerprints,
     ) {}
 
     /**
+     * @param  bool  $withFingerprints  件数と指紋を作るか(偽なら null)
      * @return list<GridSubject>
      */
-    public function subjectsOn(Requester $requester, DateTimeInterface $date, string $localeCode): array
+    public function subjectsOn(Requester $requester, DateTimeInterface $date, string $localeCode, bool $withFingerprints): array
     {
         $columns = $this->columnsOf($localeCode);
         usort($columns, fn (array $a, array $b) => $a['order'] <=> $b['order']);
-        $matching = $this->subjects->matchingSubjectGroupIds($requester, array_column($columns, 'id'), $date);
+        $ids = array_column($columns, 'id');
+        $matching = $this->subjects->matchingSubjectGroupIds($requester, $ids, $date);
+        $builtin = $this->builtinSubjects->ids();
+        $fingerprints = $withFingerprints ? $this->fingerprints->of($ids) : [];
 
         return array_map(fn (array $column) => [
             'id' => $column['id'],
             'name' => $column['name'],
             'category' => $column['category'],
             'matches' => in_array($column['id'], $matching, true),
+            'builtin' => in_array($column['id'], $builtin, true),
+            'policyCount' => $fingerprints[$column['id']]['policyCount'] ?? null,
+            'fingerprint' => $fingerprints[$column['id']]['fingerprint'] ?? null,
         ], $columns);
     }
 

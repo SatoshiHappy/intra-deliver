@@ -47,10 +47,11 @@ final class OverviewControllerTest extends TransactionalTestCase
         $this->assertSame(['planning', '経営企画室'], [$props['judge']['department']['code'], $props['judge']['department']['name']]);
         $this->assertSame(['service', 'im-menu-group', 'record-module'], $props['resourceTypes']);
         $this->assertSame(['service', ['execute']], [$props['grid']['resourceType'], $props['grid']['actions']]);
+        // 列の束は認証が左(カテゴリの並びの表 = docs の 設計/ワークフロー/申請の周辺/認可設定の編集.md 5.2)
         $this->assertSame([
-            ['システム管理者', ['code' => 'b_m_role', 'name' => 'ロール'], true],
             ['ゲストユーザ', ['code' => 'im_authz_meta_subject', 'name' => '認証'], false],
             ['認証済みユーザ', ['code' => 'im_authz_meta_subject', 'name' => '認証'], true],
+            ['システム管理者', ['code' => 'b_m_role', 'name' => 'ロール'], true],
         ], array_map(fn (array $subject) => [$subject['name'], $subject['category'], $subject['matches']], $props['grid']['subjects']));
     }
 
@@ -61,7 +62,7 @@ final class OverviewControllerTest extends TransactionalTestCase
 
         $subjects = $this->grid($this->actingAs($this->administrator)->get(self::URL))['subjects'];
 
-        $this->assertSame(['システム管理者', 'ゲストユーザ', '認証済みユーザ', 'ポリシーの無い対象者'], array_column($subjects, 'name'));
+        $this->assertSame(['ゲストユーザ', '認証済みユーザ', 'システム管理者', 'ポリシーの無い対象者'], array_column($subjects, 'name'));
         $this->assertSame($withoutPolicy->id, $subjects[3]['id']);
         $this->assertNotContains($selection, array_column($subjects, 'id'));
     }
@@ -69,12 +70,12 @@ final class OverviewControllerTest extends TransactionalTestCase
     public function test_a_route_row_has_direct_and_inherited_settings_and_the_judgement(): void
     {
         $response = $this->actingAs($this->administrator)->get(self::URL);
-        [$administrator, $guest, $authenticated] = array_column($this->grid($response)['subjects'], 'id');
+        [$guest, $authenticated, $administrator] = array_column($this->grid($response)['subjects'], 'id');
         $chart = $this->row($response, 'http-services.master.organization-chart');
 
-        $this->assertSame([[$administrator, 'permit', 'http-services'], [$guest, 'permit', null], [$authenticated, 'permit', null]], $this->cells($chart, 'execute'));
-        $this->assertSame(['code' => 'http-services', 'name' => '画面・処理'], $chart['settings'][0]['inheritedFrom']);
-        $this->assertSame([['action' => 'execute', 'result' => 'permit', 'decidingSubjectGroupIds' => [$administrator, $authenticated]]], $chart['judgements']);
+        $this->assertSame([[$guest, 'permit', null], [$authenticated, 'permit', null], [$administrator, 'permit', 'http-services']], $this->cells($chart, 'execute'));
+        $this->assertSame(['code' => 'http-services', 'name' => '画面・処理'], $chart['settings'][2]['inheritedFrom']);
+        $this->assertSame([['action' => 'execute', 'result' => 'permit', 'decidingSubjectGroupIds' => [$authenticated, $administrator]]], $chart['judgements']);
         $master = $this->row($response, 'http-services.master');
         $this->assertSame([[$administrator, 'permit', 'http-services']], $this->cells($master, 'execute'));
         $this->assertNull($master['judgements']);
@@ -125,7 +126,7 @@ final class OverviewControllerTest extends TransactionalTestCase
     public function test_the_admin_menu_group_is_read_only_by_the_inherited_permit_of_the_administrator(): void
     {
         $response = $this->actingAs($this->administrator)->get(self::URL.'?type=im-menu-group');
-        $administrator = $this->grid($response)['subjects'][0]['id'];
+        $administrator = $this->grid($response)['subjects'][2]['id'];
         $adminGroup = $this->row($response, 'im-menu-group-global-nav-admin');
 
         $this->assertSame(['im-menu-group', ['read', 'admin']], [$this->grid($response)['resourceType'], $this->grid($response)['actions']]);
@@ -147,7 +148,7 @@ final class OverviewControllerTest extends TransactionalTestCase
     public function test_a_record_module_is_read_all_only_by_the_inherited_permit_of_the_administrator(): void
     {
         $response = $this->actingAs($this->administrator)->get(self::URL.'?type=record-module');
-        $administrator = $this->grid($response)['subjects'][0]['id'];
+        $administrator = $this->grid($response)['subjects'][2]['id'];
         $project = $this->row($response, 'record-module-project');
 
         $this->assertSame([[$administrator, 'permit', 'record-modules']], $this->cells($project, 'read-all'));
@@ -182,10 +183,10 @@ final class OverviewControllerTest extends TransactionalTestCase
     public function test_judges_as_a_guest(): void
     {
         $response = $this->actingAs($this->administrator)->get(self::URL.'?user=guest');
-        $guest = $this->grid($response)['subjects'][1]['id'];
+        $guest = $this->grid($response)['subjects'][0]['id'];
 
         $this->assertSame(['user' => null, 'department' => null], $this->props($response)['judge']);
-        $this->assertSame([false, true, false], array_column($this->grid($response)['subjects'], 'matches'));
+        $this->assertSame([true, false, false], array_column($this->grid($response)['subjects'], 'matches'));
         $this->assertSame([['action' => 'execute', 'result' => 'permit', 'decidingSubjectGroupIds' => [$guest]]], $this->row($response, 'http-services.master.organization-chart')['judgements']);
         $adminGroup = $this->row($this->get(self::URL.'?user=guest&type=im-menu-group'), 'im-menu-group-global-nav-admin');
         $this->assertSame(['action' => 'read', 'result' => 'deny', 'decidingSubjectGroupIds' => []], $adminGroup['judgements'][0]);

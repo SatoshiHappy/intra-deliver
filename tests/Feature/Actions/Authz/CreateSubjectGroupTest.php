@@ -14,6 +14,7 @@ use App\Models\Authz\AuthzSubjectCondition;
 use App\Models\Authz\AuthzSubjectGroup;
 use App\Models\Authz\AuthzSubjectGroupTranslation;
 use App\Models\Authz\Role;
+use App\Models\Master\CompanyPost;
 use App\Models\Master\Department;
 use App\Models\Master\Locale;
 use Tests\Support\AssertsRejectedByRule;
@@ -50,15 +51,31 @@ final class CreateSubjectGroupTest extends TransactionalTestCase
         );
     }
 
-    public function test_creates_the_category_with_display_names_in_every_locale_and_sort_key_zero(): void
+    /**
+     * 並びの表に無いカテゴリ(そのほかの 1 種)の並び順は表の後(docs の 設計/ワークフロー/申請の周辺/認可設定の編集.md 5.2)。
+     */
+    public function test_creates_the_category_with_display_names_in_every_locale_and_the_sort_key_after(): void
     {
         Locale::factory()->create(['code' => 'fr']);
 
         $this->create(SubjectCombination::All, [new SubjectConditionInput(ipv4Pattern: '10.0.0.*')]);
 
         $category = AuthzSubjectCategory::query()->where('code', 'im_authz_ipv4')->sole();
-        $this->assertSame(0, $category->sort_key);
+        $this->assertSame(CreateSubjectGroup::OTHER_CATEGORY_SORT_KEY, $category->sort_key);
         $this->assertSame(['en' => 'IPv4 address', 'fr' => 'IPv4 address', 'ja' => 'IPv4 アドレス'], $this->categoryDisplayNames($category));
+    }
+
+    /**
+     * 並びの表のカテゴリは表の並び順で作る(認証 → ロール → ユーザー → 組織 → 役職)。初期データが作った役職のカテゴリを消してから作り直す。
+     */
+    public function test_creates_a_category_of_the_table_with_its_sort_key(): void
+    {
+        AuthzSubjectCategory::query()->where('code', 'imm_company_post')->delete();
+
+        $postId = CompanyPost::factory()->create()->id;
+        $this->create(SubjectCombination::All, [new SubjectConditionInput(companyPostId: $postId)]);
+
+        $this->assertSame(5, AuthzSubjectCategory::query()->where('code', 'imm_company_post')->sole()->sort_key);
     }
 
     public function test_the_category_counts_the_subject_types_of_child_subject_groups_but_not_the_child_conditions(): void

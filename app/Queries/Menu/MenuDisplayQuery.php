@@ -12,18 +12,13 @@ use App\Models\Menu\MenuTranslation;
 use App\Queries\Authz\Api\Requester;
 use App\Queries\Authz\AuthorizationQuery;
 use App\Queries\Authz\RouteResources;
+use App\Queries\Menu\Api\MenuItemRoute;
 use DateTimeInterface;
 use Illuminate\Support\Collection;
 
 /**
- * メニューの表示判定(docs の 設計/メニュー/表示.md 3.1)。要求ごとに判定し、結果を要求をまたいで覚えない。
- *
- * 1. カテゴリに所属するグループのうち、判定を求める者が d にグループのリソースの read を許されるもの。
- * 2. アイテム: 外部サイトの絶対 URL(http:// か https:// で始まる)は常に表示し、照合に回さない。アプリの中のパスは、メソッドとパスで照合した
- *    アプリのルートが名前を持ち、その名前の URI の execute を許されるとき表示する。照合で合うルートが無い・どちらの形でもない URL は表示しない。
- * 3. フォルダ: 子孫に表示するアイテムが 1 つでもあれば表示する。4. グループ: 1 で許され、ルート(種別 folder)が 3 で表示されるとき表示する。
- * 5. 外部メニューリンク(external)は表示しない。6. 並びは sort_number・code の順。7. 表示名はロケールの行で、無ければ null。
- * 表示するアイテムの href は url に引数(menu_arguments)をクエリ文字列にして付けたもの(規則は {@see VisibleMenuTree})。
+ * メニューの表示判定(規則は docs の 設計/メニュー/表示.md 3.1、追加の判定は 設計/ワークフロー/申請の周辺/メニューと導線.md 1.1・1.2)。
+ * 要求ごとに判定し、結果を要求をまたいで覚えない。
  *
  * @phpstan-import-type VisibleItem from VisibleMenuTree
  */
@@ -41,6 +36,7 @@ class MenuDisplayQuery
     public function __construct(
         private AuthorizationQuery $authorization,
         private RouteResources $routeResources,
+        private MenuItemVisibilityCatalog $visibilities,
     ) {}
 
     /**
@@ -159,7 +155,7 @@ class MenuDisplayQuery
     }
 
     /**
-     * 表示するアイテムの id → 外部サイトのアイテムか。
+     * 表示するアイテムの id → 外部サイトのアイテムか。追加の判定は、ルートの execute で表示と決まったアイテムを集めて 1 回だけ呼ぶ。
      *
      * @param  list<Menu>  $menus
      * @return array<int, bool>
@@ -167,27 +163,48 @@ class MenuDisplayQuery
     private function isExternalByVisibleItemId(array $menus, Requester $requester, DateTimeInterface $date): array
     {
         $isExternalById = [];
+        $routes = [];
 
         foreach (array_filter($menus, fn (Menu $menu) => $menu->type === MenuType::Item) as $item) {
             $url = (string) $item->url;
-            $isExternal = str_starts_with($url, 'http://') || str_starts_with($url, 'https://');
 
-            if ($isExternal || $this->allowsAppPath($item, $url, $requester, $date)) {
-                $isExternalById[$item->id] = $isExternal;
+            if (str_starts_with($url, 'http://') || str_starts_with($url, 'https://')) {
+                $isExternalById[$item->id] = true;
+
+                continue;
+            }
+
+            $route = $this->permittedRoute($item, $url, $requester, $date);
+
+            if ($route !== null) {
+                $isExternalById[$item->id] = false;
+                $routes[$item->id] = $route;
             }
         }
 
-        return $isExternalById;
+        return array_diff_key($isExternalById, $this->visibilities->hiddenItems($requester, $routes, $date));
     }
 
     /**
-     * アプリの中のパスのアイテム: メソッドとパスで照合したアプリのルートが名前を持ち、その名前の URI の execute を許されるか。
-     * アプリの中のパスの形でない URL・合うルートが無い URL・不正な URI は、照合が null を返す({@see RouteResources::match()})。
+     * アプリの中のパスのアイテムが指すルート(名前を持ち、その名前の execute を許されるときだけ。照合は {@see RouteResources::matchBound()})。
      */
-    private function allowsAppPath(Menu $item, string $url, Requester $requester, DateTimeInterface $date): bool
-    {
-        $name = $this->routeResources->match($item->method->value, $url)?->getName();
+    private function permittedRoute(
+        Menu $item,
+        string $url,
+        Requester $requester,
+        DateTimeInterface $date,
+    ): ?MenuItemRoute {
+        $route = $this->routeResources->matchBound($item->method->value, $url);
+        $name = $route?->getName();
 
-        return $name !== null && $this->authorization->allowsUri($requester, $this->routeResources->uriOf($name), ServiceAction::Execute->value, $date);
+        if ($route === null || $name === null) {
+            return null;
+        }
+
+        $uri = $this->routeResources->uriOf($name);
+
+        return $this->authorization->allowsUri($requester, $uri, ServiceAction::Execute->value, $date)
+            ? new MenuItemRoute($name, $route->parameters())
+            : null;
     }
 }

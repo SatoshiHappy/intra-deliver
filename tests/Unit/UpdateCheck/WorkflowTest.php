@@ -61,7 +61,15 @@ final class WorkflowTest extends UpdateCheckTestCase
     public function test_書くジョブは調べるジョブを待ち結果によらず動く(): void
     {
         $this->assertSame('check', $this->job('report')['needs']);
-        $this->assertSame('${{ always() }}', $this->job('report')['if']);
+        $this->assertStringStartsWith('${{ always() && ', $this->job('report')['if']);
+    }
+
+    public function test_どちらのジョブも非公開のリポジトリでだけ動く(): void
+    {
+        $repository = "github.repository == 'SatoshiHappy/intra-deliver-portfolio'";
+
+        $this->assertSame('${{ '.$repository.' }}', $this->job('check')['if']);
+        $this->assertSame('${{ always() && '.$repository.' }}', $this->job('report')['if']);
     }
 
     public function test_書くジョブは_checkout_も依存の取得もしない(): void

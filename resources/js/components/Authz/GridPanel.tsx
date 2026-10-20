@@ -1,10 +1,11 @@
+import { GridToolbar } from '@/components/Authz/GridToolbar';
 import { JudgementsTable } from '@/components/Authz/JudgementsTable';
-import { SettingsTable } from '@/components/Authz/SettingsTable';
-import { Input } from '@/components/ui/input';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { SettingsTab } from '@/components/Authz/SettingsTab';
+import { Tabs, TabsContent } from '@/components/ui/tabs';
+import type { CellEditor } from '@/hooks/Authz/useCellEdit';
 import type { TreeState } from '@/hooks/Authz/useGridView';
 import type { GridTab } from '@/lib/Authz/gridView';
-import type { AuthzGrid, AuthzGridRow } from '@/types';
+import type { AuthzCan, AuthzGrid, AuthzGridRow } from '@/types';
 
 type Props = {
     grid: AuthzGrid;
@@ -15,11 +16,15 @@ type Props = {
     onQueryChange: (query: string) => void;
     tab: GridTab;
     onTabChange: (tab: GridTab) => void;
+    /** 今出す編集の操作(編集中でなければすべて偽) */
+    operations: AuthzCan;
+    /** セルを押す口(編集中でセルを押せるときだけ) */
+    editor: CellEditor | null;
 };
 
 /**
  * 表の本体: タブの行(左 = 札「設定」「判定」、右端 = 検索)と、選んだタブの表(行が無ければ代わりの文)。
- * 札の切り替えは画面の中だけ(URL・localStorage に残さない)。
+ * 札の切り替えは画面の中だけ(URL・localStorage に残さない)。編集中の案内は「設定」タブの表の上に出す。
  */
 export function GridPanel({
     grid,
@@ -29,6 +34,8 @@ export function GridPanel({
     onQueryChange,
     tab,
     onTabChange,
+    operations,
+    editor,
 }: Props) {
     const empty =
         grid.rows.length === 0
@@ -43,31 +50,20 @@ export function GridPanel({
             onValueChange={(value) => onTabChange(value as GridTab)}
             className="gap-4"
         >
-            <div className="flex items-center justify-between gap-4">
-                <TabsList
-                    variant="line"
-                    className="h-auto max-w-full flex-wrap justify-start"
-                >
-                    <TabsTrigger value="settings" className="flex-none">
-                        設定
-                    </TabsTrigger>
-                    <TabsTrigger value="judgements" className="flex-none">
-                        判定
-                    </TabsTrigger>
-                </TabsList>
-                <Input
-                    value={query}
-                    onChange={(event) => onQueryChange(event.target.value)}
-                    placeholder="リソース名で検索"
-                    aria-label="リソース名で検索"
-                    className="max-w-64"
-                />
-            </div>
+            <GridToolbar
+                query={query}
+                onQueryChange={onQueryChange}
+                canAddColumn={operations.addSubject}
+            />
             {empty === null ? (
                 <>
-                    <TabsContent value="settings">
-                        <SettingsTable grid={grid} rows={rows} tree={tree} />
-                    </TabsContent>
+                    <SettingsTab
+                        grid={grid}
+                        rows={rows}
+                        tree={tree}
+                        operations={operations}
+                        editor={editor}
+                    />
                     <TabsContent value="judgements">
                         <JudgementsTable grid={grid} rows={rows} tree={tree} />
                     </TabsContent>

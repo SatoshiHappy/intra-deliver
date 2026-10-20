@@ -2,6 +2,9 @@
 
 use App\Http\Controllers\Web\Account\CurrentDepartmentController;
 use App\Http\Controllers\Web\Account\LogoutController;
+use App\Http\Controllers\Web\Authz\AuthzCellController;
+use App\Http\Controllers\Web\Authz\AuthzSubjectCandidateController;
+use App\Http\Controllers\Web\Authz\AuthzSubjectController;
 use App\Http\Controllers\Web\Authz\OverviewController;
 use App\Http\Controllers\Web\Master\OrganizationChartController;
 use App\Http\Controllers\Web\Master\SearchController;
@@ -35,6 +38,15 @@ Route::get('/menu/sitemap', SitemapController::class)->name('menu.sitemap');
 Route::post('/account/logout', LogoutController::class)->name('account.logout');
 Route::post('/account/current-department', CurrentDepartmentController::class)->name('account.current-department');
 Route::get('/authz/overview', OverviewController::class)->name('authz.overview');
+
+// 認可設定の編集(docs の 設計/ワークフロー/申請の周辺/認可設定の編集.md 6 節)。{subject} = 対象者の id(数字だけ)。
+Route::put('/authz/editor/cells', [AuthzCellController::class, 'update'])->name('authz.editor.cells.update');
+Route::post('/authz/editor/subjects', [AuthzSubjectController::class, 'store'])->name('authz.editor.subjects.store');
+Route::delete('/authz/editor/subjects/{subject}', [AuthzSubjectController::class, 'destroy'])
+    ->name('authz.editor.subjects.destroy')->where('subject', '[0-9]{1,18}');
+Route::get('/authz/editor/subject-candidates', AuthzSubjectCandidateController::class)
+    ->name('authz.editor.subject-candidates');
+
 Route::get('/master/organization-chart', OrganizationChartController::class)->name('master.organization-chart');
 Route::get('/master/search', SearchController::class)->name('master.search');
 

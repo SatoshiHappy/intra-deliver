@@ -156,6 +156,21 @@ final class RouteResourcesTest extends TransactionalTestCase
         $this->assertFalse($route->hasParameters());
     }
 
+    /**
+     * 束ねた照合: 合ったルートの複製に照合用の要求を束ねて、名前と引数を返す。共有されているルートは束ねない(処理中の要求のルートを書き換えない)。
+     */
+    public function test_matching_bound_returns_a_bound_copy_with_the_name_and_the_parameters(): void
+    {
+        $this->registerRoutes();
+
+        $bound = $this->routeResources()->matchBound('get', '/test/items/1/');
+
+        $this->assertSame('test.items.show', $bound?->getName());
+        $this->assertSame(['id' => '1'], $bound->parameters());
+        $this->assertFalse($this->routeResources()->match('get', '/test/items/1')?->hasParameters());
+        $this->assertNull($this->routeResources()->matchBound('post', '/test/items/1'));
+    }
+
     #[DataProvider('pathsThatMatchNoAppRoute')]
     public function test_matches_no_app_route(string $method, string $path): void
     {

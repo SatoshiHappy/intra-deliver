@@ -132,10 +132,8 @@ class RouteResources
     }
 
     /**
-     * アプリの中のパスの形か(docs の 設計/メニュー/表.md 1.7): / で始まり、2 文字目が / でなく、RFC 3986 のパスの文字
-     * (英数字と -._~!$&'()*+,;=:@%/)だけでできていて、. と .. の区切り(%2e で書いた形を含む。大文字小文字を問わない)を含まない
-     * (スキームとホストを持たないパス)。制御文字・空白・\・クエリ文字列(?)・フラグメント(#)・ASCII でない文字(パーセント符号化して持つ)は
-     * 含まない。ブラウザは制御文字を取り除き(/<タブ>/x は //x = 外部サイトになる)、. と .. の区切りを解く(照合したルートと開くルートが食い違う)ため。
+     * アプリの中のパスの形か(スキームとホストを持たないパス。docs の 設計/メニュー/表.md 1.7)。ブラウザは制御文字を取り除き
+     * (/<タブ>/x は //x = 外部サイトになる)、. と .. の区切りを解くので、照合したルートと開くルートが食い違わない形に絞る。
      */
     public function isAppPath(string $path): bool
     {
@@ -145,16 +143,33 @@ class RouteResources
     }
 
     /**
-     * HTTP メソッドとアプリの中のパスに合うアプリのルート(Laravel のルータと同じ順で照合)。アプリの中のパスの形でないとき、合うルートが無いとき
-     * (メソッドだけが違うときを含む)、不正な URI(BadRequest)のとき、合ったルートがアプリのルートでないときは null。
-     * それ以外の例外はそのまま上げる。
+     * HTTP メソッドとアプリの中のパスに合うアプリのルート(Laravel のルータと同じ順で照合。合うものが無ければ null)。
      *
-     * ルータの match は、合ったルートに照合用の要求を束ねて(共有されているルートのパラメータを書き換えて)返す。処理中の要求のルートを
-     * 書き換えないように、束ねない {@see Route::matches()} で照合する。
-     * 照合用の要求は実際の要求のホストとスキームを持たない(localhost の http)。アプリのルートはホストとスキームの条件を持たない前提で
-     * (付け忘れの検査が止める)、照合はパスとメソッドだけで実際の要求と同じルートを選ぶ。
+     * ルータの match は共有されているルートのパラメータを書き換えるので、処理中の要求のルートを壊さないよう、束ねない
+     * {@see Route::matches()} で照合する。アプリのルートはホストとスキームの条件を持たない(付け忘れの検査が止める)ので、
+     * 照合用の要求がホストとスキームを持たなくても実際の要求と同じルートを選ぶ。
      */
     public function match(string $method, string $path): ?Route
+    {
+        return $this->matching($method, $path)[0] ?? null;
+    }
+
+    /**
+     * {@see self::match()} で合ったルートの複製を照合用の要求に束ねたもの(名前と引数を読める)。複製なので共有のルートの引数は書き換わらない。
+     */
+    public function matchBound(string $method, string $path): ?Route
+    {
+        $matching = $this->matching($method, $path);
+
+        return $matching === null ? null : (clone $matching[0])->bind($matching[1]);
+    }
+
+    /**
+     * 照合で合ったアプリのルートと照合用の要求。
+     *
+     * @return array{Route, Request}|null
+     */
+    private function matching(string $method, string $path): ?array
     {
         if (! $this->isAppPath($path)) {
             return null;
@@ -167,7 +182,7 @@ class RouteResources
             return null;
         }
 
-        return $route !== null && $this->isAppRoute($route) ? $route : null;
+        return $route !== null && $this->isAppRoute($route) ? [$route, $request] : null;
     }
 
     /**

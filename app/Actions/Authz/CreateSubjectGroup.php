@@ -19,7 +19,8 @@ use Illuminate\Validation\ValidationException;
  * 止める規則: 条件は 1 件以上。IPv4 アドレスのパターンの [m-n] は m ≤ n。除外の制約(本家の認可設定画面の制約を業務処理で止める):
  * all では少なくとも 1 つの条件が除外でない、any では除外の条件を置かない。子の対象者の循環は作るときには起きない(新しい行は誰の子でもない)。
  * 作った対象者のカテゴリのコード(子の対象者をたどったサブジェクトタイプから決まる)のカテゴリの行が無ければ、locales のすべてのロケールの表示名と
- * 一緒に、並び順 0 で作る(表示名の文言は {@see SubjectType})。サブジェクトタイプが 1 つも無い(子の対象者が条件を持たない)ときは、カテゴリが
+ * 一緒に、並び順をカテゴリの並びの表({@see self::CATEGORY_SORT_KEYS})で決めて作る(表示名の文言は {@see SubjectType}。並びを変える業務処理が無いので
+ * 作るときに決める = docs の 設計/ワークフロー/申請の周辺/認可設定の編集.md 5.2)。サブジェクトタイプが 1 つも無い(子の対象者が条件を持たない)ときは、カテゴリが
  * 決まらないので拒む(条件を 1 件以上にする規則の目的 =「カテゴリが決まるように」と同じ扱い)。
  * 用途 selection の対象者を子の対象者にしない(docs の 設計/共通マスタ/ロールと認可/対象者.md の authz_subject_groups の「用途 `selection` の規則」)。
  * 用途は呼び手が渡す(既定 policy。selection は {@see Api\CreateSelectionSubjectGroup} だけが渡す)。
@@ -29,6 +30,21 @@ class CreateSubjectGroup
 {
     use ResolvesLocales;
     use WritesCommonMaster;
+
+    /**
+     * カテゴリの並びの表(1 種のサブジェクトタイプのカテゴリのコード → 並び順。本家の順 = 認証 → ロール → ユーザー → 組織 → 役職)。
+     * 既にあるカテゴリの行を埋めるマイグレーションも同じ値を持つ。
+     */
+    public const CATEGORY_SORT_KEYS = [
+        SubjectType::MetaSubject->value => 1,
+        SubjectType::Role->value => 2,
+        SubjectType::User->value => 3,
+        SubjectType::Department->value => 4,
+        SubjectType::CompanyPost->value => 5,
+    ];
+
+    /** 表に無いカテゴリ(そのほかの 1 種と、2 種以上)の並び順 */
+    public const OTHER_CATEGORY_SORT_KEY = 6;
 
     public function __construct(private SubjectTypeQuery $subjectTypes) {}
 
@@ -148,7 +164,8 @@ class CreateSubjectGroup
             return;
         }
 
-        $category = AuthzSubjectCategory::query()->create(['code' => $code, 'sort_key' => 0]);
+        $sortKey = self::CATEGORY_SORT_KEYS[$code] ?? self::OTHER_CATEGORY_SORT_KEY;
+        $category = AuthzSubjectCategory::query()->create(['code' => $code, 'sort_key' => $sortKey]);
 
         foreach (Locale::query()->get() as $locale) {
             $category->authzSubjectCategoryTranslations()->create([

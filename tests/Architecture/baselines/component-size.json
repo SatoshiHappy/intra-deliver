@@ -1,10 +1,9 @@
 {
-    "resources/js/components/Authz/GridPanel.tsx GridPanel": 59,
     "resources/js/components/Authz/JudgementsTable.tsx JudgementsTable": 57,
     "resources/js/components/Authz/Legend.tsx Legend": 53,
     "resources/js/components/Authz/ResourceCell.tsx ResourceCell": 58,
     "resources/js/components/Authz/SelectionForm.tsx SelectionForm": 73,
-    "resources/js/components/Authz/SettingsHead.tsx SettingsHead": 81,
+    "resources/js/components/Authz/SettingsHead.tsx SettingsHead": 77,
     "resources/js/components/ConfirmDeleteDialog.tsx ConfirmDeleteDialog": 58,
     "resources/js/components/Master/MasterSearch.tsx MasterSearch": 69,
     "resources/js/components/Master/MasterSearchResults.tsx MasterSearchResults": 71,

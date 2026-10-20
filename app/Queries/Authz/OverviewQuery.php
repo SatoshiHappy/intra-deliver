@@ -51,12 +51,13 @@ class OverviewQuery
     /**
      * 判定を求める者が d に、リソースタイプの格子。
      *
+     * @param  bool  $withFingerprints  列に件数と指紋を入れるか(列を削除できる人だけ。偽なら null)
      * @return Grid
      */
-    public function gridOn(Requester $requester, string $resourceType, DateTimeInterface $date, string $localeCode): array
+    public function gridOn(Requester $requester, string $resourceType, DateTimeInterface $date, string $localeCode, bool $withFingerprints): array
     {
         $actions = $this->catalog->actionsByResourceType()[$resourceType] ?? [];
-        $subjects = $this->subjects->subjectsOn($requester, $date, $localeCode);
+        $subjects = $this->subjects->subjectsOn($requester, $date, $localeCode, $withFingerprints);
         $subjectGroupIds = array_column($subjects, 'id');
         $nodes = $this->tree->nodesOf($resourceType, $localeCode);
         $settings = $this->settings->settingsOf($resourceType, $nodes, $subjectGroupIds, $actions);

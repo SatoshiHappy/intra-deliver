@@ -1,9 +1,8 @@
 import { Fragment } from 'react';
 import { GapHead, GridHead } from '@/components/Authz/GridCells';
-import { Badge } from '@/components/ui/badge';
+import { SubjectHeadCell } from '@/components/Authz/SubjectHeadCell';
 import { TableRow } from '@/components/ui/table';
 import type { ColumnGroup } from '@/lib/Authz/gridColumns';
-import { subjectLabel } from '@/lib/Authz/gridColumns';
 import { showsActionRow } from '@/lib/Authz/gridView';
 import { actionLabel } from '@/lib/Authz/labels';
 
@@ -27,9 +26,11 @@ function bundleGap(index: number) {
 export function SettingsHead({
     groups,
     actions,
+    canDeleteColumn,
 }: {
     groups: ColumnGroup[];
     actions: string[];
+    canDeleteColumn: boolean;
 }) {
     const showActions = showsActionRow(actions);
 
@@ -62,17 +63,11 @@ export function SettingsHead({
                         {group.subjects.map((subject, i) => (
                             <Fragment key={subject.id}>
                                 {i > 0 && <GapHead kind="inner" />}
-                                <GridHead
-                                    scope="col"
+                                <SubjectHeadCell
+                                    subject={subject}
                                     colSpan={actions.length}
-                                    band={subject.matches}
-                                    className="h-9 border-b border-input pb-1.5 text-center align-bottom"
-                                >
-                                    <span className="inline-flex items-center gap-1.5">
-                                        {subjectLabel(subject)}
-                                        {subject.matches && <Badge>該当</Badge>}
-                                    </span>
-                                </GridHead>
+                                    canDelete={canDeleteColumn}
+                                />
                             </Fragment>
                         ))}
                     </Fragment>

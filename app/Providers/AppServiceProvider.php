@@ -11,10 +11,12 @@ use App\Queries\Authz\ServiceResourceTypes;
 use App\Queries\Authz\UserRoleReferences;
 use App\Queries\Master\UserReferences;
 use App\Queries\Menu\Api\HomeSections;
+use App\Queries\Menu\Api\MenuItemVisibility;
 use App\Queries\Menu\MenuResourceTypes;
 use App\Queries\Menu\QuickActionsHomeSection;
 use App\Queries\Notice\Api\NoticeTargets;
 use App\Queries\Records\Api\RecordHolds;
+use App\Queries\Records\RecordMenuItemVisibility;
 use App\Queries\Records\RecordModuleResourceTypes;
 use App\Queries\Workflow\ActiveApplicationsHomeSection;
 use App\Queries\Workflow\CaseTargetTerm;
@@ -54,6 +56,9 @@ class AppServiceProvider extends ServiceProvider
 
         // 依存の逆転: 業務データの入れ物の書き込みが、未完了の案件が指すレコードを持ち主の規則で守る(docs の 設計/ワークフロー/業務データとの接続/README.md 4 節)
         $this->app->tag([WorkflowRecordHolds::class], RecordHolds::TAG);
+
+        // 依存の逆転: メニューの表示判定が、ルートを受け持つモジュールの追加の判定で隠す(docs の 設計/ワークフロー/申請の周辺/メニューと導線.md 1.2)
+        $this->app->tag([RecordMenuItemVisibility::class], MenuItemVisibility::TAG);
 
         // 依存の逆転: AI の実行の種類(docs の 設計/AI/公開の口.md 3.1)。呼び手のモジュール(Meeting など)が種類の実装をここに足す。
         // コードは config/ai_runs.php の kinds にあるものだけ(同じコードが 2 つ・設定に無いコードは起動のテストで落とす)

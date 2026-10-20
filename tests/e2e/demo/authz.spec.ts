@@ -86,9 +86,9 @@ test('システム管理者に切り替えると「管理」の「認可設定�
         page.getByRole('columnheader', { name: '実行', exact: true }),
     ).toHaveCount(0);
 
-    // 「設定」タブ: 列は先頭の余白の次がシステム管理者(ロールの束が左)。置き場から継承した許可
+    // 「設定」タブ: 認証の束(ゲストユーザ・認証済みユーザ)の右がシステム管理者(認証の束が左)。置き場から継承した許可
     await expect(
-        resourceRow(page, '認可設定').locator('td').nth(1),
+        resourceRow(page, '認可設定').locator('td').nth(5),
     ).toContainText('許可(画面・処理から継承)');
 
     // 「判定」タブ

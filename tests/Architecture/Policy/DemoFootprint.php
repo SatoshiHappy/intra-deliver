@@ -54,8 +54,8 @@ final class DemoFootprint
             'DemoServiceProvider::class,',
         ],
         'tests/Architecture/Policy/Modules.php' => [
-            '* Demo = 取り外せるデモユーザー切替(既定オフ。ホームの節の口を実装するので Menu に依存する。どのモジュールも依存先に書かない = docs の 設計/デモユーザー切替/デモの取り付け.md 6.1)。',
-            "'Demo' => ['Master', 'Account', 'Menu'],",
+            '* Demo = 取り外せるデモユーザー切替(既定オフ。ホームの節の口を実装するので Menu に、守るルートの口を実装するので Authz に依存する。',
+            "'Demo' => ['Master', 'Authz', 'Account', 'Menu'],",
         ],
         '.env.example' => [
             'DEMO_ENABLED=false',

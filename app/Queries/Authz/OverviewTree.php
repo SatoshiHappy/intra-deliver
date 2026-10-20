@@ -2,6 +2,7 @@
 
 namespace App\Queries\Authz;
 
+use App\Models\Authz\AuthzPolicy;
 use App\Models\Authz\AuthzResource;
 use App\Models\Authz\AuthzResourceGroup;
 use App\Models\Authz\AuthzResourceGroupTranslation;
@@ -9,6 +10,7 @@ use Illuminate\Database\Eloquent\Collection;
 
 /**
  * 認可設定の画面の格子の行(docs の 設計/共通マスタ/ロールと認可/認可の確認/認可設定の画面.md 2.1): リソースタイプのリソースを持つリソースグループと、
+ * そのタイプのポリシーを持つリソースグループ(置いた設定を画面から消せるように = 設計/ワークフロー/申請の周辺/認可設定の編集.md 5.1)と、
  * その祖先(parent_id をたどった先頭まで)のすべて。並びは先頭(parent_id が NULL)からの深さ優先で、先頭の並びも兄弟の並びも sort_key・code。
  * 祖先へのたどりは同じリソースグループに 2 度目に届いたところで止める(循環は業務処理が止める)。行は先頭から下へたどって作るので、
  * 先頭から届かないリソースグループ(循環の中)は行にしない。親は 1 つなので、先頭から下へのたどりは同じリソースグループに 2 度届かない。
@@ -20,25 +22,66 @@ class OverviewTree
      */
     public function nodesOf(string $resourceType, string $localeCode): array
     {
+        $names = $this->names($localeCode);
+        $isResourceHolder = array_fill_keys($this->resourceHolderIds($resourceType), true);
+
+        return array_map(fn (array $row) => new OverviewTreeNode(
+            $row[0]->id,
+            $row[0]->parent_id,
+            $row[1],
+            $row[0]->code,
+            $names[$row[0]->id] ?? null,
+            isset($isResourceHolder[$row[0]->id]),
+        ), $this->rowsOf($resourceType));
+    }
+
+    /**
+     * リソースグループがリソースタイプの格子の行か(行の作り方は {@see self::nodesOf()} と同じ)。
+     */
+    public function isRowOf(string $resourceType, int $resourceGroupId): bool
+    {
+        $rowIds = array_map(fn (array $row) => $row[0]->id, $this->rowsOf($resourceType));
+
+        return in_array($resourceGroupId, $rowIds, true);
+    }
+
+    /**
+     * 行のリソースグループと先頭からの深さ(深さ優先の並び)。
+     *
+     * @return list<array{AuthzResourceGroup, int}>
+     */
+    private function rowsOf(string $resourceType): array
+    {
         // 並びは DB の ORDER BY に任せる(メモリ上の比較は数字だけのコードを数値で比べ、DB の文字列の順と割れる)。
         // only()・groupBy() は元の並び(DB の順)を保つので、この後で並べ直さない。
         $groups = AuthzResourceGroup::query()->orderBy('sort_key')->orderBy('code')->get()->keyBy('id');
-        $holderIds = array_values(AuthzResource::query()->where('resource_type', $resourceType)->get()->map(fn (AuthzResource $resource) => $resource->authz_resource_group_id)->all());
+        $policyHolderIds = AuthzPolicy::query()->where('resource_type', $resourceType)->distinct()
+            ->pluck('authz_resource_group_id')->all();
+        $holderIds = [...$this->resourceHolderIds($resourceType), ...array_values($policyHolderIds)];
         $members = $groups->only($this->withAncestors($holderIds, $groups));
-        $names = $this->names($localeCode);
         $childrenOf = $members->groupBy('parent_id');
-        $isHolder = array_fill_keys($holderIds, true);
-        $nodes = [];
+        $rows = [];
         $stack = array_reverse(array_values($members->whereNull('parent_id')->map(fn (AuthzResourceGroup $group) => [$group, 0])->all()));
 
         while ($stack !== []) {
             [$group, $depth] = array_pop($stack);
-            $nodes[] = new OverviewTreeNode($group->id, $group->parent_id, $depth, $group->code, $names[$group->id] ?? null, isset($isHolder[$group->id]));
+            $rows[] = [$group, $depth];
             $children = $childrenOf->get($group->id, collect())->map(fn (AuthzResourceGroup $child) => [$child, $depth + 1]);
             array_push($stack, ...array_reverse(array_values($children->all())));
         }
 
-        return $nodes;
+        return $rows;
+    }
+
+    /**
+     * リソースタイプのリソースを持つリソースグループの id(判定する行)。
+     *
+     * @return list<int>
+     */
+    private function resourceHolderIds(string $resourceType): array
+    {
+        return array_values(AuthzResource::query()->where('resource_type', $resourceType)
+            ->pluck('authz_resource_group_id')->all());
     }
 
     /**

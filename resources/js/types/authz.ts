@@ -9,6 +9,9 @@ export type AuthzGridSubject = {
     name: string | null; // 表示名(ロケールの行が無ければ null。画面は `#<id>`)
     category: { code: string; name: string | null }; // カテゴリ(行が無ければ name は null。画面はコード)
     matches: boolean; // 判定する人(1.4)が d にこの対象者に該当する
+    builtin: boolean; // 組み込みの 3 列(削除できない。認可設定の編集.md 5.2)
+    policyCount: number | null; // 列を削除する確かめの件数(すべての種類のポリシー。can.deleteSubject が偽なら null)
+    fingerprint: string | null; // 同じ範囲の指紋(can.deleteSubject が偽なら null)
 };
 
 /** セル = 行 × 対象者 × アクションの効いている設定(2.2)。設定の無いセルは入れない */
@@ -52,4 +55,29 @@ export type AuthzJudgeUser = { id: number; code: string; name: string | null };
 export type AuthzJudge = {
     user: AuthzJudgeUser | null;
     department: { id: number; code: string; name: string | null } | null;
+};
+
+/**
+ * 編集の操作ごとに、操作している人が行えるか(props can。docs の 設計/ワークフロー/申請の周辺/認可設定の編集.md 5.3)。
+ */
+export type AuthzCan = {
+    editCells: boolean; // セルの押下
+    addSubject: boolean; // 「列を追加」
+    deleteSubject: boolean; // 「列を削除」
+};
+
+/** 「列を追加」の対象者の種類(認可設定の編集.md 3.1) */
+export type AuthzSubjectKind = 'user' | 'role' | 'department' | 'post';
+
+/** 「列を追加」の候補(authz.editor.subject-candidates の 1 件。主所属の名前はユーザーだけ) */
+export type AuthzSubjectCandidate = {
+    id: number;
+    code: string;
+    name: string | null;
+    mainDepartmentName: string | null;
+};
+
+/** 候補の口 authz.editor.subject-candidates の応答 */
+export type AuthzSubjectCandidates = {
+    candidates: AuthzSubjectCandidate[];
 };

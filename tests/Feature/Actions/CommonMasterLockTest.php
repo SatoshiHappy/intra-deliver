@@ -2,9 +2,11 @@
 
 namespace Tests\Feature\Actions;
 
+use App\Actions\Authz\AddAuthzColumn;
 use App\Actions\Authz\AddSubRole;
 use App\Actions\Authz\Api\CreateSelectionSubjectGroup;
 use App\Actions\Authz\Api\SelectionCondition;
+use App\Actions\Authz\ChangeAuthzCell;
 use App\Actions\Authz\CreatePolicy;
 use App\Actions\Authz\CreateResource;
 use App\Actions\Authz\CreateResourceGroup;
@@ -12,10 +14,14 @@ use App\Actions\Authz\CreateRole;
 use App\Actions\Authz\CreateRoutePrefixResourceGroup;
 use App\Actions\Authz\CreateRouteResource;
 use App\Actions\Authz\CreateSubjectGroup;
+use App\Actions\Authz\DeleteAuthzColumn;
+use App\Actions\Authz\DeletePolicy;
 use App\Actions\Authz\FindOrCreateSingleConditionSubjectGroup;
 use App\Actions\Authz\GrantRole;
 use App\Actions\Authz\RenameResourceGroup;
 use App\Actions\Authz\SubjectConditionInput;
+use App\Actions\Authz\UpdatePolicyEffect;
+use App\Actions\Master\Api\CommonMasterWriteLock;
 use App\Actions\Master\AssignMembershipPost;
 use App\Actions\Master\CreateCompany;
 use App\Actions\Master\CreateCompanyPost;
@@ -27,7 +33,6 @@ use App\Actions\Master\CreateUser;
 use App\Actions\Master\InvalidateUserTerm;
 use App\Actions\Master\SplitDepartmentTerm;
 use App\Actions\Master\SplitUserTerm;
-use App\Actions\Master\WritesCommonMaster;
 use App\Actions\Menu\AddMenu;
 use App\Actions\Menu\CreateMenuGroup;
 use App\Actions\Menu\CreateMenuGroupCategory;
@@ -82,14 +87,15 @@ use Tests\Support\BuildsCommonMaster;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * 共通マスタの書き込みの業務処理は、すべて同じ勧告ロック(WritesCommonMaster)を取って直列になる(メインの決定 2026-10-04)。
- * `WritesCommonMaster` を使うクラスがすべて writes() に載っていることを、app の走査で照合する(業務処理を足したら載せる)。
+ * 共通マスタの書き込みの業務処理は、すべて同じ勧告ロック(CommonMasterWriteLock)を取って直列になる(メインの決定 2026-10-04)。
+ * `CommonMasterWriteLock` を使うクラスがすべて writes() に載っていることを、app の走査で照合する(業務処理を足したら載せる)。
  *
  * テストはトランザクションの中で走るので、業務処理が取ったトランザクションレベルの勧告ロックはテストの終わりまで残る。
  * 別の接続から pg_try_advisory_xact_lock で同じ鍵を取れないことで、業務処理がロックを取ったことを確かめる。
  */
 final class CommonMasterLockTest extends TransactionalTestCase
 {
+    use BuildsAuthzEditing;
     use BuildsCommonMaster;
 
     private const PROBE = 'common_master_lock_probe';
@@ -146,6 +152,11 @@ final class CommonMasterLockTest extends TransactionalTestCase
             FindOrCreateSingleConditionSubjectGroup::class => [fn (self $test) => app(FindOrCreateSingleConditionSubjectGroup::class)->execute(new SubjectConditionInput(roleId: Role::factory()->create()->id), [])],
             RenameResourceGroup::class => [fn (self $test) => app(RenameResourceGroup::class)->execute(AuthzResourceGroup::factory()->create()->code, ['ja' => '新名'])],
             CreateSelectionSubjectGroup::class => [fn (self $test) => app(CreateSelectionSubjectGroup::class)->execute([new SelectionCondition(SelectionConditionKind::User, $test->user()->id)], ['ja' => '承認者'])],
+            ChangeAuthzCell::class => [fn (self $test) => $test->changeAuthzCell()],
+            UpdatePolicyEffect::class => [fn (self $test) => $test->updatePolicyEffect()],
+            DeletePolicy::class => [fn (self $test) => app(DeletePolicy::class)->execute($test->policyId())],
+            AddAuthzColumn::class => [fn (self $test) => $test->addAuthzColumn()],
+            DeleteAuthzColumn::class => [fn (self $test) => $test->deleteAuthzColumn()],
         ];
     }
 
@@ -208,7 +219,7 @@ final class CommonMasterLockTest extends TransactionalTestCase
         sort($users);
         sort($listed);
 
-        $this->assertSame($users, $listed, '`WritesCommonMaster` を使うクラスと writes() の一覧が違う。足した業務処理を writes() に載せる');
+        $this->assertSame($users, $listed, '`CommonMasterWriteLock` を使うクラスと writes() の一覧が違う。足した業務処理を writes() に載せる');
     }
 
     /**
@@ -300,7 +311,7 @@ final class CommonMasterLockTest extends TransactionalTestCase
     }
 
     /**
-     * app の下で WritesCommonMaster を使うクラス(完全なクラス名)。
+     * app の下で CommonMasterWriteLock を使うクラス(完全なクラス名)。
      *
      * @return list<string>
      */
@@ -315,7 +326,7 @@ final class CommonMasterLockTest extends TransactionalTestCase
                 continue;
             }
             $class = 'App\\'.str_replace('/', '\\', substr($file->getPathname(), strlen(app_path()) + 1, -strlen('.php')));
-            if (in_array(WritesCommonMaster::class, class_uses_recursive($class), true)) {
+            if (! trait_exists($class) && in_array(CommonMasterWriteLock::class, class_uses_recursive($class), true)) {
                 $classes[] = $class;
             }
         }
