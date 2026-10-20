@@ -616,11 +616,11 @@ test('申請者が一時保存すると一時保存のタブの件数が 1 増�
         }),
     ).toBeVisible();
     await expect(
-        page.getByRole('link', { name: '編集', exact: true }),
-    ).toHaveCount(0);
+        page.getByRole('button', { name: '編集', exact: true }),
+    ).toBeDisabled();
     await expect(
         page.getByRole('button', { name: '削除', exact: true }),
-    ).toHaveCount(0);
+    ).toBeDisabled();
 
     await page.goto(`${page.url()}/edit`);
     await expect(

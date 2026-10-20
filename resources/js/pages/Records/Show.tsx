@@ -1,229 +1,173 @@
 import { Head, Link } from '@inertiajs/react';
 import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog';
+import { RecordAttachmentList } from '@/components/RecordAttachmentList';
+import { RecordDetailTabs } from '@/components/Records/RecordDetailTabs';
 import { RecordHoldNotice } from '@/components/Records/RecordHoldNotice';
-import { RecordValue } from '@/components/RecordValue';
+import { RecordRevisionList } from '@/components/RecordRevisionList';
+import { RecordShowLayout } from '@/components/RecordShowLayout';
+import { RecordShowSection } from '@/components/RecordShowSection';
+import { RecordSidePanel } from '@/components/RecordSidePanel';
 import { Button } from '@/components/ui/button';
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/ui/table';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { isWideField } from '@/lib/recordForm';
-import { EMPTY_VALUE, formatDatetime, recordHeading } from '@/lib/recordValues';
-import { cn } from '@/lib/utils';
+import { useRecordSidePanel } from '@/hooks/use-record-side-panel';
+import { deleteRecordDescription } from '@/lib/recordShow';
+import { recordHeading } from '@/lib/recordValues';
 import { destroy, edit, index, show } from '@/routes/records/data';
+import attachments from '@/routes/records/data/attachments';
 import type {
     RecordDetail,
-    RecordDetailRow,
-    RecordFieldDefinition,
+    RecordDetailCan,
     RecordHold,
     RecordModuleDefinition,
-    RecordReferenceValue,
+    RecordPanelContent,
+    RecordShowPanelProps,
 } from '@/types';
 
-type Props = {
+type Props = RecordShowPanelProps & {
     module: RecordModuleDefinition;
     record: RecordDetail;
-    /** 持ち主があれば can の 2 つは偽(画面/業務の画面.md 2.3) */
-    can: { update: boolean; delete: boolean };
+    /** 権限の判定だけ(持ち主の有無は hold = レコードの共通機能/詳細の画面/README.md の 5.1 節) */
+    can: RecordDetailCan;
     hold: RecordHold | null;
 };
 
 /**
- * 作成者・更新者(ゲストは「ゲスト」。名称が無ければコード)。
+ * 見出しの右の操作(詳細の画面/README.md の 5.1 節): 権限が無ければ出さず、持ち主(申請中)があれば押せない形で出す(理由は見出しの下の 1 行)。
  */
-function authorOf(user: RecordReferenceValue | null) {
-    return user === null
-        ? 'ゲスト'
-        : (user.label ?? user.code ?? `#${user.id}`);
-}
+function ShowActions({
+    module,
+    record,
+    can,
+    hold,
+    heading,
+}: Omit<Props, 'panel' | 'panelContent' | 'sections'> & { heading: string }) {
+    const held = hold !== null;
+    const hasDetails = module.fields.some((field) => field.type === 'details');
 
-/** 札「詳細」(本体の項目)の値。明細の札は details-<項目のコード>(コードは英小文字で始まるので重ならない) */
-const MAIN_TAB = 'main';
+    return (
+        <div className="flex items-center gap-2">
+            {can.update &&
+                (held ? (
+                    <Button disabled>編集</Button>
+                ) : (
+                    <Button asChild>
+                        <Link
+                            href={edit({
+                                module: module.code,
+                                record: record.id,
+                            })}
+                        >
+                            編集
+                        </Link>
+                    </Button>
+                ))}
+            {can.delete &&
+                (held ? (
+                    <Button variant="destructive" disabled>
+                        削除
+                    </Button>
+                ) : (
+                    <ConfirmDeleteDialog
+                        triggerVariant="destructive"
+                        title="レコードの削除"
+                        description={deleteRecordDescription(
+                            heading,
+                            hasDetails,
+                        )}
+                        action={destroy({
+                            module: module.code,
+                            record: record.id,
+                        })}
+                    />
+                ))}
+        </div>
+    );
+}
 
 /**
- * 明細の項目の表(列 = 明細のモジュールの項目)。行が無ければ「明細はありません」。
+ * 開いた欄の中身(欄の種類ごと)。開く・追加・削除の URL はここで作って部品に渡す(部品はルートの名前を知らない = 7 節)。
  */
-function DetailsTable({
-    field,
-    rows,
+function PanelBody({
+    content,
+    props,
+    panel,
 }: {
-    field: RecordFieldDefinition;
-    rows: RecordDetailRow[];
+    content: RecordPanelContent | null;
+    props: Props;
+    panel: ReturnType<typeof useRecordSidePanel>;
 }) {
-    const columns = field.childModule?.fields ?? [];
+    const route = { module: props.module.code, record: props.record.id };
 
-    return rows.length === 0 ? (
-        <p className="text-sm text-muted-foreground">明細はありません</p>
-    ) : (
-        <Table>
-            <TableHeader>
-                <TableRow>
-                    {columns.map((column) => (
-                        <TableHead key={column.code}>{column.name}</TableHead>
-                    ))}
-                </TableRow>
-            </TableHeader>
-            <TableBody>
-                {rows.map((row) => (
-                    <TableRow key={row.id}>
-                        {columns.map((column) => (
-                            <TableCell
-                                key={column.code}
-                                className="wrap-anywhere whitespace-normal"
-                            >
-                                <RecordValue
-                                    field={column}
-                                    value={row.values[column.code] ?? null}
-                                    place="cell"
-                                />
-                            </TableCell>
-                        ))}
-                    </TableRow>
-                ))}
-            </TableBody>
-        </Table>
-    );
+    switch (content?.kind) {
+        case undefined:
+            return <p className="text-muted-foreground">読み込んでいます</p>;
+        case 'attachments':
+            return (
+                <RecordAttachmentList
+                    {...content}
+                    canAttach={props.can.attach}
+                    held={props.hold !== null}
+                    uploadUrl={attachments.store(route).url}
+                    deleteActionOf={(row) =>
+                        attachments.destroy({ ...route, attachment: row.id })
+                    }
+                    loading={panel.loading}
+                    onMore={panel.more}
+                />
+            );
+        case 'revisions':
+            return (
+                <RecordRevisionList
+                    {...content}
+                    loading={panel.loading}
+                    onMore={panel.more}
+                />
+            );
+        case 'section':
+            return <RecordShowSection content={content.content} />;
+    }
 }
 
-export default function Show({ module, record, can, hold }: Props) {
+export default function Show(props: Props) {
+    const { module, record, hold } = props;
     const heading = recordHeading(module, record);
-    const plainFields = module.fields.filter(
-        (field) => field.type !== 'details',
-    );
-    const detailsFields = module.fields.filter(
-        (field) => field.type === 'details',
-    );
+    const items = props.panel?.items ?? [];
+    const panel = useRecordSidePanel(items, props.panelContent);
 
     return (
         <>
             <Head title={heading} />
 
             <div className="flex h-full flex-1 flex-col gap-6 p-4">
-                <div className="flex flex-col gap-6">
-                    <div className="flex items-center justify-between gap-4">
-                        <h1 className="text-2xl font-semibold">{heading}</h1>
-                        {(can.update || can.delete) && (
-                            <div className="flex items-center gap-2">
-                                {can.update && (
-                                    <Button asChild>
-                                        <Link
-                                            href={edit({
-                                                module: module.code,
-                                                record: record.id,
-                                            })}
-                                        >
-                                            編集
-                                        </Link>
-                                    </Button>
-                                )}
-                                {can.delete && (
-                                    <ConfirmDeleteDialog
-                                        triggerVariant="destructive"
-                                        title="レコードの削除"
-                                        description={`${heading}を削除しますか。${detailsFields.length > 0 ? '明細も一緒に削除されます。' : ''}この操作は取り消せません。`}
-                                        action={destroy({
-                                            module: module.code,
-                                            record: record.id,
-                                        })}
-                                    />
-                                )}
-                            </div>
-                        )}
-                    </div>
-                    {hold !== null && <RecordHoldNotice hold={hold} />}
-                    <section
-                        aria-label={`${heading}の値`}
-                        className="rounded-xl border bg-card p-5 text-card-foreground"
-                    >
-                        {/* 札の切り替えは画面の中だけ(URL・localStorage に残さない。訪問のたびに「詳細」= 画面/業務の画面.md 2.3) */}
-                        <Tabs defaultValue={MAIN_TAB} className="gap-4">
-                            <TabsList
-                                variant="line"
-                                className="h-auto max-w-full flex-wrap justify-start"
-                            >
-                                <TabsTrigger
-                                    value={MAIN_TAB}
-                                    className="flex-none"
-                                >
-                                    詳細
-                                </TabsTrigger>
-                                {detailsFields.map((field) => (
-                                    <TabsTrigger
-                                        key={field.code}
-                                        value={`details-${field.code}`}
-                                        className="flex-none"
-                                    >
-                                        {`${field.name} (${(record.details[field.code] ?? []).length})`}
-                                    </TabsTrigger>
-                                ))}
-                            </TabsList>
-                            <TabsContent value={MAIN_TAB}>
-                                <dl className="grid grid-cols-1 gap-x-6 gap-y-4 text-sm md:grid-cols-2">
-                                    {plainFields.map((field) => (
-                                        <div
-                                            key={field.code}
-                                            className={cn(
-                                                'flex min-w-0 flex-col gap-1',
-                                                isWideField(field) &&
-                                                    'md:col-span-2',
-                                            )}
-                                        >
-                                            <dt className="text-xs text-muted-foreground">
-                                                {field.name}
-                                            </dt>
-                                            <dd>
-                                                <RecordValue
-                                                    field={field}
-                                                    value={
-                                                        record.values[
-                                                            field.code
-                                                        ] ?? null
-                                                    }
-                                                />
-                                            </dd>
-                                        </div>
-                                    ))}
-                                </dl>
-                            </TabsContent>
-                            {detailsFields.map((field) => (
-                                <TabsContent
-                                    key={field.code}
-                                    value={`details-${field.code}`}
-                                >
-                                    <DetailsTable
-                                        field={field}
-                                        rows={record.details[field.code] ?? []}
-                                    />
-                                </TabsContent>
-                            ))}
-                        </Tabs>
-                    </section>
-                    <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1 text-xs text-muted-foreground">
-                        <dt>作成</dt>
-                        <dd>
-                            <span className="font-num tabular-nums">
-                                {record.createdAt === null
-                                    ? EMPTY_VALUE
-                                    : formatDatetime(record.createdAt)}
-                            </span>{' '}
-                            {authorOf(record.createdBy)}
-                        </dd>
-                        <dt>更新</dt>
-                        <dd>
-                            <span className="font-num tabular-nums">
-                                {record.updatedAt === null
-                                    ? EMPTY_VALUE
-                                    : formatDatetime(record.updatedAt)}
-                            </span>{' '}
-                            {authorOf(record.updatedBy)}
-                        </dd>
-                    </dl>
+                <div className="flex items-center justify-between gap-4">
+                    <h1 className="text-2xl font-semibold">{heading}</h1>
+                    <ShowActions {...props} heading={heading} />
                 </div>
+                {hold !== null && <RecordHoldNotice hold={hold} />}
+                <RecordShowLayout
+                    open={panel.openKey !== null}
+                    main={
+                        <section
+                            aria-label={`${heading}の値`}
+                            className="rounded-xl border bg-card px-5 pt-1 pb-5 text-card-foreground"
+                        >
+                            <RecordDetailTabs module={module} record={record} />
+                        </section>
+                    }
+                    side={
+                        <RecordSidePanel
+                            items={items}
+                            openKey={panel.openKey}
+                            onToggle={panel.toggle}
+                            onClose={panel.close}
+                        >
+                            <PanelBody
+                                content={panel.content}
+                                props={props}
+                                panel={panel}
+                            />
+                        </RecordSidePanel>
+                    }
+                />
             </div>
         </>
     );

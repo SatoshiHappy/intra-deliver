@@ -51,6 +51,24 @@ class UploadLimits
         'csv' => ['text/csv', 'text/plain'],
     ];
 
+    /**
+     * 画面の案内に出す形式の名前(案内の並び)→ その拡張子。対応表に行を足すときはここにも足す(漏れは {@see self::guide()} が止める)。
+     *
+     * @var array<string, list<string>>
+     */
+    private const FORMAT_NAMES = [
+        'PDF' => ['pdf'],
+        'PNG' => ['png'],
+        'JPEG' => ['jpg', 'jpeg'],
+        'GIF' => ['gif'],
+        'Word' => ['docx'],
+        'Excel' => ['xlsx'],
+        'PowerPoint' => ['pptx'],
+        'テキスト' => ['txt'],
+        'CSV' => ['csv'],
+        'Markdown' => ['md'],
+    ];
+
     private const UNITS = ['GB' => 1_073_741_824, 'MB' => 1_048_576, 'KB' => 1_024];
 
     public function maxFileBytes(): int
@@ -78,6 +96,30 @@ class UploadLimits
     public function requestTooLargeMessage(): string
     {
         return '1 回に追加できるファイルの合計は '.self::size($this->maxRequestBytes()).' までです';
+    }
+
+    /**
+     * 添付ファイルの欄の案内の 1 行(数は設定から、形式は対応表から作る = docs の
+     * 設計/業務データの入れ物/レコードの共通機能/添付ファイル/README.md の 3 節の最後)。
+     *
+     * @throws LogicException 対応表の拡張子に案内の名前が無いとき
+     */
+    public function guide(): string
+    {
+        $named = array_merge(...array_values(self::FORMAT_NAMES));
+        $unnamed = array_diff(array_keys(self::FORMATS), $named);
+
+        if ($unnamed !== []) {
+            throw new LogicException('案内の名前が無い形式: '.implode('、', $unnamed));
+        }
+
+        $accepted = array_filter(
+            self::FORMAT_NAMES,
+            fn (array $extensions) => array_intersect($extensions, array_keys(self::FORMATS)) !== [],
+        );
+
+        return '1 ファイル '.self::size($this->maxFileBytes()).' まで、1 回 '.self::MAX_FILES_PER_REQUEST.' ファイル・合計 '
+            .self::size($this->maxRequestBytes()).' までです。使用できる形式は '.implode('・', array_keys($accepted)).' です。';
     }
 
     /**

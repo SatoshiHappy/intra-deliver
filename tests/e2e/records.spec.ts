@@ -290,7 +290,7 @@ test('列「開始日」を押すと昇順に並び、もう一度押すと降�
     );
 });
 
-test('「社内ポータル刷新」の詳細は札「詳細」で担当部署「開発部」・開始日(初期データの日付)が出て、札「マイルストーン (4)」で 4 行が出て、再読み込みで「詳細」に戻る', async ({
+test('「社内ポータル刷新」の詳細は札「詳細」で担当部署「開発部」・開始日(初期データの日付)が出て、札「マイルストーン 4」で 4 行が出て、再読み込みでも同じ札', async ({
     page,
 }) => {
     await page.goto('/records/data/project');
@@ -314,16 +314,16 @@ test('「社内ポータル刷新」の詳細は札「詳細」で担当部署�
     const milestones = await openDetailTab(
         page,
         '社内ポータル刷新',
-        'マイルストーン (4)',
+        'マイルストーン 4',
     );
     await expect(milestones.getByRole('row')).toHaveCount(5);
     await expect(milestones.getByRole('row').nth(2)).toContainText('15.5');
     await expect(values.getByText('開発部', { exact: true })).toBeHidden();
 
-    // 札の切り替えは URL・localStorage に残さない(再読み込みで「詳細」に戻る)
+    // 選んだ札は URL のクエリ tab に映す(レコードの共通機能/詳細の画面/README.md の 3 節)
+    await expect(page).toHaveURL(/\?tab=details-milestones$/);
     await page.reload();
-    await expect(mainTab).toHaveAttribute('aria-selected', 'true');
-    await expect(values.getByText('開発部', { exact: true })).toBeVisible();
+    await expect(milestones.getByRole('row')).toHaveCount(5);
 });
 
 test('課題の詳細の報告日時は YYYY/MM/DD HH:MM で出て、プロジェクトは参照先の詳細へのリンクになる', async ({
@@ -539,7 +539,7 @@ test('日時の欄は Asia/Tokyo で往復し、一覧の範囲の検索も同�
         .getByRole('option', { name: '社内ポータル刷新', exact: true })
         .click();
     await reportedAt().fill('2026-10-11T09:30');
-    await page.waitForLoadState('networkidle');
+    await expect(reportedAt()).toHaveValue('2026-10-11T09:30');
     await submitAndExpectUrl(
         page,
         form.getByRole('button', { name: '登録', exact: true }),
@@ -619,7 +619,7 @@ test('課題から参照されているプロジェクトは削除できず、�
 
     await page.getByRole('button', { name: '削除', exact: true }).click();
     const dialog = page.getByRole('dialog', { name: 'レコードの削除' });
-    await expect(dialog).toContainText('明細も一緒に削除されます。');
+    await expect(dialog).toContainText('明細・添付ファイル・');
     await submitAndExpectUrl(
         page,
         dialog.getByRole('button', { name: '削除', exact: true }),
@@ -652,7 +652,7 @@ test('プロジェクトの編集は終了日を開始日より前にすると�
     const milestones = await openDetailTab(
         page,
         '経費精算の電子化',
-        'マイルストーン (1)',
+        'マイルストーン 1',
     );
     await expect(milestones.getByRole('row')).toHaveCount(2);
     await page.getByRole('link', { name: '編集', exact: true }).click();
@@ -687,7 +687,7 @@ test('プロジェクトの編集は終了日を開始日より前にすると�
     const added = await openDetailTab(
         page,
         '経費精算の電子化',
-        'マイルストーン (2)',
+        'マイルストーン 2',
     );
     await expect(added.getByRole('row')).toHaveCount(3);
     await expect(added.getByRole('row').nth(2)).toContainText('E2E の節目');
@@ -707,7 +707,7 @@ test('プロジェクトの編集は終了日を開始日より前にすると�
     const restored = await openDetailTab(
         page,
         '経費精算の電子化',
-        'マイルストーン (1)',
+        'マイルストーン 1',
     );
     await expect(restored.getByRole('row')).toHaveCount(2);
 });
@@ -757,7 +757,7 @@ test('同じプロジェクトを 2 つのページで編集すると、後の�
     const kept = await openDetailTab(
         page,
         '経費精算の電子化',
-        'マイルストーン (2)',
+        'マイルストーン 2',
     );
     await expect(kept.getByRole('row').nth(2)).toContainText('E2E の同時編集');
 
@@ -779,7 +779,7 @@ test('同じプロジェクトを 2 つのページで編集すると、後の�
     const restored = await openDetailTab(
         page,
         '経費精算の電子化',
-        'マイルストーン (1)',
+        'マイルストーン 1',
     );
     await expect(restored.getByRole('row')).toHaveCount(2);
 });

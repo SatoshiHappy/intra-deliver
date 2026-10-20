@@ -14,8 +14,9 @@ use Tests\Support\TransactionalTestCase;
 
 /**
  * 業務の画面と持ち主(docs の 設計/ワークフロー/業務データとの接続/README.md 4 節・9 節の「持ち主」、設計/業務データの入れ物/画面/業務の画面.md 2.2・2.3、
- * 認可とメニュー/README.md 2.2、メニューと初期データ.md 8 節): 鍵は HTTP から来ない(更新・削除の入力に holder を送っても無視されて 422 record)。詳細の can.update・
- * can.delete は持ち主のあるレコードで偽、詳細と編集の hold に持ち主の理由が出る。テストの持ち主の実装をタグで登録し、業務モジュールとレコードはテストで作る。
+ * 認可とメニュー/README.md 2.2、メニューと初期データ.md 8 節): 鍵は HTTP から来ない(更新・削除の入力に holder を送っても無視されて 422 record)。詳細の can は
+ * 持ち主があっても権限の判定のまま(画面が hold で押せない形にする = レコードの共通機能/詳細の画面/README.md の 5.1 節)、詳細と編集の hold に持ち主の理由が出る。
+ * テストの持ち主の実装をタグで登録し、業務モジュールとレコードはテストで作る。
  */
 final class RecordHoldControllerTest extends TransactionalTestCase
 {
@@ -46,17 +47,17 @@ final class RecordHoldControllerTest extends TransactionalTestCase
         $this->recordHolds = $this->registerRecordHolds([$this->held->id => self::HOLDER]);
     }
 
-    public function test_the_detail_of_a_held_record_hides_update_and_delete_and_shows_the_reason(): void
+    public function test_the_detail_of_a_held_record_keeps_update_and_delete_and_shows_the_reason(): void
     {
         $this->get("/records/data/hold_check/{$this->held->id}")->assertOk()->assertInertia(fn (Assert $page) => $page
             ->component('Records/Show')
-            ->where('can', ['update' => false, 'delete' => false])
+            ->where('can', ['update' => true, 'delete' => true, 'attach' => true])
             ->where('hold', ['reason' => self::HOLD_REASON])
         );
     }
 
     /**
-     * 詳細の 1 描画で持ち主を読むのは 1 回(hold と can の両方に同じ結果を使う)。
+     * 詳細の 1 描画で持ち主を読むのは 1 回(hold だけ。添付ファイルの欄を開いていないとき)。
      */
     public function test_the_detail_reads_the_holder_once_per_render(): void
     {
@@ -68,7 +69,7 @@ final class RecordHoldControllerTest extends TransactionalTestCase
     public function test_the_detail_of_a_record_without_a_holder_is_as_before(): void
     {
         $this->get("/records/data/hold_check/{$this->free->id}")->assertOk()->assertInertia(fn (Assert $page) => $page
-            ->where('can', ['update' => true, 'delete' => true])
+            ->where('can', ['update' => true, 'delete' => true, 'attach' => true])
             ->where('hold', null)
         );
     }

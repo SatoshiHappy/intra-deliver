@@ -16,6 +16,7 @@ use App\Queries\Menu\MenuResourceTypes;
 use App\Queries\Menu\QuickActionsHomeSection;
 use App\Queries\Notice\Api\NoticeTargets;
 use App\Queries\Records\Api\RecordHolds;
+use App\Queries\Records\Api\RecordShowSections;
 use App\Queries\Records\RecordMenuItemVisibility;
 use App\Queries\Records\RecordModuleResourceTypes;
 use App\Queries\Workflow\ActiveApplicationsHomeSection;
@@ -67,6 +68,10 @@ class AppServiceProvider extends ServiceProvider
         // 依存の逆転: 通知の行の移り先を、対象の種類を持つモジュールの実装が答える(docs の 設計/ワークフロー/案件の運用/通知.md の 5 節)。
         // 対象の種類を持つモジュールが実装をここに足す(実装の無い対象の種類の行は共通の 1 行になる)
         $this->app->tag([], NoticeTargets::TAG);
+
+        // 依存の逆転: レコードの詳細のサイドパネルに、後ろのモジュールが節を足す(docs の
+        // 設計/業務データの入れ物/レコードの共通機能/詳細の画面/節の口.md の 2 節。並び = この配列の順)。節を足すモジュールが実装をここに足す
+        $this->app->tag([], RecordShowSections::TAG);
 
         // 処理対象者に当たる条件の項(docs の 設計/ワークフロー/ルートの深さ/認可と一覧.md 3 節。代理の項 = 設計/ワークフロー/案件の運用/案件の操作/README.md の 4.2 節)
         $this->app->tag([OwnCaseTargetTerm::class, ProxyTargetTerm::class], CaseTargetTerm::TAG);

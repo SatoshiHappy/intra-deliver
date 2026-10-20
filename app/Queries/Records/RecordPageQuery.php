@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 /**
  * 業務の画面の props のうち、業務モジュールの定義 module と、ボタンを出すかの can、レコードの持ち主 hold(docs の 設計/業務データの入れ物/画面/業務の画面.md 2 節、
- * 認可とメニュー/README.md 2.2)。定義は判定(画面が求めるアクション)の後に作る。can は判定の結果を返し、レコードの update・delete は加えて持ち主が無いときだけ真
+ * 認可とメニュー/README.md 2.2)。定義は判定(画面が求めるアクション)の後に作る。can は判定の結果だけを返し、持ち主は hold で別に返す
  * (隠すのは案内)。持ち主の読み取りはトランザクションを求めない(書き込みのときに業務処理が同じ口でもう一度確かめる)。
  *
  * @phpstan-import-type ModuleDefinition from RecordDefinitionQuery
@@ -93,22 +93,38 @@ class RecordPageQuery
     }
 
     /**
-     * アクションごとに許されるか(アクションの ID → 真偽)。レコードの画面で持ち主があるとき($held。{@see self::hold()} の結果が null でない)は、
-     * update・delete は偽(判定 かつ 持ち主なし = 認可とメニュー/README.md 2.2)。
+     * アクションごとに許されるか(アクションの ID → 真偽)。持ち主の有無は見ない(画面が hold で出し分ける =
+     * レコードの共通機能/詳細の画面/README.md の 5.1 節)。
      *
      * @param  list<RecordModuleAction>  $actions
      * @return array<string, bool>
      */
-    public function can(Requester $requester, RecordModule $opened, array $actions, DateTimeInterface $date, bool $held = false): array
+    public function can(Requester $requester, RecordModule $opened, array $actions, DateTimeInterface $date): array
     {
         $can = [];
 
         foreach ($actions as $action) {
-            $blockedByHold = $held && in_array($action, [RecordModuleAction::Update, RecordModuleAction::Delete], true);
-            $can[$action->value] = ! $blockedByHold && $this->gate->allows($requester, $opened, $action, $date);
+            $can[$action->value] = $this->gate->allows($requester, $opened, $action, $date);
         }
 
         return $can;
+    }
+
+    /**
+     * レコードの詳細の can(詳細の画面/README.md の 6.1 節)。attach = 業務モジュールの update かつ添付ファイルを使用する
+     * (拡張点 = 複製・申請のボタンの判定を足すときはここ)。
+     *
+     * @return array{update: bool, delete: bool, attach: bool}
+     */
+    public function detailCan(Requester $requester, RecordModule $opened, DateTimeInterface $date): array
+    {
+        $update = $this->gate->allows($requester, $opened, RecordModuleAction::Update, $date);
+
+        return [
+            'update' => $update,
+            'delete' => $this->gate->allows($requester, $opened, RecordModuleAction::Delete, $date),
+            'attach' => $update && $opened->is_attachment_enabled,
+        ];
     }
 
     /**

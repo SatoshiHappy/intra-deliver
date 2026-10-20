@@ -102,7 +102,7 @@ const WWW_LITERAL = /^www\./i;
 /**
  * 空白・制御文字(U+0000〜U+0020、U+007F〜U+009F)を含むか。含む値はスキームを偽装できる(`java\tscript:` など)ので通さない。
  */
-function hasBlankOrControl(url: string): boolean {
+export function hasBlankOrControl(url: string): boolean {
     return Array.from(url).some((character) => {
         const code = character.codePointAt(0) ?? 0;
 

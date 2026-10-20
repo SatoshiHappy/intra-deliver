@@ -72,7 +72,7 @@ final class RecordControllerTest extends TransactionalTestCase
             ->where('record.details.milestones.1.values.effort', '15.5')
             ->where('record.details.milestones.1.values.is_done', true)
             ->where('record.createdBy.label', '伊藤 涼子')
-            ->where('can', ['update' => true, 'delete' => true])
+            ->where('can', ['update' => true, 'delete' => true, 'attach' => true])
         );
     }
 
@@ -84,7 +84,7 @@ final class RecordControllerTest extends TransactionalTestCase
         $this->get('/records/data/project_issue')->assertOk()->assertInertia(fn (Assert $page) => $page->where('can', ['create' => true]));
         $this->get("/records/data/project_issue/{$issue->id}")->assertOk()->assertInertia(fn (Assert $page) => $page
             ->where('record.values.project.label', '社内ポータル刷新')
-            ->where('can', ['update' => true, 'delete' => true])
+            ->where('can', ['update' => true, 'delete' => true, 'attach' => true])
         );
         $this->getJson('/records/data/project/candidates?q=社内')->assertOk();
     }
@@ -117,7 +117,7 @@ final class RecordControllerTest extends TransactionalTestCase
         $this->deny('project', RecordModuleAction::Delete);
 
         $this->get('/records/data/project')->assertInertia(fn (Assert $page) => $page->where('can', ['create' => false]));
-        $this->get("/records/data/project/{$project->id}")->assertInertia(fn (Assert $page) => $page->where('can', ['update' => true, 'delete' => false]));
+        $this->get("/records/data/project/{$project->id}")->assertInertia(fn (Assert $page) => $page->where('can', ['update' => true, 'delete' => false, 'attach' => true]));
     }
 
     #[TestWith(['/records/data/nothing'])]

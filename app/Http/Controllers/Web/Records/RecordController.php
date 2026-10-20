@@ -11,6 +11,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Records\RecordInputRequest;
 use App\Http\Requests\Records\RecordUpdateRequest;
 use App\Queries\Authz\Api\Requester;
+use App\Queries\Records\Api\RecordShowPanelQuery;
 use App\Queries\Records\RecordListQuery;
 use App\Queries\Records\RecordPageQuery;
 use App\Queries\Records\RecordQuery;
@@ -19,6 +20,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
+use Inertia\Support\Header;
 
 /**
  * 業務の画面(docs の 設計/業務データの入れ物/画面/README.md 1.1・設計/業務データの入れ物/画面/業務の画面.md 2 節): 一覧 Records/Index・登録 Records/Create・詳細 Records/Show・更新 Records/Edit と、
@@ -38,6 +40,7 @@ class RecordController extends Controller
         private CreateRecord $createRecord,
         private UpdateRecord $updateRecord,
         private DeleteRecord $deleteRecord,
+        private RecordShowPanelQuery $panels,
     ) {}
 
     public function index(Request $request, string $module): Response
@@ -74,21 +77,35 @@ class RecordController extends Controller
         return $this->redirectAfterWrite($request, $module, $recordId, '登録しました');
     }
 
+    /**
+     * サイドパネルの props(詳細の画面/README.md の 2.2 節): どれも遅延の値で、部分の再読み込みでは求められたものだけを作る。panel と sections は
+     * 1 回の {@see RecordShowPanelQuery::panel()} を分ける。panelContent は rows を id で突き合わせて後ろに足す(部分の再読み込みのときだけ)。
+     */
     public function show(Request $request, string $module, string $record): Response
     {
         $context = AccessContext::of($request);
         $requester = Requester::fromAccessContext($context);
         $opened = $this->pages->open($requester, $module, $context->date, RecordModuleAction::Read);
-        $this->pages->ensureRowAccess($requester, $opened, (int) $record, $context->date);
-        $shown = $this->records->show($requester, $opened, (int) $record, $context->date, $context->localeCode);
-        // 持ち主は 1 描画で 1 回だけ読み、hold と can の両方に使う
-        $hold = $this->pages->hold($shown['id']);
+        $recordId = (int) $record;
+        $this->pages->ensureRowAccess($requester, $opened, $recordId, $context->date);
+        $loaded = null;
+        // 1 つの応答で panel() を 1 回だけ呼び、panel と sections に分ける(null の結果も覚える)
+        $panel = function () use (&$loaded, $context, $module, $recordId): ?array {
+            $loaded ??= ['panel' => $this->panels->panel($context, $module, $recordId)];
+
+            return $loaded['panel'];
+        };
 
         return Inertia::render('Records/Show', [
             'module' => fn () => $this->pages->definition($opened),
-            'record' => $shown,
-            'can' => fn () => $this->pages->can($requester, $opened, [RecordModuleAction::Update, RecordModuleAction::Delete], $context->date, held: $hold !== null),
-            'hold' => $hold,
+            'record' => fn () => $this->records
+                ->show($requester, $opened, $recordId, $context->date, $context->localeCode),
+            'can' => fn () => $this->pages->detailCan($requester, $opened, $context->date),
+            'hold' => fn () => $this->pages->hold($recordId),
+            'panel' => fn () => $panel()['panel'] ?? null,
+            'sections' => fn () => $panel()['sections'] ?? [],
+            'panelContent' => Inertia::merge(fn () => $this->panelContent($request, $context, $module, $recordId))
+                ->append('rows', 'id'),
         ]);
     }
 
@@ -139,5 +156,82 @@ class RecordController extends Controller
             RecordWriteDestination::Index => redirect()->route('records.data.index', ['module' => $moduleCode], 303),
             RecordWriteDestination::Home => redirect()->route('menu.home', [], 303),
         };
+    }
+
+    /**
+     * 開いた欄の中身(クエリ panel の値は口がキーの一覧で照らす)。before は部分の再読み込みのときだけ読む(全体の応答は新しいものから)。
+     * 開く URL はここで足す(ルートの名前は入口が持つ = 詳細の画面/README.md の 7 節)。
+     *
+     * @return array<string, mixed>|null
+     */
+    private function panelContent(Request $request, AccessContext $context, string $module, int $recordId): ?array
+    {
+        $key = $request->query('panel');
+        $before = $request->query('before');
+        $partial = $request->header(Header::PARTIAL_COMPONENT) === 'Records/Show';
+        $beforeId = $partial && is_string($before) && preg_match('/^[1-9][0-9]{0,17}\z/', $before) === 1
+            ? (int) $before
+            : null;
+        $content = is_string($key) ? $this->panels->content($context, $module, $recordId, $key, $beforeId) : null;
+        $route = ['module' => $module, 'record' => $recordId];
+
+        return match ($content['kind'] ?? null) {
+            'attachments' => [...$content, 'rows' => array_map(
+                fn (array $row) => $this->withAttachmentLinks($row, $route),
+                $content['rows'],
+            )],
+            'revisions' => [...$content, 'rows' => array_map(
+                fn (array $row) => $this->withRevisionFileLinks($row, $route),
+                $content['rows'],
+            )],
+            default => $content,
+        };
+    }
+
+    /**
+     * 添付の行のダウンロード・プレビューの URL(期限で実体を消した行は開けない = 添付ファイル/レコードの添付.md の 9 節)。
+     *
+     * @param  array{id: int, previewable: bool, purgeDueOn: string|null}  $row
+     * @param  array{module: string, record: int}  $route
+     * @return array<string, mixed>
+     */
+    private function withAttachmentLinks(array $row, array $route): array
+    {
+        $parameters = [...$route, 'attachment' => $row['id']];
+
+        return [
+            ...$row,
+            'downloadUrl' => $row['purgeDueOn'] === null ? route('records.data.attachments.show', $parameters) : null,
+            'previewUrl' => $row['previewable'] ? route('records.data.attachments.preview', $parameters) : null,
+        ];
+    }
+
+    /**
+     * 更新履歴の添付の削除の行から開く、外した時点のファイルの URL(開けない行は uploadId が null = 更新履歴.md の 5.2 節)。
+     *
+     * @param  array{changes: array{attachments: list<array{uploadId: int|null, previewable: bool}>}|null}  $row
+     * @param  array{module: string, record: int}  $route
+     * @return array<string, mixed>
+     */
+    private function withRevisionFileLinks(array $row, array $route): array
+    {
+        if ($row['changes'] === null) {
+            return $row;
+        }
+
+        $row['changes']['attachments'] = array_map(function (array $change) use ($route) {
+            $parameters = [...$route, 'upload' => $change['uploadId']];
+            $opens = $change['uploadId'] !== null;
+
+            return [
+                ...$change,
+                'downloadUrl' => $opens ? route('records.data.revision-files.show', $parameters) : null,
+                'previewUrl' => $opens && $change['previewable']
+                    ? route('records.data.revision-files.preview', $parameters)
+                    : null,
+            ];
+        }, $row['changes']['attachments']);
+
+        return $row;
     }
 }

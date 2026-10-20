@@ -5,6 +5,7 @@ export * from './menu';
 export * from './navigation';
 export * from './notice';
 export * from './records';
+export * from './recordShow';
 export * from './status';
 export * from './ui';
 export * from './workflow';

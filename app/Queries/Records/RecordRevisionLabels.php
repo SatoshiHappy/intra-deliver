@@ -17,7 +17,7 @@ use Illuminate\Support\Collection;
  *
  * @phpstan-type FieldLabel array<string, mixed>
  * @phpstan-type FieldEntry array{id: int, code: string, name: string, type: RecordFieldType, multiple: bool,
- *     children: mixed}
+ *     multiline: bool, referencedModule: string|null, children: mixed}
  * @phpstan-type Labels array{fields: array<int, FieldLabel>, options: array<int, array<string, string>>}
  */
 class RecordRevisionLabels
@@ -86,6 +86,8 @@ class RecordRevisionLabels
             'name' => $name,
             'type' => $type,
             'multiple' => ($label['multiple'] ?? false) === true,
+            'multiline' => ($label['multiline'] ?? false) === true,
+            'referencedModule' => is_string($label['referenced_module'] ?? null) ? $label['referenced_module'] : null,
             'children' => $label['fields'] ?? [],
         ]];
     }
