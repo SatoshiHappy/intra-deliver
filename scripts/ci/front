@@ -1,0 +1,98 @@
+#!/usr/bin/env bash
+# N フロント(主列とは別の列)。2 つの入り方(scripts/ci/all が別の段として呼ぶ)。
+#   scripts/ci/front        N: 本番ビルド → 印の生成物の一致と生成器の単体テスト → 画面の単体テスト(vp test)→ lint と整形 → 型検査 → import の向き(dependency-cruiser)→ 未使用のファイル・export(knip)→ 依存監査(#7 の一部)。
+#                           安い段なので T の前。lint の前に、印の生成物が正本と一致するか(--check。入力の指紋を含む)と生成器の単体テストを走らせる。
+#   scripts/ci/front --e2e  E: E2E(Playwright)。N のビルドの資産に掛けるので N の後に走らせる。重い段なので T の後。
+# ビルドを先に走らせる: ビルドの中で Wayfinder の Vite プラグインがルートの TypeScript(resources/js/routes ほか。git 管理外)を
+# 生成し、型検査はそれを読む。E2E は本番ビルドの資産で、テスト用 DB に初期データを入れたサーバーに掛ける。
+# 流用元 = chatpinet_2 の scripts/ci/front(lint・型・E2E を足した。lock の存在確認と npm audit は残した)。
+set -euo pipefail
+
+cd "$(dirname "$0")/../.."
+
+e2e=0
+if [ "$#" -eq 1 ] && [ "$1" = "--e2e" ]; then
+    e2e=1
+elif [ "$#" -ne 0 ]; then
+    echo "使い方: scripts/ci/front [--e2e]" >&2
+    exit 2
+fi
+
+if [ ! -f package-lock.json ]; then
+    echo "package-lock.json が無い(フロントの lock を作成してコミット対象にする)" >&2
+    exit 1
+fi
+
+if [ "${e2e}" -eq 0 ]; then
+    echo "==> 本番ビルド(Wayfinder の生成を含む)"
+    npm run build
+
+    echo "==> 印の生成物が正本と一致(resources/brand/mark.svg。差し替えたら node scripts/brand/build.mjs)"
+    scripts/ci/record brand-check -- node scripts/brand/build.mjs --check
+
+    echo "==> 印の生成器の単体テスト(node:test)"
+    scripts/ci/record node-test-brand -- node --test 'scripts/brand/*.test.mjs'
+
+    echo "==> 入口の Worker の単体テスト(node:test)"
+    scripts/ci/record node-test-worker -- node --test 'deploy/worker/src/*.test.mjs'
+
+    echo "==> 検査の記録の部品の単体テスト(node:test)"
+    scripts/ci/record node-test-ci -- node --test 'scripts/ci/*.test.mjs'
+
+    echo "==> 検査の記録の集計の単体テスト(node:test)"
+    scripts/ci/record node-test-quality -- node --test 'scripts/quality/*.test.mjs'
+
+    echo "==> 画面の単体テスト(vp test)"
+    npm run test:unit
+
+    echo "==> lint と整形(vp check = Oxlint + Oxfmt)"
+    npm run check
+
+    echo "==> 型検査(tsc)"
+    npm run types:check
+
+    echo "==> import の向き(dependency-cruiser。docs の 設計/コード構成/README.md 5 節の止める向きと循環)"
+    npm run deps:check
+
+    echo "==> 未使用のファイル・export(knip)"
+    npm run unused:check
+
+    echo "==> npm audit(advisory 0)"
+    scripts/ci/record npm-audit -- npm audit --audit-level=low
+
+    exit 0
+fi
+
+if [ ! -f public/build/manifest.json ]; then
+    echo "本番ビルド(public/build)が無い。先に scripts/ci/front(引数なし)を走らせる" >&2
+    exit 1
+fi
+
+echo "==> E2E(Playwright。テスト用 DB に初期データを入れ、その DB のサーバーを別のポートで起動して掛ける)"
+# E2E の DB とポートは、この作業木のテスト用のもの(開発用 DB の状態に依らず通し、ほかの作業木と DB・ポートをぶつけないため)。
+# 決め方は tests/Support/WorktreeTestEnvironment(docs の 設計/コード構成/検査.md 6 節)。決められないときは理由を出して止まる。
+# DB の名前は環境変数で差し替える(.env は変えない)。この段は migrate:fresh --seed から始めるので、PHPUnit の段が残したものにも依らない。
+resolve_worktree_value() {
+    php -r 'require "vendor/autoload.php"; try { echo Tests\Support\WorktreeTestEnvironment::'"$1"'(getcwd()); } catch (Throwable $e) { fwrite(STDERR, $e->getMessage().PHP_EOL); exit(1); }'
+}
+e2e_database="$(resolve_worktree_value testDatabaseName)"
+e2e_port="$(resolve_worktree_value e2ePort)"
+if [ -f bootstrap/cache/config.php ]; then
+    echo "設定キャッシュ(bootstrap/cache/config.php)があるので E2E を走らせない(DB の名前の差し替えが効かず、開発用 DB を作り直すおそれがある)" >&2
+    exit 1
+fi
+export DB_CONNECTION=pgsql DB_URL= DB_DATABASE="${e2e_database}" E2E_PORT="${e2e_port}"
+test_db_suffix="$(php artisan tinker --execute 'echo config("guardrails.test_db_suffix");')"
+connected_database="$(php artisan tinker --execute 'echo DB::selectOne("select current_database() as name")->name;')"
+if [ -z "${test_db_suffix}" ] || [[ "${connected_database}" != *"${test_db_suffix}" ]] || [ "${connected_database}" != "${e2e_database}" ]; then
+    echo "E2E の DB がテスト用 DB でない(接続した DB = ${connected_database})ので、初期化しない" >&2
+    exit 1
+fi
+# E2E は利用者の切替をオンで走らせ、その初期データを DatabaseSeeder の後に入れる(docs の 設計/デモユーザー切替/README.md 2.2。
+# Playwright の webServer はこの環境変数を引き継ぐ)。本番ビルド(上の npm run build)には足さない
+export DEMO_ENABLED=true
+php artisan migrate:fresh --seed --force --no-interaction
+# E2E 専用のメニューの初期データ(入れ子のフォルダ・畳んだ帯の飛び出し・既定のアイコンを画面で確かめる 1 組。docs の 設計/画面の意匠/検査と否決案.md 9 節)
+php artisan db:seed --class=E2eMenuSeeder --force --no-interaction
+php artisan db:seed --class=DemoSeeder --force --no-interaction
+npm run test:e2e

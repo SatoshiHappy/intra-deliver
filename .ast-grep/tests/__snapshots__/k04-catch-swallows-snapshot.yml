@@ -1,0 +1,84 @@
+id: k04-catch-swallows
+snapshots:
+  ? |
+    <?php
+    function f()
+    {
+        try {
+            work();
+        } catch (InvalidFieldValue | Exception) {
+            return [];
+        }
+    }
+  : labels:
+    - source: |-
+        catch (InvalidFieldValue | Exception) {
+                return [];
+            }
+      style: primary
+      start: 53
+      end: 117
+    - source: Exception
+      style: secondary
+      start: 80
+      end: 89
+    - source: InvalidFieldValue | Exception
+      style: secondary
+      start: 60
+      end: 89
+  ? |
+    <?php
+    function f()
+    {
+        try {
+            work();
+        } catch (\Throwable $exception) {
+            $later = function () use ($exception) {
+                throw $exception;
+            };
+        }
+    }
+  : labels:
+    - source: |-
+        catch (\Throwable $exception) {
+                $later = function () use ($exception) {
+                    throw $exception;
+                };
+            }
+      style: primary
+      start: 53
+      end: 179
+    - source: \Throwable
+      style: secondary
+      start: 60
+      end: 70
+    - source: \Throwable
+      style: secondary
+      start: 60
+      end: 70
+  ? |
+    <?php
+    function f()
+    {
+        try {
+            work();
+        } catch (\Throwable $exception) {
+            report($exception);
+        }
+    }
+  : labels:
+    - source: |-
+        catch (\Throwable $exception) {
+                report($exception);
+            }
+      style: primary
+      start: 53
+      end: 118
+    - source: \Throwable
+      style: secondary
+      start: 60
+      end: 70
+    - source: \Throwable
+      style: secondary
+      start: 60
+      end: 70

@@ -1,0 +1,58 @@
+# K14 Inertia のページ名は `<M>/…` の形で、`.` を使わない(docs の 設計/コード構成/README.md 5 節。`.` を使うとサーバー側の検査は通るのに画面側で解決できない)。
+# 文字列の定数で書いたページ名だけを見る(単一引用符の文字列と、埋め込みの無い二重引用符の文字列。連結・変数・式・埋め込みのある文字列は見ない)。
+# 引数は位置引数(Inertia::render と inertia() は第 1 引数、Route::inertia は第 2 引数)と、名前つき引数 component: の両方を見る。
+# 位置引数は argument の node に束縛されるので、名前の無い argument の直下の子に文字列の node を求める(名前つきの引数は別のパターンで見る)。ファイルの実在は Inertia の描画時の検査(pages.ensure_pages_exist)と Feature テストが見る。
+# 形 = 先頭が大文字のモジュール名 + `/` + `.` と引用符を含まない残り。
+id: k14-inertia-page-name
+language: Php
+severity: error
+message: Inertia のページ名が `<M>/…` の形でない(`.` を使えない)
+note: 'ページ名は resources/js/pages の下のパスで書く(例: Records/Admin/FieldForm)。`.` 区切りは画面側で解決できない'
+files:
+    - app/**/*.php
+    - routes/**/*.php
+rule:
+    any:
+        # 名前つき引数 component:(順不同。パターンは引数の個数で照合が変わるので、構造で書く)
+        - all:
+              - kind: argument
+              - has:
+                    field: name
+                    kind: name
+                    regex: ^component$
+              - has: &bad-page-literal
+                    all:
+                        - any:
+                              - kind: string
+                              - kind: encapsed_string
+                                not:
+                                    has:
+                                        regex: ^[^"]
+                                        not:
+                                            any:
+                                                - kind: string_content
+                                                - kind: escape_sequence
+                        - not:
+                              regex: ^['"][A-Z][A-Za-z0-9]*/[^.'"]+['"]$
+              - inside:
+                    kind: arguments
+                    inside:
+                        any:
+                            - pattern: Inertia::render($$$)
+                            - pattern: Route::inertia($$$)
+                            - pattern: inertia($$$)
+        - pattern: Inertia::render($PAGE)
+        - pattern: Inertia::render($PAGE, $$$)
+        - pattern: Route::inertia($PATH, $PAGE)
+        - pattern: Route::inertia($PATH, $PAGE, $$$)
+        - pattern: inertia($PAGE)
+        - pattern: inertia($PAGE, $$$)
+constraints:
+    PAGE:
+        all:
+            - kind: argument
+            - not:
+                  has:
+                      field: name
+                      kind: name
+            - has: *bad-page-literal

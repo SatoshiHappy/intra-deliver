@@ -1,0 +1,8 @@
+# #6 抜け道(gitleaks)の自己証明の正常 fixture(作業木の走査用): 履歴の走査用の設定を取り込み、
+# 除外は ⑧ #11 の scope = dir の行に登録済みのものだけ。
+[extend]
+path = ".gitleaks.toml"
+
+[[allowlists]]
+description = "実在のローカル環境ファイル"
+paths = ['''(?:^|/)\.env$''']

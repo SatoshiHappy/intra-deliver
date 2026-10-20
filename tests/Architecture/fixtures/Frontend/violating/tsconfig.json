@@ -1,0 +1,9 @@
+{
+    "compilerOptions": {
+        "target": "ESNext",
+        "module": "ESNext",
+        "moduleResolution": "bundler",
+        "paths": { "@/*": ["./resources/js/*"] }
+    },
+    "include": ["resources/js/**/*.ts"]
+}

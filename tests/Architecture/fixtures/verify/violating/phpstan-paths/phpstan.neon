@@ -1,0 +1,6 @@
+# #6 対象の絞り込みの自己証明の fixture: 走査対象(paths)をアプリのルート全体(.)から app に狭めた設定。
+parameters:
+	level: 8
+	paths:
+		- app
+		- artisan

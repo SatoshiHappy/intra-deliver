@@ -1,0 +1,110 @@
+# 自作の phpstan 規則の登録(Engine = 汎用。値を持たない)。
+# 取り込む側の設定(Policy = アプリの phpstan.neon)が、下の parametersSchema のパラメータで上限・対象の名前空間・禁止する型を渡す。
+# パラメータを渡さなければ規則を組み立てられず phpstan が起動時に失敗する(既定値で黙って動かさない)。
+
+parametersSchema:
+	physicalLines: structure([
+		maxClassLines: int(),
+		maxMethodLines: int(),
+	])
+	forbiddenConstructorParameterTypes: structure([
+		namespaces: listOf(string()),
+		types: listOf(string()),
+	])
+	forbiddenStaticState: structure([
+		namespaces: listOf(string()),
+	])
+	codeLayout: structure([
+		roots: listOf(string()),
+		classDirectories: listOf(string()),
+	])
+	singleClassFile: structure([
+		directory: string(),
+		namespace: string(),
+	])
+	classOnlyFile: structure([
+		directories: listOf(string()),
+		returnClassDirectories: listOf(string()),
+	])
+	forbiddenExpressionTypes: listOf(structure([
+		directories: listOf(string()),
+		types: listOf(string()),
+	]))
+	forbiddenPublicApiTypes: structure([
+		layers: listOf(string()),
+		segment: string(),
+		types: listOf(string()),
+	])
+	sideEffects: structure([
+		ledgerFile: string(),
+		ledgerKey: string(),
+		exemptDirectories: listOf(string()),
+	])
+
+services:
+	-
+		class: Tests\Architecture\Engine\PhpStan\PhysicalLinesRule
+		arguments:
+			maxClassLines: %physicalLines.maxClassLines%
+			maxMethodLines: %physicalLines.maxMethodLines%
+		tags:
+			- phpstan.rules.rule
+	-
+		class: Tests\Architecture\Engine\PhpStan\ForbiddenConstructorParameterTypesRule
+		arguments:
+			namespaces: %forbiddenConstructorParameterTypes.namespaces%
+			types: %forbiddenConstructorParameterTypes.types%
+		tags:
+			- phpstan.rules.rule
+	-
+		class: Tests\Architecture\Engine\PhpStan\ForbiddenStaticStateRule
+		arguments:
+			namespaces: %forbiddenStaticState.namespaces%
+		tags:
+			- phpstan.rules.rule
+	-
+		class: Tests\Architecture\Engine\PhpStan\SingleClassFileRule
+		arguments:
+			roots: %codeLayout.roots%
+			classDirectories: %codeLayout.classDirectories%
+			directory: %singleClassFile.directory%
+			namespace: %singleClassFile.namespace%
+		tags:
+			- phpstan.rules.rule
+	-
+		class: Tests\Architecture\Engine\PhpStan\ClassOnlyFileRule
+		arguments:
+			roots: %codeLayout.roots%
+			classDirectories: %codeLayout.classDirectories%
+			directories: %classOnlyFile.directories%
+			returnClassDirectories: %classOnlyFile.returnClassDirectories%
+		tags:
+			- phpstan.rules.rule
+	-
+		class: Tests\Architecture\Engine\PhpStan\ForbiddenExpressionTypesRule
+		arguments:
+			roots: %codeLayout.roots%
+			classDirectories: %codeLayout.classDirectories%
+			groups: %forbiddenExpressionTypes%
+		tags:
+			- phpstan.rules.rule
+	-
+		class: Tests\Architecture\Engine\PhpStan\ForbiddenPublicApiTypesRule
+		arguments:
+			layers: %forbiddenPublicApiTypes.layers%
+			segment: %forbiddenPublicApiTypes.segment%
+			types: %forbiddenPublicApiTypes.types%
+		tags:
+			- phpstan.rules.rule
+	-
+		class: Tests\Architecture\Engine\PhpStan\ForbiddenPublicApiPropertyTypesRule
+		arguments:
+			layers: %forbiddenPublicApiTypes.layers%
+			segment: %forbiddenPublicApiTypes.segment%
+			types: %forbiddenPublicApiTypes.types%
+		tags:
+			- phpstan.rules.rule
+	-
+		class: Tests\Architecture\Engine\PhpStan\RegexEndAnchorRule
+		tags:
+			- phpstan.rules.rule

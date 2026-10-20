@@ -1,0 +1,15 @@
+#!/usr/bin/env bash
+# P ディレクトリと名前空間の一致(docs の 設計/コード構成/README.md 1 節)。composer.json の autoload・autoload-dev の PSR-4 の対応に
+# 合わないクラス(例 = app/Support に App\Helpers のクラス)があれば非 0 で終わる。--dry-run なので autoload のファイルは書き換えない。
+# PSR-4 の基底の名前空間の外のクラス(例 = app/ の Acme\ のクラス)は composer が黙って飛ばすので、app/ の名前空間は
+# phpstan の自作規則(SingleClassFileRule)が見る。
+set -euo pipefail
+
+cd "$(dirname "$0")/../.."
+
+if [ "$#" -ne 0 ]; then
+    echo "scripts/ci/psr4 は引数を受けない" >&2
+    exit 2
+fi
+
+scripts/ci/record psr4 -- composer dump-autoload --optimize --strict-psr --dry-run

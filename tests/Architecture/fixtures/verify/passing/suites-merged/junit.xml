@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- 並列実行(paratest)が各プロセスの記録を併合した形: suite の名前の testsuite は無く、テストクラスの testsuite が最上位の直下に並ぶ。 -->
+<testsuites>
+  <testsuite name="" tests="5" assertions="5" errors="0" failures="0" skipped="0" time="0.5">
+    <testsuite name="Tests\Architecture\ExampleTest" file="__ROOT__/tests/Architecture/ExampleTest.php" tests="1" assertions="1" errors="0" failures="0" skipped="0" time="0.1">
+      <testcase name="test_example" file="__ROOT__/tests/Architecture/ExampleTest.php" line="9" class="Tests\Architecture\ExampleTest" classname="Tests.Architecture.ExampleTest" assertions="1" time="0.1"/>
+    </testsuite>
+    <testsuite name="Tests\Acceptance\ExampleTest" file="__ROOT__/tests/Acceptance/ExampleTest.php" tests="1" assertions="1" errors="0" failures="0" skipped="0" time="0.1">
+      <testcase name="test_example" file="__ROOT__/tests/Acceptance/ExampleTest.php" line="9" class="Tests\Acceptance\ExampleTest" classname="Tests.Acceptance.ExampleTest" assertions="1" time="0.1"/>
+    </testsuite>
+    <testsuite name="Tests\Unit\ExampleTest" file="__ROOT__/tests/Unit/ExampleTest.php" tests="1" assertions="1" errors="0" failures="0" skipped="0" time="0.1">
+      <testcase name="test_example" file="__ROOT__/tests/Unit/ExampleTest.php" line="9" class="Tests\Unit\ExampleTest" classname="Tests.Unit.ExampleTest" assertions="1" time="0.1"/>
+    </testsuite>
+    <testsuite name="Tests\Feature\ExampleTest" file="__ROOT__/tests/Feature/ExampleTest.php" tests="1" assertions="1" errors="0" failures="0" skipped="0" time="0.1">
+      <testcase name="test_example" file="__ROOT__/tests/Feature/ExampleTest.php" line="9" class="Tests\Feature\ExampleTest" classname="Tests.Feature.ExampleTest" assertions="1" time="0.1"/>
+    </testsuite>
+    <testsuite name="Tests\Concurrency\ExampleTest" file="__ROOT__/tests/Concurrency/ExampleTest.php" tests="1" assertions="1" errors="0" failures="0" skipped="0" time="0.1">
+      <testcase name="test_example" file="__ROOT__/tests/Concurrency/ExampleTest.php" line="9" class="Tests\Concurrency\ExampleTest" classname="Tests.Concurrency.ExampleTest" assertions="1" time="0.1"/>
+    </testsuite>
+  </testsuite>
+</testsuites>

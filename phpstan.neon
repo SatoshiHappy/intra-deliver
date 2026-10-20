@@ -1,0 +1,208 @@
+# 静的解析 S(整形・静的解析 #2、大きさ #3、コード構成の境界 B1 の静的な規則)。実行 = scripts/ci/static。
+# 1 回の phpstan で: level 8 の型(larastan)/ 大きさ(認知的複雑度 = cognitive-complexity、物理行 = 自作規則)/
+# 層と依存方向(phpat。規則クラス = tests/Architecture/Policy/LayerRules.php)/ Octane 安全 (a)(b)(自作規則)/
+# コード構成の規則(自作規則 = app/ の 1 クラス・database/ のクラスの外・配線のファイルの依存先・副作用は台帳②の場所だけ)/
+# 正規表現の $ に修飾子 D(自作規則 regexEndAnchor。docs の 設計/コード構成/検査.md 6 節)。
+# 層・モジュール・コード構成の規則のエラーは抑制の注釈で消せない(nonIgnorable)。
+# 数値の正本はこのファイル(docs の 設計/chatpinet_2からの流用.md 2 節「上限の値」= chatpinet_2 の値をそのまま使う)。
+# baseline と ignoreErrors は置かない(台帳⑧に載せても scripts/ci/verify の #6 で失敗)。
+# 流用元 = chatpinet_2 の phpstan.neon。
+
+includes:
+    - vendor/larastan/larastan/extension.neon
+    - vendor/nesbot/carbon/extension.neon
+    - vendor/phpat/phpat/extension.neon
+    - vendor/tomasvotruba/cognitive-complexity/config/extension.neon
+    - tests/Architecture/Engine/PhpStan/rules.neon
+
+parameters:
+    level: 8
+
+    # 結果キャッシュ・コンテナのキャッシュは作業木ごとに build/ の下へ置く(既定の /tmp/phpstan は作業木をまたいで共有され、
+    # 並行セッションや自己証明の fixture の解析と結果キャッシュを取り合う)。自己証明の fixture の設定は build/phpstan-fixtures。
+    tmpDir: %rootDir%/../../../build/phpstan
+
+    # larastan がモデルの casts() メソッドを読み、キャスト(列挙・日付など)を属性の型にする。
+    # 既定(false)では casts() の PHPDoc の戻り値 array<string, string> しか見ず、列挙にキャストした属性を文字列と誤って推論する。
+    # 判定を緩める設定ではない(型をより正確にする)
+    parseModelCastsMethod: true
+
+    # 解析の対象 = アプリのルート全体(拡張子 .php のファイル)と、拡張子の無い artisan(docs の 設計/コード構成/README.md 4 節)。
+    # 一覧の正本は Policy(tests/Architecture/Policy/Verification.php の PHPSTAN_ANALYSED_PATHS)で、scripts/ci/verify が照合する。
+    paths:
+        - .
+        - artisan
+
+    # 解析から外すもの。どれも台帳⑧(B1・#2・#3・#6)に同じ書き方で登録する(scripts/ci/verify が照合する)。
+    # 依存物(vendor・node_modules)・生成物(build・bootstrap/cache・storage)・Blade のテンプレート(resources/views)・自己証明の fixture。
+    excludePaths:
+        - vendor/**
+        - node_modules/**
+        - build/**
+        - bootstrap/cache/**
+        - storage/**
+        - resources/views/**
+        - tests/Architecture/fixtures/**
+
+    # #3 認知的複雑度はメソッド単位で 8。
+    # クラス単位の上限は掛けない(複雑度はメソッド単位)。拡張にクラス単位の規則を止める設定が無い
+    # (ClassLikeCognitiveComplexityRule は無条件に登録され、class は必須の int)ので、int の最大値を置いて判定を実質止める。
+    cognitive_complexity:
+        function: 8
+        class: 9223372036854775807
+
+    # #3 物理行(クラス 300 / メソッド 50。コメントと空行を含む物理行)。
+    physicalLines:
+        maxClassLines: 300
+        maxMethodLines: 50
+
+    # Octane 安全 (a) = App\ のコンストラクタ引数に container・Request・config リポジトリの型を置かない(派生・実装を含む)。
+    # Octane は使わないが、規則は入れる(ユーザーの決定。あとから Octane に切り替えられるようにする)。
+    forbiddenConstructorParameterTypes:
+        namespaces:
+            - App
+        types:
+            - Illuminate\Contracts\Container\Container
+            - Illuminate\Container\Container
+            - Illuminate\Foundation\Application
+            - Illuminate\Http\Request
+            - Illuminate\Contracts\Config\Repository
+            - Illuminate\Config\Repository
+            - Psr\Container\ContainerInterface
+
+    # Octane 安全 (b) = App\ に static のプロパティと関数内の static 変数を置かない。
+    forbiddenStaticState:
+        namespaces:
+            - App
+
+    # コード構成の規則のうちパスで決まるもの(docs の 設計/コード構成/README.md 1 節・2 節・4 節)が使う、アプリのルートと、クラスを置くディレクトリ。
+    # クラスを置くディレクトリの外(routes・bootstrap・config・public/index.php・artisan など)が配線のファイル。
+    # アプリのルートは phpstan の置き場(%rootDir% = vendor/phpstan/phpstan)から決める(実行した場所に依らない。
+    # 別の場所から実行してもルートがずれて規則が黙って何も見なくなることがない)
+    codeLayout:
+        roots:
+            - %rootDir%/../../..
+        classDirectories:
+            - app
+            - database
+            - tests
+            - scripts
+
+    # app/ のファイルは App\ の名前空間のクラスを 1 つだけ宣言し、匿名クラスとクラスの外の処理を書かない(コード構成 1 節)
+    singleClassFile:
+        directory: app
+        namespace: App
+
+    # database/ のファイルはクラスの外に処理を書かない(マイグレーションの return new class を除く。コード構成 2 節)
+    classOnlyFile:
+        directories:
+            - database
+        returnClassDirectories:
+            - database/migrations
+
+    # 組(directories と types)ごとに、そのディレクトリで禁じる型を渡す。
+    # 呼び出しの結果・メソッドの受け手・静的呼び出しのクラス・引数の型で止める。
+    #
+    # seeder は Faker と factory を使えない(本番の初期データは --no-dev で入れるので、require-dev の Faker と、それを使う factory が無い。
+    # docs の 設計/コード構成/README.md 2 節 = メインの決定 2026-10-04。seeder は業務処理を呼ぶ)。
+    # (Model::factory()・Factory::new()・fake()・Faker\Factory::create()、run() の引数で受け取って使う形など)
+    #
+    # 入口(app/Http)がモデルを型に持つ式を禁じる組(Illuminate\Database\Eloquent\Model)は登録しない。
+    # 業務処理・読み取りがモデルを返し、入口がそれを受ける形を今は止めない(docs の 設計/コード構成/README.md の採った方針 2 =
+    # 入口が読み取りの返したモデルを起点に読むことは止まらない。戻り値のモデルは見直す = 同 2 節・課題/業務データの入れ物.md。検査.md 6 節)。
+    forbiddenExpressionTypes:
+        -
+            directories:
+                - database/seeders
+            types:
+                - Illuminate\Database\Eloquent\Factories\Factory
+                - Faker\Generator
+
+    # 公開の口(業務処理・読み取りの <M>\Api の下)の public メソッドの引数・戻り値と public プロパティの型にモデルを使わない(docs の 設計/コード構成/README.md 2 節、
+    # 検査.md 6 節)。モデルの配列・総称の型引数(list<Record>・Collection<int, Record>)も数える。使えるのは識別子・配列・値のクラス・列挙・
+    # 共有の型・ほかのモジュールの公開の口の型。作業中の型(RecordDraft など)は内部のクラスで、ほかのモジュールからの依存を phpat の Api の規則が止める
+    forbiddenPublicApiTypes:
+        layers:
+            - App\Actions
+            - App\Queries
+        segment: Api
+        types:
+            - Illuminate\Database\Eloquent\Model
+
+    # 副作用は台帳②の場所だけ(コード構成 4 節)。照合しないディレクトリ = DB の初期化・テストの準備・検査の道具
+    sideEffects:
+        ledgerFile: %rootDir%/../../../config/guardrails_allow.php
+        ledgerKey: capabilities
+        exemptDirectories:
+            - database
+            - tests
+            - scripts
+
+services:
+    # B1 層ごとに依存してよい先とモジュールどうしの依存(Policy の phpat の規則クラス。docs の 設計/コード構成/README.md 2 節・3 節)。
+    # 名前を付けるのは、自己証明の fixture 用の設定(tests/Architecture/fixtures/Layers/phpstan.neon)がモジュールの宣言だけを差し替えるため
+    layerRules:
+        class: Tests\Architecture\Policy\LayerRules
+        tags:
+            - phpat.test
+
+    # B1 公開の口(docs の 設計/コード構成/README.md 2 節): ほかのモジュールの業務処理・読み取りには Api の下にだけ依存する(移行中の一覧を除く)。
+    # 名前を付けるのは、自己証明の fixture 用の設定(tests/Architecture/fixtures/Layers/phpstan.neon)がモジュールの宣言と移行中の一覧を差し替えるため
+    publicApiRules:
+        class: Tests\Architecture\Policy\PublicApiRules
+        tags:
+            - phpat.test
+
+    # 機械検査 (b) レコードを書く口(CreateRecord・UpdateRecord)に依存できるのは呼び手の一覧の場所だけ(docs の 設計/業務ツール/機械検査.md。
+    # 一覧と規則 = tests/Architecture/Policy/RecordWriters.php)
+    -
+        class: Tests\Architecture\Policy\RecordWriters
+        tags:
+            - phpat.test
+
+    # B1 配線のファイルが依存してよいのは入口・共有・起動・コマンド・外部(DB を除く)だけ(docs の 設計/コード構成/README.md 2 節)。
+    # 層と DB の定義は層の規則(LayerRules)の定数を使う(同じ定義を 2 か所に書かない)
+    -
+        class: Tests\Architecture\Engine\PhpStan\WiringDependenciesRule
+        arguments:
+            roots: %codeLayout.roots%
+            classDirectories: %codeLayout.classDirectories%
+            allowedNamespaces:
+                - Tests\Architecture\Policy\LayerRules::ENTRANCE
+                - Tests\Architecture\Policy\LayerRules::SUPPORT
+                - Tests\Architecture\Policy\LayerRules::PROVIDERS
+                - Tests\Architecture\Policy\LayerRules::CONSOLE
+            forbiddenNamespaces: Tests\Architecture\Policy\LayerRules::DATABASE_NAMESPACES
+            forbiddenClasses: Tests\Architecture\Policy\LayerRules::DATABASE_CLASSES
+            composerLock: %rootDir%/../../../composer.lock
+            composerJson: %rootDir%/../../../composer.json
+        tags:
+            - phpstan.rules.rule
+
+    # 機械検査 (d) 自分のモジュールの表は自分の業務処理だけが書く(docs の 設計/業務ツール/機械検査.md)。App\Models\<M> の書き込みは App\Actions\<M> の下だけ。
+    # 置き場・モデルの型引数は Policy(ModuleTables)、書き込みのメソッドは副作用の dbWrite と同じ一覧、照合しないディレクトリは副作用の規則と同じ
+    -
+        class: Tests\Architecture\Engine\PhpStan\ModuleTableWritesRule
+        arguments:
+            roots: %codeLayout.roots%
+            classDirectories: %codeLayout.classDirectories%
+            exemptDirectories: %sideEffects.exemptDirectories%
+            modelsNamespace: Tests\Architecture\Policy\ModuleTables::MODELS
+            ownersNamespace: Tests\Architecture\Policy\ModuleTables::OWNERS
+            writes: Tests\Architecture\Policy\SideEffects::ELOQUENT_WRITE_CALLS
+            modelTemplates: Tests\Architecture\Policy\ModuleTables::MODEL_TEMPLATES
+        tags:
+            - phpstan.rules.rule
+
+    # B1 副作用は台帳②の場所だけ(docs の 設計/コード構成/README.md 4 節)。判定する呼び出しは Policy(SideEffects)の定数を使う
+    -
+        class: Tests\Architecture\Engine\PhpStan\SideEffectsRule
+        arguments:
+            roots: %codeLayout.roots%
+            classDirectories: %codeLayout.classDirectories%
+            exemptDirectories: %sideEffects.exemptDirectories%
+            calls: Tests\Architecture\Policy\SideEffects::CALLS
+            ledgerFile: %sideEffects.ledgerFile%
+            ledgerKey: %sideEffects.ledgerKey%
+        tags:
+            - phpstan.rules.rule

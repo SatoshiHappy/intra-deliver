@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+# S 静的解析(#2・#3 と B1 の静的な規則)。phpstan.neon の tmpDir の中の結果の控えを消してから、phpstan.neon の 1 回の実行で
+# level 8(larastan)・認知的複雑度・物理行・層と依存方向(phpat)・Octane 安全 (a)(b) を見て、エラーが 1 件でもあれば非 0 で終わる。
+# 続けて ast-grep(構文木の検査。sgconfig.yml・.ast-grep/)の規則の自己証明(ast-grep test)と走査(ast-grep scan)を走らせる。
+set -euo pipefail
+
+cd "$(dirname "$0")/../.."
+
+if [ "$#" -ne 0 ]; then
+    echo "scripts/ci/static は引数を受けない" >&2
+    exit 2
+fi
+
+# 控えの依存は larastan の型変換の型の変化を拾わず、控えを使うと誤りを見逃す(docs の 設計/コード構成/検査.md 6 節)
+vendor/bin/phpstan clear-result-cache --memory-limit=1G
+composer types:check
+
+if [ ! -x node_modules/.bin/ast-grep ]; then
+    echo "ast-grep が入っていない(npm ci を実行する)" >&2
+    exit 1
+fi
+
+echo "==> ast-grep test(規則ごとの違反・適合の自己証明)"
+scripts/ci/record ast-grep-test -- node_modules/.bin/ast-grep test
+
+echo "==> ast-grep scan"
+scripts/ci/record ast-grep-scan -- node_modules/.bin/ast-grep scan

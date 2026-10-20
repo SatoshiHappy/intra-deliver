@@ -1,0 +1,47 @@
+#!/usr/bin/env bash
+# T テスト(#1)。phpunit.xml の suite をすべて 1 回で実行する(suite の絞り込みは受けない)。
+#
+# 既定は並列(Laravel の php artisan test --parallel = brianium/paratest。プロセスごとに DB <テスト DB の名前>_test_<token> を作る。テスト DB の名前 = docs の 設計/コード構成/検査.md 6 節)。
+#   プロセス数 = 環境変数 CI_TEST_PROCESSES(既定 = CPU の数)。
+#   DB は前回のものを再利用する(各プロセスが最初に migrate:fresh する)。作り直したいときは CI_TEST_RECREATE_DATABASES=1。
+#   既定はテストクラス単位でプロセスに配る。1 クラスが長いと、そのクラスがまとまった時間の下限になる。CI_TEST_FUNCTIONAL=1 は
+#   テストメソッド単位で配る(paratest の --functional。時間の偏りが大きいときの選択肢)。
+# scripts/ci/test --serial: 並列にせず、phpunit を 1 プロセスで走らせる(並列の不具合の切り分け用。DB はテスト DB の名前)。
+# どちらでも build/junit.xml に 1 ファイルで残す(並列は paratest が各プロセスの記録を併合する)。
+set -euo pipefail
+
+cd "$(dirname "$0")/../.."
+
+mode=parallel
+if [ "$#" -eq 1 ] && [ "$1" = "--serial" ]; then
+    mode=serial
+elif [ "$#" -ne 0 ]; then
+    echo "使い方: scripts/ci/test [--serial](suite をすべて実行する。絞り込みは受けない)" >&2
+    exit 2
+fi
+
+# 前回の junit を消してから走らせる(M の照合が古い実行記録を読まないように)
+rm -f build/junit.xml
+
+if [ "${mode}" = "serial" ]; then
+    scripts/ci/record phpunit -- vendor/bin/phpunit
+    exit 0
+fi
+
+processes="${CI_TEST_PROCESSES:-$(nproc)}"
+if ! [[ "${processes}" =~ ^[1-9][0-9]*$ ]]; then
+    echo "CI_TEST_PROCESSES は 1 以上の整数(値 = ${processes})" >&2
+    exit 2
+fi
+
+# --without-tty は test の直後に置く(Collision の TestCommand が $_SERVER['argv'] を先頭から固定の個数 = 2 か、このオプションがあるとき 3 だけ切って paratest へ渡すため。並びを変えない)
+args=(--without-tty --parallel "--processes=${processes}")
+if [ "${CI_TEST_RECREATE_DATABASES:-}" = "1" ]; then
+    args+=(--recreate-databases)
+fi
+if [ "${CI_TEST_FUNCTIONAL:-}" = "1" ]; then
+    args+=(--functional)
+fi
+
+echo "==> 並列(${processes} プロセス)"
+scripts/ci/record phpunit -- php artisan test "${args[@]}"

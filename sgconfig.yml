@@ -1,0 +1,7 @@
+# ast-grep(構文木の検査。MIT)の設定。実行 = scripts/ci/static(S 段。PHPStan の後に scan と test を走らせる)。
+# 規則 = .ast-grep/rules/*.yml、規則ごとの違反・適合の自己証明 = .ast-grep/tests/*.yml(ast-grep test)。
+# 規則は PHP の構造で近似できるものだけを置く。
+ruleDirs:
+    - .ast-grep/rules
+testConfigs:
+    - testDir: .ast-grep/tests

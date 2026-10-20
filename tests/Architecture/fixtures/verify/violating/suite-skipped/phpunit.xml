@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- #1 の自己証明の fixture(suite の定義と junit の出力先だけ)。 -->
+<phpunit>
+    <testsuites>
+        <testsuite name="Architecture"><directory>tests/Architecture</directory></testsuite>
+        <testsuite name="Acceptance"><directory>tests/Acceptance</directory></testsuite>
+        <testsuite name="Unit"><directory>tests/Unit</directory></testsuite>
+        <testsuite name="Feature"><directory>tests/Feature</directory></testsuite>
+        <testsuite name="Concurrency"><directory>tests/Concurrency</directory></testsuite>
+    </testsuites>
+    <logging>
+        <junit outputFile="junit.xml"/>
+    </logging>
+</phpunit>

@@ -1,0 +1,5 @@
+# #6 の自己証明の fixture: 台帳⑧(B1・#2・#3)に登録の無い excludePaths。
+parameters:
+	level: 8
+	excludePaths:
+		- unregistered/**

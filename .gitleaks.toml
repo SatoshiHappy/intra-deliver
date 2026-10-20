@@ -1,0 +1,24 @@
+# 秘匿情報検査(#11)の設定のうち、履歴の走査(gitleaks git)用。gitleaks 8.30.1。
+# 作業木の走査(gitleaks dir)用の .gitleaks-dir.toml がこのファイルを [extend] で取り込み、作業木の走査だけの除外を足す。
+#
+# 既定規則(gitleaks 組み込み)をそのまま使い、独自規則は足さない。
+# 除外するのは依存物・生成物だけ(台帳⑧。config/guardrails_allow.php の exclusions.#11 のうち scope の無い行と一致させる)。
+# fixture は除外しない。実在のローカル環境ファイル(.env 系)もここでは除外しない
+# (履歴に入った .env は検出する。作業木にある git 管理外の .env の除外は .gitleaks-dir.toml だけに置く)。
+# このファイルは別の設定ファイルを取り込まない([extend] は useDefault だけ。取り込みは .gitleaks-dir.toml からの 1 段だけ。
+# path を書くと scripts/ci/verify の #6 で失敗する)。
+#
+# gitleaks はこのアプリのルート(= リポジトリのルート)を作業ディレクトリにして実行する(scripts/ci/secrets)。
+# paths の正規表現は走査ルート基点の相対パスに一致させる。
+# 流用元 = chatpinet_2 の .gitleaks.toml(除外パスを intra-deliver の構成に書き直した)。
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "依存物・生成物(台帳⑧)"
+paths = [
+    '''^vendor(?:/.*)?$''',
+    '''^node_modules(?:/.*)?$''',
+    '''^build(?:/.*)?$''',
+]

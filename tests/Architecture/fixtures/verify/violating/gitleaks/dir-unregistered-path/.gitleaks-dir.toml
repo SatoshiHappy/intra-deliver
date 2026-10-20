@@ -1,0 +1,7 @@
+# #6 抜け道(gitleaks)の自己証明の違反 fixture: 作業木の走査用の設定に ⑧ #11 に登録の無い path を足したもの。
+[extend]
+path = ".gitleaks.toml"
+
+[[allowlists]]
+description = "実在のローカル環境ファイルと、未登録の除外"
+paths = ['''(?:^|/)\.env$''', '''(?:^|/)secrets\.txt$''']

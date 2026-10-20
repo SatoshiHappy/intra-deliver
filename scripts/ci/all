@@ -1,0 +1,154 @@
+#!/usr/bin/env bash
+# 一括検査(コミットの前に通す)。composer ci:check(区切りの既定)と composer ci:full(全段)がこれを呼ぶ。
+# 段の順 = 安い段が先: F → S → P(PSR-4)→ K → D → N(フロントの型・lint・ビルド)→ T → M → E(E2E)。
+# M は T の junit を読む(#1 の実行記録の照合)ので T の後。E は N のビルドの資産を使うので N の後で、いちばん重い段として T の後に置く。
+# O(OpenAPI)は公開 API の段で足す。
+#
+# 入り方:
+#   scripts/ci/all           区切りの既定(composer ci:check)。
+#                            D(依存の監査。通信が要る)は、依存の入力が最後に D が全成功したときと同じで同じ日なら飛ばす
+#                            (鍵の計算・比較・記録はこのファイルの deps_key と build/deps.verified の 1 か所。下の「D の鍵」)。
+#   scripts/ci/all --full    全段(composer ci:full。段の終わり・公開の前。環境変数 CI_FULL=1 でも同じ)。D も常に走らせる。
+# E は N(ビルド)の成功が前提: N が成功していなければ、既定でも --full でも飛ばす(前回のビルドで E2E を通して成功と出さない)。
+# D の鍵 = D が読む入力(composer.json・composer.lock・package.json・package-lock.json・config/guardrails_allow.php・scripts/ci/deps・
+#   scripts/ci/licenses.php・vendor/composer/installed.json・node_modules/.package-lock.json。無いファイルは「無い」として含める)と、
+#   licenses.php が読み込む判定のコード(tests/Architecture/Engine・tests/Architecture/Policy の *.php をすべて。使うクラスを 1 つずつ
+#   挙げると、足したクラスを鍵に入れ忘れて判定のコードだけを変えた日に D が飛ばされるので、ディレクトリごと。ディレクトリが無いときは
+#   「無い」と記録せずに D を失敗にする = 名前の変更で黙って鍵から外れない)の SHA-256 と、
+#   当日の日付(Asia/Tokyo。advisory と台帳⑧ #7 の期限は日で変わるので 1 日 1 回は走る)。D の前に build/deps.verified を消し、D が成功したときだけ書く。
+#   scripts/ci/deps を単体で走らせても記録には触れない。記録が無い(新しい clone・build の削除)ときは D が走る。
+# 飛ばした段は結果の一覧に「飛ばした」と理由つきで出す(黙って外さない)。飛ばした段は成功に数えず、失敗にも数えない。
+#
+# 途中で止めずに走らせる段を全部走らせ、最後に各段の成否を一覧で出す。1 段でも成功でなければ非 0 で終わる。
+# 段のスクリプトが無いことも失敗として扱う(未実行を成功にしない)。
+# 流用元 = chatpinet_2 の scripts/ci/all(段の一覧を書き直した)。
+set -euo pipefail
+
+cd "$(dirname "$0")/../.."
+
+full=0
+if [ "${CI_FULL:-}" = "1" ]; then
+    full=1
+fi
+if [ "$#" -eq 1 ] && [ "$1" = "--full" ]; then
+    full=1
+elif [ "$#" -ne 0 ]; then
+    echo "使い方: scripts/ci/all [--full](全段。環境変数 CI_FULL=1 でも同じ)" >&2
+    exit 2
+fi
+
+# 段 = "記号 スクリプト名 [スクリプトへの引数]"
+stages=(
+    "F format"
+    "S static"
+    "P psr4"
+    "K secrets"
+    "D deps"
+    "N front"
+    "T test"
+    "M verify"
+    "E front --e2e"
+)
+
+readonly DEPS_RECORD="build/deps.verified"
+
+# D の鍵(上の「D の鍵」)
+deps_key() {
+    local file
+    {
+        for file in composer.json composer.lock package.json package-lock.json config/guardrails_allow.php \
+            scripts/ci/deps scripts/ci/licenses.php vendor/composer/installed.json node_modules/.package-lock.json; do
+            if [ -f "${file}" ]; then
+                printf '%s  %s\n' "$(sha256sum "${file}" | cut -d' ' -f1)" "${file}"
+            else
+                printf '無い  %s\n' "${file}"
+            fi
+        done
+        # 判定のコードのディレクトリが無い・読めないときは鍵を作らずに失敗にする(名前を変えたときに、黙って鍵から外さない)。
+        # この組はパイプラインの中のサブシェルで、$(...) の中では errexit が効かないので、exit 1 で組を失敗にして pipefail で伝える
+        find tests/Architecture/Engine tests/Architecture/Policy -type f -name '*.php' -print0 | LC_ALL=C sort -z | xargs -0 -r sha256sum || exit 1
+        TZ=Asia/Tokyo date +%F
+    } | sha256sum | cut -d' ' -f1
+}
+
+results=()
+failed=0
+n_result=""
+deps_key_value=""
+
+for stage in "${stages[@]}"; do
+    read -r -a words <<<"${stage}"
+    symbol="${words[0]}"
+    name="${words[1]}"
+    script_args=("${words[@]:2}")
+    script="scripts/ci/${name}"
+    label="${symbol} ${name}"
+    if [ "${#script_args[@]}" -gt 0 ]; then
+        label="${label} ${script_args[*]}"
+    fi
+
+    # 飛ばす理由(空なら走らせる)。E の判定は --full より前(N が成功していなければ full でも飛ばす)
+    reason=""
+    case "${symbol}" in
+        E)
+            if [ "${n_result}" != "成功" ]; then
+                reason="N が成功していない"
+            fi
+            ;;
+        D)
+            if ! deps_key_value="$(deps_key)"; then
+                results+=("${label}: 失敗(D の鍵を計算できない。上のエラーを見る)")
+                failed=1
+                continue
+            fi
+            if [ "${full}" -eq 0 ] && [ -f "${DEPS_RECORD}" ] && [ "$(cat "${DEPS_RECORD}")" = "${deps_key_value}" ]; then
+                reason="最後に成功した検査から依存の入力が変わっていない(同日)。全段 = scripts/ci/all --full か composer ci:full"
+            fi
+            ;;
+    esac
+
+    if [ -n "${reason}" ]; then
+        printf "\n==> %s: 飛ばす\n" "${label}"
+        results+=("${label}: 飛ばした(${reason})")
+        continue
+    fi
+
+    printf "\n==> %s\n" "${label}"
+
+    if [ "${symbol}" = "D" ]; then
+        rm -f "${DEPS_RECORD}"
+    fi
+
+    if [ ! -f "${script}" ]; then
+        results+=("${label}: 無い")
+        failed=1
+        continue
+    fi
+
+    if "${script}" "${script_args[@]}"; then
+        results+=("${label}: 成功")
+        case "${symbol}" in
+            N) n_result="成功" ;;
+            D)
+                mkdir -p "$(dirname "${DEPS_RECORD}")"
+                printf '%s\n' "${deps_key_value}" >"${DEPS_RECORD}"
+                ;;
+        esac
+    else
+        status=$?
+        results+=("${label}: 失敗(終了コード ${status})")
+        failed=1
+    fi
+done
+
+echo
+if [ "${full}" -eq 1 ]; then
+    echo "==> 結果(全段)"
+else
+    echo "==> 結果(区切りの既定。飛ばした段は下に明示。全段 = composer ci:full)"
+fi
+for result in "${results[@]}"; do
+    echo "${result}"
+done
+
+exit "${failed}"

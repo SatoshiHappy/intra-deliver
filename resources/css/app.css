@@ -1,0 +1,196 @@
+@import 'tailwindcss';
+
+@import 'tw-animate-css';
+
+@source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
+@source '../../storage/framework/views/*.php';
+
+@custom-variant dark (&:is(.dark *));
+
+@theme inline {
+    /* 字(docs の 設計/画面の意匠/トークンとダーク.md 1.4)。名前は @fontsource-variable の可変フォント(resources/js/app.tsx で読む) */
+    --font-sans:
+        'Noto Sans JP Variable', 'Hiragino Sans', 'Yu Gothic', system-ui,
+        sans-serif;
+    --font-num:
+        'Inter Variable', 'Noto Sans JP Variable', system-ui, sans-serif;
+
+    --radius-lg: var(--radius);
+    --radius-md: calc(var(--radius) - 2px);
+    --radius-sm: calc(var(--radius) - 4px);
+
+    --color-background: var(--background);
+    --color-foreground: var(--foreground);
+
+    --color-card: var(--card);
+    --color-card-foreground: var(--card-foreground);
+
+    --color-popover: var(--popover);
+    --color-popover-foreground: var(--popover-foreground);
+
+    --color-primary: var(--primary);
+    --color-primary-foreground: var(--primary-foreground);
+
+    --color-secondary: var(--secondary);
+    --color-secondary-foreground: var(--secondary-foreground);
+
+    --color-muted: var(--muted);
+    --color-muted-foreground: var(--muted-foreground);
+
+    --color-accent: var(--accent);
+    --color-accent-foreground: var(--accent-foreground);
+
+    --color-destructive: var(--destructive);
+    --color-destructive-foreground: var(--destructive-foreground);
+
+    --color-border: var(--border);
+    --color-input: var(--input);
+    --color-ring: var(--ring);
+
+    --color-chart-1: var(--chart-1);
+    --color-chart-2: var(--chart-2);
+    --color-chart-3: var(--chart-3);
+    --color-chart-4: var(--chart-4);
+    --color-chart-5: var(--chart-5);
+
+    --color-sidebar: var(--sidebar-background);
+    --color-sidebar-foreground: var(--sidebar-foreground);
+    --color-sidebar-primary: var(--sidebar-primary);
+    --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+    --color-sidebar-accent: var(--sidebar-accent);
+    --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+    --color-sidebar-border: var(--sidebar-border);
+    --color-sidebar-ring: var(--sidebar-ring);
+
+    /* 状態色(段 2 で使う。1.2) */
+    --color-status-pending: var(--status-pending);
+    --color-status-pending-foreground: var(--status-pending-foreground);
+    --color-status-returned: var(--status-returned);
+    --color-status-returned-foreground: var(--status-returned-foreground);
+    --color-status-settled: var(--status-settled);
+    --color-status-settled-foreground: var(--status-settled-foreground);
+    --color-status-rejected: var(--status-rejected);
+    --color-status-rejected-foreground: var(--status-rejected-foreground);
+
+    /* ホームのあいさつ欄の飾りの葉(1.5。文字や状態の色には使わない) */
+    --color-leaf: var(--leaf);
+}
+
+/*
+  The default border color has changed to `currentColor` in Tailwind CSS v4,
+  so we've added these compatibility styles to make sure everything still
+  looks the same as it did with Tailwind CSS v3.
+
+  If we ever want to remove these styles, we need to add an explicit border
+  color utility to any element that depends on these defaults.
+*/
+@layer base {
+    *,
+    ::after,
+    ::before,
+    ::backdrop,
+    ::file-selector-button {
+        border-color: var(--color-gray-200, currentColor);
+    }
+}
+
+/* 色(docs の 設計/画面の意匠/トークンとダーク.md 1.1・1.2・8 節。値はモックの 16 進。--chart-* は今の値のまま) */
+:root {
+    color-scheme: light;
+    --background: #ffffff;
+    --foreground: #202522;
+    --card: #ffffff;
+    --card-foreground: #202522;
+    --popover: #ffffff;
+    --popover-foreground: #202522;
+    --primary: #246747;
+    --primary-foreground: #ffffff;
+    --secondary: #e8f5ec;
+    --secondary-foreground: #246747;
+    --muted: #f8fbf9;
+    --muted-foreground: #66716a;
+    --accent: #f1f8f3;
+    --accent-foreground: #202522;
+    --destructive: #a8321f;
+    --destructive-foreground: #ffffff;
+    --border: #e5ebe7;
+    --input: #8a958e;
+    --ring: #246747;
+    --chart-1: hsl(12 76% 61%);
+    --chart-2: hsl(173 58% 39%);
+    --chart-3: hsl(197 37% 24%);
+    --chart-4: hsl(43 74% 66%);
+    --chart-5: hsl(27 87% 67%);
+    --radius: 0.625rem;
+    --sidebar-background: #ffffff;
+    --sidebar-foreground: #202522;
+    --sidebar-primary: #246747;
+    --sidebar-primary-foreground: #ffffff;
+    --sidebar-accent: #f1f8f3;
+    --sidebar-accent-foreground: #202522;
+    --sidebar-border: #e5ebe7;
+    --sidebar-ring: #246747;
+    --status-pending: #e8f5ec;
+    --status-pending-foreground: #246747;
+    --status-returned: #fff4df;
+    --status-returned-foreground: #8a5a00;
+    --status-settled: #eef1ef;
+    --status-settled-foreground: #5c665f;
+    --status-rejected: #fdecea;
+    --status-rejected-foreground: #a8321f;
+    --leaf: #7cc093;
+}
+
+.dark {
+    color-scheme: dark;
+    --background: #1c221e;
+    --foreground: #e8ece9;
+    --card: #1c221e;
+    --card-foreground: #e8ece9;
+    --popover: #232a26;
+    --popover-foreground: #e8ece9;
+    --primary: #7cc093;
+    --primary-foreground: #0e1a13;
+    --secondary: #1f3127;
+    --secondary-foreground: #7cc093;
+    --muted: #121513;
+    --muted-foreground: #9aa69e;
+    --accent: #1b2821;
+    --accent-foreground: #e8ece9;
+    --destructive: #f2a090;
+    --destructive-foreground: #0e1a13;
+    --border: #323d36;
+    --input: #7a857e;
+    --ring: #7cc093;
+    --chart-1: hsl(220 70% 50%);
+    --chart-2: hsl(160 60% 45%);
+    --chart-3: hsl(30 80% 55%);
+    --chart-4: hsl(280 65% 60%);
+    --chart-5: hsl(340 75% 55%);
+    --sidebar-background: #1c221e;
+    --sidebar-foreground: #e8ece9;
+    --sidebar-primary: #7cc093;
+    --sidebar-primary-foreground: #0e1a13;
+    --sidebar-accent: #1b2821;
+    --sidebar-accent-foreground: #e8ece9;
+    --sidebar-border: #323d36;
+    --sidebar-ring: #7cc093;
+    --status-pending: #1f3127;
+    --status-pending-foreground: #7cc093;
+    --status-returned: #3a2d12;
+    --status-returned-foreground: #f0c56b;
+    --status-settled: #242b26;
+    --status-settled-foreground: #9aa69e;
+    --status-rejected: #3a1c17;
+    --status-rejected-foreground: #f2a090;
+    --leaf: #5fa377;
+}
+
+@layer base {
+    * {
+        @apply border-border outline-ring/50;
+    }
+    body {
+        @apply bg-background text-foreground;
+    }
+}

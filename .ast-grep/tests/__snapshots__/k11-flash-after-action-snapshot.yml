@@ -1,0 +1,94 @@
+id: k11-flash-after-action
+snapshots:
+  ? |
+    <?php
+    final class RuleController
+    {
+        public function store($request, string $module)
+        {
+            Inertia::flash('toast', ['type' => 'success', 'message' => '追加しました']);
+            $this->addRule->execute($module, $request->ruleInput());
+            return redirect()->route('records.admin.modules.show', ['module' => $module], 303);
+        }
+    }
+  : labels:
+    - source: Inertia::flash('toast', ['type' => 'success', 'message' => '追加しました']);
+      style: primary
+      start: 101
+      end: 183
+    - source: $this->addRule->execute($module, $request->ruleInput())
+      style: secondary
+      start: 192
+      end: 247
+    - source: $this->addRule->execute($module, $request->ruleInput())
+      style: secondary
+      start: 192
+      end: 247
+    - source: Inertia::flash('toast', ['type' => 'success', 'message' => '追加しました'])
+      style: secondary
+      start: 101
+      end: 182
+  ? |
+    <?php
+    final class RuleController
+    {
+        public function store($request, string $module)
+        {
+            Inertia::flash('toast', ['type' => 'success', 'message' => '追加しました']);
+            return $this->addRule->execute($module, $request->ruleInput());
+        }
+    }
+  : labels:
+    - source: Inertia::flash('toast', ['type' => 'success', 'message' => '追加しました']);
+      style: primary
+      start: 101
+      end: 183
+    - source: $this->addRule->execute($module, $request->ruleInput())
+      style: secondary
+      start: 199
+      end: 254
+    - source: $this->addRule->execute($module, $request->ruleInput())
+      style: secondary
+      start: 199
+      end: 254
+    - source: Inertia::flash('toast', ['type' => 'success', 'message' => '追加しました'])
+      style: secondary
+      start: 101
+      end: 182
+  ? |
+    <?php
+    final class RuleController
+    {
+        public function store($request, string $module)
+        {
+            if ($request->boolean('notify')) {
+                Inertia::flash('toast', ['type' => 'success', 'message' => '追加しました']);
+            }
+            $this->addRule->execute($module, $request->ruleInput());
+            return redirect()->route('records.admin.modules.show', ['module' => $module], 303);
+        }
+    }
+  : labels:
+    - source: Inertia::flash('toast', ['type' => 'success', 'message' => '追加しました']);
+      style: primary
+      start: 148
+      end: 230
+    - source: $this->addRule->execute($module, $request->ruleInput())
+      style: secondary
+      start: 249
+      end: 304
+    - source: $this->addRule->execute($module, $request->ruleInput())
+      style: secondary
+      start: 249
+      end: 304
+    - source: |-
+        if ($request->boolean('notify')) {
+                    Inertia::flash('toast', ['type' => 'success', 'message' => '追加しました']);
+                }
+      style: secondary
+      start: 101
+      end: 240
+    - source: Inertia::flash('toast', ['type' => 'success', 'message' => '追加しました'])
+      style: secondary
+      start: 148
+      end: 229

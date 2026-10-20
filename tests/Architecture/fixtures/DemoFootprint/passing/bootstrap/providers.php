@@ -1,0 +1,5 @@
+<?php
+
+return [
+    DemoServiceProvider::class,
+];

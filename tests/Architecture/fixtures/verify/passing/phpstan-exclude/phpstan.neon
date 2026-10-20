@@ -1,0 +1,5 @@
+# #6 の自己証明の fixture: 台帳⑧(B1・#2・#3)に登録済みの excludePaths(通常の phpstan.neon と同じ fixture の走査除外)。
+parameters:
+	level: 8
+	excludePaths:
+		- tests/Architecture/fixtures/**

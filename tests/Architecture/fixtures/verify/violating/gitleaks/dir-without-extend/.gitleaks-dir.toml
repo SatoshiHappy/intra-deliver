@@ -1,0 +1,5 @@
+# #6 抜け道(gitleaks)の自己証明の違反 fixture: 作業木の走査用の設定に [extend] の path が無いもの
+# (gitleaks は規則 0 本で走り、何も検出せずに緑になる)。除外は ⑧ #11 の scope = dir の行に登録済みのものだけ。
+[[allowlists]]
+description = "実在のローカル環境ファイル"
+paths = ['''(?:^|/)\.env$''']

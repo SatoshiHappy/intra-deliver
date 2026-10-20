@@ -1,0 +1,26 @@
+# K04 例外を握りつぶさない(広い型を捕まえて、投げ直さない)。
+# 近似: Throwable か Exception を捕まえ、catch の中に throw が無いものを出す(クロージャ・無名クラスの中の throw は数えない)。
+id: k04-catch-swallows
+language: Php
+severity: error
+message: Throwable か Exception を捕まえて、投げ直していない
+note: 広い型の catch は throw で投げ直すか、狭い型にする
+files:
+    - app/**/*.php
+rule:
+    kind: catch_clause
+    has:
+        field: type
+        kind: type_list
+        has:
+            kind: named_type
+            regex: ^\\?(Throwable|Exception)$
+    not:
+        has:
+            kind: throw_expression
+            # catch の中のクロージャ・無名クラスの throw は、catch の実行では投げられないので数えない(その node の中へ降りない)
+            stopBy:
+                any:
+                    - kind: anonymous_function
+                    - kind: arrow_function
+                    - kind: anonymous_class

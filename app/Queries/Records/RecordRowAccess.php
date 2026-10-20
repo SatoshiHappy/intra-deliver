@@ -1,0 +1,151 @@
+<?php
+
+namespace App\Queries\Records;
+
+use App\Enums\Records\RecordModuleAction;
+use App\Enums\Records\RowAccessScope;
+use App\Models\Records\Record;
+use App\Models\Records\RecordField;
+use App\Models\Records\RecordModule;
+use App\Queries\Authz\Api\Requester;
+use App\Queries\Master\Api\DepartmentMembers;
+use App\Queries\Master\Api\EffectiveUsers;
+use Closure;
+use DateTimeInterface;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Query\Builder as QueryBuilder;
+use LogicException;
+
+/**
+ * 行の権限の判定の 1 か所(docs の 設計/業務データの入れ物/認可とメニュー/README.md 2.4、ADR 0018)。
+ * 口は 2 つ: 問い合わせに条件を足す {@see self::constrain()} と、1 件の可否 {@see self::allows()}。
+ * 業務モジュールの read の判定は呼び手が先に済ませる(2.2)。
+ *
+ * 所属の組織は Master の公開の口で先に引き、条件は department_id IN (…) にする(Master の表を SQL に書かないため)。
+ * 読む時に SQL(EXISTS)で絞るので、変更はその場で効く。
+ */
+class RecordRowAccess
+{
+    public function __construct(
+        private RecordModuleAuthorization $authorization,
+        private DepartmentMembers $members,
+        private EffectiveUsers $users,
+    ) {}
+
+    /**
+     * 問い合わせ(この業務モジュールの親の無いレコード)に、行の判定の条件を足す。絞らないときはそのまま返す。
+     *
+     * @param  Builder<Record>  $query
+     * @param  RecordModule  $module  親の無い業務モジュール(表から全部の列を読んだもの)
+     * @return Builder<Record>
+     *
+     * @throws LogicException 業務モジュールが見える範囲か親の列を読んでいない・明細のモジュールのとき(作りの誤り)
+     */
+    public function constrain(
+        Builder $query,
+        Requester $requester,
+        RecordModule $module,
+        DateTimeInterface $date,
+    ): Builder {
+        $this->ensureLoadedTopLevel($module);
+
+        if (! $this->restricts($requester, $module, $date)) {
+            return $query;
+        }
+
+        $userId = $this->users->idsOn(array_filter([$requester->userId]), $date)[0] ?? null;
+
+        if ($userId === null) {
+            return $query->whereRaw('false');
+        }
+
+        $flagged = $this->flaggedFieldIds($module);
+        $matches = $this->referenceMatches($userId, $this->members->departmentIdsOn($userId, $date));
+
+        return $query->where(fn (Builder $related) => $related
+            ->where('records.created_by_user_id', $userId)
+            ->when($flagged['own'] !== [], fn (Builder $own) => $own
+                ->orWhereExists($matches('records', $flagged['own'])))
+            ->when($flagged['details'] !== [], fn (Builder $details) => $details->orWhereExists(
+                fn (QueryBuilder $rows) => $rows->from('records', 'detail_rows')
+                    ->whereColumn('detail_rows.parent_record_module_id', 'records.record_module_id')
+                    ->whereColumn('detail_rows.parent_record_id', 'records.id')
+                    ->whereExists($matches('detail_rows', $flagged['details'])),
+            )));
+    }
+
+    /**
+     * レコード(この業務モジュールの親の無いもの)が行の判定を通るか。無いレコードは偽。
+     *
+     * @param  RecordModule  $module  親の無い業務モジュール(表から全部の列を読んだもの)
+     *
+     * @throws LogicException 業務モジュールが見える範囲か親の列を読んでいない・明細のモジュールのとき(作りの誤り)
+     */
+    public function allows(Requester $requester, RecordModule $module, int $recordId, DateTimeInterface $date): bool
+    {
+        $record = Record::query()->where('record_module_id', $module->id)->whereKey($recordId);
+
+        return $this->constrain($record, $requester, $module, $date)->exists();
+    }
+
+    /**
+     * 値の欠けを「全員」と読んで絞らない側に倒さないため、読み込んでいない列と明細のモジュールを作りの誤りとして止める。
+     * 列の有無は生の属性で見る(キャストの宣言があると hasAttribute() はいつも真)。
+     */
+    private function ensureLoadedTopLevel(RecordModule $module): void
+    {
+        $attributes = $module->getAttributes();
+
+        if (! array_key_exists('row_access_scope', $attributes)
+            || ! array_key_exists('parent_record_module_id', $attributes)
+            || $attributes['parent_record_module_id'] !== null) {
+            throw new LogicException("行の判定に渡す業務モジュール {$module->id} は、表から全部の列を読んだ親の無いものにする");
+        }
+    }
+
+    /**
+     * 絞るか(認可とメニュー/README.md 2.4)。
+     */
+    private function restricts(Requester $requester, RecordModule $module, DateTimeInterface $date): bool
+    {
+        return $module->row_access_scope === RowAccessScope::Related
+            && ! $this->authorization->allows($requester, $module, RecordModuleAction::ReadAll, $date);
+    }
+
+    /**
+     * 旗の付いた項目の id(own = 業務モジュールの項目、details = 明細のモジュールの項目)。
+     *
+     * @return array{own: list<int>, details: list<int>}
+     */
+    private function flaggedFieldIds(RecordModule $module): array
+    {
+        $modules = RecordModule::query()->select('id')
+            ->whereKey($module->id)
+            ->orWhere('parent_record_module_id', $module->id);
+        $fields = RecordField::query()->where('grants_row_access', true)->whereIn('record_module_id', $modules)->get();
+
+        return [
+            'own' => array_values($fields->where('record_module_id', $module->id)->modelKeys()),
+            'details' => array_values($fields->where('record_module_id', '!=', $module->id)->modelKeys()),
+        ];
+    }
+
+    /**
+     * EXISTS の副問い合わせを作る関数: 行(表の別名)の、旗の付いた項目の参照の値の行で、相手が u か u の所属する組織のもの。
+     *
+     * @param  list<int>  $departmentIds
+     * @return Closure(string, list<int>): (Closure(QueryBuilder): QueryBuilder)
+     */
+    private function referenceMatches(int $userId, array $departmentIds): Closure
+    {
+        return fn (string $table, array $fieldIds) => fn (QueryBuilder $references) => $references
+            ->from('record_references')
+            ->whereColumn('record_references.record_module_id', "{$table}.record_module_id")
+            ->whereColumn('record_references.record_id', "{$table}.id")
+            ->whereIn('record_references.record_field_id', $fieldIds)
+            ->where(fn (QueryBuilder $target) => $target
+                ->where('record_references.user_id', $userId)
+                ->when($departmentIds !== [], fn (QueryBuilder $departments) => $departments
+                    ->orWhereIn('record_references.department_id', $departmentIds)));
+    }
+}

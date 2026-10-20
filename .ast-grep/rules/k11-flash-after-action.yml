@@ -1,0 +1,32 @@
+# K11 成功のフラッシュ(Inertia::flash)は、業務処理(->execute())を呼んだ後に出す。
+# 近似: コントローラの 1 つのメソッドの中で、Inertia::flash の文(if・try などの入れ子の中を含む)が、同じブロックか囲むブロックの後ろの兄弟の文に ->execute() を含むものより前にあるものを出す。
+# 別のメソッドに分けて書いた順序(フラッシュのメソッドを先に呼ぶ形)は見えない。
+id: k11-flash-after-action
+language: Php
+severity: error
+message: Inertia::flash が業務処理(->execute())より前にある。成功のフラッシュは業務処理の後に出す
+note: 業務処理が失敗したのに成功のフラッシュが残るのを防ぐ。->execute() を呼んでから Inertia::flash を出す
+files:
+    - app/Http/Controllers/**/*.php
+rule:
+    kind: expression_statement
+    has:
+        pattern: Inertia::flash($$$)
+    any:
+        # 同じブロックの、後ろの兄弟の文に ->execute() がある
+        - precedes:
+              stopBy: end
+              has:
+                  stopBy: end
+                  pattern: $RECEIVER->execute($$$)
+        # if・try などの入れ子の中の flash は、囲んでいる文(メソッドの本体までの途中の文)の後ろの兄弟に ->execute() がある
+        - inside:
+              stopBy:
+                  kind: method_declaration
+              not:
+                  kind: method_declaration
+              precedes:
+                  stopBy: end
+                  has:
+                      stopBy: end
+                      pattern: $RECEIVER->execute($$$)

@@ -1,0 +1,128 @@
+# 更新チェック(依存とインフラの更新を 3 日に 1 回検知して、GitHub の Issue に報告する)。
+# 仕様の正本 = docs の 設計/更新チェック.md。
+# 外から取って動かす Actions はコミット SHA で固定する(タグ名は末尾のコメント。公開から 2 週間以上たった版)。上げるときも同じ規則に従う。
+# 版を上げる PR は作らない。報告が役目で、見つかったもの(要対応・更新あり)ではジョブを失敗にしない。
+
+name: update-check
+
+on:
+    schedule:
+        # UTC 0 時 17 分 = JST 9 時 17 分(毎時 0 分は混雑で遅れ・脱落があるので外す)。日の 1・4・7…31 日(月をまたぐ間隔は 1〜3 日)
+        - cron: '17 0 */3 * *'
+    workflow_dispatch:
+
+# 既定の権限は無し。ジョブごとに必要な分だけ与える
+permissions: {}
+
+jobs:
+    check:
+        name: 調べる
+        # 非公開のリポジトリでだけ動く(写し = 公開リポジトリで動くと、動いているデモの脆弱性の一覧が公開の Issue に載る)
+        if: ${{ github.repository == 'SatoshiHappy/intra-deliver-portfolio' }}
+        runs-on: ubuntu-24.04
+        timeout-minutes: 30
+        permissions:
+            contents: read
+        steps:
+            - name: checkout
+              uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+              with:
+                  persist-credentials: false
+
+            - name: Node.js
+              uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+              with:
+                  node-version: '22'
+                  package-manager-cache: false
+
+            # npm ci もスクリプトの中(#2。一時のディレクトリで流し、失敗したら #2 だけ確認できなかった)。
+            # 確認できなかった項目があっても成功で終える(スクリプトそのものの異常終了は失敗のまま)。結果の Markdown は最後にまとめて書く。
+            # スクリプトは全体で 25 分の時間の予算を持つ(timeout-minutes の 30 分から結果を書く分を残す)
+            - name: 調べる(#1〜#8)
+              run: php scripts/update-check/run.php --out="$RUNNER_TEMP/update-check"
+
+            - name: Job Summary に全文を書く
+              if: ${{ !cancelled() }}
+              run: |
+                  if [ -f "$RUNNER_TEMP/update-check/summary.md" ]; then
+                      cat "$RUNNER_TEMP/update-check/summary.md" >> "$GITHUB_STEP_SUMMARY"
+                  fi
+
+            # 次のジョブに渡すのはコメント用の Markdown だけ(異常終了の回は無い)
+            - name: 結果を渡す
+              if: ${{ !cancelled() }}
+              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+              with:
+                  name: update-check-result
+                  path: ${{ runner.temp }}/update-check/comment.md
+                  if-no-files-found: ignore
+                  retention-days: 3
+
+    report:
+        name: Issue に書く
+        needs: check
+        # 調べるジョブの結果によらず動く(時間切れ・手での取り消しの回も動く)。動くリポジトリは調べるジョブと同じ
+        if: ${{ always() && github.repository == 'SatoshiHappy/intra-deliver-portfolio' }}
+        runs-on: ubuntu-24.04
+        timeout-minutes: 5
+        permissions:
+            issues: write
+        steps:
+            # checkout も依存の取得もしない。受け取った内容は実行せず、gh で Issue に書くだけ
+            - name: 結果を受け取る
+              id: download
+              continue-on-error: true
+              uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+              with:
+                  name: update-check-result
+                  path: ${{ runner.temp }}/result
+
+            # 外から取った文字列は式で埋め込まず、ファイルに書いて --body-file で渡す。
+            # 失敗の判定: 受け取りの段が成功でない(古いファイルが残っていても使わない。outcome を見る。conclusion は continue-on-error で常に success になる)・
+            # 結果のファイルが無い・先頭行の件数を読めない → 「調べるジョブの結果を受け取れなかった」と実行の URL を書いて失敗。
+            # 読めたら、確認できなかった >= 1 か、コメントを書けなかったときに失敗。
+            - name: Issue に書く
+              shell: bash
+              env:
+                  GH_TOKEN: ${{ github.token }}
+                  GH_REPO: ${{ github.repository }}
+                  RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+                  CHECK_RESULT: ${{ needs.check.result }}
+                  DOWNLOAD_OUTCOME: ${{ steps.download.outcome }}
+              run: |
+                  comment="$RUNNER_TEMP/result/comment.md"
+                  headline='^要対応 ([0-9]+) 件 / 更新あり ([0-9]+) 件 / 確認できなかった ([0-9]+) 件 / 土台で未修正の脆弱性 ([0-9]+) 件$'
+                  failed=0
+                  unconfirmed=0
+
+                  if [ "$DOWNLOAD_OUTCOME" = success ] && [ -f "$comment" ] && IFS= read -r first < "$comment" && [[ $first =~ $headline ]]; then
+                      unconfirmed="${BASH_REMATCH[3]}"
+                  else
+                      comment="$RUNNER_TEMP/failed.md"
+                      printf '調べるジョブの結果を受け取れなかった(調べるジョブ: %s、受け取り: %s)。\n\n実行: %s\n' "$CHECK_RESULT" "$DOWNLOAD_OUTCOME" "$RUN_URL" > "$comment"
+                      failed=1
+                  fi
+
+                  publish() {
+                      local labels number body target
+                      labels=$(gh label list --search update-check --json name --jq '.[].name') || return 1
+                      if ! grep -qxF update-check <<< "$labels"; then
+                          gh label create update-check --description '更新チェックの報告' --color 0e8a16 || return 1
+                      fi
+                      number=$(gh issue list --label update-check --state open --limit 1 --json number --jq '.[0].number // empty') || return 1
+                      target="$number"
+                      if [ -z "$number" ]; then
+                          body="$RUNNER_TEMP/issue-body.md"
+                          printf '依存とインフラの更新チェックの報告。実行のたびにコメントが 1 つ付く(先頭行に件数)。\n' > "$body"
+                          target=$(gh issue create --title '更新チェック' --label update-check --body-file "$body") || return 1
+                      fi
+                      gh issue comment "$target" --body-file "$comment"
+                  }
+
+                  if ! publish; then
+                      failed=1
+                  fi
+                  if [ "$unconfirmed" -ge 1 ]; then
+                      failed=1
+                  fi
+                  exit "$failed"

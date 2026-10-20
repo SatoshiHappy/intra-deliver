@@ -1,0 +1,98 @@
+id: k14-inertia-page-name
+snapshots:
+  ? |
+    <?php
+    Route::inertia('/', 'Menu.Home');
+  : labels:
+    - source: Route::inertia('/', 'Menu.Home')
+      style: primary
+      start: 6
+      end: 38
+    - source: '''Menu.Home'''
+      style: secondary
+      start: 26
+      end: 37
+  ? |
+    <?php
+    return Inertia::render("Records.Index", []);
+  : labels:
+    - source: Inertia::render("Records.Index", [])
+      style: primary
+      start: 13
+      end: 49
+    - source: '"Records.Index"'
+      style: secondary
+      start: 29
+      end: 44
+  ? |
+    <?php
+    return Inertia::render('Index', []);
+  : labels:
+    - source: Inertia::render('Index', [])
+      style: primary
+      start: 13
+      end: 41
+    - source: '''Index'''
+      style: secondary
+      start: 29
+      end: 36
+  ? |
+    <?php
+    return Inertia::render('Records.Admin.FieldForm', []);
+  : labels:
+    - source: Inertia::render('Records.Admin.FieldForm', [])
+      style: primary
+      start: 13
+      end: 59
+    - source: '''Records.Admin.FieldForm'''
+      style: secondary
+      start: 29
+      end: 54
+  ? |
+    <?php
+    return Inertia::render('Records.Admin.ModuleCreate');
+  : labels:
+    - source: Inertia::render('Records.Admin.ModuleCreate')
+      style: primary
+      start: 13
+      end: 58
+    - source: '''Records.Admin.ModuleCreate'''
+      style: secondary
+      start: 29
+      end: 57
+  ? |
+    <?php
+    return Inertia::render('records/Index', []);
+  : labels:
+    - source: Inertia::render('records/Index', [])
+      style: primary
+      start: 13
+      end: 49
+    - source: '''records/Index'''
+      style: secondary
+      start: 29
+      end: 44
+  ? |
+    <?php
+    return Inertia::render(props: [], component: 'Records.Index');
+  : labels:
+    - source: 'component: ''Records.Index'''
+      style: primary
+      start: 40
+      end: 66
+    - source: component
+      style: secondary
+      start: 40
+      end: 49
+    - source: '''Records.Index'''
+      style: secondary
+      start: 51
+      end: 66
+    - source: 'Inertia::render(props: [], component: ''Records.Index'')'
+      style: secondary
+      start: 13
+      end: 67
+    - source: '(props: [], component: ''Records.Index'')'
+      style: secondary
+      start: 28
+      end: 67

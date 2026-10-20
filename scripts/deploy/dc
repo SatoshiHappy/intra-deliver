@@ -1,0 +1,93 @@
+#!/usr/bin/env bash
+# 公開用 compose の呼び出し(docs の 設計/公開の配備/配備と戻し方.md の冒頭の dc)。
+#   scripts/deploy/dc <compose.env のパス> <docker compose のサブコマンドと引数…>
+#   例: scripts/deploy/dc <公開用の設定ディレクトリ>/compose.env up -d db
+# プロジェクト名(-p)・compose ファイル(-f)・補間の値(--env-file)を毎回付け、開発用の .env と compose.yml に依らない。
+#
+# 前提: 配る SHA(compose.env の IMAGE_TAG)の配備専用の作業木から流す。HEAD が IMAGE_TAG と違うか、未コミットの変更があると止まる
+# (タグと build の元のコードが食い違ったまま動くのを防ぐ)。配備と戻し方 6.3 の 2 で IMAGE_TAG を前の SHA に戻した後は、前の版の作業木から流す。
+# 通すサブコマンドは許可リストだけ(config・convert・bridge・publish などは env_file の値(秘密)を展開して外へ出すため。DBと秘密.md 4.3.1。
+# restart は設定ファイルを読み直さないため使わない)。全体のオプションはこのスクリプトが付ける。
+# 止めるときは終了 2 と案内を標準エラーに出し、docker を呼ばない。
+set -euo pipefail
+
+allowed_subcommands="build up run exec logs ps stop start down"
+
+stop_with() {
+    echo "$1" >&2
+    exit 2
+}
+
+# 1. 引数と compose.env
+if [ "$#" -lt 2 ]; then
+    stop_with "使い方: scripts/deploy/dc <compose.env のパス> <docker compose のサブコマンドと引数…>"
+fi
+
+env_file="$1"
+shift
+
+if [ ! -f "${env_file}" ]; then
+    stop_with "compose.env が見つかりません。公開用の設定ディレクトリの compose.env のパスを指定してください"
+fi
+
+# 2. サブコマンドの許可リスト(全体のオプション(- で始まる)もここで止まる)
+subcommand_allowed=0
+for allowed in ${allowed_subcommands}; do
+    if [ "$1" = "${allowed}" ]; then
+        subcommand_allowed=1
+    fi
+done
+if [ "${subcommand_allowed}" -ne 1 ]; then
+    stop_with "サブコマンド「$1」は流せません。流せるのは ${allowed_subcommands} です。-p・-f・--env-file などの全体のオプションはこのスクリプトが付けるため、指定しないでください"
+fi
+
+root="$(cd "$(dirname "$0")/../.." && pwd)"
+
+# compose.env を 1 回だけ読む: キーの形の検査・IMAGE_TAG の行の数と値・シェルから外す変数の一覧(Y8)。source しない
+image_tag=""
+image_tag_lines=0
+unset_names=()
+while IFS= read -r line || [ -n "${line}" ]; do
+    if [[ "${line}" =~ ^[[:space:]]*(#.*)?$ ]]; then
+        continue
+    fi
+    key="${line%%=*}"
+    if [[ ! "${key}" =~ ^[A-Za-z_][A-Za-z0-9_]*$ ]]; then
+        stop_with "compose.env に変数名の形でない行があります(キー「${key}」)。「名前=値」の形で、キーの前に空白や export を付けずに書いてください"
+    fi
+    unset_names+=("${key}")
+    if [ "${key}" = "IMAGE_TAG" ]; then
+        image_tag_lines=$((image_tag_lines + 1))
+        image_tag="${line#*=}"
+    fi
+done < "${env_file}"
+
+# 3. IMAGE_TAG(行がちょうど 1 つで、git の SHA の形)
+if [ "${image_tag_lines}" -ne 1 ]; then
+    stop_with "compose.env の IMAGE_TAG の行がちょうど 1 つではありません(${image_tag_lines} 行)。配る版の SHA を 1 行だけ設定してください"
+fi
+if [[ ! "${image_tag}" =~ ^[0-9a-f]{7,40}$ ]]; then
+    stop_with "compose.env の IMAGE_TAG が git の SHA(16 進数の 7〜40 文字)の形ではありません。HEAD や枝の名前ではなく、配る版の SHA を設定してください"
+fi
+
+# 4. 作業木の HEAD が IMAGE_TAG と一致する
+tag_commit="$(git -C "${root}" rev-parse --verify --quiet "${image_tag}^{commit}" || true)"
+head_commit="$(git -C "${root}" rev-parse HEAD || true)"
+if [ -z "${tag_commit}" ] || [ "${tag_commit}" != "${head_commit}" ]; then
+    stop_with "この作業木の HEAD(${head_commit:0:7})が compose.env の IMAGE_TAG(${image_tag})のコミットと一致しません。配る SHA の配備専用の作業木から流してください(配備と戻し方 6.1・6.4)"
+fi
+
+# 5. 未コミットの変更が無い(git が無視するものは数えない)
+worktree_changes="$(git -C "${root}" status --porcelain)"
+if [ -n "${worktree_changes}" ]; then
+    stop_with "この作業木に未コミットの変更があります。HEAD と中身がずれるため流せません。変更をコミットするか戻し、配る SHA の配備専用の作業木から流してください"
+fi
+
+# 6. シェルから外す変数 = compose.env のキーと compose.publish.yml の補間の変数(シェルの環境変数は --env-file の値より優先されるため)
+while IFS= read -r name; do
+    unset_names+=("${name}")
+done < <(grep -oE '\$\{[A-Za-z_][A-Za-z0-9_]*' "${root}/compose.publish.yml" | sed 's/^\${//' || true)
+unset -v "${unset_names[@]}"
+
+# 7. 呼び出し
+exec docker compose -p intra-deliver-portfolio-publish -f "${root}/compose.publish.yml" --env-file "${env_file}" "$@"

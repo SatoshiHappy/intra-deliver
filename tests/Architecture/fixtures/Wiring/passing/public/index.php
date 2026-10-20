@@ -1,0 +1,3 @@
+<?php
+
+$values = new ArrayObject([]);

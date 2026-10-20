@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+# 拡張子の無いシェルのファイル(拡張子で絞っていないことの確かめ)
+export DEMO_ENABLED=true

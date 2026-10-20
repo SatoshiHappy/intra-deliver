@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- #6 対象の絞り込みの自己証明の fixture: Unit の directory を狭め、Feature を属性(suffix)で絞った設定。 -->
+<phpunit>
+    <testsuites>
+        <testsuite name="Architecture"><directory>tests/Architecture</directory></testsuite>
+        <testsuite name="Acceptance"><directory>tests/Acceptance</directory></testsuite>
+        <testsuite name="Unit"><directory>tests/Unit/Narrowed</directory></testsuite>
+        <testsuite name="Feature"><directory suffix="OnlyTest.php">tests/Feature</directory></testsuite>
+        <testsuite name="Concurrency"><directory>tests/Concurrency</directory></testsuite>
+    </testsuites>
+</phpunit>

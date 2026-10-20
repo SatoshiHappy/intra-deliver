@@ -1,0 +1,198 @@
+#!/usr/bin/env bash
+# 検査の道具を 1 回走らせた結果を、作業木の外の 1 ファイルに 1 行(JSON)で追記する。使い方: scripts/ci/record <道具名> -- <コマンド> [引数…]
+# 正本 = docs の 設計/コード構成/検査.md の 6 節「結果の記録」。記録の失敗は理由を stderr に出すだけで、コマンドの終了コードは変えない。
+# errexit は使わない(指紋・追記のどの手順が失敗してもコマンドは走らせるため)。引数そのものと出力は記録しない(引数は argv の指紋だけ残す。秘匿情報を入れない)。
+
+# cfg の対象 = 検査の定義の場所 + 段と入口 + 道具の設定ファイル。道具ごとの対応表は持たず、変更が効く側を 1 つの一覧で数える。
+# tests/Architecture の全体は入れない(自己証明の fixture を足す変更まで無効に数えないため)。
+CFG_PATHS=(
+    tests/Architecture/Policy
+    tests/Architecture/Engine
+    phpunit.xml
+    scripts/ci
+    phpstan.neon
+    sgconfig.yml
+    .ast-grep
+    knip.json
+    .dependency-cruiser.cjs
+    .gitleaks.toml
+    .gitleaks-dir.toml
+    .gitleaks-baseline.json
+    config/guardrails_allow.php
+    pint.json
+    tsconfig.json
+    playwright.config.ts
+    vite.config.ts
+)
+
+if [ "$#" -lt 3 ] || [ "$2" != "--" ] || ! [[ "$1" =~ ^[a-z0-9-]+$ ]]; then
+    echo "使い方: scripts/ci/record <道具名> -- <コマンド> [引数…]" >&2
+    exit 2
+fi
+tool="$1"
+shift 2
+
+# 作業木の指紋。成功すると worktree・branch・head・dirty・cfg_lines(「id<TAB>対象」の行)を埋める。失敗は reason に理由を入れて 1 を返す。
+fingerprint() {
+    local top objects index tmp out
+    top="$(git rev-parse --show-toplevel 2>/dev/null)" || { reason="git の作業木の中でない"; return 1; }
+    worktree="$(basename "${top}")"
+    branch="$(git -C "${top}" symbolic-ref --short -q HEAD 2>/dev/null)" || branch="HEAD"
+    head="$(git -C "${top}" rev-parse HEAD 2>/dev/null)" || { reason="HEAD のコミットを読めない"; return 1; }
+    objects="$(git -C "${top}" rev-parse --path-format=absolute --git-path objects 2>/dev/null)" || { reason="オブジェクトのディレクトリを特定できない"; return 1; }
+    index="$(git -C "${top}" rev-parse --path-format=absolute --git-path index 2>/dev/null)" || { reason="index を特定できない"; return 1; }
+    tmp="$(mktemp -d 2>/dev/null)" || { reason="一時ディレクトリを作れない"; return 1; }
+
+    # 実 index は触らず写しで作る(cp -p = 更新時刻を保つ。変わると git の racily clean の判定がずれ、同じ秒の同サイズの書き換えを見落とす)。新しいオブジェクトは一時のディレクトリにだけ書き、追跡外のファイルの本文を実の領域に残さない
+    if [ -f "${index}" ] && ! cp -p -- "${index}" "${tmp}/index" 2>/dev/null; then
+        rm -rf "${tmp}"
+        reason="index を写せない"
+        return 1
+    fi
+    mkdir "${tmp}/objects"
+
+    out="$(
+        export GIT_INDEX_FILE="${tmp}/index" GIT_OBJECT_DIRECTORY="${tmp}/objects" GIT_ALTERNATE_OBJECT_DIRECTORIES="${objects}"
+        tree=""
+        git -C "${top}" add -A -- . 2>"${tmp}/err" || exit 1
+        tree="$(git -C "${top}" write-tree 2>"${tmp}/err")" || exit 1
+        printf '%s\n' "${tree}"
+        git -C "${top}" ls-tree --format='%(objectname)%x09%(path)' "${tree}" -- "${CFG_PATHS[@]}" 2>"${tmp}/err" || exit 1
+        # script の節は -w を付けない(オブジェクトを書かない)hash-object の id で数える。依存の更新は数えない
+        # 読めない・壊れたファイルは「<ファイル>: <メッセージ>」の 1 行を stderr に出す(node の既定の `[eval]:N` では原因が分からない)
+        scripts_json="$(node -e '
+            const fs = require("fs");
+            const path = require("path");
+            for (const file of process.argv.slice(1)) {
+                try {
+                    const scripts = fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, "utf8")).scripts : undefined;
+                    process.stdout.write((scripts === undefined ? "" : JSON.stringify(scripts)) + "\n");
+                } catch (error) {
+                    console.error(path.basename(file) + ": " + String(error.message).split("\n")[0]);
+                    process.exit(1);
+                }
+            }
+        ' -- "${top}/composer.json" "${top}/package.json" 2>"${tmp}/err")" || exit 1
+        index_in_lines=0
+        for target in composer.json package.json; do
+            index_in_lines=$((index_in_lines + 1))
+            line="$(printf '%s\n' "${scripts_json}" | sed -n "${index_in_lines}p")"
+            if [ -n "${line}" ]; then
+                id="$(printf '%s' "${line}" | git hash-object --stdin 2>"${tmp}/err")" || exit 1
+                printf '%s\t%s\n' "${id}" "${target}#scripts"
+            fi
+        done
+    )"
+    status=$?
+    if [ "${status}" -ne 0 ]; then
+        reason="指紋の手順が失敗した($(head -n 1 "${tmp}/err" 2>/dev/null))"
+        rm -rf "${tmp}"
+        return 1
+    fi
+    rm -rf "${tmp}"
+    dirty="$(printf '%s\n' "${out}" | head -n 1)"
+    cfg_lines="$(printf '%s\n' "${out}" | tail -n +2)"
+    return 0
+}
+
+# コマンドと引数を NUL でつないだものの SHA-256 の先頭 12 桁。引数そのものは残さず、絞った実行と全体の実行を見分ける材料にする。成功すると argv を埋める。
+command_digest() {
+    local digest argument
+    digest="$(
+        {
+            printf '%s' "$1"
+            shift
+            for argument in "$@"; do
+                printf '\0%s' "${argument}"
+            done
+        } | sha256sum 2>/dev/null
+    )"
+    argv="${digest:0:12}"
+    if ! [[ "${argv}" =~ ^[0-9a-f]{12}$ ]]; then
+        reason="コマンドの指紋を取れない"
+        return 1
+    fi
+}
+
+# 1 行の追記。ロックの中で、末尾が改行でなければ足してから書く(途中で切れた行とつなげない)。失敗は 1 = ロックのファイルを開けない・3 = ロックを取れない(flock が無い場合を含む)・4 = 書けない
+append_line() {
+    local log="$1" line="$2" lock
+    lock="${log}.lock"
+    mkdir -p "$(dirname "${log}")" 2>/dev/null || { reason="記録のディレクトリを作れない"; return 1; }
+    (
+        flock -w 5 9 || exit 3
+        if [ -s "${log}" ] && [ -n "$(tail -c 1 "${log}")" ]; then
+            printf '\n' >>"${log}" || exit 4
+        fi
+        printf '%s\n' "${line}" >>"${log}" || exit 4
+    ) 2>/dev/null 9>>"${lock}"
+    case $? in
+        0) return 0 ;;
+        1) reason="記録のロックのファイルを開けない" ;;
+        3) reason="記録のロックを取れない" ;;
+        *) reason="記録のファイルに書けない" ;;
+    esac
+    return 1
+}
+
+build_line() {
+    node -e '
+        const [at, worktree, branch, head, tool, argv, run, parent, exit, sec, dirty, cfgLines] = process.argv.slice(1);
+        const cfg = {};
+        for (const row of cfgLines.split("\n")) {
+            const [id, target] = row.split("\t");
+            if (id && target) cfg[target] = id.slice(0, 12);
+        }
+        const row = { v: 1, at, worktree, branch, head, tool, argv, run };
+        if (parent) {
+            row.parent = parent;
+        }
+        process.stdout.write(JSON.stringify({ ...row, exit: Number(exit), sec: Number(sec), dirty, cfg }));
+    ' -- "$@"
+}
+
+log="${QUALITY_LOG:-${XDG_STATE_HOME:-${HOME:-}/.local/state}/intra-deliver/quality.jsonl}"
+reason=""
+recordable=1
+if ! fingerprint || ! command_digest "$@"; then
+    echo "record: 指紋を取れないので記録しない: ${reason}" >&2
+    recordable=0
+fi
+
+# run = この実行の id。子の record は QUALITY_RUN_ID から親の run を知り、段から呼ばれた実行を親の一括検査に結ぶ(所属は parent のつながりだけで決める)
+# 形の違う値は親に結ばない(任意の文字列を記録に入れない)
+parent=""
+if [ -n "${QUALITY_RUN_ID:-}" ]; then
+    if [ "${#QUALITY_RUN_ID}" -le 64 ] && [[ "${QUALITY_RUN_ID}" =~ ^[0-9]+-[0-9]+-[0-9]+$ ]]; then
+        parent="${QUALITY_RUN_ID}"
+    else
+        echo "record: QUALITY_RUN_ID の形が違うので親に結ばない" >&2
+    fi
+fi
+run="$$-${EPOCHREALTIME/[.,]/}-${RANDOM}"
+# at はコマンドを始める時刻(指紋の後)。at + sec が終わりの時刻になる
+at="$(date +%Y-%m-%dT%H:%M:%S%:z)"
+started="${EPOCHREALTIME/[.,]/}"
+# 子へ run を渡すのは、この実行が行を書く(指紋を取れた)ときだけ。書かない親を子の parent が指さないように
+if [ "${recordable}" -eq 1 ]; then
+    QUALITY_RUN_ID="${run}" "$@"
+else
+    (
+        unset QUALITY_RUN_ID
+        exec "$@"
+    )
+fi
+code=$?
+finished="${EPOCHREALTIME/[.,]/}"
+
+if [ "${recordable}" -eq 1 ]; then
+    elapsed_ms=$(((finished - started) / 1000))
+    sec="$(printf '%d.%03d' $((elapsed_ms / 1000)) $((elapsed_ms % 1000)))"
+    if line="$(build_line "${at}" "${worktree}" "${branch}" "${head}" "${tool}" "${argv}" "${run}" "${parent}" "${code}" "${sec}" "${dirty}" "${cfg_lines}" 2>/dev/null)" && [ -n "${line}" ]; then
+        append_line "${log}" "${line}" || echo "record: 記録できない: ${reason}" >&2
+    else
+        echo "record: 記録の行を組み立てられない" >&2
+    fi
+fi
+
+exit "${code}"

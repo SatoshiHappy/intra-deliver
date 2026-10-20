@@ -1,0 +1,141 @@
+# 公開用 compose(docs の 設計/公開の配備/構成.md 3.1・3.2・3.4・3.5、配備と戻し方.md)。開発用の compose.yml(DB だけ)とは別のプロジェクト。
+# 呼び出しは scripts/deploy/dc(-p intra-deliver-portfolio-publish と --env-file <公開用の設定ディレクトリ>/compose.env を毎回付ける)。
+# 補間に使う値は compose.env の IMAGE_TAG・PUBLISH_CONFIG_DIR だけ(秘密を持たない)。秘密と設定はコンテナごとの env_file で渡す。
+# ホストのディレクトリを載せない・ports: を書かない(外から届くのは tunnel → app だけ)。設定を展開して出す config は秘密を出すので流さない。
+# 強化は 3 つとも同じ(read_only・cap_drop: [ALL]・no-new-privileges)。起動に要る書き込み先は tmpfs で足す。
+name: intra-deliver-portfolio-publish
+
+x-logging: &logging
+    driver: json-file
+    options:
+        max-size: '10m'
+        max-file: '3'
+
+services:
+    app:
+        build:
+            context: .
+            dockerfile: Dockerfile
+        # 版 = web の git の短い SHA(compose.env の IMAGE_TAG)。前の版のイメージを 1 つ残して戻しに使う(配備と戻し方.md 6.1・6.4)
+        image: intra-deliver-portfolio-publish-app:${IMAGE_TAG:?IMAGE_TAG を compose.env に設定してください}
+        env_file:
+            - ${PUBLISH_CONFIG_DIR:?PUBLISH_CONFIG_DIR を compose.env に設定してください}/app.env
+        networks:
+            - front
+            - back
+        volumes:
+            - app-storage:/app/storage/app
+        # 非 root の利用者 app(uid・gid 10001 = Dockerfile)が書けるように所有者を合わせる。中身は起動のたびに作り直す
+        tmpfs:
+            - /app/storage/framework:uid=10001,gid=10001
+            - /app/bootstrap/cache:uid=10001,gid=10001
+            - /tmp
+            - /config/caddy:uid=10001,gid=10001
+            - /data/caddy:uid=10001,gid=10001
+        read_only: true
+        cap_drop:
+            - ALL
+        security_opt:
+            - no-new-privileges:true
+        restart: unless-stopped
+        depends_on:
+            db:
+                condition: service_healthy
+        # Laravel のヘルスのルート /up(web のミドルウェアの外。DB を使わない)。イメージの curl で叩く
+        healthcheck:
+            test:
+                [
+                    'CMD',
+                    'curl',
+                    '--fail',
+                    '--silent',
+                    '--show-error',
+                    '--output',
+                    '/dev/null',
+                    'http://127.0.0.1:8080/up',
+                ]
+            interval: 30s
+            timeout: 5s
+            retries: 3
+            start_period: 30s
+        mem_limit: 512m
+        logging: *logging
+
+    db:
+        build:
+            context: docker
+            dockerfile: db/Dockerfile
+        # 版に連動させない固定のタグ。土台(docker/db/Dockerfile の FROM)か初期化のスクリプト(docker/initdb-publish/)を変えたら上げる
+        image: intra-deliver-portfolio-publish-db:3
+        env_file:
+            - ${PUBLISH_CONFIG_DIR:?PUBLISH_CONFIG_DIR を compose.env に設定してください}/db.env
+        networks:
+            - back
+        volumes:
+            - db-data:/var/lib/postgresql
+        # 公式のエントリポイントは root で起きて所有者を直し(chown)、gosu で postgres へ切り替える(capability の CHOWN・SETUID・SETGID が要る)。
+        # 最初から postgres(uid・gid 70。/var/lib/postgresql は postgres の持ち物)で起こし、切替を通らないようにして capability を足さない
+        user: postgres
+        # ソケットとロックファイルの置き場(イメージでは postgres の持ち物)と一時ファイル
+        tmpfs:
+            - /var/run/postgresql:uid=70,gid=70
+            - /tmp
+        read_only: true
+        cap_drop:
+            - ALL
+        security_opt:
+            - no-new-privileges:true
+        restart: unless-stopped
+        # TCP で確かめる(初期化の一時のサーバーはソケットだけで待ち受けるので、初期化が終わるまで通らない)
+        healthcheck:
+            test:
+                [
+                    'CMD',
+                    'pg_isready',
+                    '--host=127.0.0.1',
+                    '--port=5432',
+                    '--username=postgres',
+                    '--dbname=postgres',
+                ]
+            interval: 10s
+            timeout: 5s
+            retries: 5
+            start_period: 60s
+        mem_limit: 512m
+        logging: *logging
+
+    tunnel:
+        # remotely-managed の Tunnel。TUNNEL_TOKEN(tunnel.env)が --token に当たる。イメージのエントリポイントは cloudflared --no-autoupdate。
+        # イメージに HEALTHCHECK もシェルも無いので healthcheck は書かない
+        image: cloudflare/cloudflared:2026.10.0@sha256:9b49eed8f62806d5d45ddf59ecefb5710429598ea6d3fcccd2af938f621b2b07
+        command: ['tunnel', 'run']
+        env_file:
+            - ${PUBLISH_CONFIG_DIR:?PUBLISH_CONFIG_DIR を compose.env に設定してください}/tunnel.env
+        networks:
+            - front
+            - egress
+        read_only: true
+        cap_drop:
+            - ALL
+        security_opt:
+            - no-new-privileges:true
+        restart: unless-stopped
+        depends_on:
+            app:
+                condition: service_healthy
+        mem_limit: 128m
+        logging: *logging
+
+networks:
+    # tunnel・app。外へ出られない
+    front:
+        internal: true
+    # app・db。外へ出られない
+    back:
+        internal: true
+    # tunnel だけ。外へ出られる(既定のブリッジ)
+    egress: {}
+
+volumes:
+    db-data:
+    app-storage:

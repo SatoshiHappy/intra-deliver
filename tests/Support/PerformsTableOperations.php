@@ -1,0 +1,141 @@
+<?php
+
+namespace Tests\Support;
+
+use App\Actions\Workflow\ApplyCase;
+use App\Actions\Workflow\ApproveCase;
+use App\Actions\Workflow\ApproveCaseEarly;
+use App\Actions\Workflow\CreateDraft;
+use App\Actions\Workflow\DeleteDraft;
+use App\Actions\Workflow\DraftInput;
+use App\Actions\Workflow\HoldCase;
+use App\Actions\Workflow\PullBackCase;
+use App\Actions\Workflow\ReapplyCase;
+use App\Actions\Workflow\RejectCase;
+use App\Actions\Workflow\ReleaseCase;
+use App\Actions\Workflow\SendBackCase;
+use App\Actions\Workflow\TransferCase;
+use App\Actions\Workflow\UpdateDraft;
+use App\Actions\Workflow\WithdrawCase;
+use App\Enums\Workflow\WorkflowOperation;
+use App\Models\Master\User;
+use App\Models\Workflow\WorkflowCase;
+use App\Models\Workflow\WorkflowCaseNode;
+use App\Support\AccessContext;
+use Closure;
+
+/**
+ * 状態 × 操作の表のテスト({@see ChecksCaseOperationTable})の、操作 1 つを今の改訂番号で行う部分(docs の
+ * 設計/ワークフロー/ルートの深さ/案件の操作/同時実行と検査.md 14 節)。処理の操作は代理元(principal_user_id)を渡せる
+ * (設計/ワークフロー/案件の運用/案件の操作/README.md の 4.3 節)。入力の形は {@see ChecksCaseOperationTable} の Inputs。
+ *
+ * @phpstan-import-type Inputs from ChecksCaseOperationTable
+ */
+trait PerformsTableOperations
+{
+    /** 振替先の既定(関わらない人。状況が入力 transferTo で替える) */
+    private const TRANSFER_TO = 'U';
+
+    /**
+     * 操作を今の改訂番号で行う(入力が無ければ差戻し先 = 申請のノード)。案件の無い操作は作った案件の id を返す。
+     *
+     * @param  Inputs|null  $inputs
+     * @param  int|null  $principal  代理元(null = 自分として。一時保存の操作は受けない)
+     */
+    private function perform(
+        WorkflowOperation $operation,
+        ?User $user,
+        ?WorkflowCase $case,
+        ?array $inputs,
+        ?int $principal = null,
+    ): ?int {
+        $context = $this->contextOf($user);
+        $baseDate = $context->date->toDateString();
+
+        $draft = new DraftInput('表', null, ['name' => '表'], []);
+
+        if ($case === null) {
+            return $operation === WorkflowOperation::SaveDraft
+                ? app(CreateDraft::class)->execute($context, self::FLOW_CODE, $draft)
+                : app(ApplyCase::class)->execute($context, self::FLOW_CODE, $this->projectInput(), $baseDate)->caseId;
+        }
+
+        $this->onCase($inputs, $principal)[$operation->value]($context, $case->id, $this->revisionOf($case));
+
+        return null;
+    }
+
+    /**
+     * 既にある案件の操作(操作 → 呼び出し)。入力があればノード・差戻し先・引戻すノード・指定・振替先はその値(全員に同じ)。
+     * 入力の無いノードと引戻すノードは処理者(代理元か自分)で選ぶ。
+     *
+     * @param  Inputs|null  $inputs
+     * @return array<string, Closure(AccessContext, int, int): mixed>
+     */
+    private function onCase(?array $inputs, ?int $principal): array
+    {
+        $nodeOf = fn (int $caseId, ?int $userId) => $inputs['node']
+            ?? $this->operatedNodeId($caseId, $principal ?? $userId);
+        $onNode = fn (string $class) => fn (AccessContext $c, int $id, int $rev) => app($class)
+            ->execute($c, $id, $rev, $nodeOf($id, $c->userId), null, $principal);
+
+        return [
+            ...$this->onDraft(),
+            'approve' => function (AccessContext $c, int $id, int $rev) use ($inputs, $nodeOf, $principal): void {
+                $nodeId = $nodeOf($id, $c->userId);
+                $assignments = $inputs['assignments'] ?? [];
+                app(ApproveCase::class)->execute($c, $id, $rev, $nodeId, null, $assignments, $principal);
+            },
+            'approve_early' => $onNode(ApproveCaseEarly::class),
+            'reject' => $onNode(RejectCase::class),
+            'send_back' => function (AccessContext $c, int $id, int $rev) use ($inputs, $nodeOf, $principal): void {
+                $nodeId = $nodeOf($id, $c->userId);
+                $toNodeId = $inputs['sendBackTo'] ?? $this->applyNodeIdOf($id);
+                app(SendBackCase::class)->execute($c, $id, $rev, $nodeId, $toNodeId, null, $principal);
+            },
+            'pull_back' => function (AccessContext $c, int $id, int $rev) use ($inputs, $principal): void {
+                $nodeId = $inputs['pullBack'] ?? $this->pullBackNodeId($id, $principal ?? $c->userId);
+                app(PullBackCase::class)->execute($c, $id, $rev, $nodeId, null, $principal);
+            },
+            'reapply' => function (AccessContext $c, int $id, int $rev) use ($principal): void {
+                app(ReapplyCase::class)->execute($c, $id, $rev, $this->projectInput(), $principal);
+            },
+            'withdraw' => function (AccessContext $c, int $id, int $rev) use ($principal): void {
+                app(WithdrawCase::class)->execute($c, $id, $rev, null, $principal);
+            },
+            'hold' => $onNode(HoldCase::class),
+            'release' => $onNode(ReleaseCase::class),
+            'transfer' => function (AccessContext $c, int $id, int $rev) use ($inputs, $nodeOf, $principal): void {
+                $toUserId = $this->person($inputs['transferTo'] ?? self::TRANSFER_TO)?->id;
+                $nodeId = $nodeOf($id, $c->userId);
+                app(TransferCase::class)->execute($c, $id, $rev, $nodeId, $toUserId, null, $principal);
+            },
+        ];
+    }
+
+    /**
+     * 一時保存の上書き・削除と一時保存からの申請(代理元を受けない = 操作.md の 10.8 節の持ち主)。
+     *
+     * @return array<string, Closure(AccessContext, int, int): mixed>
+     */
+    private function onDraft(): array
+    {
+        return [
+            'overwrite_draft' => function (AccessContext $c, int $id, int $rev): void {
+                app(UpdateDraft::class)->execute($c, $id, $rev, new DraftInput('上書き', null, [], []));
+            },
+            'delete_draft' => function (AccessContext $c, int $id, int $rev): void {
+                app(DeleteDraft::class)->execute($c, $id, $rev);
+            },
+            'apply' => function (AccessContext $c, int $id, int $rev): void {
+                $baseDate = $c->date->toDateString();
+                app(ApplyCase::class)->executeFromDraft($c, $id, $rev, $this->projectInput(), $baseDate);
+            },
+        ];
+    }
+
+    private function applyNodeIdOf(int $caseId): int
+    {
+        return (int) WorkflowCaseNode::query()->where('workflow_case_id', $caseId)->where('position', 1)->value('id');
+    }
+}

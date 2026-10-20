@@ -1,0 +1,55 @@
+id: k04-catch-swallows
+valid:
+    - |
+        <?php
+        function f()
+        {
+            try {
+                work();
+            } catch (\Throwable $exception) {
+                throw new RuntimeException('failed', previous: $exception);
+            }
+        }
+    - |
+        <?php
+        function f()
+        {
+            try {
+                work();
+            } catch (InvalidFieldValue $exception) {
+                return null;
+            }
+        }
+invalid:
+    - |
+        <?php
+        function f()
+        {
+            try {
+                work();
+            } catch (\Throwable $exception) {
+                $later = function () use ($exception) {
+                    throw $exception;
+                };
+            }
+        }
+    - |
+        <?php
+        function f()
+        {
+            try {
+                work();
+            } catch (\Throwable $exception) {
+                report($exception);
+            }
+        }
+    - |
+        <?php
+        function f()
+        {
+            try {
+                work();
+            } catch (InvalidFieldValue | Exception) {
+                return [];
+            }
+        }

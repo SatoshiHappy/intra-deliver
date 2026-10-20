@@ -1,0 +1,7 @@
+# #6 抜け道(gitleaks)の自己証明の正常 fixture(履歴の走査用): 除外は ⑧ #11 の scope の無い行に登録済みのものだけ。
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "依存物"
+paths = ['''^vendor(?:/.*)?$''']

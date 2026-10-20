@@ -1,0 +1,12 @@
+{
+    "$schema": "https://unpkg.com/knip@6/schema.json",
+    "entry": ["resources/js/pages/**/*.tsx", "deploy/worker/src/index.js"],
+    "project": ["resources/js/**/*.{ts,tsx}", "deploy/worker/src/**/*.js"],
+    "ignore": ["resources/js/components/ui/**"],
+    "include": ["files", "exports", "types"],
+    "rules": {
+        "files": "error",
+        "exports": "error",
+        "types": "error"
+    }
+}

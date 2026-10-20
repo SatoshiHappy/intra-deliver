@@ -1,0 +1,34 @@
+# 自己証明の fixture 用の phpstan 設定。
+# 通常の phpstan.neon をそのまま取り込み(規則の登録・判定本体・レベル・上限はすべて同じ)、走査ルートだけを差し替える。
+# 走査ルートは実行時の引数で fixture の各ディレクトリを渡す(引数のパスは設定の paths より優先される)。
+# excludePaths は通常の走査から fixture を外すための除外(台帳⑧)なので、fixture を走査するここでは空にする。
+# パスで判定する規則(コード構成の規則)のアプリのルートは、fixture のディレクトリに差し替える(各ディレクトリをアプリのルートに見立てる)。
+# 副作用の規則の台帳②も fixture 用に差し替える。
+
+includes:
+	- ../../../phpstan.neon
+
+parameters:
+	# 作業用ディレクトリは PhpStanSelfProofTestCase が phpstan を起動するときに環境変数で渡す(build/phpstan-fixtures/<TEST_TOKEN か serial>。
+	# 並列実行の各プロセスが同じ場所に nette の Container のキャッシュを書くと、書き途中のファイルを include して落ちるため、プロセスごとに分ける)
+	# 手で fixture に掛けるときも渡す(未定義だと設定の読み込みで失敗する。値は絶対パス)。例:
+	# PHPSTAN_FIXTURES_TMP_DIR="$PWD/build/phpstan-fixtures/manual" vendor/bin/phpstan analyse -c tests/Architecture/fixtures/phpstan.neon tests/Architecture/fixtures/<検査>/violating
+	tmpDir: %env.PHPSTAN_FIXTURES_TMP_DIR%
+	excludePaths!:
+		analyse: []
+		analyseAndScan: []
+	codeLayout:
+		roots!:
+			- %rootDir%/../../../tests/Architecture/fixtures/ClassFiles/violating
+			- %rootDir%/../../../tests/Architecture/fixtures/ClassFiles/passing
+			- %rootDir%/../../../tests/Architecture/fixtures/Wiring/violating
+			- %rootDir%/../../../tests/Architecture/fixtures/Wiring/passing
+			- %rootDir%/../../../tests/Architecture/fixtures/SideEffects/violating
+			- %rootDir%/../../../tests/Architecture/fixtures/SideEffects/passing
+			- %rootDir%/../../../tests/Architecture/fixtures/Seeders/violating
+			- %rootDir%/../../../tests/Architecture/fixtures/Seeders/passing
+			- %rootDir%/../../../tests/Architecture/fixtures/ModuleTables/violating
+			- %rootDir%/../../../tests/Architecture/fixtures/ModuleTables/passing
+	# 副作用の規則の台帳②は fixture 用(HTTP だけをモジュール Alpha の業務処理に限る)
+	sideEffects:
+		ledgerFile: %rootDir%/../../../tests/Architecture/fixtures/SideEffects/guardrails_allow.php

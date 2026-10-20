@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+# M 台帳・網羅・実行結果の照合(#1・#6 と台帳⑤⑧)。
+# 照合ごとに 1 行の結果を出し、1 つでも NG なら非 0 で終わる。#1 は T(scripts/ci/test)の junit を読むので T の後に走らせる。
+set -euo pipefail
+
+cd "$(dirname "$0")/../.."
+
+if [ "$#" -ne 0 ]; then
+    echo "scripts/ci/verify は引数を受けない" >&2
+    exit 2
+fi
+
+scripts/ci/record verify -- php scripts/ci/verify.php

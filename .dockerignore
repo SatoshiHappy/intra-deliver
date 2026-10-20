@@ -1,0 +1,54 @@
+# app のイメージの build の文脈から外すもの(docs の 設計/公開の配備/構成.md 3.3.1)。主の守りは、配備専用の作業木に
+# git が無視するファイルが無いこと。ここは二重の守り。
+
+# 版の管理・秘密
+.git
+.github
+.env*
+
+# 依存(build の段で composer install --no-dev・npm ci から作り直す。開発の vendor は require-dev を含む)
+vendor
+node_modules
+
+# 生成物と開発の作業木にだけあるもの(build の段で作り直すか、起動で作る)
+# bootstrap/cache の *.php は require-dev の provider を載せる。public/hot は資産を開発サーバーへ向ける。
+# storage は訪問者の要求の記録(inertia-devtools)・ログ・セッションを含みうる(書き込み先は Dockerfile が作る)
+bootstrap/cache/*.php
+bootstrap/ssr
+public/build
+public/hot
+public/storage
+public/fonts-manifest.dev.json
+resources/js/actions
+resources/js/routes
+resources/js/wayfinder
+storage
+build
+**/.wrangler
+
+# テストと検査・開発の道具(composer install --no-dev と npm run build に要らない)
+tests
+scripts
+.ai
+.agents
+.ast-grep
+.claude
+.codex
+.gitleaks*
+.mcp.json
+.phpunit.cache
+AGENTS.md
+CLAUDE.md
+README.md
+boost.json
+phpstan.neon
+phpunit.xml
+pint.json
+playwright.config.ts
+sgconfig.yml
+test-results
+playwright-report
+blob-report
+compose.yml
+Dockerfile
+.dockerignore

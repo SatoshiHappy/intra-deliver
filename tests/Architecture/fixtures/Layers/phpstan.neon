@@ -1,0 +1,24 @@
+# 層とモジュールの規則の自己証明の fixture 用の phpstan 設定。
+# fixture の共通の設定(../phpstan.neon = 通常の phpstan.neon から fixture の走査除外だけを外したもの)を取り込み、
+# モジュールの宣言を fixture 用(Alpha → なし、Beta → Alpha、Gamma → なし、Delta → Alpha・Beta)に、移行中の一覧を Alpha だけに差し替える
+# (規則の作り方・層の規則は通常と同じ)。
+
+includes:
+	- ../phpstan.neon
+
+services:
+	layerRules:
+		arguments:
+			modules:
+				Alpha: []
+				Beta: [Alpha]
+				Gamma: []
+				Delta: [Alpha, Beta]
+	publicApiRules:
+		arguments:
+			modules:
+				Alpha: []
+				Beta: [Alpha]
+				Gamma: []
+				Delta: [Alpha, Beta]
+			transitionalModules: [Alpha]

@@ -1,0 +1,18 @@
+# intra-deliver-portfolio(デモ)の開発用 DB(PostgreSQL 18 + PGroonga のイメージ)。
+# 接続情報は .env(git で追跡しない)から読む。起動: docker-compose up -d db / 停止: docker-compose stop db
+services:
+    db:
+        image: groonga/pgroonga:4.1.0-alpine-18@sha256:fa244ecc61ce0251233823373cebe4d126f58d4bb9f5edca67b30b97161a5c79
+        container_name: intra-deliver-portfolio-db
+        environment:
+            POSTGRES_USER: ${DB_USERNAME:?DB_USERNAME を .env に設定する}
+            POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD を .env に設定する}
+            POSTGRES_DB: ${DB_DATABASE:?DB_DATABASE を .env に設定する}
+        ports:
+            - '127.0.0.1:${DB_PORT:?DB_PORT を .env に設定する}:5432'
+        volumes:
+            - db-data:/var/lib/postgresql
+            - ./docker/initdb:/docker-entrypoint-initdb.d:ro
+volumes:
+    db-data:
+        name: intra-deliver-portfolio-db-data

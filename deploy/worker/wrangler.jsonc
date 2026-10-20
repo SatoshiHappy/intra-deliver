@@ -1,0 +1,18 @@
+{
+    "$schema": "../../node_modules/wrangler/config-schema.json",
+    // 公開の URL は https://intra-deliver.<アカウントのサブドメイン>.workers.dev(Worker 名を変えない)
+    "name": "intra-deliver",
+    "main": "src/index.js",
+    "compatibility_date": "2026-09-25",
+    // workers.dev の経路を明示して有効にする(ルートは持たない)
+    "workers_dev": true,
+    "vpc_services": [
+        {
+            "binding": "APP",
+            // 仮の値(実機検証で VPC サービスを作ってから実際のサービス ID に差し替える。秘密ではない)
+            "service_id": "00000000-0000-0000-0000-000000000000",
+            // wrangler dev でも VPC サービスへ届くようにする(VPC サービスはリモートだけで動く)
+            "remote": true,
+        },
+    ],
+}

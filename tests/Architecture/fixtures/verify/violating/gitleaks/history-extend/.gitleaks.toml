@@ -1,0 +1,8 @@
+# #6 抜け道(gitleaks)の自己証明の違反 fixture: 履歴の走査用の設定が別の設定ファイルを [extend] で取り込むもの
+# (取り込んだ先の除外は照合されずに履歴の走査に効く)。自身の除外は ⑧ #11 の scope の無い行に登録済みのものだけ。
+[extend]
+path = "extra.toml"
+
+[[allowlists]]
+description = "依存物"
+paths = ['''^vendor(?:/.*)?$''']

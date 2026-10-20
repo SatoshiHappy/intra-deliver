@@ -1,0 +1,128 @@
+# 一括検査(composer ci:check = scripts/ci/all の区切りの既定)を push のたびに流す。
+# 手元の全体の ci:check と同じ入口を呼ぶ(段の定義は scripts/ci/all の 1 か所。ここに段を写さない)。
+# 参照の実在の検査(tests/Architecture/DocsReferencesTest.php)は docs を読むので、非公開の docs のリポジトリを読み取り専用の
+# deploy key(secret の DOCS_DEPLOY_KEY)で web の隣(../docs = 本体の作業木の既定の場所)に取る。
+# 外から取って動かす Actions はコミット SHA で固定する(タグ名は末尾のコメント。公開から 2 週間以上たった版)。上げるときも同じ規則に従う。
+
+name: ci
+
+on:
+    push:
+        branches: ['**']
+    workflow_dispatch:
+        # docs の改名・削除を 2 回に分けられないときだけ使う(docs の枝を選んで流す)。push のときは main を読む
+        inputs:
+            docs_ref:
+                description: docs の枝(既定 main)
+                required: false
+                default: main
+                type: string
+
+# 同じ枝の古い実行は止める(main だけは 1 本ずつ最後まで流す)
+concurrency:
+    group: ci-${{ github.ref }}
+    cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+
+# 既定の権限は無し。ジョブごとに必要な分だけ与える
+permissions: {}
+
+jobs:
+    check:
+        name: ci:check
+        # 写し(公開リポジトリ)でだけ動く(非公開のリポジトリの無料枠は月 2,000 分で、取り込みのたびに全段を流すと足りない)
+        if: ${{ github.repository == 'SatoshiHappy/intra-deliver' }}
+        runs-on: ubuntu-24.04
+        timeout-minutes: 60
+        permissions:
+            contents: read
+        defaults:
+            run:
+                working-directory: web
+        env:
+            # 標準のランナーは 4 vCPU。スクリプトの既定(CPU の数)は変えず、ここで渡す
+            CI_TEST_PROCESSES: '4'
+        steps:
+            # 秘匿情報の検査(K)は全 ref の履歴を見るので、全部の枝と履歴を取る
+            - name: checkout(web)
+              uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+              with:
+                  path: web
+                  fetch-depth: 0
+                  persist-credentials: false
+
+            - name: checkout(docs)
+              uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+              with:
+                  repository: SatoshiHappy/intra-deliver-portfolio-document
+                  ref: ${{ inputs.docs_ref || 'main' }}
+                  path: docs
+                  ssh-key: ${{ secrets.DOCS_DEPLOY_KEY }}
+                  persist-credentials: false
+
+            # ベースラインのテストは手元の枝の main と比べる(git merge-base HEAD main)。checkout は main を手元の枝に作らないので足す
+            - name: 手元の枝の main
+              run: git rev-parse --verify --quiet refs/heads/main || git branch main origin/main
+
+            # 本番のイメージ(Dockerfile)と同じ PHP 8.4・拡張・composer の版。CLI の既定にそろえてメモリの上限は外す。
+            # composer の版は Dockerfile の composer のイメージのタグとそろえる(上げるときは一緒に)
+            - name: PHP
+              uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # 2.37.2
+              with:
+                  php-version: '8.4'
+                  extensions: pdo_pgsql, pgsql, intl, zip
+                  ini-values: memory_limit=-1
+                  coverage: none
+                  tools: composer:2.10.3
+
+            - name: Node.js
+              uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+              with:
+                  node-version: '22'
+                  package-manager-cache: false
+
+            # .env は見本から作る。DB のパスワードはこの実行だけの使い捨て(外に出ない DB コンテナの中だけで使う)。
+            # docs の場所は既定に頼らず明示する(docs の 設計/コード構成/検査.md 6 節)
+            - name: .env
+              run: |
+                  cp .env.example .env
+                  sed -i "s/^DB_PASSWORD=.*/DB_PASSWORD=$(openssl rand -hex 16)/" .env
+                  echo 'DOCS_ROOT=../docs' >> .env
+
+            # DB は手元と同じ compose.yml の定義で起こす(イメージの版と初期化 = テスト DB の作成を 1 か所に保つ)。
+            # 初期化の間の仮のサーバーは TCP を聞かないので、TCP で応答したら初期化が終わっている
+            - name: DB
+              run: |
+                  docker compose up -d db
+                  for _ in $(seq 1 60); do
+                      if docker compose exec -T db sh -c 'pg_isready -q -h 127.0.0.1 -U "$POSTGRES_USER"'; then
+                          exit 0
+                      fi
+                      sleep 2
+                  done
+                  docker compose logs db
+                  exit 1
+
+            - name: 依存(composer・npm・Playwright のブラウザ)
+              run: |
+                  composer install --no-interaction --no-progress
+                  php artisan key:generate --no-interaction
+                  npm ci
+                  npx playwright install --with-deps chromium
+
+            # laravel-vite-plugin は環境変数 CI があると Vite のサーバーを拒む。単体テスト(vitest)はそのサーバーで走るので、確かめを外す
+            # (本番ビルドはもともと確かめの対象外)
+            - name: composer ci:check
+              env:
+                  LARAVEL_BYPASS_ENV_CHECK: '1'
+              run: composer ci:check
+
+            # artifact は GitHub にログインした誰でも取れるので、E2E の診断に要る Playwright の出力だけにする
+            # (サーバーの失敗はジョブのログで見る。アプリのログに長く効く秘密は入らないが、公開の範囲を最小にする)
+            - name: 失敗の材料を残す
+              if: ${{ failure() }}
+              uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+              with:
+                  name: ci-check-failure
+                  path: web/test-results
+                  if-no-files-found: ignore
+                  retention-days: 7

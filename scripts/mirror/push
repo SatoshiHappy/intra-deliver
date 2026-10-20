@@ -1,0 +1,123 @@
+#!/usr/bin/env bash
+# 写しへの push: 非公開の履歴を公開の写しへ出さずに、今の枝の HEAD の木だけを写しへ送り、写しの CI を流すため。
+# 手順・親の選び方・終了コード・前提は docs リポジトリの 設計/コード構成/検査.md の 6 節「GitHub Actions」。
+#   scripts/mirror/push        引数は取らない
+# 環境変数 MIRROR_URL(写しの URL)・MIRROR_GITLEAKS(gitleaks の絶対パス)で差し替えられる(テストは偽物を渡す)。
+set -euo pipefail
+# mirror_head のように $(...) の中で呼ぶ関数の失敗でも止めるため
+shopt -s inherit_errexit
+
+default_url="git@github.com:SatoshiHappy/intra-deliver.git"
+mirror_user="SatoshiHappy"
+mirror_email="93377366+SatoshiHappy@users.noreply.github.com"
+url="${MIRROR_URL:-${default_url}}"
+
+stop_with() {
+    echo "$1" >&2
+    exit 2
+}
+
+# 1. 引数なし・枝の上・未コミットの変更なし
+if [ "$#" -ne 0 ]; then
+    stop_with "使い方: scripts/mirror/push(引数は取りません。今の枝の HEAD の木を、写しの同じ名前の枝へ送ります)"
+fi
+
+root="$(cd "$(dirname "$0")/../.." && pwd)"
+
+if ! branch="$(git -C "${root}" symbolic-ref --short -q HEAD)"; then
+    stop_with "HEAD が枝を指していません(detached)。送り先の枝の名前が決まらないため流せません。枝に移ってから流してください"
+fi
+
+worktree_changes="$(git -C "${root}" status --porcelain)"
+if [ -n "${worktree_changes}" ]; then
+    stop_with "未コミットの変更(追跡しないファイルを含む)があります。HEAD の木と作業木がずれるため流せません。コミットするか戻してから流してください"
+fi
+
+# 検査と送信が同じコミットと木を使うよう、ここで 1 回だけ決める(間に HEAD が動いても食い違わない)
+source_commit="$(git -C "${root}" rev-parse --verify 'HEAD^{commit}')"
+source_tree="$(git -C "${root}" rev-parse "${source_commit}^{tree}")"
+
+# 写しは公開なので、通信より前に送る木の全部を検査する。
+# git archive は export-ignore のファイルを落とすので、一時の索引で展開する(本物の索引と作業木には触れない)
+tmp_dir="$(mktemp -d)"
+trap 'rm -rf "${tmp_dir}"' EXIT
+scan_dir="${tmp_dir}/tree"
+mkdir "${scan_dir}"
+GIT_INDEX_FILE="${tmp_dir}/index" git -C "${root}" read-tree "${source_tree}"
+GIT_INDEX_FILE="${tmp_dir}/index" git -C "${root}" checkout-index -a --prefix="${scan_dir}/"
+if [ -z "${MIRROR_GITLEAKS:-}" ]; then
+    "${root}/scripts/ci/gitleaks" || stop_with "gitleaks を用意できませんでした。秘匿情報を検査できないため流せません"
+    gitleaks_bin="${root}/build/bin/gitleaks"
+else
+    gitleaks_bin="${MIRROR_GITLEAKS}"
+fi
+gitleaks_status=0
+# 設定の除外のパスは走査ルート基点の相対パスで一致させるので、展開先の中で "." を検査する
+(cd "${scan_dir}" && "${gitleaks_bin}" dir . --config "${root}/.gitleaks.toml" --redact --no-banner --exit-code 1 >&2) || gitleaks_status=$?
+if [ "${gitleaks_status}" -ne 0 ]; then
+    stop_with "gitleaks が終了コード ${gitleaks_status} で止まりました(1 = 秘密の値の検出、それ以外 = 検査できなかった)。送る木に秘密の値が無いことを確かめられないため流せません"
+fi
+
+# 写しの枝の先頭を出す(無ければ空)。通信の失敗(終了 1)と枝が無いこと(空)を分ける
+mirror_head() {
+    local heads
+    local unreachable="写しの枝の一覧を取れませんでした(MIRROR_URL か ssh の鍵を確かめてください)"
+    if ! heads="$(git -C "${root}" ls-remote --heads "${url}" "refs/heads/$1")"; then
+        echo "${unreachable}" >&2
+        exit 1
+    fi
+    if [ -n "${heads}" ]; then
+        git -C "${root}" fetch --quiet --no-tags "${url}" "refs/heads/$1" || {
+            echo "${unreachable}" >&2
+            exit 1
+        }
+        git -C "${root}" rev-parse --verify FETCH_HEAD
+    fi
+}
+
+# 2. 写しの CI が最新の main と比べられるよう、写しの main も親にする
+main_head="$(mirror_head main)"
+branch_head=""
+if [ "${branch}" != main ]; then
+    if [ -z "${main_head}" ]; then
+        stop_with "写しに main の枝がありません。先に web の main の作業木から scripts/mirror/push を流してください"
+    fi
+    branch_head="$(mirror_head "${branch}")"
+fi
+parents=()
+if [ -n "${branch_head}" ]; then
+    parents+=("${branch_head}")
+fi
+if [ -n "${main_head}" ] && { [ -z "${branch_head}" ] || ! git -C "${root}" merge-base --is-ancestor "${main_head}" "${branch_head}"; }; then
+    parents+=("${main_head}")
+fi
+
+# 3. 変えるものが無いときは何も送らない
+if [ "${#parents[@]}" -gt 0 ] && [ "$(git -C "${root}" rev-parse "${parents[0]}^{tree}")" = "${source_tree}" ]; then
+    if [ "${branch}" != main ] && [ -z "${branch_head}" ]; then
+        echo "変わっていない: 写しの main と同じ木なので、写しに枝 ${branch} を作らず、CI も走りません(取り込むものが無い)"
+    else
+        echo "変わっていない: 写しの ${branch} の先頭の木と HEAD の木が同じなので、送りません"
+    fi
+    exit 0
+fi
+
+# 4. git config は変えず、作者・コミッターは環境変数で渡す
+commit_args=(-c commit.gpgsign=false commit-tree "${source_tree}" -m "写し: ${branch} ${source_commit}")
+for parent in "${parents[@]}"; do
+    commit_args+=(-p "${parent}")
+done
+new_commit="$(
+    GIT_AUTHOR_NAME="${mirror_user}" GIT_AUTHOR_EMAIL="${mirror_email}" \
+        GIT_COMMITTER_NAME="${mirror_user}" GIT_COMMITTER_EMAIL="${mirror_email}" \
+        git -C "${root}" "${commit_args[@]}"
+)"
+
+# 5. 写しの履歴を壊さないよう force しない
+if ! git -C "${root}" push --quiet "${url}" "${new_commit}:refs/heads/${branch}"; then
+    echo "写しの ${branch} への push が拒まれました。写しの先頭が進んでいるか、書き込みの権限がありません。もう一度流してください" >&2
+    exit 1
+fi
+
+echo "写しへ送りました: 枝 ${branch}、コミット ${new_commit}"
+echo "写しの Actions: https://github.com/SatoshiHappy/intra-deliver/actions?query=branch%3A${branch}"

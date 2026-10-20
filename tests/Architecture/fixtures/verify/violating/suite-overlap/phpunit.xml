@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- #1 の自己証明の fixture(2 つの suite が同じディレクトリを走査する。junit の file は __ROOT__ を一時ディレクトリに置き換えて使う)。 -->
+<phpunit>
+    <testsuites>
+        <testsuite name="Unit"><directory>tests/Unit</directory></testsuite>
+        <testsuite name="Feature"><directory>tests/Unit</directory></testsuite>
+    </testsuites>
+    <logging>
+        <junit outputFile="junit.xml"/>
+    </logging>
+</phpunit>

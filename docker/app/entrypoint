@@ -1,0 +1,15 @@
+#!/bin/sh
+# 公開用の app のエントリポイント(docs の 設計/公開の配備/構成.md 3.3.1 の 3)。
+# 一回きりのコンテナ(run --rm app <コマンド>)も同じ前処理を通る。前処理の出力は標準エラーへ出し、
+# 標準出力は引数のコマンドの出力だけにする(key:generate --show の出力をそのままファイルへ取るため)。
+set -eu
+
+cd /app
+
+# tmpfs は空で載り、イメージの下位のディレクトリを隠すので、書き込み先を作り直す(views が無いと view:cache と /up の描画が落ちる)
+mkdir -p storage/framework/cache storage/framework/sessions storage/framework/views
+
+# 設定・ルート・ビュー・イベントのキャッシュを起動のたびに作る(設定の値をイメージに焼かない)
+php artisan optimize >&2
+
+exec "$@"

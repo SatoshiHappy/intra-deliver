@@ -1,0 +1,48 @@
+id: k14-inertia-page-name
+valid:
+    - |
+        <?php
+        return Inertia::render('Records/Admin/FieldForm', ['module' => $module]);
+    - |
+        <?php
+        Route::inertia('/', 'Menu/Home')->name('menu.home');
+    - |
+        <?php
+        return Inertia::render($page, []);
+    - |
+        <?php
+        return Inertia::render('Records/Admin/ModuleCreate');
+    - |
+        <?php
+        return Inertia::render('Records/' . $name, []);
+    - |
+        <?php
+        return Inertia::render("{$module}/Index", []);
+    - |
+        <?php
+        return Inertia::render(component: 'Records/Index', props: ['title' => 'a.b']);
+    - |
+        <?php
+        Route::inertia('/a.b', 'Menu/Home');
+invalid:
+    - |
+        <?php
+        return Inertia::render(props: [], component: 'Records.Index');
+    - |
+        <?php
+        return Inertia::render("Records.Index", []);
+    - |
+        <?php
+        return Inertia::render('Records.Admin.ModuleCreate');
+    - |
+        <?php
+        return Inertia::render('Records.Admin.FieldForm', []);
+    - |
+        <?php
+        return Inertia::render('Index', []);
+    - |
+        <?php
+        return Inertia::render('records/Index', []);
+    - |
+        <?php
+        Route::inertia('/', 'Menu.Home');

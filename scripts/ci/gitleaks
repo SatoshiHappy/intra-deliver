@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+# 秘匿情報検査(#11)で使う gitleaks のバイナリを build/bin/gitleaks に置く(無ければ取得する)。
+# 版と SHA-256 を固定し、一致しなければ置かずに非 0 で終わる。置いてあるバイナリは版が一致するときだけ使う。
+# 使う側 = scripts/ci/secrets と、秘匿情報の自己証明(tests/Architecture/SecretsSelfProofTest.php。T は K より前に走るので、
+# テストの側でもバイナリを用意する)。
+set -euo pipefail
+
+cd "$(dirname "$0")/../.."
+
+if [ "$#" -ne 0 ]; then
+    echo "scripts/ci/gitleaks は引数を受けない" >&2
+    exit 2
+fi
+
+readonly GITLEAKS_VERSION="8.30.1"
+readonly GITLEAKS_ARCHIVE="gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+readonly GITLEAKS_SHA256="551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb"
+readonly GITLEAKS_URL="https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/${GITLEAKS_ARCHIVE}"
+readonly GITLEAKS_BIN="build/bin/gitleaks"
+
+# 置いてあるバイナリは版が一致するときだけ使う(版を上げたとき・取得の途中で壊れたときは取り直す)
+if [ -x "${GITLEAKS_BIN}" ] && [ "$("${GITLEAKS_BIN}" version 2>/dev/null || true)" = "${GITLEAKS_VERSION}" ]; then
+    exit 0
+fi
+
+mkdir -p build/bin
+tmp_dir="$(mktemp -d)"
+trap 'rm -rf "${tmp_dir}"' EXIT
+
+curl --fail --location --silent --show-error --output "${tmp_dir}/${GITLEAKS_ARCHIVE}" "${GITLEAKS_URL}"
+
+echo "${GITLEAKS_SHA256}  ${tmp_dir}/${GITLEAKS_ARCHIVE}" | sha256sum -c -
+
+# 一時ディレクトリに展開してから置き場へ移す(展開の途中で止まっても、壊れたバイナリを置き場に残さない)
+tar -xzf "${tmp_dir}/${GITLEAKS_ARCHIVE}" -C "${tmp_dir}" gitleaks
+chmod +x "${tmp_dir}/gitleaks"
+mv -f "${tmp_dir}/gitleaks" "${GITLEAKS_BIN}"

@@ -1,0 +1,8 @@
+# #6 抜け道(gitleaks)の自己証明の違反 fixture: 履歴の走査用の設定に .env の除外を足したもの。
+# ⑧ #11 の .env の行は scope = dir(作業木の走査だけ)なので、scope の無い行との照合で未登録になる。
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "依存物と、履歴の走査に掛けてはいけない .env の除外"
+paths = ['''^vendor(?:/.*)?$''', '''(?:^|/)\.env$''']

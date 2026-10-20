@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    テスト(#1)。scripts/ci/test が suite をすべて 1 回で実行し、scripts/ci/verify が junit の実行記録を照合する
+    (各 suite にテスト 1 件以上・スキップ 0・失敗 0)。
+    suite の一覧の正本は tests/Architecture/Policy/Verification.php の PHPUNIT_SUITE_DIRECTORIES(一致を照合する)。
+    グローバル変数・静的な状態の漏れは PHPUnit では検出しない(backupGlobals・backupStaticProperties を有効にしないので、
+    beStrictAboutChangesToGlobalState は働かない)。漏れは各テストが戻す(例: tests/Feature/Deploy/PublishedResponsesTest の tearDown)。
+    テスト DB の名前(DB_DATABASE)は作業木ごとに tests/bootstrap.php が決める(docs の 設計/コード構成/検査.md 6 節)。
+    流用元 = chatpinet_2 の phpunit.xml。
+-->
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="tests/bootstrap.php"
+         cacheDirectory="build/phpunit"
+         colors="true"
+         failOnAllIssues="true"
+         failOnEmptyTestSuite="true"
+         beStrictAboutTestsThatDoNotTestAnything="true"
+         beStrictAboutOutputDuringTests="true"
+>
+    <testsuites>
+        <testsuite name="Architecture">
+            <directory>tests/Architecture</directory>
+        </testsuite>
+        <testsuite name="Unit">
+            <directory>tests/Unit</directory>
+        </testsuite>
+        <testsuite name="Feature">
+            <directory>tests/Feature</directory>
+        </testsuite>
+    </testsuites>
+    <source>
+        <include>
+            <directory>app</directory>
+        </include>
+    </source>
+    <logging>
+        <junit outputFile="build/junit.xml"/>
+    </logging>
+    <php>
+        <env name="APP_ENV" value="testing"/>
+        <env name="APP_MAINTENANCE_DRIVER" value="file"/>
+        <env name="BCRYPT_ROUNDS" value="4"/>
+        <env name="BROADCAST_CONNECTION" value="null"/>
+        <env name="CACHE_STORE" value="array"/>
+        <env name="DB_CONNECTION" value="pgsql" force="true"/>
+        <env name="DB_URL" value=""/>
+        <!-- 入口が描くページのファイルの実在を描画のたびに確かめる(config/inertia.php の pages.ensure_pages_exist。PHPUnit の環境だけで有効) -->
+        <env name="INERTIA_ENSURE_PAGES_EXIST" value="true" force="true"/>
+        <!-- 取り外せる利用者の切替は既定オフで固定する(.env がオンでも。オンを確かめるテストのクラスだけが起動の前に設定を上書きする) -->
+        <env name="DEMO_ENABLED" value="false" force="true"/>
+        <!-- 初期データの流す日を基準の日(Database\Seeders\SeedingDates::BASE)に固定する(.env に置いても。docs の 設計/ワークフロー/案件の運用/初期データ.md 1.3) -->
+        <env name="SEED_DATE" value="2026-10-15" force="true"/>
+        <env name="MAIL_MAILER" value="array"/>
+        <env name="QUEUE_CONNECTION" value="sync"/>
+        <env name="SESSION_DRIVER" value="array"/>
+        <env name="PULSE_ENABLED" value="false"/>
+        <env name="TELESCOPE_ENABLED" value="false"/>
+        <env name="NIGHTWATCH_ENABLED" value="false"/>
+    </php>
+</phpunit>

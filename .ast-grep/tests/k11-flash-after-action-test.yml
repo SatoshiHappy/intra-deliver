@@ -1,0 +1,77 @@
+id: k11-flash-after-action
+valid:
+    - |
+        <?php
+        final class RuleController
+        {
+            public function store($request, string $module)
+            {
+                $this->addRule->execute($module, $request->ruleInput());
+                Inertia::flash('toast', ['type' => 'success', 'message' => '追加しました']);
+                return redirect()->route('records.admin.modules.show', ['module' => $module], 303);
+            }
+        }
+    - |
+        <?php
+        final class RuleController
+        {
+            public function store($request, string $module)
+            {
+                $this->addRule->execute($module, $request->ruleInput());
+                if ($request->boolean('notify')) {
+                    Inertia::flash('toast', ['type' => 'success', 'message' => '追加しました']);
+                }
+                return redirect()->route('records.admin.modules.show', ['module' => $module], 303);
+            }
+        }
+    - |
+        <?php
+        final class RuleController
+        {
+            public function store($request, string $module)
+            {
+                Inertia::flash('toast', ['type' => 'success', 'message' => '追加しました']);
+                return redirect()->route('records.admin.modules.show', ['module' => $module], 303);
+            }
+
+            public function update($request, string $module)
+            {
+                $this->updateRule->execute($module, $request->ruleInput());
+                return redirect()->route('records.admin.modules.show', ['module' => $module], 303);
+            }
+        }
+invalid:
+    - |
+        <?php
+        final class RuleController
+        {
+            public function store($request, string $module)
+            {
+                if ($request->boolean('notify')) {
+                    Inertia::flash('toast', ['type' => 'success', 'message' => '追加しました']);
+                }
+                $this->addRule->execute($module, $request->ruleInput());
+                return redirect()->route('records.admin.modules.show', ['module' => $module], 303);
+            }
+        }
+    - |
+        <?php
+        final class RuleController
+        {
+            public function store($request, string $module)
+            {
+                Inertia::flash('toast', ['type' => 'success', 'message' => '追加しました']);
+                $this->addRule->execute($module, $request->ruleInput());
+                return redirect()->route('records.admin.modules.show', ['module' => $module], 303);
+            }
+        }
+    - |
+        <?php
+        final class RuleController
+        {
+            public function store($request, string $module)
+            {
+                Inertia::flash('toast', ['type' => 'success', 'message' => '追加しました']);
+                return $this->addRule->execute($module, $request->ruleInput());
+            }
+        }

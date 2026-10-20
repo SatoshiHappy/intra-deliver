@@ -1,0 +1,431 @@
+{
+    "文字列 eq 真": {
+        "type": "string",
+        "op": "eq",
+        "value": "a",
+        "server": "a",
+        "form": "a",
+        "holds": true
+    },
+    "文字列 eq 偽(大文字小文字を区別する)": {
+        "type": "string",
+        "op": "eq",
+        "value": "a",
+        "server": "A",
+        "form": "A",
+        "holds": false
+    },
+    "文字列 ne 真": {
+        "type": "string",
+        "op": "ne",
+        "value": "a",
+        "server": "b",
+        "form": "b",
+        "holds": true
+    },
+    "文字列 ne 偽": {
+        "type": "string",
+        "op": "ne",
+        "value": "a",
+        "server": "a",
+        "form": "a",
+        "holds": false
+    },
+    "文字列 ne 空なら偽": {
+        "type": "string",
+        "op": "ne",
+        "value": "a",
+        "server": null,
+        "form": "",
+        "holds": false
+    },
+    "文字列 empty 真": {
+        "type": "string",
+        "op": "empty",
+        "value": null,
+        "server": null,
+        "form": "",
+        "holds": true
+    },
+    "文字列 empty 偽": {
+        "type": "string",
+        "op": "empty",
+        "value": null,
+        "server": "a",
+        "form": "a",
+        "holds": false
+    },
+    "文字列 not_empty 真": {
+        "type": "string",
+        "op": "not_empty",
+        "value": null,
+        "server": "a",
+        "form": "a",
+        "holds": true
+    },
+    "文字列 not_empty 偽": {
+        "type": "string",
+        "op": "not_empty",
+        "value": null,
+        "server": null,
+        "form": "",
+        "holds": false
+    },
+    "整数 eq 真": {
+        "type": "integer",
+        "op": "eq",
+        "value": 10,
+        "server": "10",
+        "form": "10",
+        "holds": true
+    },
+    "整数 eq 偽": {
+        "type": "integer",
+        "op": "eq",
+        "value": 10,
+        "server": "11",
+        "form": "11",
+        "holds": false
+    },
+    "整数 ne 真": {
+        "type": "integer",
+        "op": "ne",
+        "value": 10,
+        "server": "11",
+        "form": "11",
+        "holds": true
+    },
+    "整数 ne 偽": {
+        "type": "integer",
+        "op": "ne",
+        "value": 10,
+        "server": "10",
+        "form": "10",
+        "holds": false
+    },
+    "整数 lt 真": {
+        "type": "integer",
+        "op": "lt",
+        "value": 10,
+        "server": "9",
+        "form": "9",
+        "holds": true
+    },
+    "整数 lt 偽": {
+        "type": "integer",
+        "op": "lt",
+        "value": 10,
+        "server": "10",
+        "form": "10",
+        "holds": false
+    },
+    "整数 le 真": {
+        "type": "integer",
+        "op": "le",
+        "value": 10,
+        "server": "10",
+        "form": "10",
+        "holds": true
+    },
+    "整数 le 偽": {
+        "type": "integer",
+        "op": "le",
+        "value": 10,
+        "server": "11",
+        "form": "11",
+        "holds": false
+    },
+    "整数 ge 真": {
+        "type": "integer",
+        "op": "ge",
+        "value": 10,
+        "server": "10",
+        "form": "10",
+        "holds": true
+    },
+    "整数 ge 偽": {
+        "type": "integer",
+        "op": "ge",
+        "value": 10,
+        "server": "9",
+        "form": "9",
+        "holds": false
+    },
+    "整数 gt 真": {
+        "type": "integer",
+        "op": "gt",
+        "value": 10,
+        "server": "11",
+        "form": "11",
+        "holds": true
+    },
+    "整数 gt 偽": {
+        "type": "integer",
+        "op": "gt",
+        "value": 10,
+        "server": "10",
+        "form": "10",
+        "holds": false
+    },
+    "整数 lt 空なら偽": {
+        "type": "integer",
+        "op": "lt",
+        "value": 10,
+        "server": null,
+        "form": "",
+        "holds": false
+    },
+    "整数 empty 真": {
+        "type": "integer",
+        "op": "empty",
+        "value": null,
+        "server": null,
+        "form": "",
+        "holds": true
+    },
+    "小数 eq 真(正規化した値で比べる)": {
+        "type": "decimal",
+        "op": "eq",
+        "value": "1.5",
+        "server": "1.50",
+        "form": "1.50",
+        "holds": true
+    },
+    "小数 lt 真": {
+        "type": "decimal",
+        "op": "lt",
+        "value": "1.5",
+        "server": "1.25",
+        "form": "1.25",
+        "holds": true
+    },
+    "小数 lt 偽": {
+        "type": "decimal",
+        "op": "lt",
+        "value": "1.5",
+        "server": "10",
+        "form": "10",
+        "holds": false
+    },
+    "小数 lt 負の数で真": {
+        "type": "decimal",
+        "op": "lt",
+        "value": "-1.5",
+        "server": "-2",
+        "form": "-2",
+        "holds": true
+    },
+    "日付 lt 真": {
+        "type": "date",
+        "op": "lt",
+        "value": "2026-10-11",
+        "server": "2026-10-10",
+        "form": "2026-10-10",
+        "holds": true
+    },
+    "日付 lt 偽": {
+        "type": "date",
+        "op": "lt",
+        "value": "2026-10-11",
+        "server": "2026-10-11",
+        "form": "2026-10-11",
+        "holds": false
+    },
+    "日付 not_empty 偽": {
+        "type": "date",
+        "op": "not_empty",
+        "value": null,
+        "server": null,
+        "form": "",
+        "holds": false
+    },
+    "日時 gt 真(UTC に直して比べる)": {
+        "type": "datetime",
+        "op": "gt",
+        "value": "2026-10-11T00:00:00Z",
+        "server": "2026-10-11T09:30:00+09:00",
+        "form": "2026-10-11T09:30",
+        "holds": true
+    },
+    "日時 gt 偽": {
+        "type": "datetime",
+        "op": "gt",
+        "value": "2026-10-11T00:00:00Z",
+        "server": "2026-10-11T08:59:00+09:00",
+        "form": "2026-10-11T08:59",
+        "holds": false
+    },
+    "日時 ge 真(同じ時刻)": {
+        "type": "datetime",
+        "op": "ge",
+        "value": "2026-10-11T00:00:00Z",
+        "server": "2026-10-11T09:00:00+09:00",
+        "form": "2026-10-11T09:00",
+        "holds": true
+    },
+    "真偽 eq 真": {
+        "type": "boolean",
+        "op": "eq",
+        "value": true,
+        "server": true,
+        "form": true,
+        "holds": true
+    },
+    "真偽 eq 偽": {
+        "type": "boolean",
+        "op": "eq",
+        "value": true,
+        "server": false,
+        "form": false,
+        "holds": false
+    },
+    "選択 eq 真": {
+        "type": "choice",
+        "op": "eq",
+        "value": "done",
+        "server": "done",
+        "form": "done",
+        "holds": true
+    },
+    "選択 eq 偽": {
+        "type": "choice",
+        "op": "eq",
+        "value": "done",
+        "server": "open",
+        "form": "open",
+        "holds": false
+    },
+    "選択 ne 真": {
+        "type": "choice",
+        "op": "ne",
+        "value": "done",
+        "server": "open",
+        "form": "open",
+        "holds": true
+    },
+    "選択 ne 空なら偽": {
+        "type": "choice",
+        "op": "ne",
+        "value": "done",
+        "server": null,
+        "form": "",
+        "holds": false
+    },
+    "選択 in 真": {
+        "type": "choice",
+        "op": "in",
+        "value": ["open", "done"],
+        "server": "open",
+        "form": "open",
+        "holds": true
+    },
+    "選択 in 偽": {
+        "type": "choice",
+        "op": "in",
+        "value": ["open", "done"],
+        "server": "hold",
+        "form": "hold",
+        "holds": false
+    },
+    "選択 in 空なら偽": {
+        "type": "choice",
+        "op": "in",
+        "value": ["open", "done"],
+        "server": null,
+        "form": "",
+        "holds": false
+    },
+    "選択 not_empty 真": {
+        "type": "choice",
+        "op": "not_empty",
+        "value": null,
+        "server": "hold",
+        "form": "hold",
+        "holds": true
+    },
+    "型に使えない演算子 真偽 empty は真": {
+        "type": "boolean",
+        "op": "empty",
+        "value": null,
+        "server": true,
+        "form": true,
+        "holds": true
+    },
+    "型に使えない演算子 真偽 not_empty は偽": {
+        "type": "boolean",
+        "op": "not_empty",
+        "value": null,
+        "server": true,
+        "form": true,
+        "holds": false
+    },
+    "型に使えない演算子 真偽 ne は偽": {
+        "type": "boolean",
+        "op": "ne",
+        "value": true,
+        "server": false,
+        "form": false,
+        "holds": false
+    },
+    "型に使えない演算子 文字列 lt は偽": {
+        "type": "string",
+        "op": "lt",
+        "value": "b",
+        "server": "a",
+        "form": "a",
+        "holds": false
+    },
+    "型に使えない演算子 選択 lt は偽": {
+        "type": "choice",
+        "op": "lt",
+        "value": "open",
+        "server": "done",
+        "form": "done",
+        "holds": false
+    },
+    "ユーザー(複数) empty 空の配列は真": {
+        "type": "user",
+        "isMultiple": true,
+        "op": "empty",
+        "value": null,
+        "server": [],
+        "form": [],
+        "holds": true
+    },
+    "ユーザー(複数) not_empty 空の配列は偽": {
+        "type": "user",
+        "isMultiple": true,
+        "op": "not_empty",
+        "value": null,
+        "server": [],
+        "form": [],
+        "holds": false
+    },
+    "ユーザー(複数) empty null は真": {
+        "type": "user",
+        "isMultiple": true,
+        "op": "empty",
+        "value": null,
+        "server": null,
+        "form": null,
+        "holds": true
+    },
+    "ユーザー(複数) not_empty 相手 1 つは真": {
+        "type": "user",
+        "isMultiple": true,
+        "op": "not_empty",
+        "value": null,
+        "server": [1],
+        "form": [{ "id": 1, "label": "a" }],
+        "holds": true
+    },
+    "ユーザー(複数) empty 相手 1 つは偽": {
+        "type": "user",
+        "isMultiple": true,
+        "op": "empty",
+        "value": null,
+        "server": [1],
+        "form": [{ "id": 1, "label": "a" }],
+        "holds": false
+    }
+}

@@ -1,0 +1,23 @@
+# 秘匿情報検査(#11)の設定のうち、作業木の走査(gitleaks dir)用。gitleaks 8.30.1。
+#
+# 規則と共通の除外は履歴の走査用の .gitleaks.toml を [extend] で取り込み、ここには作業木の走査だけの除外を足す。
+# [extend] の path は必須(無いと規則が 0 本になり、何も検出せずに緑になる)。path は gitleaks のプロセスの
+# 作業ディレクトリ基点で解決されるので、このアプリのルートを作業ディレクトリにして実行する(scripts/ci/secrets)。
+#
+# gitleaks dir は git 管理外の実ファイルも読む。.gitignore が .env・.env.backup・.env.production を commit しないと定義済みで、
+# ここに挙げる実在のローカル環境ファイルは常にホストの実際の秘密を含み、commit されない(履歴には現れない)。
+# fixture ではなく実在ファイルなので、通常の走査除外と同じ扱いとする
+# (台帳⑧ #11 に scope = dir で同じ正規表現を登録済み)。.env.example は対象から外さない(誤って実値を書けば検出する)。
+# 履歴の走査はこのファイルを使わない(commit された .env は検出する)。
+# 流用元 = chatpinet_2 の .gitleaks-dir.toml(除外を intra-deliver の .gitignore に合わせた)。
+
+[extend]
+path = ".gitleaks.toml"
+
+[[allowlists]]
+description = "実在のローカル環境ファイル(git 管理外。.gitignore の .env 系と同じ対象。作業木の走査だけ)"
+paths = [
+    '''(?:^|/)\.env$''',
+    '''(?:^|/)\.env\.backup$''',
+    '''(?:^|/)\.env\.production$''',
+]

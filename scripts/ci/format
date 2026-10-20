@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# F 整形(#2)。整形の差分が 1 件でもあれば非 0 で終わる(直さない)。
+set -euo pipefail
+
+cd "$(dirname "$0")/../.."
+
+if [ "$#" -ne 0 ]; then
+    echo "scripts/ci/format は引数を受けない" >&2
+    exit 2
+fi
+
+composer lint:check
