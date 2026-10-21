@@ -6,17 +6,16 @@
 #
 # 入り方:
 #   scripts/ci/all           区切りの既定(composer ci:check)。
-#                            D(依存の監査。通信が要る)は、依存の入力が最後に D が全成功したときと同じで同じ日なら飛ばす
+#                            D(依存の監査。通信が要る)は、依存の入力が最後に D が全成功し依存の監査の注意が 0 件だったときと同じで同じ日なら飛ばす
 #                            (鍵の計算・比較・記録はこのファイルの deps_key と build/deps.verified の 1 か所。下の「D の鍵」)。
 #   scripts/ci/all --full    全段(composer ci:full。段の終わり・公開の前。環境変数 CI_FULL=1 でも同じ)。D も常に走らせる。
 # E は N(ビルド)の成功が前提: N が成功していなければ、既定でも --full でも飛ばす(前回のビルドで E2E を通して成功と出さない)。
-# D の鍵 = D が読む入力(composer.json・composer.lock・package.json・package-lock.json・config/guardrails_allow.php・scripts/ci/deps・
-#   scripts/ci/licenses.php・vendor/composer/installed.json・node_modules/.package-lock.json。無いファイルは「無い」として含める)と、
-#   licenses.php が読み込む判定のコード(tests/Architecture/Engine・tests/Architecture/Policy の *.php をすべて。使うクラスを 1 つずつ
-#   挙げると、足したクラスを鍵に入れ忘れて判定のコードだけを変えた日に D が飛ばされるので、ディレクトリごと。ディレクトリが無いときは
-#   「無い」と記録せずに D を失敗にする = 名前の変更で黙って鍵から外れない)の SHA-256 と、
-#   当日の日付(Asia/Tokyo。advisory と台帳⑧ #7 の期限は日で変わるので 1 日 1 回は走る)。D の前に build/deps.verified を消し、D が成功したときだけ書く。
-#   scripts/ci/deps を単体で走らせても記録には触れない。記録が無い(新しい clone・build の削除)ときは D が走る。
+# D の鍵 = D が読む入力のファイル(下の deps_key の一覧。無いファイルは「無い」として含める)と、licenses.php・audit.php が読み込む
+#   判定のコードのディレクトリの *.php すべて(使うクラスを 1 つずつ挙げると、足したクラスを鍵に入れ忘れて判定のコードだけを変えた日に
+#   D が飛ばされるので、ディレクトリごと。ディレクトリが無いときは「無い」と記録せずに D を失敗にする = 名前の変更で黙って鍵から外れない)の
+#   SHA-256 と、
+#   当日の日付(Asia/Tokyo。advisory と台帳⑧ #7 の期限は日で変わるので 1 日 1 回は走る)。D の前に build/deps.verified を消し、D が成功し依存の監査の注意が 0 件のときだけ書く。
+#   scripts/ci/deps を単体で走らせても build/deps.verified には触れない。記録が無い(新しい clone・build の削除)ときは D が走る。
 # 飛ばした段は結果の一覧に「飛ばした」と理由つきで出す(黙って外さない)。飛ばした段は成功に数えず、失敗にも数えない。
 #
 # 途中で止めずに走らせる段を全部走らせ、最後に各段の成否を一覧で出す。1 段でも成功でなければ非 0 で終わる。
@@ -51,13 +50,26 @@ stages=(
 )
 
 readonly DEPS_RECORD="build/deps.verified"
+# 依存の監査の WARN の行の記録(scripts/ci/audit.php が書く)。見つかったものがある間は D を飛ばさず、毎回一覧に件数を出す
+# (docs の 設計/コード構成/検査.md 6 節)
+readonly AUDIT_RECORD="build/dependency-audit.txt"
+
+# 依存の監査の WARN の行の数(記録が無ければ 0)
+audit_warning_count() {
+    if [ -f "${AUDIT_RECORD}" ]; then
+        echo "$(($(wc -l <"${AUDIT_RECORD}")))"
+    else
+        echo 0
+    fi
+}
 
 # D の鍵(上の「D の鍵」)
 deps_key() {
     local file
     {
         for file in composer.json composer.lock package.json package-lock.json config/guardrails_allow.php \
-            scripts/ci/deps scripts/ci/licenses.php vendor/composer/installed.json node_modules/.package-lock.json; do
+            scripts/ci/deps scripts/ci/licenses.php scripts/ci/audit.php scripts/update-check/autoload.php \
+            vendor/composer/installed.json node_modules/.package-lock.json; do
             if [ -f "${file}" ]; then
                 printf '%s  %s\n' "$(sha256sum "${file}" | cut -d' ' -f1)" "${file}"
             else
@@ -66,7 +78,8 @@ deps_key() {
         done
         # 判定のコードのディレクトリが無い・読めないときは鍵を作らずに失敗にする(名前を変えたときに、黙って鍵から外さない)。
         # この組はパイプラインの中のサブシェルで、$(...) の中では errexit が効かないので、exit 1 で組を失敗にして pipefail で伝える
-        find tests/Architecture/Engine tests/Architecture/Policy -type f -name '*.php' -print0 | LC_ALL=C sort -z | xargs -0 -r sha256sum || exit 1
+        find tests/Architecture/Engine tests/Architecture/Policy scripts/update-check/src -type f -name '*.php' -print0 \
+            | LC_ALL=C sort -z | xargs -0 -r sha256sum || exit 1
         TZ=Asia/Tokyo date +%F
     } | sha256sum | cut -d' ' -f1
 }
@@ -75,6 +88,7 @@ results=()
 failed=0
 n_result=""
 deps_key_value=""
+audit_warnings=0
 
 for stage in "${stages[@]}"; do
     read -r -a words <<<"${stage}"
@@ -102,7 +116,7 @@ for stage in "${stages[@]}"; do
                 continue
             fi
             if [ "${full}" -eq 0 ] && [ -f "${DEPS_RECORD}" ] && [ "$(cat "${DEPS_RECORD}")" = "${deps_key_value}" ]; then
-                reason="最後に成功した検査から依存の入力が変わっていない(同日)。全段 = scripts/ci/all --full か composer ci:full"
+                reason="最後に全成功し依存の監査の注意が 0 件だった検査から依存の入力が変わっていない(同日)。全段 = scripts/ci/all --full か composer ci:full"
             fi
             ;;
     esac
@@ -116,7 +130,7 @@ for stage in "${stages[@]}"; do
     printf "\n==> %s\n" "${label}"
 
     if [ "${symbol}" = "D" ]; then
-        rm -f "${DEPS_RECORD}"
+        rm -f "${DEPS_RECORD}" "${AUDIT_RECORD}"
     fi
 
     if [ ! -f "${script}" ]; then
@@ -130,16 +144,27 @@ for stage in "${stages[@]}"; do
         case "${symbol}" in
             N) n_result="成功" ;;
             D)
-                mkdir -p "$(dirname "${DEPS_RECORD}")"
-                printf '%s\n' "${deps_key_value}" >"${DEPS_RECORD}"
+                audit_warnings="$(audit_warning_count)"
+                if [ "${audit_warnings}" -eq 0 ]; then
+                    mkdir -p "$(dirname "${DEPS_RECORD}")"
+                    printf '%s\n' "${deps_key_value}" >"${DEPS_RECORD}"
+                fi
                 ;;
         esac
     else
         status=$?
         results+=("${label}: 失敗(終了コード ${status})")
         failed=1
+        if [ "${symbol}" = "D" ]; then
+            audit_warnings="$(audit_warning_count)"
+        fi
     fi
 done
+
+# 依存の監査の注意(この回に走った D の分。門では止めないので、終了コードは変えない)
+if [ "${audit_warnings}" -gt 0 ]; then
+    results+=("D 依存の監査の注意: WARN の行 ${audit_warnings} 件(${AUDIT_RECORD}。門では止めない)")
+fi
 
 echo
 if [ "${full}" -eq 1 ]; then

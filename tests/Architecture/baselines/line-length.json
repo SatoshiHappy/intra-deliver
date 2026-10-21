@@ -372,7 +372,6 @@
     "scripts/ci/licenses.php": 6,
     "scripts/update-check/run.php": 1,
     "scripts/update-check/src/AuditCheck.php": 4,
-    "scripts/update-check/src/CommandResult.php": 1,
     "scripts/update-check/src/ComposerOutdatedCheck.php": 1,
     "scripts/update-check/src/DockerRun.php": 2,
     "scripts/update-check/src/EolClient.php": 4,

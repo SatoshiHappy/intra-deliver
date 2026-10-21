@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 # N フロント(主列とは別の列)。2 つの入り方(scripts/ci/all が別の段として呼ぶ)。
-#   scripts/ci/front        N: 本番ビルド → 印の生成物の一致と生成器の単体テスト → 画面の単体テスト(vp test)→ lint と整形 → 型検査 → import の向き(dependency-cruiser)→ 未使用のファイル・export(knip)→ 依存監査(#7 の一部)。
+#   scripts/ci/front        N: 本番ビルド → 印の生成物の一致と生成器の単体テスト → 画面の単体テスト(vp test)→ lint と整形 → 型検査 → import の向き(dependency-cruiser)→ 未使用のファイル・export(knip)。
 #                           安い段なので T の前。lint の前に、印の生成物が正本と一致するか(--check。入力の指紋を含む)と生成器の単体テストを走らせる。
 #   scripts/ci/front --e2e  E: E2E(Playwright)。N のビルドの資産に掛けるので N の後に走らせる。重い段なので T の後。
 # ビルドを先に走らせる: ビルドの中で Wayfinder の Vite プラグインがルートの TypeScript(resources/js/routes ほか。git 管理外)を
 # 生成し、型検査はそれを読む。E2E は本番ビルドの資産で、テスト用 DB に初期データを入れたサーバーに掛ける。
-# 流用元 = chatpinet_2 の scripts/ci/front(lint・型・E2E を足した。lock の存在確認と npm audit は残した)。
+# 流用元 = chatpinet_2 の scripts/ci/front(lint・型・E2E を足した。lock の存在確認は残した)。
 set -euo pipefail
 
 cd "$(dirname "$0")/../.."
@@ -56,9 +56,6 @@ if [ "${e2e}" -eq 0 ]; then
 
     echo "==> 未使用のファイル・export(knip)"
     npm run unused:check
-
-    echo "==> npm audit(advisory 0)"
-    scripts/ci/record npm-audit -- npm audit --audit-level=low
 
     exit 0
 fi

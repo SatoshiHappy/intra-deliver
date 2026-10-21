@@ -43,9 +43,9 @@ trait RunsCiScripts
         }
 
         // D の鍵が読むディレクトリ(無いと D が鍵を計算できずに失敗する)
-        foreach (['Engine', 'Policy'] as $directory) {
-            mkdir($this->work.'/tests/Architecture/'.$directory, 0777, true);
-            file_put_contents($this->work.'/tests/Architecture/'.$directory.'/Sample.php', "<?php\n");
+        foreach (['tests/Architecture/Engine', 'tests/Architecture/Policy', 'scripts/update-check/src'] as $directory) {
+            mkdir($this->work.'/'.$directory, 0777, true);
+            file_put_contents($this->work.'/'.$directory.'/Sample.php', "<?php\n");
         }
 
         $this->installDate('2026-10-19');
