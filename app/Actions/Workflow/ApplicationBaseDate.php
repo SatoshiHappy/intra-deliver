@@ -6,9 +6,11 @@ use App\Queries\Authz\Api\Requester;
 use App\Queries\Workflow\ApplicableFlows;
 use App\Queries\Workflow\ApplicationBaseDates;
 use App\Queries\Workflow\EffectiveFlowVersions;
+use App\Queries\Workflow\RecordApplyFlows;
 use App\Support\AccessContext;
 use App\Support\InputText;
 use Carbon\CarbonImmutable;
+use Closure;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -22,6 +24,7 @@ class ApplicationBaseDate
     public function __construct(
         private EffectiveFlowVersions $versions,
         private ApplicableFlows $applicableFlows,
+        private RecordApplyFlows $recordApplyFlows,
     ) {}
 
     /**
@@ -32,6 +35,36 @@ class ApplicationBaseDate
      */
     public function resolve(AccessContext $context, int $flowId, ?string $input): array
     {
+        $requester = Requester::fromAccessContext($context);
+        $applicable = fn (CarbonImmutable $date) => $this->applicableFlows->isApplicable($requester, $date, $flowId);
+
+        return $this->resolveWith($context, $flowId, $input, $applicable);
+    }
+
+    /**
+     * 既存のデータからの申請: 規則 (4) を、申請者が申請基準日に既存のデータからの申請をできるか({@see RecordApplyFlows::allows()})で見る
+     * (docs の 設計/ワークフロー/申請の周辺/既存のデータからの申請.md の 1 節)。ほかの規則と順は {@see self::resolve()} と同じ。
+     *
+     * @return array{CarbonImmutable, int} 申請基準日と、その日に有効な版の id
+     *
+     * @throws ValidationException 規則に外れたとき(base_date)
+     */
+    public function resolveFromRecord(AccessContext $context, int $flowId, ?string $input): array
+    {
+        $requester = Requester::fromAccessContext($context);
+        $applicable = fn (CarbonImmutable $date) => $this->recordApplyFlows->allows($requester, $flowId, $date);
+
+        return $this->resolveWith($context, $flowId, $input, $applicable);
+    }
+
+    /**
+     * @param  Closure(CarbonImmutable): bool  $applicable  規則 (4)
+     * @return array{CarbonImmutable, int}
+     *
+     * @throws ValidationException
+     */
+    private function resolveWith(AccessContext $context, int $flowId, ?string $input, Closure $applicable): array
+    {
         $date = $this->parse($input);
         $day = $date->format(ApplicationBaseDates::FORMAT);
 
@@ -41,7 +74,7 @@ class ApplicationBaseDate
 
         $versionId = $this->versions->idOn($flowId, $date) ?? throw self::error(sprintf(CaseOperationErrors::BASE_DATE_NO_VERSION, $day));
 
-        if (! $this->applicableFlows->isApplicable(Requester::fromAccessContext($context), $date, $flowId)) {
+        if (! $applicable($date)) {
             throw self::error(sprintf(CaseOperationErrors::BASE_DATE_NOT_APPLICABLE, $day));
         }
 

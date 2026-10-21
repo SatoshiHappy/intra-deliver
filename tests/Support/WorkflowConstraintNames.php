@@ -3,7 +3,7 @@
 namespace Tests\Support;
 
 /**
- * ワークフローの 17 表の、設計どおりの制約と索引の名前(切り詰める前。主キーを除く。一意制約の索引は制約と同じ名前)。表の形 {@see WorkflowSchema} と分けて置く
+ * ワークフローの 18 表の、設計どおりの制約と索引の名前(切り詰める前。主キーを除く。一意制約の索引は制約と同じ名前)。表の形 {@see WorkflowSchema} と分けて置く
  * (名前は docs の 設計/ワークフロー/データモデル/直列化と検査.md 4 節と、段 3a の 設計/ワークフロー/ルートの深さ/データモデル/直列化と検査.md 5 節。
  * 63 バイトを超えて切り詰められる名前が重ならないことは tests/Feature/Models/Workflow/ConstraintNamesTest.php が確かめる)。
  */
@@ -259,5 +259,14 @@ final class WorkflowConstraintNames
         'workflow_proxies_principal_user_id_index',
         'workflow_proxies_workflow_flow_id_index',
         'workflow_proxies_registered_by_user_id_index',
+        // 添付で足す名前(設計/ワークフロー/申請の周辺/データモデル.md の 2.2 節・3.1 節・3.2 節・3.4 節)
+        'workflow_route_nodes_prevents_attachment_add_kind_check',
+        'workflow_case_nodes_prevents_attachment_add_kind_check',
+        'workflow_cases_state_is_attachment_enabled_check',
+        'workflow_case_draft_attachments_upload_id_unique',
+        'workflow_case_draft_attachments_name_check',
+        'workflow_case_draft_attachments_workflow_case_id_foreign',
+        'workflow_case_draft_attachments_upload_id_foreign',
+        'workflow_case_draft_attachments_workflow_case_id_index',
     ];
 }

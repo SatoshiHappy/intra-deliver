@@ -15,6 +15,7 @@ use App\Queries\Menu\Api\MenuItemVisibility;
 use App\Queries\Menu\MenuResourceTypes;
 use App\Queries\Menu\QuickActionsHomeSection;
 use App\Queries\Notice\Api\NoticeTargets;
+use App\Queries\Records\Api\RecordApplyEntries;
 use App\Queries\Records\Api\RecordHolds;
 use App\Queries\Records\Api\RecordShowSections;
 use App\Queries\Records\RecordMenuItemVisibility;
@@ -27,6 +28,7 @@ use App\Queries\Workflow\ProcessedThisMonthHomeSection;
 use App\Queries\Workflow\ProxyTargetTerm;
 use App\Queries\Workflow\WorkflowCountersHomeSection;
 use App\Queries\Workflow\WorkflowLeadHomeSection;
+use App\Queries\Workflow\WorkflowRecordApplyEntries;
 use App\Queries\Workflow\WorkflowRecordHolds;
 use Carbon\CarbonImmutable;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -57,6 +59,9 @@ class AppServiceProvider extends ServiceProvider
 
         // 依存の逆転: 業務データの入れ物の書き込みが、未完了の案件が指すレコードを持ち主の規則で守る(docs の 設計/ワークフロー/業務データとの接続/README.md 4 節)
         $this->app->tag([WorkflowRecordHolds::class], RecordHolds::TAG);
+
+        // 依存の逆転: 業務データの入れ物の詳細の「申請する」が、レコードから申請できる入口を聞く(docs の 設計/ワークフロー/申請の周辺/既存のデータからの申請.md の 2 節)
+        $this->app->tag([WorkflowRecordApplyEntries::class], RecordApplyEntries::TAG);
 
         // 依存の逆転: メニューの表示判定が、ルートを受け持つモジュールの追加の判定で隠す(docs の 設計/ワークフロー/申請の周辺/メニューと導線.md 1.2)
         $this->app->tag([RecordMenuItemVisibility::class], MenuItemVisibility::TAG);

@@ -193,7 +193,7 @@ final class WorkflowHomeSectionsTest extends TransactionalTestCase
      */
     public function test_without_definitions_it_returns_zero_counts_without_throwing(): void
     {
-        DB::statement('TRUNCATE workflow_case_confirmations, workflow_case_confirm_targets, workflow_case_history_users, workflow_proxies, workflow_case_assignments, workflow_case_send_backs, workflow_case_edges, workflow_case_node_targets, workflow_case_histories, workflow_case_nodes, workflow_cases, workflow_route_send_backs, workflow_route_edges, workflow_route_nodes, workflow_flow_versions, workflow_flows, workflow_contents');
+        DB::statement('TRUNCATE workflow_case_draft_attachments, workflow_case_confirmations, workflow_case_confirm_targets, workflow_case_history_users, workflow_proxies, workflow_case_assignments, workflow_case_send_backs, workflow_case_edges, workflow_case_node_targets, workflow_case_histories, workflow_case_nodes, workflow_cases, workflow_route_send_backs, workflow_route_edges, workflow_route_nodes, workflow_flow_versions, workflow_flows, workflow_contents');
 
         $this->assertSame([0, 0, 0, 0], array_column($this->counters('u0001'), 3));
     }

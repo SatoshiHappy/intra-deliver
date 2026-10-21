@@ -4,13 +4,14 @@ namespace Tests\Feature\Models\Workflow;
 
 use Illuminate\Support\Facades\DB;
 use Tests\Support\TransactionalTestCase;
+use Tests\Support\WorkflowAttachmentSchema;
 use Tests\Support\WorkflowCaseHandlingSchema;
 use Tests\Support\WorkflowConstraintNames;
 use Tests\Support\WorkflowSchema;
 
 /**
- * ワークフローの 17 表の制約と索引の名前(docs の 設計/ワークフロー/データモデル/直列化と検査.md 4 節・6 節と、段 3a の ルートの深さ/データモデル/直列化と検査.md
- * 5 節・7 節: 名前は 設計/共通マスタ/共通の規則.md 9 節の形で、63 バイトを超える名前を PostgreSQL が切り詰めても重ならない)。設計どおりの名前(主キーを除く 246 個)を切り詰めた一覧と、マイグレーションの後の
+ * ワークフローの 18 表の制約と索引の名前(docs の 設計/ワークフロー/データモデル/直列化と検査.md 4 節・6 節と、段 3a の ルートの深さ/データモデル/直列化と検査.md
+ * 5 節・7 節: 名前は 設計/共通マスタ/共通の規則.md 9 節の形で、63 バイトを超える名前を PostgreSQL が切り詰めても重ならない)。設計どおりの名前(主キーを除く 255 個)を切り詰めた一覧と、マイグレーションの後の
  * DB の名前(主キーを含む)を照合する。ワークフローの表だけを見る。
  */
 final class ConstraintNamesTest extends TransactionalTestCase
@@ -21,7 +22,7 @@ final class ConstraintNamesTest extends TransactionalTestCase
     {
         $truncated = $this->truncatedNames();
 
-        $this->assertCount(247, WorkflowConstraintNames::NAMES);
+        $this->assertCount(255, WorkflowConstraintNames::NAMES);
         $this->assertSame(count(WorkflowConstraintNames::NAMES), count(array_unique($truncated)));
     }
 
@@ -41,13 +42,15 @@ final class ConstraintNamesTest extends TransactionalTestCase
     }
 
     /**
-     * ワークフローの表(案件の運用で足した表を含む)。
+     * ワークフローの表(案件の運用で足した表と、一時保存の添付の表を含む)。
      *
      * @return list<string>
      */
     private function tables(): array
     {
-        return array_keys(WorkflowSchema::COLUMNS + WorkflowCaseHandlingSchema::COLUMNS);
+        return array_keys(
+            WorkflowSchema::COLUMNS + WorkflowCaseHandlingSchema::COLUMNS + WorkflowAttachmentSchema::COLUMNS,
+        );
     }
 
     /**

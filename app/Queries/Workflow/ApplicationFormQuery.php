@@ -32,6 +32,7 @@ class ApplicationFormQuery
         private CaseOperationDecider $decider,
         private RecordFormQuery $forms,
         private ApplicationNext $next,
+        private RecordApplyFlows $recordApplyFlows,
     ) {}
 
     /**
@@ -120,6 +121,32 @@ class ApplicationFormQuery
         ];
 
         return $this->form('reapply', $flow, ['id' => $case->id, 'number' => $number, 'revision' => $case->revision], $module, $initial, $recordId, $date, $context);
+    }
+
+    /**
+     * 既存のデータからの申請の画面の既定の申請者(選び方 = 設計/ワークフロー/案件の運用/画面/案件の画面.md の 6.1 節。候補 = 自分と各代理元を
+     * 1 人ずつ {@see RecordApplyFlows::allows()} で判定した残り = 設計/ワークフロー/申請の周辺/既存のデータからの申請.md の 1 節)。
+     *
+     * @param  int|null  $applicantUserId  クエリ applicant(解釈できない値は呼び手が null にする)
+     * @return int|null 選ぶ代理元(自分なら null)
+     *
+     * @throws AuthorizationException 候補がいないとき(既存のデータからの申請をできない)
+     */
+    public function recordApplicant(AccessContext $context, int $flowId, ?int $applicantUserId): ?int
+    {
+        $requester = Requester::fromAccessContext($context);
+        $candidates = $this->recordApplyFlows->applicantIds($requester, $flowId, $context->date);
+        $others = array_values(array_diff($candidates, [$context->userId]));
+
+        if (in_array($applicantUserId, $others, true)) {
+            return $applicantUserId;
+        }
+
+        if ($others !== $candidates) {
+            return null;
+        }
+
+        return $others[0] ?? throw new AuthorizationException(CaseEntryGate::NOT_APPLICABLE_MESSAGE);
     }
 
     /**

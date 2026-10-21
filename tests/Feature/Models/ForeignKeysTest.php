@@ -15,6 +15,7 @@ use Tests\Support\RecordsCommonSchema;
 use Tests\Support\RecordsSchema;
 use Tests\Support\TransactionalTestCase;
 use Tests\Support\UploadSchema;
+use Tests\Support\WorkflowAttachmentSchema;
 use Tests\Support\WorkflowCaseHandlingSchema;
 use Tests\Support\WorkflowSchema;
 
@@ -25,7 +26,8 @@ use Tests\Support\WorkflowSchema;
  * レコードの共通機能の表とアップロードの台帳も同じ = 設計/業務データの入れ物/レコードの共通機能/データモデル/表.md の 2.9 節)。
  *
  * 外部キーの行はモジュールごとの表の形(tests/Support/ の CommonMasterSchema・MenuSchema・RecordsSchema・WorkflowSchema・
- * WorkflowCaseHandlingSchema・NoticeSchema・RecordsCommonSchema・UploadSchema の FOREIGN_KEYS)に置き、ここで並べる。
+ * WorkflowCaseHandlingSchema・NoticeSchema・RecordsCommonSchema・UploadSchema・WorkflowAttachmentSchema の FOREIGN_KEYS)に置き、
+ * ここで並べる(一時保存の添付の表 = 設計/ワークフロー/申請の周辺/データモデル.md の 3.3 節)。
  * 1 行 = 1 つの外部キー: 参照する側のモデル、factory の状態、列、参照先の表と列、削除の動作、
  * 参照する側のリレーション、参照先の側のリレーション(参照先のモジュールから参照する側のモジュールへ依存できないとき・同じ向きのリレーションが
  * 別の行にあるときは null)。削除の動作は、参照先の行を参照先の列のすべてで選んで消して確かめる(複合外部キーの参照先の列が id で終わらないため。
@@ -45,6 +47,7 @@ final class ForeignKeysTest extends TransactionalTestCase
         ...WorkflowCaseHandlingSchema::FOREIGN_KEYS,
         ...NoticeSchema::FOREIGN_KEYS,
         ...UploadSchema::FOREIGN_KEYS,
+        ...WorkflowAttachmentSchema::FOREIGN_KEYS,
     ];
 
     /**
@@ -239,7 +242,8 @@ final class ForeignKeysTest extends TransactionalTestCase
     private static function schemaColumns(): array
     {
         return CommonMasterSchema::COLUMNS + MenuSchema::COLUMNS + RecordsSchema::COLUMNS + RecordsCommonSchema::COLUMNS
-            + WorkflowSchema::COLUMNS + WorkflowCaseHandlingSchema::COLUMNS + NoticeSchema::COLUMNS + UploadSchema::COLUMNS;
+            + WorkflowSchema::COLUMNS + WorkflowCaseHandlingSchema::COLUMNS + NoticeSchema::COLUMNS + UploadSchema::COLUMNS
+            + WorkflowAttachmentSchema::COLUMNS;
     }
 
     /**

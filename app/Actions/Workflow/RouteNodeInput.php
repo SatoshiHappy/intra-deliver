@@ -25,6 +25,8 @@ final readonly class RouteNodeInput
      * @param  list<string>  $sendBackCodes  差戻しできる先のコード
      * @param  int|null  $deadlineDays  処理期限の日数(NULL = 期限なし)
      * @param  int|null  $confirmSubjectGroupId  確認する人の対象者(用途 selection。NULL = 確認なし)
+     * @param  bool  $preventsAttachmentAdd  このステップの処理で添付を追加できない(真は承認・横配置・縦配置だけ =
+     *                                       設計/ワークフロー/申請の周辺/データモデル.md の 2.2 節)
      */
     public function __construct(
         public string $code,
@@ -47,6 +49,7 @@ final readonly class RouteNodeInput
         public array $sendBackCodes = [],
         public ?int $deadlineDays = null,
         public ?int $confirmSubjectGroupId = null,
+        public bool $preventsAttachmentAdd = false,
     ) {}
 
     /**
