@@ -2,8 +2,8 @@ import type { Locator } from '@playwright/test';
 import { expect } from './test';
 
 // 初期データの日付は流す日からの相対で入る(docs の 設計/ワークフロー/案件の運用/初期データ.md 1.1・1.3)ので、E2E の期待も流す日から決める。
-// E2E は SEED_DATE を置かずに流すので、流す日 = 流した時の Asia/Tokyo の今日。E2E は流した直後に走るので、走らせる時の東京の今日を流す日とみなす
-// (流してから走るまでの間に東京の日付が変わると、日付の期待が 1 日ずれる)。
+// 流す日は scripts/ci/front が 1 回だけ決めて SEED_DATE で流す側と共有する(流してから走るまでに東京の日付が変わっても、期待がずれない)。
+// SEED_DATE を置かずに spec だけ走らせたときは、流した直後とみなして走らせる時の東京の今日にする。
 
 /** 基準の日(Database\Seeders\SeedingDates::BASE と同じ値) */
 const BASE_DAY = '2026-10-15';
@@ -18,10 +18,17 @@ export function todayInTokyo(): string {
 }
 
 /**
+ * 初期データを流した日(YYYY-MM-DD)。
+ */
+function seedingDay(): string {
+    return process.env.SEED_DATE ?? todayInTokyo();
+}
+
+/**
  * 基準の日の値で書いた日付(YYYY-MM-DD。seeder の定数と、E2E がそれと前後をそろえて入れる日付)の、流す日からの相対の日付。
  */
 export function seededDate(written: string): string {
-    const offset = Date.parse(todayInTokyo()) - Date.parse(BASE_DAY);
+    const offset = Date.parse(seedingDay()) - Date.parse(BASE_DAY);
 
     return new Date(Date.parse(written) + offset).toISOString().slice(0, 10);
 }

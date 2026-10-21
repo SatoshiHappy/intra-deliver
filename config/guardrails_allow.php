@@ -41,7 +41,7 @@ $nonDocumentNames = [
     ['pattern' => 'LICENSE.md', 'reason' => '依存のパッケージのライセンスのファイル名'],
 ];
 
-// AI の道具の生成物(参照と経緯の語 R1 だけの除外。docs の 設計/コード構成/検査.md 6 節。正本の .ai/ は外さない)
+// AI の道具の生成物(参照と経緯の語 R1 だけの除外。docs の 設計/コード構成/検査/README.md 6.2。正本の .ai/ は外さない)
 $assistantGeneratedExclusions = [
     ['path' => '.agents/**', 'reason' => '生成物(Laravel Boost が作る skills)'],
     ['path' => '.claude/**', 'reason' => '生成物(Laravel Boost が作る skills)'],
@@ -82,7 +82,7 @@ return [
             ...$analysisExclusions,
             ['baseline' => 'tests/Architecture/baselines/module-internals.json', 'reason' => '内部への依存の今の数(上限。上げない)'],
         ],
-        // R1 参照と経緯の語(docs の 設計/コード構成/検査.md 6 節。流用元に無い検査名)
+        // R1 参照と経緯の語(docs の 設計/コード構成/検査/README.md 6.2。流用元に無い検査名)
         'R1' => [
             $fixtureExclusion,
             ...$dependencyAndGeneratedExclusions,

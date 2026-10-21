@@ -1,5 +1,5 @@
 // scripts/quality/report.mjs の単体テスト(node --test 'scripts/quality/*.test.mjs')。記録の行は作りもので、QUALITY_LOG の差し替えで CLI も確かめる。
-// 正本 = docs の 設計/コード構成/検査.md の 6 節「結果の記録」。
+// 正本 = docs の 設計/コード構成/検査/結果の記録.md の 6.6「結果の記録」。
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';

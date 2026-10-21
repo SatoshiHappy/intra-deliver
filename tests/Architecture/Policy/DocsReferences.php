@@ -3,7 +3,7 @@
 namespace Tests\Architecture\Policy;
 
 /**
- * 参照の実在の照合(tests/Architecture/DocsReferencesTest.php)の intra-deliver 固有の値。docs の 設計/コード構成/検査.md 6 節。
+ * 参照の実在の照合(tests/Architecture/DocsReferencesTest.php)の intra-deliver 固有の値。docs の 設計/コード構成/検査/README.md 6.2。
  */
 final class DocsReferences
 {

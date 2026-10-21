@@ -5,7 +5,7 @@ namespace Tests\Architecture;
 use PHPUnit\Framework\Attributes\DataProvider;
 
 /**
- * 正規表現の $(PHPStan の自作規則 regexEndAnchor。docs の 設計/コード構成/検査.md 6 節)の自己証明。
+ * 正規表現の $(PHPStan の自作規則 regexEndAnchor。docs の 設計/コード構成/検査/README.md 6.2)の自己証明。
  */
 final class RegexEndAnchorSelfProofTest extends PhpStanSelfProofTestCase
 {

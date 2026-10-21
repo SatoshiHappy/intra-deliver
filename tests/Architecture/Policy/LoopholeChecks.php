@@ -58,7 +58,7 @@ final class LoopholeChecks
     /**
      * (b) phpstan の excludePaths・ignoreErrors(baseline の項目を含む)。phpstan が解決した値で照合する。
      * excludePaths は⑧に登録したものだけが通る。ignoreErrors と baseline は置けない(⑧に登録しても失敗にする =
-     * docs の 設計/コード構成/検査.md 6 節「baseline なし」)。
+     * docs の 設計/コード構成/検査/README.md 6.2「baseline なし」)。
      */
     public function phpstan(): CheckResult
     {

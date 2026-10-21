@@ -1,5 +1,5 @@
 // scripts/ci/record の単体テスト(node --test 'scripts/ci/*.test.mjs')。一時の git リポジトリと QUALITY_LOG の差し替えで確かめる。
-// 正本 = docs の 設計/コード構成/検査.md の 6 節「結果の記録」。
+// 正本 = docs の 設計/コード構成/検査/結果の記録.md の 6.6「結果の記録」。
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { execFile, execFileSync, spawnSync } from 'node:child_process';

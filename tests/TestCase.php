@@ -11,7 +11,7 @@ use RuntimeException;
  * Laravel を起動するテストの基底クラス。DB を使うテストはこのクラスを直接継承せず、
  * DB の扱いを決めた基底クラス(Feature = {@see Support\TransactionalTestCase})を継承する。
  *
- * テストが開発用 DB を作り直さないための保護を 2 つ持つ(テスト DB・並列と専用 DB の名前 = docs の 設計/コード構成/検査.md 6 節)。
+ * テストが開発用 DB を作り直さないための保護を 2 つ持つ(テスト DB・並列と専用 DB の名前 = docs の 設計/コード構成/検査/一括検査の段.md 6.5)。
  * - 設定キャッシュ(bootstrap/cache/config.php)があればアプリを作らない({@see self::createApplication()})。
  *   キャッシュがあると tests/bootstrap.php が置くテスト DB の指定が効かず、開発用 DB の設定のまま動くため。
  * - DB の初期化の前に、実際に接続した DB がテスト DB であることを確かめる({@see self::ensureTestDatabase()})。

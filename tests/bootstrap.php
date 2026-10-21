@@ -2,7 +2,7 @@
 
 /*
  * PHPUnit の起動(phpunit.xml の bootstrap)。作業木ごとのテスト DB の名前を DB_DATABASE に置く
- * (Tests\Support\WorktreeTestEnvironment。docs の 設計/コード構成/検査.md 6 節)。
+ * (Tests\Support\WorktreeTestEnvironment。docs の 設計/コード構成/検査/一括検査の段.md 6.5)。
  * Laravel の .env の読み込みは既にある環境変数を上書きしないので、読み込みより前に putenv・$_ENV・$_SERVER へ置く。
  */
 

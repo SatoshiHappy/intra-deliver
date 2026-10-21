@@ -9,7 +9,7 @@ use Tests\TestCase;
 
 /**
  * 依存の監査 scripts/ci/audit.php が、見つかったものを門で止めずに出して記録し、監査が走らないときは止めること
- * (docs の 設計/コード構成/検査.md 6 節)。偽の composer・npm で走らせる。
+ * (docs の 設計/コード構成/検査/一括検査の段.md 6.5)。偽の composer・npm で走らせる。
  */
 final class AuditScriptTest extends TestCase
 {

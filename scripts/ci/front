@@ -67,7 +67,7 @@ fi
 
 echo "==> E2E(Playwright。テスト用 DB に初期データを入れ、組ごとにその写しの DB のサーバーを別のポートで起動して並列に掛ける)"
 # E2E の DB とポートは、この作業木のテスト用のもの(開発用 DB の状態に依らず通し、ほかの作業木と DB・ポートをぶつけないため)。
-# 決め方は tests/Support/WorktreeTestEnvironment(docs の 設計/コード構成/検査.md 6 節)。決められないときは理由を出して止まる。
+# 決め方は tests/Support/WorktreeTestEnvironment(docs の 設計/コード構成/検査/一括検査の段.md 6.5)。決められないときは理由を出して止まる。
 # DB の名前は環境変数で差し替える(.env は変えない)。この段は migrate:fresh --seed から始めるので、PHPUnit の段が残したものにも依らない。
 resolve_worktree_value() {
     php -r 'require "vendor/autoload.php"; try { echo Tests\Support\WorktreeTestEnvironment::'"$1"'(getcwd()); } catch (Throwable $e) { fwrite(STDERR, $e->getMessage().PHP_EOL); exit(1); }'
@@ -88,6 +88,9 @@ fi
 # E2E は利用者の切替をオンで走らせ、その初期データを DatabaseSeeder の後に入れる(docs の 設計/デモユーザー切替/README.md 2.2。
 # Playwright の webServer はこの環境変数を引き継ぐ)。本番ビルド(上の npm run build)には足さない
 export DEMO_ENABLED=true
+# 初期データを流す日は 1 回だけ決め、流す側(SEED_DATE)と E2E の日付の期待(tests/e2e/support/seed-dates.ts)で同じ値にする。
+# 流してから spec が走るまでに東京の日付が変わっても、期待がずれない(docs の 設計/ワークフロー/案件の運用/初期データ.md 1.3)
+export SEED_DATE="${SEED_DATE:-$(TZ=Asia/Tokyo date +%F)}"
 php artisan migrate:fresh --seed --force --no-interaction
 # E2E 専用のメニューの初期データ(入れ子のフォルダ・畳んだ帯の飛び出し・既定のアイコンを画面で確かめる 1 組。docs の 設計/画面の意匠/検査と否決案.md 9 節)
 php artisan db:seed --class=E2eMenuSeeder --force --no-interaction

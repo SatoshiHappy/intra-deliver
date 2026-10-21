@@ -12,7 +12,7 @@ use Tests\Architecture\Policy\DocsReferences;
 use Tests\Architecture\Policy\Licenses;
 
 /**
- * 参照の実在(docs の 設計/コード構成/検査.md 6 節)の照合と自己証明。判定は {@see DocsReferencesCheck}、固有の値は {@see DocsReferences}、
+ * 参照の実在(docs の 設計/コード構成/検査/README.md 6.2)の照合と自己証明。判定は {@see DocsReferencesCheck}、固有の値は {@see DocsReferences}、
  * 対象は {@see TrackedFiles::targets()}、docs の場所は {@see DocsLocation}。
  */
 final class DocsReferencesTest extends TestCase

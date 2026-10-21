@@ -6,7 +6,7 @@ use JsonException;
 use UnexpectedValueException;
 
 /**
- * 今の違反の数を上限にするベースライン(汎用。照合 1・2 = docs の 設計/コード構成/検査.md 6 節)。値 = キー → 大きい順の並び(値が 1 つのキーは 1 要素)。
+ * 今の違反の数を上限にするベースライン(汎用。照合 1・2 = docs の 設計/コード構成/検査/README.md 6.3)。値 = キー → 大きい順の並び(値が 1 つのキーは 1 要素)。
  */
 final readonly class Baseline
 {

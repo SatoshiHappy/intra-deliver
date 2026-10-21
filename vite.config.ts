@@ -31,7 +31,7 @@ export default defineConfig({
     },
     test: {
         include: ['resources/js/**/*.test.ts'],
-        // 端末の時刻帯で計算する誤りを落とすため、Asia/Tokyo 以外で走らせる(docs の 設計/コード構成/検査.md 6 節)
+        // 端末の時刻帯で計算する誤りを落とすため、Asia/Tokyo 以外で走らせる(docs の 設計/コード構成/検査/README.md 6.2)
         env: { TZ: 'UTC' },
     },
     lint: {

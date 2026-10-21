@@ -6,7 +6,7 @@ use Dotenv\Dotenv;
 use UnexpectedValueException;
 
 /**
- * 文書の木(docs)の場所を決める(汎用。決め方 = docs の 設計/コード構成/検査.md 6 節。変数の名前と本体の作業木のときの場所は呼び出し側から渡す)。
+ * 文書の木(docs)の場所を決める(汎用。決め方 = docs の 設計/コード構成/検査/README.md 6.2。変数の名前と本体の作業木のときの場所は呼び出し側から渡す)。
  * 別の作業木から本体の docs を黙って読まないため、どれにも当たらなければ失敗する。相対パスは web の根から読む。
  */
 final class DocsLocation

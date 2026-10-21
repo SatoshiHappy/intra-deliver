@@ -12,7 +12,7 @@ use Tests\Architecture\Policy\Baselines;
 use UnexpectedValueException;
 
 /**
- * 画面側の部品の大きさ(docs の 設計/コード構成/検査.md 6 節)の照合と自己証明。数えるのは {@see OxlintSizes}。
+ * 画面側の部品の大きさ(docs の 設計/コード構成/検査/README.md 6.2)の照合と自己証明。数えるのは {@see OxlintSizes}。
  * 対象は vp lint と同じ範囲にするため、vite.config.ts の lint の ignorePatterns を読む。
  */
 final class ComponentSizeTest extends BaselineTestCase

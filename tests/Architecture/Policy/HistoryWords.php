@@ -3,7 +3,7 @@
 namespace Tests\Architecture\Policy;
 
 /**
- * 経緯の語の照合(tests/Architecture/HistoryWordsTest.php)の語(docs の 設計/コード構成/検査.md 6 節)。
+ * 経緯の語の照合(tests/Architecture/HistoryWordsTest.php)の語(docs の 設計/コード構成/検査/README.md 6.2)。
  * 漢字を CJK 統合漢字の区画と `々` で書くのは、`\p{Han}` が句読点の `、`・`。` も含むため。
  */
 final class HistoryWords

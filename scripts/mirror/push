@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # 写しへの push: 非公開の履歴を公開の写しへ出さずに、今の枝の HEAD の木だけを写しへ送り、写しの CI を流すため。
-# 手順・親の選び方・終了コード・前提は docs リポジトリの 設計/コード構成/検査.md の 6 節「GitHub Actions」。
+# 手順・親の選び方・終了コード・前提は docs リポジトリの 設計/コード構成/検査/一括検査の段.md の 6.5「GitHub Actions」。
 #   scripts/mirror/push        引数は取らない
 # 環境変数 MIRROR_URL(写しの URL)・MIRROR_GITLEAKS(gitleaks の絶対パス)で差し替えられる(テストは偽物を渡す)。
 set -euo pipefail

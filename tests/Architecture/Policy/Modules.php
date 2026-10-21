@@ -65,8 +65,9 @@ final class Modules
     ];
 
     /**
-     * 移行中の一覧(docs の 設計/コード構成/README.md 2 節「公開の口」、検査.md 6 節): 公開の口の規則({@see PublicApiRules::publicApiDependencies()})の
-     * 前から、ほかのモジュールに内部(Api の下以外の業務処理・読み取り)を使われている土台のモジュール。載っている間は内部への依存を許す。
+     * 移行中の一覧(docs の 設計/コード構成/README.md 2 節「公開の口」、検査/README.md 6.2):
+     * 公開の口の規則({@see PublicApiRules::publicApiDependencies()})の前から、ほかのモジュールに内部(Api の下以外の業務処理・読み取り)を
+     * 使われている土台のモジュール。載っている間は内部への依存を許す。
      * 減らすだけでモジュールを足さない(足すと tests/Architecture/ModulesTest.php が失敗する)。外すのは、そのモジュールの公開の口を Api に出し、
      * ほかのモジュールの呼び手を付け替えたとき。宣言のほかのモジュール(Records と後の Workflow など)は最初から規則の対象。
      *

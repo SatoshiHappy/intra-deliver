@@ -8,7 +8,7 @@ use Tests\Architecture\Engine\TempDirectory;
 
 /**
  * エージェントの中でも、phpunit の出力が警告の中身を残し、終了コードで失敗を返すこと(出力を要約に差し替える依存を入れない。
- * docs の 設計/コード構成/検査.md 6 節「結果の記録」)。見本は build/fixtures に一時生成する、PHPUnit の警告が出るテスト。
+ * docs の 設計/コード構成/検査/結果の記録.md 6.6「結果の記録」)。見本は build/fixtures に一時生成する、PHPUnit の警告が出るテスト。
  */
 final class PhpunitAgentOutputTest extends TestCase
 {

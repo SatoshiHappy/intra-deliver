@@ -9,7 +9,7 @@ use Tests\Support\RunsCiScripts;
 use Tests\TestCase;
 
 /**
- * scripts/ci/e2e-server の保護と呼び方(docs の 設計/コード構成/検査.md 6 節の並列(E))。作り直しの文の中の保護は本物の php で、
+ * scripts/ci/e2e-server の保護と呼び方(docs の 設計/コード構成/検査/一括検査の段.md 6.5 の並列(E))。作り直しの文の中の保護は本物の php で、
  * DB の宛先を届かない先にして走らせる(DB の文が流れれば接続の誤りになり、保護で止まったかを出た文で見分けられる)。
  */
 final class E2eServerGuardTest extends TestCase

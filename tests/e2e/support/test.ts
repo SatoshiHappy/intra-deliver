@@ -47,7 +47,7 @@ export const test = base.extend<
 >({
     groupDatabase: ['', { scope: 'worker', option: true }],
     // spec から DB を触るときは、この fixture で組の DB に掛ける。worker の環境の DB_DATABASE は組の写し元のテスト用 DB で、
-    // 組のサーバーが書いた行が無い(docs の 設計/コード構成/検査.md 6 節の並列(E))
+    // 組のサーバーが書いた行が無い(docs の 設計/コード構成/検査/一括検査の段.md 6.5 の並列(E))
     artisan: [
         async ({ groupDatabase }, use) => {
             if (groupDatabase === '') {

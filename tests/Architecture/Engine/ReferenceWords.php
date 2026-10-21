@@ -3,7 +3,7 @@
 namespace Tests\Architecture\Engine;
 
 /**
- * 文の中の文書の参照の語と、その後ろの節・引用を見分ける(汎用。語・節・引用の形 = docs の 設計/コード構成/検査.md 6 節)。
+ * 文の中の文書の参照の語と、その後ろの節・引用を見分ける(汎用。語・節・引用の形 = docs の 設計/コード構成/検査/README.md 6.2)。
  *
  * @phpstan-type Reference array{
  *     word: string, offset: int, length: int, extent: int, section: string|null, quote: string|null,

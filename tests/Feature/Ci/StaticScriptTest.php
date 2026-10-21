@@ -7,7 +7,7 @@ use Tests\TestCase;
 
 /**
  * 段 scripts/ci/static が、PHPStan の結果の控えを消してから解析することを、偽の phpstan・composer・ast-grep で確かめる
- * (docs の 設計/コード構成/検査.md 6 節)。本物の解析・記録は使わない。道具は {@see RunsCiScripts}。
+ * (docs の 設計/コード構成/検査/一括検査の段.md 6.5)。本物の解析・記録は使わない。道具は {@see RunsCiScripts}。
  */
 final class StaticScriptTest extends TestCase
 {

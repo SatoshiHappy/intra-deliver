@@ -51,7 +51,7 @@ abstract class PhpStanSelfProofTestCase extends SelfProofTestCase
 
     /**
      * fixture の phpstan を作業木ごとに同時に 1 本までにするロックファイル(作業木の build の中。1 回 約 280MB で、一斉に起動するとスワップする)。
-     * 作業木をまたいで絞らない理由と、待ちに上限を置かない理由は docs の 設計/コード構成/検査.md 6 節「並列(T)」。
+     * 作業木をまたいで絞らない理由と、待ちに上限を置かない理由は docs の 設計/コード構成/検査/一括検査の段.md 6.5「並列(T)」。
      *
      * @throws RuntimeException build を作れないとき
      */

@@ -4,7 +4,7 @@ namespace Tests\Architecture\Engine\PhpStan;
 
 /**
  * PHP の正規表現(PCRE の区切り文字つきの文字列)が、末尾の改行の前にも一致する `$` を使うかの判定(汎用。数える所 = docs の
- * 設計/コード構成/検査.md 6 節)。中の修飾子は効く範囲を読まないので、迷う形は止める側に倒す。
+ * 設計/コード構成/検査/README.md 6.2)。中の修飾子は効く範囲を読まないので、迷う形は止める側に倒す。
  */
 final class RegexEndAnchor
 {
@@ -66,7 +66,7 @@ final class RegexEndAnchor
     }
 
     /**
-     * 本体のどこかの中の修飾子(`(?-m)`・`(?i-mx:…)` の形)で `-` より後ろの(外す側の)修飾子(扱い = docs の 設計/コード構成/検査.md 6 節)。
+     * 本体のどこかの中の修飾子(`(?-m)`・`(?i-mx:…)` の形)で `-` より後ろの(外す側の)修飾子(扱い = docs の 設計/コード構成/検査/README.md 6.2)。
      *
      * @return list<string>
      */

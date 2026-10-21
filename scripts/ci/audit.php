@@ -3,7 +3,7 @@
 /*
  * D 依存の監査(composer audit・npm audit)の実行本体。scripts/ci/deps から呼ぶ。
  * 見つかったもの(advisory・放棄されたパッケージ)は門で止めず、注意として出す(外した理由と代わりの気づき方 = docs の
- * 設計/コード構成/検査.md 6 節)。監査が走らない・出力を読めないときは失敗にする(結果が無いのを 0 件に見せない)。
+ * 設計/コード構成/検査/一括検査の段.md 6.5)。監査が走らない・出力を読めないときは失敗にする(結果が無いのを 0 件に見せない)。
  * 読み方と行の列は更新チェックの #3(AuditCheck)と同じ。
  */
 
@@ -40,7 +40,7 @@ if ($warnings !== []) {
 // 注意の表示 = GitHub Actions の workflow command(warning)。実行の画面に出る
 if ($warnings !== [] && getenv('GITHUB_ACTIONS') === 'true') {
     $count = count($warnings);
-    echo "::warning title=依存の監査::WARN の行 {$count} 件(門では止めない。ログの WARN の行と docs の 設計/コード構成/検査.md 6 節)".PHP_EOL;
+    echo "::warning title=依存の監査::WARN の行 {$count} 件(門では止めない。ログの WARN の行と docs の 設計/コード構成/検査/一括検査の段.md 6.5)".PHP_EOL;
 }
 
 $lines = implode('', array_map(fn (string $warning): string => $warning.PHP_EOL, $warnings));

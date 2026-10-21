@@ -6,7 +6,7 @@ import { demoGroups } from './tests/e2e/demo/groups';
 import type { GroupOptions } from './tests/e2e/support/test';
 
 // E2E は本番ビルド(npm run build)の資産で、テスト用 DB(初期データを入れたもの)のサーバーに掛ける。
-// テスト用 DB の名前とポートは scripts/ci/front が DB_DATABASE・E2E_PORT で渡す(docs の 設計/コード構成/検査.md 6 節)。
+// テスト用 DB の名前とポートは scripts/ci/front が DB_DATABASE・E2E_PORT で渡す(docs の 設計/コード構成/検査/一括検査の段.md 6.5)。
 // 既定のポートは設定を読むだけの道具(knip など)のため。直接の npm run test:e2e もこのポートを使う(使用中なら Playwright が止まる)。
 // 既に動いているサーバーは使い回さない。
 const port = Number(process.env.E2E_PORT ?? 8021);
@@ -17,7 +17,7 @@ if (!Number.isInteger(port) || port < 1) {
 }
 const testDatabase = process.env.DB_DATABASE ?? '';
 
-// ほかの spec が変えた DB を前提にする spec があり、ファイルを自由に配れないので組に分ける(docs の 設計/コード構成/検査.md 6 節の並列(E))。
+// ほかの spec が変えた DB を前提にする spec があり、ファイルを自由に配れないので組に分ける(docs の 設計/コード構成/検査/一括検査の段.md 6.5 の並列(E))。
 const groups: { name: string; files: string[] }[] = [
     // 組を足すときは、ここに { name, files } で書く
     ...demoGroups,
@@ -25,7 +25,7 @@ const groups: { name: string; files: string[] }[] = [
 const restGroupName = 'ほか';
 const testDir = 'tests/e2e';
 
-// 組の数(ほか を含む)は 9 まで: 作業木のポートは SERVER_PORT + 1〜+9 に収める取り決め(docs の 検査.md 6 節)
+// 組の数(ほか を含む)は 9 まで: 作業木のポートは SERVER_PORT + 1〜+9 に収める取り決め(docs の 検査/一括検査の段.md 6.5)
 const maxGroups = 9;
 if (groups.length + 1 > maxGroups) {
     throw new Error(

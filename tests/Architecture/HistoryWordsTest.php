@@ -9,7 +9,7 @@ use Tests\Architecture\Policy\Baselines;
 use Tests\Architecture\Policy\HistoryWords;
 
 /**
- * 経緯の語(docs の 設計/コード構成/検査.md 6 節)の照合と自己証明。語は {@see HistoryWords}、判定は {@see HistoryWordsCheck}、
+ * 経緯の語(docs の 設計/コード構成/検査/README.md 6.2)の照合と自己証明。語は {@see HistoryWords}、判定は {@see HistoryWordsCheck}、
  * 対象は {@see TrackedFiles::targets()}。
  * 語の例は fixture にだけ書く(このファイルに書くと、実物の木の照合がこのファイルを数える)。
  */

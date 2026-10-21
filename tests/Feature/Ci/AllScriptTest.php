@@ -8,7 +8,7 @@ use Tests\Support\RunsCiScripts;
 use Tests\TestCase;
 
 /**
- * 一括検査 scripts/ci/all の規則(失敗の集約・無い段・E の飛ばし・D の飛ばし・依存の監査の注意の件数。docs の 設計/コード構成/検査.md 6 節)を、
+ * 一括検査 scripts/ci/all の規則(失敗の集約・無い段・E の飛ばし・D の飛ばし・依存の監査の注意の件数。docs の 設計/コード構成/検査/一括検査の段.md 6.5)を、
  * 偽の段で確かめる。
  * 本物の段・DB・記録は使わない。道具は {@see RunsCiScripts}。
  */

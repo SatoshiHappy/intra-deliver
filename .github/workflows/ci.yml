@@ -81,7 +81,7 @@ jobs:
                   package-manager-cache: false
 
             # .env は見本から作る。DB のパスワードはこの実行だけの使い捨て(外に出ない DB コンテナの中だけで使う)。
-            # docs の場所は既定に頼らず明示する(docs の 設計/コード構成/検査.md 6 節)
+            # docs の場所は既定に頼らず明示する(docs の 設計/コード構成/検査/README.md 6.2)
             - name: .env
               run: |
                   cp .env.example .env

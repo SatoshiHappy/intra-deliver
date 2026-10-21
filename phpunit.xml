@@ -5,7 +5,7 @@
     suite の一覧の正本は tests/Architecture/Policy/Verification.php の PHPUNIT_SUITE_DIRECTORIES(一致を照合する)。
     グローバル変数・静的な状態の漏れは PHPUnit では検出しない(backupGlobals・backupStaticProperties を有効にしないので、
     beStrictAboutChangesToGlobalState は働かない)。漏れは各テストが戻す(例: tests/Feature/Deploy/PublishedResponsesTest の tearDown)。
-    テスト DB の名前(DB_DATABASE)は作業木ごとに tests/bootstrap.php が決める(docs の 設計/コード構成/検査.md 6 節)。
+    テスト DB の名前(DB_DATABASE)は作業木ごとに tests/bootstrap.php が決める(docs の 設計/コード構成/検査/一括検査の段.md 6.5)。
     流用元 = chatpinet_2 の phpunit.xml。
 -->
 <phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"

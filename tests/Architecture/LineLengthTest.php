@@ -11,7 +11,7 @@ use Tests\Architecture\Engine\ViteConfig;
 use Tests\Architecture\Policy\Baselines;
 
 /**
- * 行の長さ(docs の 設計/コード構成/検査.md 6 節)の照合と自己証明。判定は {@see LineLengths}。
+ * 行の長さ(docs の 設計/コード構成/検査/README.md 6.2)の照合と自己証明。判定は {@see LineLengths}。
  * 画面側の対象は vp lint と同じ範囲にするため、vite.config.ts の lint の ignorePatterns を読む。
  */
 final class LineLengthTest extends BaselineTestCase

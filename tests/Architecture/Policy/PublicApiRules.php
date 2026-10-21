@@ -9,7 +9,7 @@ use PHPat\Test\PHPat;
 
 /**
  * 公開の口の規則(Policy。phpat の規則クラスで、phpstan.neon に phpat.test として登録する。docs の 設計/コード構成/README.md 2 節「公開の口」、
- * 検査.md 6 節): モジュールの業務処理・読み取りに、ほかのモジュールは App\Actions\<M>\Api・App\Queries\<M>\Api の下にだけ依存できる。
+ * 検査/README.md 6.2): モジュールの業務処理・読み取りに、ほかのモジュールは App\Actions\<M>\Api・App\Queries\<M>\Api の下にだけ依存できる。
  * 内部(Api の下以外)に依存できるのは、同じモジュールの層・起動(App\Providers)・seeder(database/seeders)で、どれもほかのモジュールの選択
  * ({@see Modules::selectors()})に入らないので規則に当たらない。tests/ は対象外。モデル・列挙への依存はモジュールの規則のまま
  * ({@see LayerRules::moduleDependencies()})。

@@ -14,7 +14,7 @@ use Tests\Architecture\Engine\ViteConfig;
 
 /**
  * #6 抜け道の照合のうち、画面の単体テスト(vp test)の分: テストの中の skip・対象の絞り込み、走らせるコマンドの引数、設定の対象の絞り込み
- * (docs の 設計/コード構成/検査.md 6 節)。PHP の抑制の照合({@see LoopholeChecks::suppressionTokens()})とは走査の範囲と読み方が違うので分けた。
+ * (docs の 設計/コード構成/検査/README.md 6.2)。PHP の抑制の照合({@see LoopholeChecks::suppressionTokens()})とは走査の範囲と読み方が違うので分けた。
  *
  * ツールは $toolRoot から、照合する設定とソースは $targetRoot から読む(自己証明は $targetRoot だけを fixture に差し替える)。
  */

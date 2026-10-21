@@ -102,7 +102,7 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->configureDefaults();
 
-        // 本番以外(開発・E2E のサーバー・phpunit)では関係の遅延読み込みを例外にする(docs の 設計/コード構成/検査.md 6 節)。
+        // 本番以外(開発・E2E のサーバー・phpunit)では関係の遅延読み込みを例外にする(docs の 設計/コード構成/検査/README.md 6.2)。
         // 2 行以上の結果から作ったモデルの遅延読み込みだけが例外になる(Laravel の仕様)。1 件からの N+1 はレビューで見る
         Model::preventLazyLoading(! $this->app->isProduction());
     }

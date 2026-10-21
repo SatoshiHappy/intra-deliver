@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # T テスト(#1)。phpunit.xml の suite をすべて 1 回で実行する(suite の絞り込みは受けない)。
 #
-# 既定は並列(Laravel の php artisan test --parallel = brianium/paratest。プロセスごとに DB <テスト DB の名前>_test_<token> を作る。テスト DB の名前 = docs の 設計/コード構成/検査.md 6 節)。
+# 既定は並列(Laravel の php artisan test --parallel = brianium/paratest。プロセスごとに DB <テスト DB の名前>_test_<token> を作る。テスト DB の名前 = docs の 設計/コード構成/検査/一括検査の段.md 6.5)。
 #   プロセス数 = 環境変数 CI_TEST_PROCESSES(既定 = CPU の数)。
 #   DB は前回のものを再利用する(各プロセスが最初に migrate:fresh する)。作り直したいときは CI_TEST_RECREATE_DATABASES=1。
 #   既定はテストクラス単位でプロセスに配る。1 クラスが長いと、そのクラスがまとまった時間の下限になる。CI_TEST_FUNCTIONAL=1 は

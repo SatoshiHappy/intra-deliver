@@ -6,7 +6,7 @@ use Tests\Architecture\Engine\InternalDependencies;
 
 /**
  * ほかのモジュールの内部への依存の数(tests/Architecture/ModuleInternalsTest.php)の依存する側と内部の置き場
- * (数える範囲 = docs の 設計/コード構成/検査.md 6 節・設計/コード構成/README.md 2 節)。移行中の一覧でないモジュールの業務処理・読み取りの内部は、
+ * (数える範囲 = docs の 設計/コード構成/検査/README.md 6.2・設計/コード構成/README.md 2 節)。移行中の一覧でないモジュールの業務処理・読み取りの内部は、
  * 公開の口の規則({@see PublicApiRules})が止めるので重ねない。
  */
 final class ModuleInternals

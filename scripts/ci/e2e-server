@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # E2E の組のサーバー(playwright.config.ts の webServer の command)。使い方: scripts/ci/e2e-server <ポート>
-# 組の DB をテスト用 DB から写し直してから php artisan serve を起動する(組の DB とポートの決まり = docs の 設計/コード構成/検査.md 6 節の並列(E))。
+# 組の DB をテスト用 DB から写し直してから php artisan serve を起動する(組の DB とポートの決まり = docs の 設計/コード構成/検査/一括検査の段.md 6.5 の並列(E))。
 set -euo pipefail
 
 cd "$(dirname "$0")/../.."

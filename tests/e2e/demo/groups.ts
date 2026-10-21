@@ -1,4 +1,4 @@
-// この下の E2E の組(playwright.config.ts の組の一覧の先頭に入る。組の決まり = docs の 設計/コード構成/検査.md 6 節の並列(E))。
+// この下の E2E の組(playwright.config.ts の組の一覧の先頭に入る。組の決まり = docs の 設計/コード構成/検査/一括検査の段.md 6.5 の並列(E))。
 // 取り外すときは、このディレクトリごと消し、playwright.config.ts の取り付けの 2 行を消す。
 export const demoGroups = [
     {

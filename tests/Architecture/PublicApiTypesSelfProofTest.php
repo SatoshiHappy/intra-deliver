@@ -7,7 +7,7 @@ use Tests\Architecture\Engine\Finding;
 
 /**
  * 公開の口(App\Actions\<M>\Api・App\Queries\<M>\Api の下)の public メソッドの引数・戻り値と public プロパティの型にモデルを使わない
- * (docs の 設計/コード構成/README.md 2 節、検査.md 6 節。PHPStan の自作規則 ForbiddenPublicApiTypesRule・ForbiddenPublicApiPropertyTypesRule。
+ * (docs の 設計/コード構成/README.md 2 節、検査/README.md 6.2。PHPStan の自作規則 ForbiddenPublicApiTypesRule・ForbiddenPublicApiPropertyTypesRule。
  * Policy = phpstan.neon の forbiddenPublicApiTypes)の自己証明。
  * 引数・戻り値・null を許す型・PHPDoc の配列・総称の型引数・値のクラスのコンストラクタ(昇格した public プロパティ。1 回だけ報告)・昇格でない
  * public プロパティ・配下のサブ名前空間の interface のモデルが赤になる(抑制の注釈を付けても消えない)。識別子・配列・値のクラス・列挙・共有の型・ほかのモジュールの公開の口の型と、口の外・private のメソッドのモデルは通る。

@@ -4,7 +4,7 @@ namespace Tests\Architecture\Engine;
 
 /**
  * 参照の実在の照合(汎用)。web のファイルの参照の語({@see ReferenceWords})が 1 つの文書に決まり、その文書・節・引用が在るか
- * (解決の順と確かめること = docs の 設計/コード構成/検査.md 6 節)。違反の種類の名前 = unresolved・ambiguous・missing・section・quote・history。
+ * (解決の順と確かめること = docs の 設計/コード構成/検査/README.md 6.2)。違反の種類の名前 = unresolved・ambiguous・missing・section・quote・history。
  *
  * @phpstan-import-type Reference from ReferenceWords
  */
@@ -25,7 +25,7 @@ final class DocsReferences
     /**
      * @param  string  $webRoot  web の根(絶対パス)
      * @param  list<string>  $webFiles  web の追跡するファイル(根からの相対パス。解決に使う)
-     * @param  string  $docsPrefix  docs の根から決める語の頭(docs の 設計/コード構成/検査.md 6 節。照合は $docs の木を読む)
+     * @param  string  $docsPrefix  docs の根から決める語の頭(docs の 設計/コード構成/検査/README.md 6.2。照合は $docs の木を読む)
      * @param  string  $historyDirectory  docs の根の直下の、指してはいけないディレクトリ
      * @param  list<string>  $ignoredWords  参照の語から外す語(完全一致。docs の参照でないファイル名)
      */
@@ -145,7 +145,7 @@ final class DocsReferences
     }
 
     /**
-     * docs の根から決まる語の解決(docs の 設計/コード構成/検査.md 6 節)。決まらなければ null。
+     * docs の根から決まる語の解決(docs の 設計/コード構成/検査/README.md 6.2)。決まらなければ null。
      *
      * @return array{0: string, 1: string}|null
      */
@@ -233,7 +233,7 @@ final class DocsReferences
     }
 
     /**
-     * web に決まった参照 $path の確かめ(docs の 設計/コード構成/検査.md 6 節)。違反の種類か、違反が無ければ web。
+     * web に決まった参照 $path の確かめ(docs の 設計/コード構成/検査/README.md 6.2)。違反の種類か、違反が無ければ web。
      *
      * @param  Reference  $reference
      * @param  list<array{0: int, 1: Reference}>  $references  $file の中身 $content の参照

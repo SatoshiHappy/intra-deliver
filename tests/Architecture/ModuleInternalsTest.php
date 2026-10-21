@@ -9,7 +9,8 @@ use Tests\Architecture\Policy\Baselines;
 use Tests\Architecture\Policy\ModuleInternals;
 
 /**
- * ほかのモジュールの内部への依存の数(docs の 設計/コード構成/検査.md 6 節)の照合と自己証明。対象と判定は {@see ModuleInternals}・{@see InternalDependencies}。
+ * ほかのモジュールの内部への依存の数(docs の 設計/コード構成/検査/README.md 6.2)の照合と自己証明。
+ * 対象と判定は {@see ModuleInternals}・{@see InternalDependencies}。
  */
 final class ModuleInternalsTest extends BaselineTestCase
 {

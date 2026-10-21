@@ -11,7 +11,7 @@ use Tests\Architecture\Policy\Baselines;
 use Tests\Architecture\Policy\Licenses;
 
 /**
- * ベースラインを持つ検査の照合 1・2 の基底(docs の 設計/コード構成/検査.md 6 節)。
+ * ベースラインを持つ検査の照合 1・2 の基底(docs の 設計/コード構成/検査/README.md 6.3)。
  */
 abstract class BaselineTestCase extends TestCase
 {

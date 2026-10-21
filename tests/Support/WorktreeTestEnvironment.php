@@ -7,7 +7,7 @@ use UnexpectedValueException;
 
 /**
  * 作業木ごとのテスト DB の名前と E2E のポートを決める。複数の作業木で検査を同時に走らせても、互いの DB・ポートを壊さないため。
- * 使う所 = tests/bootstrap.php と scripts/ci/front(決め方 = docs の 設計/コード構成/検査.md 6 節)。
+ * 使う所 = tests/bootstrap.php と scripts/ci/front(決め方 = docs の 設計/コード構成/検査/一括検査の段.md 6.5)。
  * .env だけから引き、OS の環境変数は見ない(bootstrap が置いた DB_DATABASE を paratest の worker が引き継ぐので、見ると接尾辞が重なる)。
  */
 final class WorktreeTestEnvironment

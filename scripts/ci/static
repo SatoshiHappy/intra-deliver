@@ -11,7 +11,7 @@ if [ "$#" -ne 0 ]; then
     exit 2
 fi
 
-# 控えの依存は larastan の型変換の型の変化を拾わず、控えを使うと誤りを見逃す(docs の 設計/コード構成/検査.md 6 節)
+# 控えの依存は larastan の型変換の型の変化を拾わず、控えを使うと誤りを見逃す(docs の 設計/コード構成/検査/一括検査の段.md 6.5)
 vendor/bin/phpstan clear-result-cache --memory-limit=1G
 composer types:check
 

@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // 機械検査の記録(scripts/ci/record が書く 1 行 1 JSON)を道具ごとに集計し、Markdown の表で出す。
 // 使い方(web/ で実行): node scripts/quality/report.mjs [--since YYYY-MM-DD]
-// 正本 = docs の 設計/コード構成/検査.md の 6 節「結果の記録」(件の数え方・区分・率の分母・集計の使い方)。
+// 正本 = docs の 設計/コード構成/検査/結果の記録.md の 6.6「結果の記録」(件の数え方・区分・率の分母・集計の使い方)。
 // scripts/ci の外に置く(scripts/ci は記録の cfg の対象なので、中に置くと集計を直しただけで開いている件が無効に数えられる)。
 import { readFileSync, realpathSync } from 'node:fs';
 import { join } from 'node:path';
@@ -81,7 +81,7 @@ export function classify(start, end) {
     return start.dirty === end.dirty ? '揺れ' : '有効';
 }
 
-// 道具が走らなかった実行(起動できない・シグナルで止まった)だけを件に数えない。終了コードの区分は 設計/コード構成/検査.md 6 節「結果の記録」
+// 道具が走らなかった実行(起動できない・シグナルで止まった)だけを件に数えない。終了コードの区分は 設計/コード構成/検査/結果の記録.md 6.6「結果の記録」
 const notRun = (row) =>
     row.exit === 126 ||
     row.exit === 127 ||
@@ -91,7 +91,7 @@ function caseKey(row) {
     return `${row.worktree}\0${row.tool}`;
 }
 
-// 件とヒットなしの作り方は 設計/コード構成/検査.md 6 節。argv は件の鍵に入れない(絞った実行も同じ件。2026-10-16 の決定)。
+// 件とヒットなしの作り方は 設計/コード構成/検査/結果の記録.md 6.6。argv は件の鍵に入れない(絞った実行も同じ件。2026-10-16 の決定)。
 // 並べ替えない: at は実行の始まりで、結果が分かる順は record が終わってから追記した順(ファイルの順)だけが持つ
 export function walk(rows) {
     const open = new Map();

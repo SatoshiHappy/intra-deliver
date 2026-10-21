@@ -121,7 +121,7 @@ final class Verification
     public const PINT_KEYS = ['preset'];
 
     /**
-     * #6 画面の単体テスト(vp test。docs の 設計/コード構成/検査.md 6 節)の照合 {@see ViteTestChecks}: 設定ファイルと、走らせるテストのファイル
+     * #6 画面の単体テスト(vp test。docs の 設計/コード構成/検査/README.md 6.2)の照合 {@see ViteTestChecks}: 設定ファイルと、走らせるテストのファイル
      * (test.include。一致)、test の節に書けるキー、vite.config.ts より先に読まれる設定ファイル(vitest の設定と、vite-plus が先に読む vite.config.ts 以外の vite.config.*。置けない)。
      */
     public const VITE_CONFIG = 'vite.config.ts';

@@ -51,7 +51,7 @@ stages=(
 
 readonly DEPS_RECORD="build/deps.verified"
 # 依存の監査の WARN の行の記録(scripts/ci/audit.php が書く)。見つかったものがある間は D を飛ばさず、毎回一覧に件数を出す
-# (docs の 設計/コード構成/検査.md 6 節)
+# (docs の 設計/コード構成/検査/一括検査の段.md 6.5)
 readonly AUDIT_RECORD="build/dependency-audit.txt"
 
 # 依存の監査の WARN の行の数(記録が無ければ 0)
