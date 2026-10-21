@@ -10,12 +10,14 @@ use App\Models\Records\RecordReference;
 use Illuminate\Database\Migrations\Migrator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use RuntimeException;
 use Tests\Support\TransactionalTestCase;
 
 /**
  * 複数選べる参照のマイグレーション(docs の 設計/業務データの入れ物/データモデル/表.md 2.6 の最後、制約の分担と検査.md 7 節):
  * down は足した列と制約を消して、項目ごとに 1 行の一意に戻し、その後の up は今の行(1 つの値の参照)を sort_key = 0・is_multiple = false で
- * そのまま読めるようにする。DDL もテストの TX の中で行い、終わりに巻き戻る。
+ * そのまま読めるようにする。項目ごとに 2 行以上の参照が残っていると down は理由つきで止まる(消さない)。
+ * DDL もテストの TX の中で行い、終わりに巻き戻る。
  */
 final class MultipleReferencesMigrationTest extends TransactionalTestCase
 {
@@ -29,6 +31,33 @@ final class MultipleReferencesMigrationTest extends TransactionalTestCase
         $this->assertFalse(Schema::hasColumn('record_references', 'sort_key'));
         $this->assertFalse(Schema::hasColumn('record_references', 'is_multiple'));
         $this->assertSame(['record_references_record_id_record_field_id_unique'], $this->uniqueNames());
+    }
+
+    public function test_down_stops_with_a_reason_and_keeps_the_rows_while_a_field_has_several_references(): void
+    {
+        $field = RecordField::factory()->create(['type' => RecordFieldType::User, 'is_multiple' => true]);
+        $record = Record::factory()->create(['record_module_id' => $field->record_module_id]);
+
+        foreach (User::factory()->count(2)->create() as $sortKey => $user) {
+            DB::table('record_references')->insert([
+                'record_module_id' => $field->record_module_id,
+                'record_id' => $record->id,
+                'record_field_id' => $field->id,
+                'user_id' => $user->id,
+                'sort_key' => $sortKey,
+                'is_multiple' => true,
+            ]);
+        }
+
+        try {
+            $this->migrator()->reset([$this->migrationPath()]);
+            $this->fail('項目ごとに 2 行以上の参照があるのに、down が止まらなかった');
+        } catch (RuntimeException $e) {
+            $this->assertStringContainsString('2 つ以上', $e->getMessage());
+        }
+
+        $this->assertTrue(Schema::hasColumn('record_references', 'sort_key'));
+        $this->assertSame(2, DB::table('record_references')->where('record_field_id', $field->id)->count());
     }
 
     public function test_up_after_down_keeps_the_current_references_readable(): void

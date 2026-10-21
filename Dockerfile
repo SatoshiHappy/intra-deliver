@@ -7,7 +7,7 @@
 
 # 土台は build の引数で差し替えられる(更新チェックが、新しい土台でも同じ脆弱性が残るかを調べるのに使う。既定 = 固定した値)。
 # 書き換えるときはこの ARG の 1 行だけ(タグと digest を一緒に)。
-ARG FRANKENPHP_IMAGE=dunglas/frankenphp:1.13.1-php8.4.26-trixie@sha256:7027c395e4a3b9f0624fd2091989eeaa1a5b7f7bd74677992df31a07a6655312
+ARG FRANKENPHP_IMAGE=dunglas/frankenphp:1.13.1-php8.4.27-trixie@sha256:62f1ef7e0f7a43984d23d109eee58c5b1fb36232f49aaa675c17fee006ee883d
 FROM ${FRANKENPHP_IMAGE} AS base
 
 # 公式の手順(install-php-extensions)で拡張を足す。既知の問題のある拡張(imagick など)は入れない

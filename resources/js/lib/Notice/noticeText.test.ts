@@ -161,6 +161,115 @@ describe('noticeTemplate(レコードのコメント)', () => {
     });
 });
 
+/** 件名「定例会議」の会議の通知の行の札と文 */
+const meetingNotice = (type: string, params: NoticeRow['params']) =>
+    noticeTemplate(row({ type, params: { title: '定例会議', ...params } }));
+
+describe('noticeTemplate(会議の完了と失敗)', () => {
+    const of = meetingNotice;
+
+    it('完了は処理の結果の色、失敗は否認の色で、件名の後に文', () => {
+        expect(of('meeting.minutes_created', {})).toEqual({
+            label: '議事録の完了',
+            tone: 'settled',
+            sentence: '定例会議　議事録を作成しました。',
+        });
+        expect(of('meeting.minutes_regenerated', {})).toEqual({
+            label: '議事録の再作成の完了',
+            tone: 'settled',
+            sentence: '定例会議　議事録を再作成しました。',
+        });
+        expect(
+            of('meeting.transcription_failed', { reason: 'budget' }),
+        ).toEqual({
+            label: '文字起こしの失敗',
+            tone: 'rejected',
+            sentence:
+                '定例会議　文字起こしに失敗しました。AI の利用の上限に達しました。',
+        });
+        expect(of('meeting.minutes_failed', { reason: 'budget' })).toEqual({
+            label: '議事録の失敗',
+            tone: 'rejected',
+            sentence:
+                '定例会議　議事録の作成に失敗しました。AI の利用の上限に達しました。',
+        });
+    });
+});
+
+describe('noticeTemplate(会議の失敗の、種類によらない理由の文)', () => {
+    const of = meetingNotice;
+
+    it('上限・長すぎる・会議を更新できない・ほか', () => {
+        const sentence = (type: string, reason: string) =>
+            of(type, { reason }).sentence;
+
+        for (const type of [
+            'meeting.transcription_failed',
+            'meeting.minutes_failed',
+        ]) {
+            expect(sentence(type, 'too_long')).toContain(
+                'に失敗しました。長すぎるため処理できませんでした。',
+            );
+            expect(sentence(type, 'record_unavailable')).toContain(
+                'に失敗しました。会議を更新できなかったため、議事録を書けませんでした。',
+            );
+            expect(sentence(type, 'other')).toContain(
+                'に失敗しました。時間をおいて再作成してください。',
+            );
+        }
+    });
+});
+
+describe('noticeTemplate(会議の失敗の、種類だけの理由の文)', () => {
+    const of = meetingNotice;
+
+    it('音声の理由は文字起こしの失敗、出力が切れた理由は議事録の失敗だけの文で、合わない種類と知らない理由は「ほか」の文', () => {
+        const sentence = (type: string, reason: string | null) =>
+            of(type, { reason }).sentence;
+
+        expect(sentence('meeting.transcription_failed', 'audio_unusable')).toBe(
+            '定例会議　文字起こしに失敗しました。音声から書き起こせませんでした。音声を確かめて、音声から作成し直してください。',
+        );
+        expect(sentence('meeting.minutes_failed', 'truncated')).toBe(
+            '定例会議　議事録の作成に失敗しました。議事録が長すぎて途中で切れました。再作成の追加の指示で短くするよう頼んでください。',
+        );
+        expect(sentence('meeting.minutes_failed', 'audio_unusable')).toBe(
+            '定例会議　議事録の作成に失敗しました。時間をおいて再作成してください。',
+        );
+        expect(sentence('meeting.transcription_failed', 'truncated')).toBe(
+            '定例会議　文字起こしに失敗しました。時間をおいて再作成してください。',
+        );
+        expect(sentence('meeting.minutes_failed', 'unknown')).toBe(
+            '定例会議　議事録の作成に失敗しました。時間をおいて再作成してください。',
+        );
+        expect(sentence('meeting.minutes_failed', null)).toBe(
+            '定例会議　議事録の作成に失敗しました。時間をおいて再作成してください。',
+        );
+    });
+});
+
+describe('noticeTemplate(会議の件名が空・知らない種類)', () => {
+    const of = meetingNotice;
+
+    it('件名が空・無いときは件名の部分が空のまま、区切りの空白から始まる', () => {
+        expect(of('meeting.minutes_created', { title: '' }).sentence).toBe(
+            '　議事録を作成しました。',
+        );
+        expect(
+            noticeTemplate(row({ type: 'meeting.minutes_regenerated' }))
+                .sentence,
+        ).toBe('　議事録を再作成しました。');
+    });
+
+    it('会議の知らない種類は雛形に無い種類と同じ行', () => {
+        expect(of('meeting.unknown', {})).toEqual({
+            label: '通知',
+            tone: 'settled',
+            sentence: '通知があります。',
+        });
+    });
+});
+
 describe('noticeSubLine', () => {
     it('対象の表示名、無ければ見えないときの 1 行、どちらも無ければ null', () => {
         expect(

@@ -1,0 +1,135 @@
+import { FormBlock, invalidProps } from '@/components/FormBlock';
+import type { MeetingImportSource } from '@/components/Meeting/createMeetingForm';
+import { limitSizeText } from '@/components/Meeting/meetingDialog';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Textarea } from '@/components/ui/textarea';
+
+/**
+ * ファイルの案内(テキストの取り込み。音声は後で足す)。maxBytes = 入口の上限(一覧の口が渡す)。
+ */
+function fileGuide(maxBytes: number): string {
+    return `テキスト(.txt・.vtt・.md)を 1 つ選択できます。1 ファイル ${limitSizeText(maxBytes)} までです。`;
+}
+
+/** 選べるファイルの拡張子 */
+const ACCEPTED_FILES = '.txt,.vtt,.md';
+
+const FILE_ID = 'meeting-import-file';
+
+const TEXT_ID = 'meeting-import-text';
+
+type Props = {
+    /** 取り込むテキストの上限(バイト) */
+    maxBytes: number;
+    source: MeetingImportSource;
+    onSourceChange: (source: MeetingImportSource) => void;
+    text: string;
+    onTextChange: (text: string) => void;
+    onFileChange: (file: File | null) => void;
+    /** 欄の下に出す誤り(file・text) */
+    errors: { file?: string; text?: string };
+};
+
+/** 札の中の欄の「必須」(どちらの札も、その札の欄が要る) */
+const required = <Badge variant="secondary">必須</Badge>;
+
+/**
+ * ファイルの欄(1 つ選ぶ)。
+ */
+function ImportFile({
+    maxBytes,
+    error,
+    onChange,
+}: {
+    maxBytes: number;
+    error: string | undefined;
+    onChange: (file: File | null) => void;
+}) {
+    return (
+        <FormBlock
+            id={FILE_ID}
+            label="ファイル"
+            labelAddon={required}
+            hint={fileGuide(maxBytes)}
+            error={error}
+        >
+            <Input
+                id={FILE_ID}
+                type="file"
+                accept={ACCEPTED_FILES}
+                aria-required
+                {...invalidProps(FILE_ID, error)}
+                onChange={(event) => onChange(event.target.files?.[0] ?? null)}
+            />
+        </FormBlock>
+    );
+}
+
+/**
+ * 貼り付けの欄。
+ */
+function ImportText({
+    text,
+    error,
+    onChange,
+}: {
+    text: string;
+    error: string | undefined;
+    onChange: (text: string) => void;
+}) {
+    return (
+        <FormBlock
+            id={TEXT_ID}
+            label="テキスト"
+            labelAddon={required}
+            error={error}
+        >
+            <Textarea
+                id={TEXT_ID}
+                value={text}
+                aria-required
+                {...invalidProps(TEXT_ID, error)}
+                onChange={(event) => onChange(event.target.value)}
+                className="max-h-60 min-h-32"
+            />
+        </FormBlock>
+    );
+}
+
+/**
+ * 取り込むものの札「ファイル」「貼り付け」(docs の 設計/業務ツール/会議/公開デモと画面.md の 9.2)。札を替えても選んだファイルが欄に残るよう、
+ * 両方の札の中身を描いたままにする(隠した札の中身は送らない = 送る形は選んだ札の方だけ)。
+ */
+export function MeetingImportInput(props: Props) {
+    const { source, errors } = props;
+
+    return (
+        <Tabs
+            value={source}
+            onValueChange={(next) =>
+                props.onSourceChange(next === 'paste' ? 'paste' : 'file')
+            }
+        >
+            <TabsList aria-label="取り込むもの">
+                <TabsTrigger value="file">ファイル</TabsTrigger>
+                <TabsTrigger value="paste">貼り付け</TabsTrigger>
+            </TabsList>
+            <TabsContent value="file" forceMount hidden={source !== 'file'}>
+                <ImportFile
+                    maxBytes={props.maxBytes}
+                    error={errors.file}
+                    onChange={props.onFileChange}
+                />
+            </TabsContent>
+            <TabsContent value="paste" forceMount hidden={source !== 'paste'}>
+                <ImportText
+                    text={props.text}
+                    error={errors.text}
+                    onChange={props.onTextChange}
+                />
+            </TabsContent>
+        </Tabs>
+    );
+}

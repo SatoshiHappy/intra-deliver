@@ -2,11 +2,32 @@
 import '@fontsource-variable/noto-sans-jp';
 import '@fontsource-variable/inter';
 import { createInertiaApp } from '@inertiajs/react';
+import { lazy } from 'react';
+import { registerRecordAddonDialog } from '@/components/Records/addonDialogs';
 import { initializeTheme } from '@/hooks/use-appearance';
 import AppLayout from '@/layouts/AppLayout';
 import { initializeFlashToast } from '@/lib/flashToast';
 
 const appName = import.meta.env.VITE_APP_NAME || 'イントラデリバー';
+
+// 業務の一覧・詳細の操作の口が開く、後ろのモジュールのダイアログを部品の名前に結ぶ(docs の 設計/業務データの入れ物/画面/業務の画面.md の 2.5)。
+// 遅延で読み込み、全部のページの最初の読み込みに入れない(操作のボタンを描いた時に読み込みが始まる)
+registerRecordAddonDialog(
+    'meeting.create',
+    lazy(() =>
+        import('@/components/Meeting/CreateMeetingDialog').then((module) => ({
+            default: module.CreateMeetingDialog,
+        })),
+    ),
+);
+registerRecordAddonDialog(
+    'meeting.regenerate',
+    lazy(() =>
+        import('@/components/Meeting/RegenerateMinutesDialog').then(
+            (module) => ({ default: module.RegenerateMinutesDialog }),
+        ),
+    ),
+);
 
 void createInertiaApp({
     title: (title) => (title ? `${title} - ${appName}` : appName),

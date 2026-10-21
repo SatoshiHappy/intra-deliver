@@ -12,6 +12,7 @@ use App\Models\Meeting\Transcript;
 use App\Models\Meeting\TranscriptSegment;
 use App\Queries\Authz\Api\Requester;
 use App\Queries\Meeting\MeetingFieldsQuery;
+use App\Queries\Meeting\MeetingLimits;
 use App\Queries\Meeting\MeetingProcessingQuery;
 use App\Queries\Meeting\MeetingTitleQuery;
 use App\Queries\Records\Api\RecordHoldQuery;
@@ -34,9 +35,7 @@ class RegenerateMinutes
     /** 押せる時に合わないときのキー */
     public const STATE_KEY = 'meeting';
 
-    public const INSTRUCTIONS_MAX_LENGTH = 500;
-
-    public const INSTRUCTIONS_TOO_LONG = '追加の指示は 500 字までにしてください';
+    public const INSTRUCTIONS_TOO_LONG = '追加の指示は '.MeetingLimits::INSTRUCTIONS_MAX_LENGTH.' 字までにしてください';
 
     public const INSTRUCTIONS_INVALID_CHARACTER = '追加の指示に使えない文字が含まれています';
 
@@ -107,7 +106,7 @@ class RegenerateMinutes
             throw ValidationException::withMessages([self::INSTRUCTIONS => self::INSTRUCTIONS_INVALID_CHARACTER]);
         }
 
-        if (mb_strlen($instructions) > self::INSTRUCTIONS_MAX_LENGTH) {
+        if (mb_strlen($instructions) > MeetingLimits::INSTRUCTIONS_MAX_LENGTH) {
             throw ValidationException::withMessages([self::INSTRUCTIONS => self::INSTRUCTIONS_TOO_LONG]);
         }
     }

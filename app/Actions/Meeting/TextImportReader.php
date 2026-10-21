@@ -3,6 +3,7 @@
 namespace App\Actions\Meeting;
 
 use App\Enums\Meeting\TranscriptSource;
+use App\Queries\Meeting\MeetingLimits;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Validation\ValidationException;
 
@@ -19,9 +20,6 @@ class TextImportReader
     /** 貼り付けのキー */
     public const TEXT = 'text';
 
-    /** 読む前に断る大きさ(バイト) */
-    public const MAX_BYTES = 1_048_576;
-
     /** 発言の行の数の上限 */
     public const MAX_LINES = 10_000;
 
@@ -30,9 +28,9 @@ class TextImportReader
 
     public const UNSUPPORTED = 'この形式のファイルは取り込めません';
 
-    public const FILE_TOO_LARGE = 'テキストのファイルは 1MB までにしてください';
+    public const FILE_TOO_LARGE = 'テキストのファイルは '.MeetingLimits::TEXT_MAX_MEGABYTES.'MB までにしてください';
 
-    public const PASTE_TOO_LARGE = '貼り付けたテキストは 1MB までにしてください';
+    public const PASTE_TOO_LARGE = '貼り付けたテキストは '.MeetingLimits::TEXT_MAX_MEGABYTES.'MB までにしてください';
 
     public const NOT_UTF8 = 'テキストのファイルは UTF-8 で保存してください';
 
@@ -62,7 +60,7 @@ class TextImportReader
             throw self::rejected(self::FILE, self::UNSUPPORTED);
         }
 
-        if ($file->getSize() > self::MAX_BYTES) {
+        if ($file->getSize() > MeetingLimits::TEXT_MAX_BYTES) {
             throw self::rejected(self::FILE, self::FILE_TOO_LARGE);
         }
 
@@ -81,7 +79,7 @@ class TextImportReader
      */
     public function fromPaste(string $text): ImportedText
     {
-        if (strlen($text) > self::MAX_BYTES) {
+        if (strlen($text) > MeetingLimits::TEXT_MAX_BYTES) {
             throw self::rejected(self::TEXT, self::PASTE_TOO_LARGE);
         }
 

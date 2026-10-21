@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Meeting;
 
+use App\Actions\Ai\Api\RequestPrompt;
 use App\Actions\Meeting\MeetingMinutesKind;
 use App\Enums\Meeting\MeetingRunOrigin;
 use App\Enums\Meeting\MeetingRunStage;
@@ -13,6 +14,7 @@ use App\Models\Meeting\Transcript;
 use App\Models\Meeting\TranscriptSegment;
 use App\Models\Records\RecordAttachment;
 use App\Models\Upload\Upload;
+use App\Queries\Records\Api\RecordFormQuery;
 use Illuminate\Http\UploadedFile;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Support\TransactionalTestCase;
@@ -233,6 +235,20 @@ final class CreateMeetingTest extends TransactionalTestCase
         $this->postMeeting(['text' => '発言'])->assertForbidden();
 
         $this->assertSame($counts, $this->counts());
+    }
+
+    /**
+     * 403 の文は、ゲスト(AI に依頼できない)と、業務モジュールの操作を許されない人で分ける(判定は一覧の操作を出す条件と同じ 1 か所)。
+     */
+    public function test_the_forbidden_message_tells_a_guest_from_a_user_without_the_actions(): void
+    {
+        $this->postJson('/meetings', ['text' => '発言'])
+            ->assertForbidden()->assertJsonPath('message', RequestPrompt::GUEST);
+
+        $this->denyMeeting(RecordModuleAction::Update);
+
+        $this->actingAs($this->user())->postJson('/meetings', ['text' => '発言'])
+            ->assertForbidden()->assertJsonPath('message', RecordFormQuery::NOT_ALLOWED_MESSAGE);
     }
 
     /** 接続元ごとの回数の上限は持たない(docs の 設計/AI/実行と費用.md 5.2)。費用の上限の内なら、同じ接続元から何回でも受け付ける */

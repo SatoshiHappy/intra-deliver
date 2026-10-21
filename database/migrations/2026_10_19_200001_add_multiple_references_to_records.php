@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Schema;
  * 複数選べる参照(docs の 設計/業務データの入れ物/データモデル/表.md 2.2・2.6、項目と規則/README.md 1 節・5 節)。
  * 項目の is_multiple と、参照の行の並び sort_key・項目の is_multiple の写しを足し、項目ごとに 1 行の一意を、並びの位置と相手ごとの一意に替える。
  * 今の行はどれも項目ごとに 1 行で sort_key = 0・is_multiple = false なので、そのまま新しい制約を満たす。
+ * 項目ごとに 2 行以上の参照が残っている間は戻さない(項目ごとに 1 行の一意に戻すには、残りを消すしかない)。
  */
 return new class extends Migration
 {
@@ -52,10 +53,23 @@ return new class extends Migration
     }
 
     /**
-     * Reverse the migrations(足した順の逆に戻す。項目ごとに 2 行以上の参照があると、戻す一意で失敗する)。
+     * Reverse the migrations(足した順の逆に戻す)。
      */
     public function down(): void
     {
+        $hasMany = DB::table('record_references')
+            ->select('record_id')
+            ->groupBy('record_id', 'record_field_id')
+            ->havingRaw('count(*) > 1')
+            ->exists();
+
+        if ($hasMany) {
+            throw new RuntimeException(
+                '1 つの項目に参照が 2 つ以上あるレコードが残っているので戻せない'
+                .'(項目ごとに 1 行の一意に戻すと、2 つ目以降の参照を消すことになる)',
+            );
+        }
+
         DB::statement('ALTER TABLE record_references DROP CONSTRAINT record_references_sort_key_check');
         DB::statement('ALTER TABLE record_references DROP CONSTRAINT record_references_is_multiple_sort_key_check');
 

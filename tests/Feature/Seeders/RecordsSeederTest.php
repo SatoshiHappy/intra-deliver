@@ -86,14 +86,18 @@ final class RecordsSeederTest extends TransactionalTestCase
 
     public function test_seeds_the_records_of_the_design(): void
     {
+        // 組み込みの業務モジュールのレコード(見本の会議)は MeetingSampleSeederTest が確かめる
         $counts = Record::query()->join('record_modules', 'record_modules.id', '=', 'records.record_module_id')
+            ->where('record_modules.is_builtin', false)
             ->groupBy('record_modules.code')->selectRaw('record_modules.code, count(*) as records')->pluck('records', 'code')->all();
 
         // 業務データの入れ物の分 + ワークフローの案件の見本の分(段 2 の見本 = プロジェクト 5・マイルストーン 3・課題 3、版 3 の見本 = プロジェクト 4・マイルストーン 2
         // = ルートの深さ/初期データ.md 4 節)
         $this->assertEquals(['project' => 3 + 5 + 4, 'project_milestone' => 7 + 3 + 2, 'project_issue' => 5 + 3], $counts);
         // 参照の値 = プロジェクトの担当部署と責任者 12 × 2、課題のプロジェクト 8 と担当者 7(業務データの入れ物の 1 件は担当者なし)
-        $this->assertSame(12 * 2 + 8 + 7, RecordReference::query()->count());
+        $builtinModuleIds = RecordModule::query()->where('is_builtin', true)->select('id');
+        $references = RecordReference::query()->whereNotIn('record_module_id', $builtinModuleIds)->count();
+        $this->assertSame(12 * 2 + 8 + 7, $references);
     }
 
     /**

@@ -27,7 +27,7 @@ export type NoticeTemplate = {
 
 /**
  * 通知の種類ごとの文と札の雛形(1 か所。docs の 設計/ワークフロー/案件の運用/通知.md の 3 節)。
- * 種類を足すときは case を足す。雛形に無い種類は default の「通知があります。」と札「通知」で行を出す。
+ * 種類を足すときは case を足す(会議の種類は {@link meetingTemplate})。雛形に無い種類は「通知があります。」と札「通知」で行を出す。
  */
 export function noticeTemplate(row: NoticeRow): NoticeTemplate {
     const caseName = textParam(row, 'case_name');
@@ -71,12 +71,86 @@ export function noticeTemplate(row: NoticeRow): NoticeTemplate {
                 sentence: commentSentence(row),
             };
         default:
-            return {
-                label: '通知',
-                tone: 'settled',
-                sentence: '通知があります。',
-            };
+            return meetingTemplate(row) ?? UNKNOWN_TEMPLATE;
     }
+}
+
+/** 雛形に無い種類の行 */
+const UNKNOWN_TEMPLATE: NoticeTemplate = {
+    label: '通知',
+    tone: 'settled',
+    sentence: '通知があります。',
+};
+
+/**
+ * 会議の通知の札と文(docs の 設計/業務ツール/会議/通知と削除予定日.md の 6.1・6.4)。会議の種類でなければ null。
+ */
+function meetingTemplate(row: NoticeRow): NoticeTemplate | null {
+    const title = textParam(row, 'title');
+
+    switch (row.type) {
+        case 'meeting.minutes_created':
+            return {
+                label: '議事録の完了',
+                tone: 'settled',
+                sentence: `${title}　議事録を作成しました。`,
+            };
+        case 'meeting.minutes_regenerated':
+            return {
+                label: '議事録の再作成の完了',
+                tone: 'settled',
+                sentence: `${title}　議事録を再作成しました。`,
+            };
+        case 'meeting.transcription_failed':
+            return {
+                label: '文字起こしの失敗',
+                tone: 'rejected',
+                sentence: `${title}　文字起こしに失敗しました。${meetingReasonSentence(row)}`,
+            };
+        case 'meeting.minutes_failed':
+            return {
+                label: '議事録の失敗',
+                tone: 'rejected',
+                sentence: `${title}　議事録の作成に失敗しました。${meetingReasonSentence(row)}`,
+            };
+        default:
+            return null;
+    }
+}
+
+/** 会議の失敗の、種類によらない理由の文(理由 → 文) */
+const MEETING_REASONS = new Map([
+    ['budget', 'AI の利用の上限に達しました。'],
+    ['too_long', '長すぎるため処理できませんでした。'],
+    [
+        'record_unavailable',
+        '会議を更新できなかったため、議事録を書けませんでした。',
+    ],
+]);
+
+/** 会議の失敗の、その種類だけの理由の文(「種類 理由」→ 文) */
+const MEETING_KIND_REASONS = new Map([
+    [
+        'meeting.transcription_failed audio_unusable',
+        '音声から書き起こせませんでした。音声を確かめて、音声から作成し直してください。',
+    ],
+    [
+        'meeting.minutes_failed truncated',
+        '議事録が長すぎて途中で切れました。再作成の追加の指示で短くするよう頼んでください。',
+    ],
+]);
+
+/**
+ * 会議の失敗の理由の文(通知の種類と理由で選ぶ = 6.4)。種類に合わない理由と知らない理由は「ほか」の文。
+ */
+function meetingReasonSentence(row: NoticeRow): string {
+    const reason = textParam(row, 'reason');
+
+    return (
+        MEETING_REASONS.get(reason) ??
+        MEETING_KIND_REASONS.get(`${row.type} ${reason}`) ??
+        '時間をおいて再作成してください。'
+    );
 }
 
 /**

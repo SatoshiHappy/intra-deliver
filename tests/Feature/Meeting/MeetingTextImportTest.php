@@ -7,6 +7,7 @@ use App\Actions\Meeting\TextImportReader;
 use App\Actions\Meeting\WebVttReader;
 use App\Models\Meeting\Transcript;
 use App\Models\Meeting\TranscriptSegment;
+use App\Queries\Meeting\MeetingLimits;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Support\TransactionalTestCase;
 
@@ -29,7 +30,7 @@ final class MeetingTextImportTest extends TransactionalTestCase
      */
     public static function rejectedInputs(): array
     {
-        $tooLarge = str_repeat('a', TextImportReader::MAX_BYTES + 1);
+        $tooLarge = str_repeat('a', MeetingLimits::TEXT_MAX_BYTES + 1);
 
         return [
             '両方' => [['file' => ['a.txt', '発言'], 'text' => '発言'], 'file', CreateMeeting::FILE_OR_TEXT],

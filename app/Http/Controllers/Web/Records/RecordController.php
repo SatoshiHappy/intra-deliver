@@ -59,7 +59,7 @@ class RecordController extends Controller
             'records' => $listed['records'],
             'query' => $listed['query'],
             'can' => fn () => $this->pages->can($requester, $opened, [RecordModuleAction::Create], $context->date),
-            'addons' => fn () => $this->addons->index($context, $module),
+            'addons' => fn () => self::withObjectProps($this->addons->index($context, $module)),
             // 行と同じ読み取りの結果(見える範囲で絞った後)から id を取り、行の判定を二重にしない(業務の画面.md 2.5)
             'addonBadges' => fn () => (object) $this->addons
                 ->badges($context, $module, array_column($listed['records']['data'], 'id')),
@@ -122,11 +122,27 @@ class RecordController extends Controller
                 ->append('rows', 'id'),
             // 閲覧できない見る人に呼ばないため、ensureRowAccess の後のクロージャにする(業務の画面.md 2.5)
             'addons' => function () use ($context, $module, $recordId): array {
-                $addons = $this->addons->show($context, $module, $recordId);
+                $addons = self::withObjectProps($this->addons->show($context, $module, $recordId));
 
                 return [...$addons, 'fieldNotes' => (object) $addons['fieldNotes']];
             },
         ]);
+    }
+
+    /**
+     * 後ろのモジュールの操作の props を、空でも JSON のオブジェクトで届くよう (object) にする(画面は自分のキーだけを引く)。
+     *
+     * @param  array{actions: list<array{props: array<string, mixed>}>}  $addons  一覧か詳細の操作・札・注
+     * @return array<string, mixed>
+     */
+    private static function withObjectProps(array $addons): array
+    {
+        $addons['actions'] = array_map(
+            fn (array $action) => [...$action, 'props' => (object) $action['props']],
+            $addons['actions'],
+        );
+
+        return $addons;
     }
 
     /**

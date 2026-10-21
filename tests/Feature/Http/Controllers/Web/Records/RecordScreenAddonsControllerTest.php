@@ -139,8 +139,9 @@ final class RecordScreenAddonsControllerTest extends TransactionalTestCase
     {
         $this->registerRecordScreenAddons(new FixedRecordScreenAddons(
             'addon_check',
+            ['actions' => [self::addonAction('create', ['props' => []])]],
             badges: [$this->ids[0] => [self::BADGE]],
-            show: ['actions' => [], 'badges' => [], 'fieldNotes' => ['length' => '注']],
+            show: ['actions' => [self::addonAction('recreate')], 'badges' => [], 'fieldNotes' => ['length' => '注']],
         ));
         $bare = $this->recordModule('addon_bare');
         [$bareId] = $this->records($bare, 1);
@@ -156,6 +157,10 @@ final class RecordScreenAddonsControllerTest extends TransactionalTestCase
             JSON_UNESCAPED_UNICODE,
         ));
         $this->assertSame('{"length":"注"}', json_encode($shown['addons']['fieldNotes'], JSON_UNESCAPED_UNICODE));
+        // 操作の props も、空でも中身があってもオブジェクト
+        $this->assertSame(['{}', '{"recordId":1}'], [
+            json_encode($listed['addons']['actions'][0]['props']), json_encode($shown['addons']['actions'][0]['props']),
+        ]);
         $this->assertSame(['{}', '{}'], [
             json_encode($bareListed['addonBadges']), json_encode($bareShown['addons']['fieldNotes']),
         ]);

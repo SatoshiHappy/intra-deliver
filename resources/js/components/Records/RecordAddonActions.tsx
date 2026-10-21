@@ -1,4 +1,4 @@
-import { createElement, useEffect, useState } from 'react';
+import { createElement, Suspense, useEffect, useState } from 'react';
 import { recordAddonDialog } from '@/components/Records/addonDialogs';
 import { Button } from '@/components/ui/button';
 import {
@@ -14,6 +14,7 @@ import type { RecordAddonAction } from '@/types';
 
 /**
  * 操作 1 つ(押すと登録した部品を open で開く)。押せないボタンはポインターの出来事を受けないので、Tooltip の受け口は包みの span にする。
+ * 部品は閉じている間も描く(遅延で読み込む部品は、ボタンを描いた時に読み込みが始まる)。
  */
 function AddonActionButton({
     action,
@@ -47,12 +48,16 @@ function AddonActionButton({
                     <TooltipContent>{state.tooltip}</TooltipContent>
                 </Tooltip>
             )}
-            {dialog !== undefined &&
-                createElement(dialog, {
-                    open,
-                    onOpenChange: setOpen,
-                    values: action.props,
-                })}
+            {/* 部品は遅延で読み込まれうるので、読み込みの間は何も描かない(ボタンは包まない) */}
+            {dialog !== undefined && (
+                <Suspense fallback={null}>
+                    {createElement(dialog, {
+                        open,
+                        onOpenChange: setOpen,
+                        values: action.props,
+                    })}
+                </Suspense>
+            )}
         </>
     );
 }
