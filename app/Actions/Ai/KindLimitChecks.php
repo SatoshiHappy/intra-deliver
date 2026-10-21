@@ -2,7 +2,6 @@
 
 namespace App\Actions\Ai;
 
-use App\Actions\Ai\Api\RequestPrompt;
 use App\Queries\Ai\AiSettings;
 use App\Queries\Ai\RunEstimates;
 
@@ -56,20 +55,19 @@ class KindLimitChecks
             }
 
             if ($this->exceedsDailyLimit($budget)) {
-                $times = RequestPrompt::REQUESTS_PER_DAY;
                 $limit = RunEstimates::usd((float) $this->settings->budget($budget, 'daily_usd'));
-                $problems[] = "予算の区分 {$budget} の守る条件を破る: 1 日の回数 {$times} × 見積もりの上限の最大が日の上限 {$limit} ドル以上";
+                $problems[] = "予算の区分 {$budget} の守る条件を破る: 1 依頼の見積もりの上限の最大が日の上限 {$limit} ドル以上";
             }
         }
 
         return $problems;
     }
 
-    /** 1 日の回数 × 見積もりの上限の最大が日の上限以上か(日の上限が無い区分は守る必要が無い) */
+    /** 1 依頼の見積もりの上限の最大が日の上限以上か(その日の最初の依頼でも断られる。日の上限が無い区分は守る必要が無い) */
     private function exceedsDailyLimit(string $budget): bool
     {
         $daily = $this->settings->budget($budget, 'daily_usd');
-        $worst = RunEstimates::micros($this->estimates->ceilingOf($budget)) * RequestPrompt::REQUESTS_PER_DAY;
+        $worst = RunEstimates::micros($this->estimates->ceilingOf($budget));
 
         return $daily !== null && $worst >= RunEstimates::micros(RunEstimates::usd($daily));
     }

@@ -29,11 +29,6 @@ class RequestPrompt
 
     public const INPUT_TOO_LONG = 'AI に送る文が長すぎます(:max 文字まで)';
 
-    /** 依頼の入口の頻度の制限(名前つきの RateLimiter ai-requests。接続元の IP ごとの 1 日の回数)と、超えたときの文(キー ai) */
-    public const REQUESTS_PER_DAY = 10;
-
-    public const TOO_MANY_REQUESTS = '今日の AI への依頼の回数の上限に達しました。明日お試しください';
-
     public function __construct(
         private PromptKinds $kinds,
         private AiSettings $settings,

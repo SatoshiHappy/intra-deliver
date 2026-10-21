@@ -14,6 +14,7 @@ class DatabaseSeeder extends Seeder
      * NoticeSeeder = 通知のルートのリソースとポリシー(設計/ワークフロー/案件の運用/認可と一覧.md の 4 節)。
      * BuiltinSeeder = 組み込みの業務モジュール(業務モジュールのセットと、参照先のプロジェクトを要するので業務データの入れ物の後 =
      * 設計/業務ツール/モジュール境界.md の「組み込みの業務モジュールの置き場」)。
+     * MeetingSeeder = 会議の作成・再作成のルートのリソースとポリシー(設計/業務ツール/会議/処理.md の 3.2・3.7)。
      */
     public function run(): void
     {
@@ -26,6 +27,7 @@ class DatabaseSeeder extends Seeder
             AccountSeeder::class,
             RecordsSeeder::class,
             BuiltinSeeder::class,
+            MeetingSeeder::class,
             NoticeSeeder::class,
             WorkflowSeeder::class,
         ]);

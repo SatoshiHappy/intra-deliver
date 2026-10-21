@@ -98,7 +98,8 @@ final class AuthorizationSeedersTest extends TransactionalTestCase
             'http-services.account.current-department service:execute permit 認証済みユーザ',
             ...$this->recordsPolicySummaries(),
             ...$this->workflowPolicySummaries(),
-            ...$this->noticePolicySummaries(),
+            ...$this->everyonePolicySummaries('notice', 'index', 'read', 'read-all', 'latest'),
+            ...$this->everyonePolicySummaries('meeting', 'store', 'regenerate'),
         ], $this->policySummaries());
     }
 
@@ -152,15 +153,16 @@ final class AuthorizationSeedersTest extends TransactionalTestCase
 
     /**
      * 後の seeder は対象者を条件で引き直し、同じ対象者を作り足さない(FindsAuthzSubjects)。対象者 = ポリシーの 3 と、ワークフローの処理対象者と参照者の 5(用途 selection。
-     * ルート・フローの業務処理が作る = 設計/ワークフロー/初期データ.md 2 節)の計 8。ポリシー = 132(54 + メニューのワークフローのグループ 4 + ホームの主な操作のグループ 1 + ワークフローのルート
+     * ルート・フローの業務処理が作る = 設計/ワークフロー/初期データ.md 2 節)の計 8。ポリシー = 136(54 + メニューのワークフローのグループ 4 + ホームの主な操作のグループ 1 + ワークフローのルート
      * 38 = ルートの深さ/初期データ.md 6 節。定義の管理のルートはポリシーなし。通知のルート 8 = 設計/ワークフロー/案件の運用/認可と一覧.md の 4 節。業務モジュールの全件の参照 1 =
      * 設計/業務データの入れ物/認可とメニュー/README.md の 3 節。添付と外した時点のファイルのルート 6 × 2 = 12、コメントのルート 3 × 2 = 6 =
-     * 設計/業務データの入れ物/レコードの共通機能/認可と初期データ.md の 2.3 節。組み込みの会議の業務モジュール 8 = 設計/業務ツール/モジュール境界.md の「組み込みの業務モジュールの置き場」)。
+     * 設計/業務データの入れ物/レコードの共通機能/認可と初期データ.md の 2.3 節。組み込みの会議の業務モジュール 8 = 設計/業務ツール/モジュール境界.md の「組み込みの業務モジュールの置き場」。
+     * 会議のルート 2 × 2 = 4 = 設計/業務ツール/会議/処理.md の 3.2・3.7)。
      */
     public function test_the_seeders_reuse_the_subjects(): void
     {
         $this->assertEquals(['policy' => 3, 'selection' => 5], AuthzSubjectGroup::query()->groupBy('purpose')->orderBy('purpose')->selectRaw('purpose, count(*) as subject_groups')->pluck('subject_groups', 'purpose')->all());
-        $this->assertCount(132, $this->policySummaries());
+        $this->assertCount(136, $this->policySummaries());
     }
 
     public function test_a_guest_sees_the_home_and_the_sitemap(): void
@@ -225,22 +227,19 @@ final class AuthorizationSeedersTest extends TransactionalTestCase
             'reapplications.create', 'reapplications.store', 'cases.assignee-candidates',
         ];
 
-        return array_merge(...array_map(fn (string $route) => $this->permits("http-services.workflow.{$route}", ['service:execute'], ['ゲストユーザ', '認証済みユーザ']), $routes));
+        return $this->everyonePolicySummaries('workflow', ...$routes);
     }
 
     /**
-     * 通知の初期データのポリシー(ルート 4 本 × ゲストユーザ・認証済みユーザの execute = docs の 設計/ワークフロー/案件の運用/認可と一覧.md の 4 節)。
+     * ゲストユーザ・認証済みユーザに execute を許すルートのポリシー(ワークフロー・通知・会議。出典は test_the_seeders_reuse_the_subjects の注)。
      *
      * @return list<string>
      */
-    private function noticePolicySummaries(): array
+    private function everyonePolicySummaries(string $prefix, string ...$routes): array
     {
         $everyone = ['ゲストユーザ', '認証済みユーザ'];
 
-        return array_merge(...array_map(
-            fn (string $route) => $this->permits("http-services.notice.{$route}", ['service:execute'], $everyone),
-            ['index', 'read', 'read-all', 'latest'],
-        ));
+        return array_merge(...array_map(fn (string $route) => $this->permits("http-services.{$prefix}.{$route}", ['service:execute'], $everyone), $routes));
     }
 
     /**

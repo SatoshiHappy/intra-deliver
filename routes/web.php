@@ -8,6 +8,7 @@ use App\Http\Controllers\Web\Authz\AuthzSubjectController;
 use App\Http\Controllers\Web\Authz\OverviewController;
 use App\Http\Controllers\Web\Master\OrganizationChartController;
 use App\Http\Controllers\Web\Master\SearchController;
+use App\Http\Controllers\Web\Meeting\MeetingController;
 use App\Http\Controllers\Web\Menu\HomeController;
 use App\Http\Controllers\Web\Menu\SitemapController;
 use App\Http\Controllers\Web\Notice\NoticeController;
@@ -58,6 +59,12 @@ Route::get('/notices/latest', [NoticeController::class, 'latest'])->name('notice
 Route::post('/notices/read-all', [NoticeController::class, 'readAll'])->name('notice.read-all');
 Route::post('/notices/{notice}/read', [NoticeController::class, 'read'])
     ->name('notice.read')->where('notice', '[0-9]{1,18}');
+
+// 会議の作成(テキスト・貼り付け)と書き起こしからの再作成(docs の 設計/業務ツール/会議/処理.md の 3.2・3.7)。{meeting} = 会議のレコードの id。
+Route::post('/meetings', [MeetingController::class, 'store'])
+    ->name('meeting.store');
+Route::post('/meetings/{meeting}/regenerate', [MeetingController::class, 'regenerate'])
+    ->name('meeting.regenerate')->where('meeting', '[0-9]{1,18}');
 
 // 業務データの入れ物の業務の画面(docs の 設計/業務データの入れ物/画面/README.md 1.1)。{module} = 業務モジュールのコード、{record} = レコードの id(数字だけ)。
 // 引数の形を限るので、/candidates・/create は {record} に合わない。{record} の桁は整数に収まる 18 桁まで(超えるとどのルートにも合わず 404)。

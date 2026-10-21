@@ -184,12 +184,12 @@ final class ExecutePromptTest extends TransactionalTestCase
     {
         PromptAgent::fake([['summary' => '要約']]);
         $runId = $this->queuedRun();
-        AiRun::query()->whereKey($runId)->update(['kind' => 'meeting.minutes']);
+        AiRun::query()->whereKey($runId)->update(['kind' => 'meeting.extraction']);
 
         $run = $this->executeFailing($runId, LogicException::class);
 
         $this->assertSame([AiRunStatus::Failed, AiRunErrorCode::Completion, null], [$run->status, $run->error_code, $run->started_at]);
-        $this->assertStringContainsString('meeting.minutes の実装が登録されていない', (string) $run->error_message);
+        $this->assertStringContainsString('meeting.extraction の実装が登録されていない', (string) $run->error_message);
         PromptAgent::assertNeverPrompted();
     }
 

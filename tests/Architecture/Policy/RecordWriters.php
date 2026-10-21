@@ -35,6 +35,11 @@ final class RecordWriters
             'place' => 'App\Actions\Ai\Api\WriteRecordFromRun',
             'reason' => 'AI の書き込みの口(種類の完了の受け手の中から、実行の依頼者の権限で、実行の対象のレコードを書く = ADR 0019 の決定 4)',
         ],
+        [
+            'type' => 'class',
+            'place' => 'App\Actions\Meeting\MeetingRecordWriter',
+            'reason' => '人の操作の会議の作成が会議のレコードを作る 1 か所(docs の 設計/業務ツール/会議/口と検査.md の 12 節)',
+        ],
         ['type' => 'path', 'place' => LayerRules::SEEDERS_PATH, 'reason' => '初期データ(seeder は業務処理を呼んでレコードを入れる)'],
     ];
 

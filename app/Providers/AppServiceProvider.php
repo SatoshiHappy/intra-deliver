@@ -3,8 +3,7 @@
 namespace App\Providers;
 
 use App\Actions\Ai\Api\PromptKind;
-use App\Actions\Ai\Api\RequestPrompt;
-use App\Actions\Ai\RunBudget;
+use App\Actions\Meeting\MeetingMinutesKind;
 use App\Models\Master\User;
 use App\Queries\Authz\ResourceTypes;
 use App\Queries\Authz\ServiceResourceTypes;
@@ -34,15 +33,11 @@ use App\Queries\Workflow\WorkflowNoticeTargets;
 use App\Queries\Workflow\WorkflowRecordApplyEntries;
 use App\Queries\Workflow\WorkflowRecordHolds;
 use Carbon\CarbonImmutable;
-use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
-use Illuminate\Validation\ValidationException;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -71,7 +66,7 @@ class AppServiceProvider extends ServiceProvider
 
         // 依存の逆転: AI の実行の種類(docs の 設計/AI/公開の口.md 3.1)。呼び手のモジュール(Meeting など)が種類の実装をここに足す。
         // コードは config/ai_runs.php の kinds にあるものだけ(同じコードが 2 つ・設定に無いコードは起動のテストで落とす)
-        $this->app->tag([], PromptKind::TAG);
+        $this->app->tag([MeetingMinutesKind::class], PromptKind::TAG);
 
         // 依存の逆転: 通知の行の移り先を、対象の種類を持つモジュールの実装が答える(docs の 設計/ワークフロー/案件の運用/通知.md の 5 節)。
         // 対象の種類を持つモジュールが実装をここに足す(実装の無い対象の種類の行は共通の 1 行になる)
@@ -106,24 +101,10 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->configureDefaults();
-        $this->configureRateLimiting();
 
         // 本番以外(開発・E2E のサーバー・phpunit)では関係の遅延読み込みを例外にする(docs の 設計/コード構成/検査.md 6 節)。
         // 2 行以上の結果から作ったモデルの遅延読み込みだけが例外になる(Laravel の仕様)。1 件からの N+1 はレビューで見る
         Model::preventLazyLoading(! $this->app->isProduction());
-    }
-
-    /**
-     * 名前つきの要求の頻度の制限(Laravel 標準の RateLimiter)。
-     *
-     * ai-requests = AI の依頼の入口に掛ける(docs の 設計/AI/実行と費用.md 5.2。訪問者 1 人が日の費用の上限を使い切らないよう、接続元の IP ごとに 1 日の回数)。
-     * 超えたときは、上限を超えた依頼と同じ見え方にするため検証の失敗(422・キー ai)にする。付け忘れは tests/Feature/Ai/AiRequestRoutesTest が止める。
-     */
-    protected function configureRateLimiting(): void
-    {
-        RateLimiter::for('ai-requests', fn (Request $request): Limit => Limit::perDay(RequestPrompt::REQUESTS_PER_DAY)->by((string) $request->ip())->response(
-            fn () => throw ValidationException::withMessages([RunBudget::ERROR_KEY => RequestPrompt::TOO_MANY_REQUESTS]),
-        ));
     }
 
     /**
