@@ -70,6 +70,10 @@ final class DemoFootprint
         '.env.publish.example' => [
             'DEMO_ENABLED=true',
         ],
+        'playwright.config.ts' => [
+            "import { demoGroups } from './tests/e2e/demo/groups';",
+            '...demoGroups,',
+        ],
         'scripts/deploy/migrate-and-seed' => [
             '"${dc}" "${env_file}" run --rm --no-deps -T app php artisan db:seed --class=DemoSeeder --force --no-interaction',
         ],

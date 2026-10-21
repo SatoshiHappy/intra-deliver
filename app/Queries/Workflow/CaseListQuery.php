@@ -15,6 +15,7 @@ use Illuminate\Database\Eloquent\Collection;
  * 問い合わせの回数は行の数に依らない。
  *
  * @phpstan-import-type CaseRow from CaseRows
+ * @phpstan-import-type AttachmentLimits from WorkflowAttachmentLimits
  */
 class CaseListQuery
 {
@@ -35,13 +36,15 @@ class CaseListQuery
     public function __construct(
         private CaseVisibility $visibility,
         private CaseRows $rows,
+        private WorkflowAttachmentLimits $limits,
     ) {}
 
     /**
      * @param  mixed  $tab  クエリの tab
      * @param  mixed  $scope  クエリの scope
      * @param  mixed  $page  クエリの page
-     * @return array{query: array{tab: string, scope: string}, counts: array{draft: int, pending: int}, cases: array{data: list<CaseRow>, currentPage: int, lastPage: int, total: int}, commentMaxLength: int}
+     * @return array{query: array{tab: string, scope: string}, counts: array{draft: int, pending: int}, cases: array{data: list<CaseRow>, currentPage: int, lastPage: int, total: int}, commentMaxLength: int,
+     *     attachmentLimits: AttachmentLimits|null}
      */
     public function list(AccessContext $context, mixed $tab, mixed $scope, mixed $page): array
     {
@@ -55,18 +58,38 @@ class CaseListQuery
         }
 
         $paginator = $query->orderByDesc('updated_at')->orderByDesc('id')->paginate(perPage: self::PER_PAGE, page: $this->pageOf($page));
+        $items = new Collection($paginator->items());
+        $rows = $this->rows->rows($requester, $context->date, $context->localeCode, $items, opensDialogs: true);
 
         return [
             'query' => ['tab' => $tab, 'scope' => $scope],
             'counts' => $this->counts($context),
             'cases' => [
-                'data' => $this->rows->rows($requester, $context->date, $context->localeCode, new Collection($paginator->items())),
+                'data' => $rows,
                 'currentPage' => $paginator->currentPage(),
                 'lastPage' => $paginator->lastPage(),
                 'total' => $paginator->total(),
             ],
             'commentMaxLength' => WorkflowCaseHistory::COMMENT_MAX,
+            'attachmentLimits' => $this->limits->forPage($this->anyAttachable($rows)),
         ];
+    }
+
+    /**
+     * どれかの行の入口(引戻し・取止め)が添付を受けるか(ページの attachmentLimits を出すか =
+     * 設計/ワークフロー/申請の周辺/添付/README.md の 5 節)。
+     *
+     * @param  list<CaseRow>  $rows
+     */
+    private function anyAttachable(array $rows): bool
+    {
+        foreach ($rows as $row) {
+            if ($row['canAttachOnWithdraw'] || in_array(true, array_column($row['pullBackNodes'], 'canAttach'), true)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

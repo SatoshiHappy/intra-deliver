@@ -1,0 +1,68 @@
+#!/usr/bin/env bash
+# E2E の組のサーバー(playwright.config.ts の webServer の command)。使い方: scripts/ci/e2e-server <ポート>
+# 組の DB をテスト用 DB から写し直してから php artisan serve を起動する(組の DB とポートの決まり = docs の 設計/コード構成/検査.md 6 節の並列(E))。
+set -euo pipefail
+
+cd "$(dirname "$0")/../.."
+
+refuse() {
+    echo "$1。E2E は scripts/ci/front から走らせる" >&2
+    exit 1
+}
+
+if [ "$#" -ne 1 ]; then
+    refuse "使い方: scripts/ci/e2e-server <ポート>(ポートの指定が無い)"
+fi
+port="$1"
+template_database="${E2E_TEMPLATE_DATABASE:-}"
+group_database="${DB_DATABASE:-}"
+
+if [[ ! "${port}" =~ ^[1-9][0-9]{0,4}$ ]] || [ "${port}" -gt 65535 ]; then
+    refuse "ポートが 1〜65535 の整数でない(値 = ${port})"
+fi
+# 名前は SQL の文に入れるので、文字を英小文字・数字・_ に絞る(接尾辞は下の作り直しの文で設定から読んで確かめる)
+if [[ ! "${template_database}" =~ ^[a-z0-9_]+$ ]]; then
+    refuse "E2E_TEMPLATE_DATABASE がテスト用 DB の名前(英小文字・数字・_)でない(値 = ${template_database})"
+fi
+case "${group_database}" in
+    "${template_database}_e2e_"[1-9]) ;;
+    *) refuse "DB_DATABASE が ${template_database}_e2e_<1〜9> でない(値 = ${group_database})" ;;
+esac
+# Postgres は 63 バイトを超える名前を黙って切り詰めるので、組どうしが同じ DB に潰れないよう止める
+if [ "${#group_database}" -gt 63 ]; then
+    refuse "DB_DATABASE が 63 文字を超える(値 = ${group_database})"
+fi
+
+# 写し元に接続が残っていると Postgres は写さないので、保守用の DB(postgres)に接続して作り直す。DB_DATABASE の差し替えが効かないと
+# (設定キャッシュ・DB_URL など)開発用 DB に掛かるので、drop より前に接続先を結果で確かめる(scripts/ci/front と同じ形)
+rebuild="$(cat <<'PHP'
+$group = getenv("E2E_GROUP_DATABASE");
+$template = getenv("E2E_TEMPLATE_DATABASE");
+$suffix = (string) config("guardrails.test_db_suffix");
+if (app()->configurationIsCached()) {
+    $cache = app()->getCachedConfigPath();
+    throw new RuntimeException("設定キャッシュ({$cache})があるので組の DB を作り直さない。php artisan config:clear で消す");
+}
+if ($suffix === "") {
+    throw new RuntimeException("設定のテスト用 DB の接尾辞(guardrails.test_db_suffix)が空");
+}
+if (! str_ends_with($template, $suffix)) {
+    throw new RuntimeException("E2E_TEMPLATE_DATABASE が {$suffix} で終わらない(値 = {$template})。scripts/ci/front から走らせる");
+}
+if (strlen($template) === strlen($suffix)) {
+    throw new RuntimeException("E2E_TEMPLATE_DATABASE が接尾辞 {$suffix} だけで、前に名前が無い。scripts/ci/front から走らせる");
+}
+$maintenance = getenv("DB_DATABASE");
+$connected = DB::selectOne("select current_database() as name")->name;
+if ($connected !== $maintenance) {
+    throw new RuntimeException("{$maintenance} でなく {$connected} に接続した(DB_DATABASE の差し替えが効かない。DB_URL などの上書きを外す)");
+}
+DB::statement("drop database if exists \"{$group}\" with (force)");
+DB::statement("create database \"{$group}\" template \"{$template}\"");
+PHP
+)"
+# tinker の誤り(上の例外を含む)は stdout に出るので stderr に回す(webServer は stdout を捨てる)
+DB_DATABASE=postgres E2E_GROUP_DATABASE="${group_database}" php artisan tinker --execute "${rebuild}" >&2
+
+# --no-reload: 環境変数(DB_DATABASE ほか)をそのまま PHP のサーバーに渡す(reload では一部の環境変数だけが渡る)
+exec php artisan serve --host=127.0.0.1 --port="${port}" --no-reload

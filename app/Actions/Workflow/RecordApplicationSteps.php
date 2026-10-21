@@ -5,7 +5,6 @@ namespace App\Actions\Workflow;
 use App\Models\Records\Record;
 use App\Models\Workflow\WorkflowCase;
 use App\Queries\Authz\Api\Requester;
-use App\Queries\Records\Api\RecordViewAccess;
 use App\Queries\Workflow\RecordApplyFlows;
 use App\Queries\Workflow\RecordApplyTargets;
 use App\Support\AccessContext;
@@ -35,12 +34,11 @@ class RecordApplicationSteps
     public function __construct(
         private RecordApplyFlows $flows,
         private RecordApplyTargets $targets,
-        private RecordViewAccess $viewAccess,
     ) {}
 
     /**
-     * 0 の確かめ: 申請できる人 → レコード(行の判定を通らないレコードは無いのと同じ) → 持ち主の順(403 を先にして、権限の無い人にレコードの有無を漏らさない)。
-     * 更新の口は持ち主の鍵を渡すと行の判定をしないので、ここで申請者の行の判定を済ませる。
+     * 0 の確かめ: 申請できる人 → レコード({@see RecordApplyTargets::requireRecord()}) → 持ち主の順(403 を先にして、権限の無い人に
+     * レコードの有無を漏らさない)。
      *
      * @param  AccessContext  $applicant  申請者(代理のときは代理元)
      *
@@ -56,10 +54,7 @@ class RecordApplicationSteps
             throw CaseOperationErrors::notApplicable();
         }
 
-        if ($this->targets->moduleCodeOf($recordId) !== $moduleCode
-            || ! $this->viewAccess->canView($requester, $moduleCode, $recordId, $applicant->date)) {
-            throw (new ModelNotFoundException)->setModel(Record::class, [$recordId]);
-        }
+        $this->targets->requireRecord($requester, $moduleCode, $recordId, $applicant->date);
 
         if ($this->targets->isHeld($recordId)) {
             throw self::held();

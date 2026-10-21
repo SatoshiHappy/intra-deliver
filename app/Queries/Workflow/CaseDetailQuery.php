@@ -22,6 +22,7 @@ use LogicException;
  * 揃わないときの害は画面の一時的な混在だけで、操作は改訂番号で守られる。組み立ての最後に、案件の行を閲覧の判定を通してもう 1 回読み、見えなくなっていれば 404
  * (閲覧を失った後の履歴・コメントを返さない = 画面.md 5 節・認可と一覧.md 2 節)。組み立て直しは繰り返さず、返す改訂番号は最初に読んだ値。読み取りの間に閲覧を
  * 失って取り戻した場合は返す(受け入れた代償)。
+ * 引戻し・取止めの入口の添付の可否と attachmentLimits = 設計/ワークフロー/申請の周辺/添付/README.md の 5 節({@see CaseAttachEntries})。
  *
  * @phpstan-import-type Person from WorkflowPeople
  * @phpstan-import-type History from CaseHistories
@@ -29,6 +30,8 @@ use LogicException;
  * @phpstan-import-type DiagramNode from CaseDiagram
  * @phpstan-import-type DiagramEdge from CaseDiagram
  * @phpstan-import-type Council from CaseCouncils
+ * @phpstan-import-type PullBackNode from CaseRows
+ * @phpstan-import-type AttachmentLimits from WorkflowAttachmentLimits
  */
 class CaseDetailQuery
 {
@@ -44,17 +47,19 @@ class CaseDetailQuery
         private CaseDiagram $diagram,
         private CaseCouncils $councils,
         private CurrentAssignments $assignments,
+        private CaseAttachEntries $attachEntries,
+        private WorkflowAttachmentLimits $limits,
     ) {}
 
     /**
-     * @return array{case: array<string, mixed>, content: array<string, mixed>, nodes: list<DiagramNode>, edges: list<DiagramEdge>, councils: list<Council>, histories: list<History>, related: array{sameRecord: list<CaseRow>, referenced: list<CaseRow>, referencing: list<CaseRow>}, can: array{pullBack: bool, reapply: bool, withdraw: bool}, nodeActions: list<array<string, mixed>>, pullBackNodes: list<array{id: int, name: string, blockedReason: string|null}>, commentMaxLength: int}
+     * @return array{case: array<string, mixed>, content: array<string, mixed>, nodes: list<DiagramNode>, edges: list<DiagramEdge>, councils: list<Council>, histories: list<History>, related: array{sameRecord: list<CaseRow>, referenced: list<CaseRow>, referencing: list<CaseRow>}, can: array{pullBack: bool, reapply: bool, withdraw: bool}, nodeActions: list<array<string, mixed>>, pullBackNodes: list<PullBackNode>, commentMaxLength: int, canAttachOnWithdraw: bool, attachmentLimits: AttachmentLimits|null}
      *
      * @throws ModelNotFoundException<WorkflowCase> 案件が無い・閲覧できない・一時保存のとき(組み立ての後の 2 回目の閲覧の判定で見えなくなったときを含む)
      */
     public function show(AccessContext $context, int $caseId): array
     {
         $requester = Requester::fromAccessContext($context);
-        $case = $this->visibleCase($requester, $context, $caseId);
+        $case = $this->visibleCase($requester, $context, $caseId)->load('workflowFlow');
         $recordId = $case->record_id ?? throw new LogicException("申請した案件 {$case->id} がレコードを指していない");
         $nodes = WorkflowCaseNode::query()->with('parent')->where('workflow_case_id', $case->id)->get()->sort(WorkflowCaseNode::compareInRoute(...))->values();
         $histories = WorkflowCaseHistory::query()->where('workflow_case_id', $case->id)->orderBy('id')->get();
@@ -62,6 +67,9 @@ class CaseDetailQuery
         $targets = array_merge([], ...array_map(fn (CurrentNode $node) => $node->targetUserIds, $situation->currentNodes));
         $people = $this->people->users([$case->user_id, ...$targets, ...array_values($histories->map(fn (WorkflowCaseHistory $history) => $history->user_id)->all())], $context->date, $context->localeCode);
         $nodeActions = $this->nodeActions->of($requester, $context->date, $situation);
+        $can = $this->decider->detailCanOf($requester, $context->date, $situation);
+        $attach = $this->attachEntries->of([$situation], [$case->id => $can['withdraw']])[$case->id];
+        $attachable = in_array(true, [$attach['withdraw'], ...$attach['pullBack']], true);
         $designations = $this->designations->of($case->id, array_values(array_map(fn (array $action) => $action['nodeId'], array_filter($nodeActions, fn (array $action) => $action['approve']))), $context->date, $context->localeCode);
         $content = $this->display->show($requester, $recordId, $context->date, $context->localeCode);
         $historiesById = $histories->keyBy('id');
@@ -77,10 +85,12 @@ class CaseDetailQuery
             'histories' => $this->histories
                 ->of($requester, $context->date, $context->localeCode, $histories, $nodes->keyBy('id'), $people),
             'related' => $this->related->of($requester, $context->date, $context->localeCode, $case, $recordId),
-            'can' => $this->decider->detailCanOf($requester, $context->date, $situation),
+            'can' => $can,
             'nodeActions' => array_map(fn (array $action) => [...$action, 'designations' => $designations[$action['nodeId']] ?? []], $nodeActions),
-            'pullBackNodes' => CaseRows::pullBackNodesOf($situation),
+            'pullBackNodes' => CaseRows::pullBackNodesOf($situation, $attach['pullBack']),
             'commentMaxLength' => WorkflowCaseHistory::COMMENT_MAX,
+            'canAttachOnWithdraw' => $attach['withdraw'],
+            'attachmentLimits' => $this->limits->forPage($attachable),
         ];
         $this->visibleCase($requester, $context, $case->id);
 
@@ -103,7 +113,7 @@ class CaseDetailQuery
      */
     private function caseOf(WorkflowCase $case, CaseSituation $situation, array $people, AccessContext $context): array
     {
-        $flow = $case->workflowFlow()->sole();
+        $flow = CaseRows::flowOf($case);
 
         return [
             'id' => $case->id,

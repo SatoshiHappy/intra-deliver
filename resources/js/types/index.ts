@@ -9,4 +9,5 @@ export * from './recordShow';
 export * from './status';
 export * from './ui';
 export * from './workflow';
+export * from './workflowAttachments';
 export * from './workflowValues';

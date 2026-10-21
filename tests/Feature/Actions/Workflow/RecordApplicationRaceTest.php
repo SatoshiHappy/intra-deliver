@@ -6,9 +6,6 @@ use App\Actions\Records\DeleteRecord;
 use App\Actions\Workflow\RecordApplicationSteps;
 use App\Models\Master\Department;
 use App\Queries\Master\Api\CurrentDepartment;
-use App\Queries\Records\Api\RecordDisplayQuery;
-use App\Queries\Workflow\RecordApplyTargets;
-use App\Queries\Workflow\WorkflowRecordHolds;
 use DateTimeInterface;
 use Illuminate\Database\QueryException;
 use Tests\Support\AppliesFromRecords;
@@ -80,35 +77,5 @@ final class RecordApplicationRaceTest extends TransactionalTestCase
         } catch (QueryException $exception) {
             $this->assertStringContainsString('"workflow_cases_department_id_foreign"', $exception->getMessage());
         }
-    }
-
-    /**
-     * 0 の確かめが読む持ち主と業務モジュールを、競合の後の形に差し替える(業務モジュールの null = 本物のまま読む)。
-     */
-    private function checkAs(bool $held, ?string $moduleCode): void
-    {
-        [$display, $holds] = [app(RecordDisplayQuery::class), app(WorkflowRecordHolds::class)];
-        $targets = new class($display, $holds, $held, $moduleCode) extends RecordApplyTargets
-        {
-            public function __construct(
-                RecordDisplayQuery $display,
-                WorkflowRecordHolds $holds,
-                private bool $held,
-                private ?string $moduleCode,
-            ) {
-                parent::__construct($display, $holds);
-            }
-
-            public function moduleCodeOf(int $recordId): ?string
-            {
-                return $this->moduleCode ?? parent::moduleCodeOf($recordId);
-            }
-
-            public function isHeld(int $recordId): bool
-            {
-                return $this->held;
-            }
-        };
-        $this->app->instance(RecordApplyTargets::class, $targets);
     }
 }

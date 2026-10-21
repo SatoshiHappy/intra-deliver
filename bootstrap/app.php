@@ -10,6 +10,7 @@ use App\Http\Middleware\Notice\ShareNotices;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
+use Illuminate\Http\Exceptions\PostTooLargeException;
 use Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -58,4 +59,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $exceptions->shouldRenderJsonWhen(
             fn (Request $request) => $request->is('api/*') || $request->expectsJson(),
         );
+
+        // 要求の本文の上限超えは、セッションより前の大域のミドルウェアで止まるので元の画面へ戻せない。状態 413・本文なしで返し、
+        // 画面が状態を見て知らせる(docs の 設計/ワークフロー/申請の周辺/添付/README.md の 4 節)
+        $exceptions->render(fn (PostTooLargeException $exception) => response()->noContent(413));
     })->create();

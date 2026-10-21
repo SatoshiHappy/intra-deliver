@@ -4,11 +4,13 @@ namespace App\Queries\Workflow;
 
 use App\Enums\Records\RecordModuleAction;
 use App\Enums\Workflow\WorkflowCaseState;
+use App\Models\Records\Record;
 use App\Models\Records\RecordModule;
 use App\Models\Workflow\WorkflowCase;
 use App\Models\Workflow\WorkflowCaseHistory;
 use App\Models\Workflow\WorkflowFlow;
 use App\Queries\Authz\Api\Requester;
+use App\Queries\Records\Api\RecordDisplayQuery;
 use App\Queries\Records\Api\RecordFormQuery;
 use App\Support\AccessContext;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -21,8 +23,10 @@ use LogicException;
  * 状態つきの閲覧を口より先に引く。業務データの入れ物の主体の判定をしない口(初期値)は、これらの判定の後にだけ呼ぶ(業務データとの接続/README.md 9 節)。
  *
  * @phpstan-import-type Next from ApplicationNext
+ * @phpstan-import-type ApplyAttachment from ApplyAttachments
  *
- * @phpstan-type ApplyForm array{mode: string, flow: array{code: string, name: string, description: string|null}, case: array{id: int, number: string|null, revision: int}|null, module: array<string, mixed>, initial: array{name: string|null, comment: string|null, values: array<string, mixed>, details: array<string, list<array<string, mixed>>>}|null, titleField: string|null, recordId: int|null, baseDate: string, baseDateRange: array{min: string|null, max: string|null}, next: Next, nameMaxLength: int, commentMaxLength: int}
+ * @phpstan-type ApplyForm array{mode: string, flow: array{code: string, name: string, description: string|null}, case: array{id: int, number: string|null, revision: int}|null, module: array<string, mixed>, initial: array{name: string|null, comment: string|null, values: array<string, mixed>, details: array<string, list<array<string, mixed>>>}|null, titleField: string|null, recordId: int|null, baseDate: string, baseDateRange: array{min: string|null, max: string|null}, next: Next, nameMaxLength: int, commentMaxLength: int, attachment: ApplyAttachment,
+ *     recordVersion: string|null, recordTitle: string|null}
  */
 class ApplicationFormQuery
 {
@@ -33,6 +37,9 @@ class ApplicationFormQuery
         private RecordFormQuery $forms,
         private ApplicationNext $next,
         private RecordApplyFlows $recordApplyFlows,
+        private ApplyAttachments $attachments,
+        private RecordApplyTargets $recordTargets,
+        private RecordDisplayQuery $display,
     ) {}
 
     /**
@@ -51,7 +58,9 @@ class ApplicationFormQuery
         $flow = WorkflowFlow::query()->with('workflowContent.recordModule')->where('code', $flowCode)->firstOrFail();
         $module = $this->forms->definition($requester, $this->moduleOf($flow)->code, RecordModuleAction::Create, $context->date);
 
-        return $this->form('new', $flow, null, $module, null, null, $this->applicationDate($context, $flow, [$baseDate]), $context);
+        $date = $this->applicationDate($context, $flow, [$baseDate]);
+
+        return $this->form('new', $flow, null, $module, null, null, $date, $context, $this->attachments->forNew($flow));
     }
 
     /**
@@ -83,7 +92,9 @@ class ApplicationFormQuery
 
         $date = $this->applicationDate($context, $flow, [$baseDate, $input['base_date'] ?? null]);
 
-        return $this->form('draft', $flow, ['id' => $case->id, 'number' => null, 'revision' => $case->revision], $module, $initial, null, $date, $context);
+        $attachment = $this->attachments->forDraft($flow, $case, $context->userId);
+
+        return $this->form('draft', $flow, ['id' => $case->id, 'number' => null, 'revision' => $case->revision], $module, $initial, null, $date, $context, $attachment);
     }
 
     /**
@@ -120,7 +131,43 @@ class ApplicationFormQuery
             'next' => $this->next->ofCase($context, $case),
         ];
 
-        return $this->form('reapply', $flow, ['id' => $case->id, 'number' => $number, 'revision' => $case->revision], $module, $initial, $recordId, $date, $context);
+        $attachment = $this->attachments->forReapply($context, $flow, $case, $moduleCode, $recordId);
+
+        return $this->form('reapply', $flow, ['id' => $case->id, 'number' => $number, 'revision' => $case->revision], $module, $initial, $recordId, $date, $context, $attachment);
+    }
+
+    /**
+     * 既存のデータからの申請の画面(判定の順 = 設計/ワークフロー/申請の周辺/既存のデータからの申請.md の 3 節。initial = 今のレコードの値と、開いたときの版
+     * recordVersion)。持ち主があれば null(入口がレコードの詳細へ戻す)。定義・初期値・申請基準日は既定の申請者({@see self::recordApplicant()})で引く。
+     *
+     * @param  mixed  $baseDate  クエリ base_date(申請基準日を変えたときの部分再読み込み)
+     * @return ApplyForm|null
+     *
+     * @throws ModelNotFoundException<WorkflowFlow|Record> フローが無い・レコードが無い・その業務モジュールの親の無いレコードでない・行の判定を通らないとき
+     * @throws AuthorizationException 自分か代理元のどれも既存のデータからの申請をできないとき(ゲストを含む)
+     */
+    public function fromRecord(AccessContext $context, string $flowCode, int $recordId, mixed $baseDate = null): ?array
+    {
+        $this->gate->authorizeRecordApply($context, $flowCode);
+        $flow = WorkflowFlow::query()->with('workflowContent.recordModule')->where('code', $flowCode)->firstOrFail();
+        $principalId = $this->recordApplicant($context, $flow->id, null);
+        $applicant = $principalId === null ? $context : PrincipalContext::of($context, $principalId);
+        $requester = Requester::fromAccessContext($applicant);
+        $moduleCode = $this->moduleOf($flow)->code;
+        $this->recordTargets->requireRecord($requester, $moduleCode, $recordId, $context->date);
+
+        if ($this->recordTargets->isHeld($recordId)) {
+            return null;
+        }
+
+        $module = $this->forms->definition($requester, $moduleCode, RecordModuleAction::Update, $context->date);
+        $read = $this->forms->editValues($requester, $moduleCode, $recordId, $context->date, $context->localeCode);
+        $initial = ['name' => null, 'comment' => null, 'values' => $read['values'], 'details' => $read['details']];
+        $date = $this->applicationDate($applicant, $flow, [$baseDate]);
+        $attachment = $this->attachments->forRecord($applicant, $flow, $moduleCode, $recordId);
+        $form = $this->form('record', $flow, null, $module, $initial, $recordId, $date, $context, $attachment);
+
+        return [...$form, 'recordVersion' => $read['version'], 'recordTitle' => $this->display->titleOf($recordId)];
     }
 
     /**
@@ -153,11 +200,12 @@ class ApplicationFormQuery
      * @param  array{id: int, number: string|null, revision: int}|null  $case
      * @param  array<string, mixed>  $module
      * @param  array{name: string|null, comment: string|null, values: array<string, mixed>, details: array<string, list<array<string, mixed>>>}|null  $initial
-     * @param  int|null  $recordId  書くレコード(再申請だけ。参照の候補から除く = 設計/業務データの入れ物/画面/README.md 4 節)
+     * @param  int|null  $recordId  書くレコード(再申請・既存のデータからの申請。参照の候補から除く = 設計/業務データの入れ物/画面/README.md 4 節)
      * @param  array{baseDate: string, baseDateRange: array{min: string|null, max: string|null}, next: Next}  $date  申請基準日と次の処理対象者
+     * @param  ApplyAttachment  $attachment  添付の欄(設計/ワークフロー/申請の周辺/添付/README.md の 5 節)
      * @return ApplyForm
      */
-    private function form(string $mode, WorkflowFlow $flow, ?array $case, array $module, ?array $initial, ?int $recordId, array $date, AccessContext $context): array
+    private function form(string $mode, WorkflowFlow $flow, ?array $case, array $module, ?array $initial, ?int $recordId, array $date, AccessContext $context, array $attachment): array
     {
         return [
             'mode' => $mode,
@@ -169,6 +217,9 @@ class ApplicationFormQuery
             'recordId' => $recordId,
             'nameMaxLength' => WorkflowCase::NAME_MAX,
             'commentMaxLength' => WorkflowCaseHistory::COMMENT_MAX,
+            'attachment' => $attachment,
+            'recordVersion' => null,
+            'recordTitle' => null,
             ...$date,
         ];
     }

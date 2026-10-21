@@ -7,6 +7,7 @@ use App\Enums\Records\RecordWriteDestination;
 use App\Models\Records\Record;
 use App\Models\Records\RecordModule;
 use App\Queries\Authz\Api\Requester;
+use App\Queries\Records\Api\RecordApplyEntry;
 use DateTimeInterface;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -17,6 +18,8 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
  * (隠すのは案内)。持ち主の読み取りはトランザクションを求めない(書き込みのときに業務処理が同じ口でもう一度確かめる)。
  *
  * @phpstan-import-type ModuleDefinition from RecordDefinitionQuery
+ *
+ * @phpstan-type ApplyEntry array{name: string, description: string|null, url: string}
  */
 class RecordPageQuery
 {
@@ -25,6 +28,7 @@ class RecordPageQuery
         private RecordDefinitionQuery $definitions,
         private RecordHoldCatalog $holds,
         private RecordRowAccess $rows,
+        private RecordApplyEntryCatalog $applyEntryCatalog,
     ) {}
 
     /**
@@ -111,20 +115,44 @@ class RecordPageQuery
     }
 
     /**
-     * レコードの詳細の can(詳細の画面/README.md の 6.1 節)。attach = 業務モジュールの update かつ添付ファイルを使用する
-     * (拡張点 = 複製・申請のボタンの判定を足すときはここ)。
+     * レコードの詳細の can(詳細の画面/README.md の 6.1 節)。attach = 業務モジュールの update かつ添付ファイルを使用する、apply = 申請の入口
+     * ({@see self::applyEntries()} の結果)が空でない(拡張点 = 複製のボタンの判定を足すときはここ)。
      *
-     * @return array{update: bool, delete: bool, attach: bool}
+     * @param  list<ApplyEntry>  $applyEntries
+     * @return array{update: bool, delete: bool, attach: bool, apply: bool}
      */
-    public function detailCan(Requester $requester, RecordModule $opened, DateTimeInterface $date): array
-    {
+    public function detailCan(
+        Requester $requester,
+        RecordModule $opened,
+        DateTimeInterface $date,
+        array $applyEntries,
+    ): array {
         $update = $this->gate->allows($requester, $opened, RecordModuleAction::Update, $date);
 
         return [
             'update' => $update,
             'delete' => $this->gate->allows($requester, $opened, RecordModuleAction::Delete, $date),
             'attach' => $update && $opened->is_attachment_enabled,
+            'apply' => $applyEntries !== [],
         ];
+    }
+
+    /**
+     * このレコードから申請できる入口(既存のデータからの申請.md の 2 節の口を束ねたもの。持ち主の有無を見ない = 押せない形は hold で決める)。
+     * 業務モジュールの read と行の判定を済ませた後に呼ぶ。
+     *
+     * @return list<ApplyEntry>
+     */
+    public function applyEntries(Requester $requester, int $recordId, DateTimeInterface $date): array
+    {
+        return array_map(
+            fn (RecordApplyEntry $entry) => [
+                'name' => $entry->name,
+                'description' => $entry->description,
+                'url' => $entry->url,
+            ],
+            $this->applyEntryCatalog->entriesFor($requester, $recordId, $date),
+        );
     }
 
     /**

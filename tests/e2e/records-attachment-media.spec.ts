@@ -1,5 +1,5 @@
-import { execFileSync } from 'node:child_process';
 import { expect, test } from './support/test';
+import type { Artisan } from './support/test';
 import type { Locator, Page } from '@playwright/test';
 import { submitAndExpectUrl } from './support/submit';
 
@@ -66,25 +66,17 @@ async function addAudio(page: Page, name: string) {
 
 /**
  * 期限の削除の口(PurgeUploads)を、名前で見つけた添付の実体に呼ぶ(期限の削除を動かす定期の処理はまだ無いので、
- * E2E の DB(環境変数で渡される)に artisan の中から口を直接呼ぶ)。
+ * 組の DB に artisan の中から口を直接呼ぶ)。見つからない・1 件を消せなかったときは、tinker が終了コード 1 で終わり artisan が投げる。
  */
-function purgeAttachment(name: string) {
+function purgeAttachment(artisan: Artisan, name: string) {
     const code = [
         `$id = App\\Models\\Records\\RecordAttachment::query()->where('name', ${JSON.stringify(name)})`,
         '->orderByDesc("id")->firstOrFail()->upload_id;',
-        'app(App\\Actions\\Upload\\Api\\PurgeUploads::class)->execute([$id], new DateTimeImmutable("2026-10-01"));',
+        '$purged = app(App\\Actions\\Upload\\Api\\PurgeUploads::class)',
+        '->execute([$id], new DateTimeImmutable("2026-10-01"));',
+        'if ($purged !== 1) { throw new RuntimeException("消した実体が 1 件でない: {$purged} 件"); }',
     ].join('');
-    const output = execFileSync(
-        'php',
-        ['artisan', 'tinker', '--execute', code],
-        {
-            encoding: 'utf8',
-        },
-    );
-    // tinker は例外を出力して 0 で終わるので、出力で見分ける(消せていないまま次の確かめに進まない)
-    if (output.includes('Exception')) {
-        throw new Error(`期限の削除の呼び出しが失敗した: ${output}`);
-    }
+    artisan(['tinker', '--execute', code]);
 }
 
 async function deleteIssue(page: Page) {
@@ -133,6 +125,7 @@ test('音声を添付すると「プレビュー」で Dialog の中に再生の
 
 test('期限で実体を消した添付は名前と 1 行の文だけを残し、プレビューとダウンロードのボタンが無く、そのルートは 404', async ({
     page,
+    artisan,
 }) => {
     await createIssueWithPanel(page);
     await addAudio(page, 'old.mp3');
@@ -143,7 +136,7 @@ test('期限で実体を消した添付は名前と 1 行の文だけを残し�
             .getAttribute('href')) ?? '';
     expect((await page.request.get(downloadUrl)).status()).toBe(200);
 
-    purgeAttachment('old.mp3');
+    purgeAttachment(artisan, 'old.mp3');
     await page.reload();
 
     await expect(row).toContainText(

@@ -67,7 +67,7 @@ final class RecordShowPanelControllerTest extends TransactionalTestCase
                 ['code' => 'test-notes', 'heading' => '外部参照の一覧', 'shortHeading' => '外部参照', 'count' => 2],
             ])
             ->where('panelContent', null)
-            ->where('can', ['update' => true, 'delete' => true, 'attach' => true])
+            ->where('can', ['update' => true, 'delete' => true, 'attach' => true, 'apply' => false])
             ->where('hold', null)
         );
         $this->assertSame([1, 0], [$section->presenceCalls, $section->sectionCalls]);
@@ -222,13 +222,13 @@ final class RecordShowPanelControllerTest extends TransactionalTestCase
         $readable = Record::factory()->create(['record_module_id' => $readOnly->id]);
 
         $this->get($this->url())->assertInertia(fn (Assert $page) => $page
-            ->where('can', ['update' => true, 'delete' => true, 'attach' => true])
+            ->where('can', ['update' => true, 'delete' => true, 'attach' => true, 'apply' => false])
             ->where('hold', ['reason' => self::HOLD_REASON])
         );
         $this->get("/records/data/panel_unused/{$other->id}")->assertInertia(fn (Assert $page) => $page
-            ->where('can', ['update' => true, 'delete' => true, 'attach' => false]));
+            ->where('can', ['update' => true, 'delete' => true, 'attach' => false, 'apply' => false]));
         $this->get("/records/data/panel_read/{$readable->id}")->assertInertia(fn (Assert $page) => $page
-            ->where('can', ['update' => false, 'delete' => false, 'attach' => false]));
+            ->where('can', ['update' => false, 'delete' => false, 'attach' => false, 'apply' => false]));
     }
 
     /**

@@ -22,4 +22,31 @@ class RecordModuleSettings
         return RecordModule::query()->whereNull('parent_record_module_id')->findOrFail($recordModuleId)
             ->is_attachment_enabled;
     }
+
+    /**
+     * 「添付ファイルを使用」の今の値をまとめて読む(一覧の行ごとに読み直さないため)。
+     *
+     * @param  list<int>  $recordModuleIds
+     * @return array<int, bool> 業務モジュールの id → 値
+     *
+     * @throws ModelNotFoundException<RecordModule> どれかが無い・明細のモジュールのとき(呼び手の誤り)
+     */
+    public function attachmentEnabledByIds(array $recordModuleIds): array
+    {
+        $ids = array_values(array_unique($recordModuleIds));
+
+        if ($ids === []) {
+            return [];
+        }
+
+        $values = RecordModule::query()->whereNull('parent_record_module_id')->whereKey($ids)
+            ->pluck('is_attachment_enabled', 'id')->map(fn (mixed $value) => $value === true)->all();
+        $missing = array_values(array_diff($ids, array_keys($values)));
+
+        if ($missing !== []) {
+            throw (new ModelNotFoundException)->setModel(RecordModule::class, $missing);
+        }
+
+        return $values;
+    }
 }

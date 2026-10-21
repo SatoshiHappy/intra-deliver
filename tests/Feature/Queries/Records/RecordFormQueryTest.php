@@ -191,7 +191,7 @@ final class RecordFormQueryTest extends TransactionalTestCase
     }
 
     /**
-     * 再申請の画面の初期値(公開の口.md 7 節の editValues): 保存された値を編集の画面と同じ形で返し、明細の行は id を持つ。業務モジュールの判定をしない
+     * 再申請の画面の初期値(公開の口.md 7 節の editValues): 保存された値を編集の画面と同じ形で返し、明細の行は id を持つ。版は編集の画面と同じ。業務モジュールの判定をしない
      * (read も update も許されない業務モジュールでも返す = 呼び手が先に判定する)。
      */
     public function test_edit_values_return_the_stored_values_with_the_detail_row_ids_without_judging(): void
@@ -204,7 +204,11 @@ final class RecordFormQueryTest extends TransactionalTestCase
         $row = Record::factory()->create(['record_module_id' => $tasks->child_record_module_id, 'parent_record_module_id' => $module->id, 'parent_record_id' => $record->id, 'field_values' => [$taskName->id => '設計']]);
 
         $this->assertSame(
-            ['values' => ['title' => '計画'], 'details' => ['tasks' => [['id' => $row->id, 'values' => ['task_name' => '設計']]]]],
+            [
+                'values' => ['title' => '計画'],
+                'details' => ['tasks' => [['id' => $row->id, 'values' => ['task_name' => '設計']]]],
+                'version' => $record->refresh()->version(),
+            ],
             app(RecordFormQuery::class)->editValues($this->requester(), 'projects', $record->id, $this->today(), 'ja'),
         );
     }

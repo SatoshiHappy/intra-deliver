@@ -13,26 +13,36 @@ use LogicException;
 /**
  * 一覧の行・関連する案件の行(docs の 設計/ワークフロー/画面.md 1.2 の WorkflowCaseRow、認可と一覧.md 3.2 の行の項目)。閲覧の判定は呼び手が済ませた案件を渡す。
  * 問い合わせの回数は行の数に依らない(フロー・状況({@see CaseOperationDecider::situationsOf()}。現在のノードを含む)・申請者の名前・行の can をまとめて引く)。
+ * 引戻し・取止めの入口の canAttach は、処理のダイアログを開く行(一覧)だけ求め、ほかの行(関連する案件・ホームの節)は偽
+ * (docs の 設計/ワークフロー/申請の周辺/添付/README.md の 5 節)。
  *
  * @phpstan-import-type Person from WorkflowPeople
  *
- * @phpstan-type CaseRow array{id: int, number: string|null, name: string, flowName: string, applicant: Person, appliedAt: string|null, currentSummary: array{state: string, name: string}|null, state: string, completionReason: string|null, revision: int, can: array{pullBack: bool, reapply: bool, withdraw: bool, editDraft: bool, deleteDraft: bool}, pullBackNodes: list<array{id: int, name: string, blockedReason: string|null}>}
+ * @phpstan-type CaseRow array{id: int, number: string|null, name: string, flowName: string, applicant: Person, appliedAt: string|null, currentSummary: array{state: string, name: string}|null, state: string, completionReason: string|null, revision: int, can: array{pullBack: bool, reapply: bool, withdraw: bool, editDraft: bool, deleteDraft: bool}, pullBackNodes: list<PullBackNode>, canAttachOnWithdraw: bool}
+ * @phpstan-type PullBackNode array{id: int, name: string, blockedReason: string|null, canAttach: bool}
  */
 class CaseRows
 {
     public function __construct(
         private CaseOperationDecider $decider,
         private WorkflowPeople $people,
+        private CaseAttachEntries $attachEntries,
     ) {}
 
     /**
      * 渡した案件の行(渡した順)。申請者の名前は d・ロケールの名前。
      *
      * @param  Collection<int, WorkflowCase>  $cases
+     * @param  bool  $opensDialogs  行から処理のダイアログを開くか(偽なら canAttach はどれも偽)
      * @return list<CaseRow>
      */
-    public function rows(Requester $requester, DateTimeInterface $date, string $localeCode, Collection $cases): array
-    {
+    public function rows(
+        Requester $requester,
+        DateTimeInterface $date,
+        string $localeCode,
+        Collection $cases,
+        bool $opensDialogs = false,
+    ): array {
         if ($cases->isEmpty()) {
             return [];
         }
@@ -41,6 +51,8 @@ class CaseRows
         $situations = $this->decider->situationsOf($requester, $date, array_values($cases->all()));
         $applicants = $this->people->users(array_values($cases->map(fn (WorkflowCase $case) => $case->user_id)->all()), $date, $localeCode);
         $cans = $this->decider->rowCansOf($requester, $date, array_values($situations));
+        $withdrawable = array_map(fn (array $can) => $can['withdraw'], $cans);
+        $attach = $opensDialogs ? $this->attachEntries->of(array_values($situations), $withdrawable) : [];
 
         return array_values($cases->map(fn (WorkflowCase $case) => [
             'id' => $case->id,
@@ -54,24 +66,30 @@ class CaseRows
             'completionReason' => $case->completion_reason?->value,
             'revision' => $case->revision,
             'can' => $cans[$case->id],
-            'pullBackNodes' => self::pullBackNodesOf($situations[$case->id]),
+            'pullBackNodes' => self::pullBackNodesOf($situations[$case->id], $attach[$case->id]['pullBack'] ?? []),
+            'canAttachOnWithdraw' => $attach[$case->id]['withdraw'] ?? false,
         ])->all());
     }
 
     /**
      * 判定を求める者が引戻せるノード(ルートの深さ/画面.md 1.2 の pullBackNodes。写した並び)。
      * 案件が未完了でなければ空(引戻しの表 = 設計/ワークフロー/ルートの深さ/案件の操作/操作.md 8 節)。blockedReason = 申請者承認防止で引戻せないときの文言(ダイアログが「決定」を押せなくする =
-     * 画面.md 6 節)。
+     * 画面.md 6 節)。canAttach = その行の引戻しの添付の可否({@see CaseAttachEntries}。渡さない行は偽)。
      *
-     * @return list<array{id: int, name: string, blockedReason: string|null}>
+     * @param  array<int, bool>  $canAttach  ノードの id → 添付の可否
+     * @return list<PullBackNode>
      */
-    public static function pullBackNodesOf(CaseSituation $situation): array
+    public static function pullBackNodesOf(CaseSituation $situation, array $canAttach = []): array
     {
         if ($situation->case->state !== WorkflowCaseState::Active) {
             return [];
         }
 
-        return array_map(fn (int $id, array $node) => ['id' => $id, ...$node], array_keys($situation->pullBackNodes), array_values($situation->pullBackNodes));
+        return array_map(
+            fn (int $id, array $node) => ['id' => $id, ...$node, 'canAttach' => $canAttach[$id] ?? false],
+            array_keys($situation->pullBackNodes),
+            array_values($situation->pullBackNodes),
+        );
     }
 
     /**

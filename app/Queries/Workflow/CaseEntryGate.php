@@ -15,7 +15,7 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
  * ワークフローの書き込みの入口の判定(docs の 設計/ワークフロー/案件の操作/操作.md 3.1 の 1): FormRequest の authorize が、入力の封筒の検証(422)より前に
  * ルートの引数が指すものを引き、404 → 403 の順に例外を投げる(設計/業務データの入れ物/認可とメニュー/README.md 2.2 と同じ規則)。業務処理はロックの下で同じ順をもう一度確かめる
  * (状態 × 役割の表と改訂番号は業務処理だけが見る = 一時保存のルートの書き込みが一時保存でない案件を指すときは、業務処理の 422 case)。
- * 判定そのものは読み取りの 1 か所(閲覧 = {@see CaseVisibility}、申請できる人 = {@see ApplicableFlows}、update = {@see CaseOperationDecider::isUpdatable()})を呼ぶ。鍵を取らない。
+ * 判定そのものは読み取りの 1 か所(閲覧 = {@see CaseVisibility}、申請できる人 = {@see ApplicableFlows}・{@see RecordApplyFlows}、update = {@see CaseOperationDecider::isUpdatable()})を呼ぶ。鍵を取らない。
  */
 class CaseEntryGate
 {
@@ -26,6 +26,7 @@ class CaseEntryGate
         private ApplicableFlows $applicableFlows,
         private CaseVisibility $visibility,
         private CaseOperationDecider $decider,
+        private RecordApplyFlows $recordApplyFlows,
     ) {}
 
     /**
@@ -38,6 +39,22 @@ class CaseEntryGate
     {
         $flow = WorkflowFlow::query()->where('code', $flowCode)->firstOrFail();
         $this->requireApplicable($context, $flow->id);
+    }
+
+    /**
+     * 既存のデータからの申請(画面の GET と申請の入口): フローが無い 404 → 自分か代理元のどれも既存のデータからの申請をできない 403
+     * (業務モジュールの単位の判定なので、レコードの有無を漏らさない = 設計/ワークフロー/申請の周辺/既存のデータからの申請.md の 3 節)。
+     *
+     * @throws ModelNotFoundException<WorkflowFlow> フローが無いとき
+     * @throws AuthorizationException 既存のデータからの申請をできないとき(ゲストを含む)
+     */
+    public function authorizeRecordApply(AccessContext $context, string $flowCode): void
+    {
+        $flow = WorkflowFlow::query()->where('code', $flowCode)->firstOrFail();
+
+        if (! $this->recordApplyFlows->allowsAny(Requester::fromAccessContext($context), $flow->id, $context->date)) {
+            throw new AuthorizationException(self::NOT_APPLICABLE_MESSAGE);
+        }
     }
 
     /**

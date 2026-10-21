@@ -8,13 +8,15 @@ use Tests\Architecture\Engine\TempDirectory;
 use UnexpectedValueException;
 
 /**
- * 一括検査 scripts/ci/all と、段の scripts/ci/front --e2e・scripts/ci/static を、偽の段・偽のコマンドで流すテストが使う共通の道具。DB を使わない。
+ * 一括検査 scripts/ci/all と、段の scripts/ci/front --e2e・scripts/ci/static、E2E の組のサーバー scripts/ci/e2e-server を、
+ * 偽の段・偽のコマンドで流すテストが使う共通の道具。DB を使わない。
  * 使うクラスは Tests\TestCase を継承する({@see RunsDeployScripts} と同じ形)。
  *
- * 一時の場所(build/fixtures の下)に、3 本のスクリプトを写した作業木(work)と、道具の置き場(tools)を作る。
+ * 一時の場所(build/fixtures の下)に、4 本のスクリプトを写した作業木(work)と、道具の置き場(tools)を作る。
  * all は自分の 2 つ上へ移って scripts/ci/<段> を相対パスで呼ぶので、写した作業木の段だけが呼ばれ、本物の段・本物の DB・本物の記録には届かない。
  * 段は偽のスクリプトに置き換える({@see installStages()})。tools の偽の date は D の鍵の日付を決める。
  * front --e2e の確かめでは、偽の php・npm も tools に置く({@see installFrontTools()})。work には artisan を置かない。
+ * e2e-server の確かめでは、偽の php を tools に置く({@see installE2eServerTools()})。
  * static の確かめでは、偽の phpstan・ast-grep・record を work に置く(StaticScriptTest)。installStages() は写した static も偽の段に置き換える。
  */
 trait RunsCiScripts
@@ -37,7 +39,7 @@ trait RunsCiScripts
         mkdir($this->work.'/scripts/ci', 0777, true);
         mkdir($this->tools, 0777, true);
 
-        foreach (['all', 'front', 'static'] as $script) {
+        foreach (['all', 'front', 'static', 'e2e-server'] as $script) {
             copy(base_path('scripts/ci/'.$script), $this->work.'/scripts/ci/'.$script);
             chmod($this->work.'/scripts/ci/'.$script, 0755);
         }
@@ -140,15 +142,43 @@ trait RunsCiScripts
     }
 
     /**
-     * @param  list<string>  $arguments
+     * e2e-server の確かめ用の偽の php を置く。artisan の tinker は渡された文(改行は空白にして 1 行)と環境変数(DB_DATABASE・
+     * E2E_GROUP_DATABASE・E2E_TEMPLATE_DATABASE)を calls.log に書いて $tinkerExitCode で終わる(0 でなければ、本物の tinker のように
+     * 誤りの文を stdout に出す)。serve は引数と DB_DATABASE を書いて成功、それ以外は 99 で終わる。
      */
-    protected function runCi(string $script, array $arguments = []): ProcessResult
+    protected function installE2eServerTools(int $tinkerExitCode = 0): void
+    {
+        $calls = escapeshellarg($this->callsPath());
+        $this->writeTool('php', implode("\n", [
+            '#!/bin/sh',
+            'if [ "$1" = "artisan" ]; then',
+            '  case "$2" in',
+            '    tinker)',
+            "      printf '%s\\n' \"\$(printf '%s' \"\$*\" | tr '\\n' ' ')"
+                .' DB_DATABASE=$DB_DATABASE E2E_GROUP_DATABASE=$E2E_GROUP_DATABASE'
+                ." E2E_TEMPLATE_DATABASE=\$E2E_TEMPLATE_DATABASE\" >> {$calls}",
+            "      [ {$tinkerExitCode} -eq 0 ] || echo 'source database is being accessed by other users'",
+            "      exit {$tinkerExitCode} ;;",
+            '    serve)',
+            "      printf '%s\\n' \"\$* DB_DATABASE=\$DB_DATABASE\" >> {$calls}; exit 0 ;;",
+            '  esac',
+            'fi',
+            'exit 99',
+            '',
+        ]));
+    }
+
+    /**
+     * @param  list<string>  $arguments
+     * @param  array<string, string>  $environment  追加・上書きする環境変数(親の環境の値を消したいときは空文字にする)
+     */
+    protected function runCi(string $script, array $arguments = [], array $environment = []): ProcessResult
     {
         // CI_FULL は空で上書きする(親の環境の CI_FULL=1 を引き継ぐと既定の回を確かめられない)
         return Process::run(
             [$this->work.'/scripts/ci/'.$script, ...$arguments],
             $this->work,
-            ['PATH' => $this->tools.':'.getenv('PATH'), 'CI_FULL' => ''],
+            ['PATH' => $this->tools.':'.getenv('PATH'), 'CI_FULL' => '', ...$environment],
         );
     }
 

@@ -65,7 +65,7 @@ if [ ! -f public/build/manifest.json ]; then
     exit 1
 fi
 
-echo "==> E2E(Playwright。テスト用 DB に初期データを入れ、その DB のサーバーを別のポートで起動して掛ける)"
+echo "==> E2E(Playwright。テスト用 DB に初期データを入れ、組ごとにその写しの DB のサーバーを別のポートで起動して並列に掛ける)"
 # E2E の DB とポートは、この作業木のテスト用のもの(開発用 DB の状態に依らず通し、ほかの作業木と DB・ポートをぶつけないため)。
 # 決め方は tests/Support/WorktreeTestEnvironment(docs の 設計/コード構成/検査.md 6 節)。決められないときは理由を出して止まる。
 # DB の名前は環境変数で差し替える(.env は変えない)。この段は migrate:fresh --seed から始めるので、PHPUnit の段が残したものにも依らない。

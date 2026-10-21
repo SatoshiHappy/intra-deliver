@@ -10,9 +10,11 @@ use Illuminate\Foundation\Http\FormRequest;
  * 案件の処理(承認・承認終了・否認・差戻し・引戻し・取止め)の入力 { comment, revision, node_id?, send_back_node_id?, assignments? }(docs の 設計/ワークフロー/画面.md 6 節、
  * ルートの深さ/案件の操作/操作.md 10.2〜10.5、同時実行と検査.md 13 節)。承認・承認終了・否認・差戻し・引戻しは操作するノード、差戻しは差戻し先、承認は指定(任意)を受ける。
  * コメントの長さと使えない文字・ノードがこの案件のものか・差戻し先が候補にあるか・指定の中身は業務処理が 422 にする。
+ * 添付は {@see ReadsAttachmentEnvelope} で受け(可否は業務処理が見る)、外す指定は捨てる(申請の周辺/添付/README.md の 2 節)。
  */
 class CaseActionRequest extends FormRequest
 {
+    use ReadsAttachmentEnvelope;
     use ReadsRevision;
 
     /** 差戻しのルートの名前(差戻し先を求める) */
@@ -39,13 +41,13 @@ class CaseActionRequest extends FormRequest
      */
     public function rules(): array
     {
-        return [
+        return $this->withAttachmentRules([
             ...$this->revisionRules(),
             'comment' => ['nullable', 'string'],
             ...($this->routeIs(...self::NODE_ROUTES) ? ['node_id' => ['required', 'integer']] : []),
             ...($this->routeIs(self::SEND_BACK_ROUTE) ? ['send_back_node_id' => ['required', 'integer']] : []),
             ...($this->routeIs(self::APPROVE_ROUTE) ? ['assignments' => ['nullable', 'array'], 'assignments.*' => ['array'], 'assignments.*.*' => ['integer']] : []),
-        ];
+        ]);
     }
 
     /**
@@ -53,7 +55,7 @@ class CaseActionRequest extends FormRequest
      */
     public function messages(): array
     {
-        return [
+        return $this->withAttachmentMessages([
             ...$this->revisionMessages(),
             'comment.string' => 'コメントの形が正しくありません',
             'send_back_node_id.required' => '差戻し先を選択してください',
@@ -63,7 +65,7 @@ class CaseActionRequest extends FormRequest
             'assignments.array' => '指定の形が正しくありません',
             'assignments.*.array' => '指定の形が正しくありません',
             'assignments.*.*.integer' => '指定の形が正しくありません',
-        ];
+        ]);
     }
 
     public function comment(): ?string
@@ -103,5 +105,10 @@ class CaseActionRequest extends FormRequest
     public function sendBackNodeId(): int
     {
         return $this->integer('send_back_node_id');
+    }
+
+    protected function acceptsAttachmentRemovals(): bool
+    {
+        return false;
     }
 }

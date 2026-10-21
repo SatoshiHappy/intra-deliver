@@ -2,12 +2,14 @@
 
 namespace App\Http\Requests\Workflow;
 
+use App\Actions\Workflow\CaseAttachmentRules;
 use App\Queries\Workflow\CaseEntryGate;
 use App\Support\AccessContext;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
  * 一時保存の削除 workflow.drafts.destroy の入力 { revision }(本文で送る。docs の 設計/ワークフロー/画面.md 1.1・6 節)。
+ * 添付を受けない口なので、送られた attachments は黙って捨てず 422 にする(申請の周辺/添付/README.md の 3.1 節)。
  */
 class DraftDeleteRequest extends FormRequest
 {
@@ -29,7 +31,7 @@ class DraftDeleteRequest extends FormRequest
      */
     public function rules(): array
     {
-        return $this->revisionRules();
+        return [...$this->revisionRules(), 'attachments' => ['prohibited']];
     }
 
     /**
@@ -37,6 +39,6 @@ class DraftDeleteRequest extends FormRequest
      */
     public function messages(): array
     {
-        return $this->revisionMessages();
+        return [...$this->revisionMessages(), 'attachments.prohibited' => CaseAttachmentRules::NOT_ATTACHABLE];
     }
 }

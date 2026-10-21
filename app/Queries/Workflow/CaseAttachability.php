@@ -24,6 +24,7 @@ class CaseAttachability
      * @param  WorkflowCase|null  $case  申請の後の操作の案件(写した値を読む)。申請の前の操作(一時保存・申請)は渡さない
      * @param  WorkflowCaseNode|null  $node  操作するノード(承認の系統と引戻しだけ。引戻しは引戻す先のノード)
      * @param  CaseSituation|null  $situation  処理者で読んだ状況(保留解除だけ。処理者が保留者側かを答える)
+     * @param  bool|null  $moduleEnabled  まとめて読んだ業務モジュールの値({@see self::moduleEnabledByFlows()})。null = ここで読む
      *
      * @throws LogicException 案件・ノード・状況の渡し方が操作に合わないとき(呼び手の誤り)
      */
@@ -33,10 +34,39 @@ class CaseAttachability
         ?WorkflowCase $case = null,
         ?WorkflowCaseNode $node = null,
         ?CaseSituation $situation = null,
+        ?bool $moduleEnabled = null,
     ): bool {
         return $this->stepAllows($operation, $node, $situation)
             && $this->flowAllows($operation, $flow, $case)
-            && $this->modules->isAttachmentEnabled($this->recordModuleIdOf($flow));
+            && ($moduleEnabled ?? $this->modules->isAttachmentEnabled($this->recordModuleIdOf($flow)));
+    }
+
+    /**
+     * フローごとの、コンテンツの業務モジュールの「添付ファイルを使用」の今の値(一覧の行ごとに読み直さないため、2 回の問い合わせでまとめて読む)。
+     *
+     * @param  list<WorkflowFlow>  $flows
+     * @return array<int, bool> フローの id → 値
+     */
+    public function moduleEnabledByFlows(array $flows): array
+    {
+        if ($flows === []) {
+            return [];
+        }
+
+        $contentIds = array_values(array_unique(
+            array_map(fn (WorkflowFlow $flow) => $flow->workflow_content_id, $flows),
+        ));
+        $contents = WorkflowContent::query()->whereKey($contentIds)->get()->keyBy('id');
+        $moduleIdOf = fn (WorkflowFlow $flow) => ($contents->get($flow->workflow_content_id)
+            ?? throw new LogicException("フロー {$flow->id} のコンテンツが無い"))->record_module_id;
+        $enabled = $this->modules->attachmentEnabledByIds(array_values(array_unique(array_map($moduleIdOf, $flows))));
+        $result = [];
+
+        foreach ($flows as $flow) {
+            $result[$flow->id] = $enabled[$moduleIdOf($flow)];
+        }
+
+        return $result;
     }
 
     /**

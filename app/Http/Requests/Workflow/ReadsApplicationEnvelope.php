@@ -11,9 +11,11 @@ use App\Http\Requests\Records\ReadsRecordEnvelope;
  * 申請・一時保存・再申請の入力の封筒(docs の 設計/ワークフロー/業務データとの接続/README.md 2 節・3 節、画面.md 3 節の送る形 { name, comment, values, details }):
  * name・comment が文字列か null、values・details は業務データの入れ物の入口と同じ 1 か所({@see ReadsRecordEnvelope})の規則・文言・変換。
  * 入口が見るのは封筒の形だけで、案件名・コメントの長さと使えない文字・一時保存の大きさは業務処理が 422 にする(案件の操作/同時実行と検査.md 6 節)。
+ * 添付とその multipart の送り方は {@see ReadsAttachmentEnvelope}。
  */
 trait ReadsApplicationEnvelope
 {
+    use ReadsAttachmentEnvelope;
     use ReadsRecordEnvelope;
 
     /**
@@ -64,7 +66,7 @@ trait ReadsApplicationEnvelope
      */
     public function applicationInput(): ApplicationInput
     {
-        return new ApplicationInput($this->nullableString('name'), $this->nullableString('comment'), $this->recordInput());
+        return new ApplicationInput($this->nullableString('name'), $this->nullableString('comment'), $this->recordInput(), $this->attachFiles(), $this->removeAttachmentIds());
     }
 
     /**
@@ -75,7 +77,7 @@ trait ReadsApplicationEnvelope
         $record = $this->recordInput();
         $details = array_map(fn (array $rows) => array_map(fn (RecordDetailRowInput $row) => ['values' => $row->values], $rows), $record->details);
 
-        return new DraftInput($this->nullableString('name'), $this->nullableString('comment'), $record->values, $details, $this->baseDate());
+        return new DraftInput($this->nullableString('name'), $this->nullableString('comment'), $record->values, $details, $this->baseDate(), $this->attachFiles(), $this->removeAttachmentIds());
     }
 
     /**

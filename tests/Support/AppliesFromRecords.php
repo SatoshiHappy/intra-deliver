@@ -16,6 +16,10 @@ use App\Models\Records\RecordModule;
 use App\Models\Records\RecordRevision;
 use App\Models\Workflow\WorkflowCase;
 use App\Models\Workflow\WorkflowCaseHistory;
+use App\Queries\Records\Api\RecordDisplayQuery;
+use App\Queries\Records\Api\RecordViewAccess;
+use App\Queries\Workflow\RecordApplyTargets;
+use App\Queries\Workflow\WorkflowRecordHolds;
 use Closure;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -137,6 +141,38 @@ trait AppliesFromRecords
     protected function moduleIdOf(string $code): int
     {
         return RecordModule::query()->where('code', $code)->sole()->id;
+    }
+
+    /**
+     * 0 の確かめが読む持ち主と業務モジュールを、競合の後の形に差し替える(業務モジュールの null = 本物のまま読む)。
+     */
+    protected function checkAs(bool $held, ?string $moduleCode): void
+    {
+        [$display, $holds] = [app(RecordDisplayQuery::class), app(WorkflowRecordHolds::class)];
+        $access = app(RecordViewAccess::class);
+        $targets = new class($display, $holds, $access, $held, $moduleCode) extends RecordApplyTargets
+        {
+            public function __construct(
+                RecordDisplayQuery $display,
+                WorkflowRecordHolds $holds,
+                RecordViewAccess $access,
+                private bool $held,
+                private ?string $moduleCode,
+            ) {
+                parent::__construct($display, $holds, $access);
+            }
+
+            public function moduleCodeOf(int $recordId): ?string
+            {
+                return $this->moduleCode ?? parent::moduleCodeOf($recordId);
+            }
+
+            public function isHeld(int $recordId): bool
+            {
+                return $this->held;
+            }
+        };
+        app()->instance(RecordApplyTargets::class, $targets);
     }
 
     /**

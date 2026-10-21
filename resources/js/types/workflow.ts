@@ -5,6 +5,10 @@ import type {
 } from './records';
 import type { RouteStepState } from './status';
 import type {
+    WorkflowApplyAttachment,
+    WorkflowAttachmentLimits,
+} from './workflowAttachments';
+import type {
     WorkflowAction,
     WorkflowCaseState,
     WorkflowCompletionReason,
@@ -31,6 +35,7 @@ export type WorkflowPullBackNode = {
     id: number;
     name: string;
     blockedReason: string | null;
+    canAttach: boolean; // 引戻しで添付を追加できる(処理のダイアログが添付の欄を出す)
 };
 
 /** 一覧の行・関連する案件の行 */
@@ -53,6 +58,7 @@ export type WorkflowCaseRow = {
         deleteDraft: boolean;
     };
     pullBackNodes: WorkflowPullBackNode[]; // 自分が引戻せるステップ(写した並び。未完了だけ)
+    canAttachOnWithdraw: boolean; // 取止めで添付を追加できる(関連する案件の行は偽)
 };
 
 /** 申請の画面の明細の行(id が無い = 新しい行。一時保存の行はいつも id を持たない)。業務データの入れ物の RecordDetailRow(id が必ずある)は変えない */
@@ -71,18 +77,18 @@ export type WorkflowApplicableFlow = {
 
 /** 申請・一時保存・再申請のページ Workflow/Apply の props(設計/ワークフロー/画面.md 3 節) */
 export type WorkflowApplyProps = {
-    mode: 'new' | 'draft' | 'reapply';
+    mode: 'new' | 'draft' | 'reapply' | 'record'; // record = 既存のデータからの申請(一時保存を出さない)
     flow: { code: string; name: string; description: string | null };
     case: { id: number; number: string | null; revision: number } | null; // 新規は null
-    module: RecordModuleDefinition; // 業務データの入れ物の定義(新規・一時保存 = create、再申請 = update の判定の後)
+    module: RecordModuleDefinition; // 業務データの入れ物の定義(新規・一時保存 = create、再申請・既存のデータ = update の判定の後)
     initial: {
         name: string | null;
         comment: string | null;
-        values: Record<string, RecordFieldValue>; // 一時保存 = draftValues、再申請 = 今のレコード
-        details: Record<string, WorkflowDetailRowInput[]>; // 一時保存 = id の無い行、再申請 = id のある行
+        values: Record<string, RecordFieldValue>; // 一時保存 = draftValues、再申請・既存のデータ = 今のレコード
+        details: Record<string, WorkflowDetailRowInput[]>; // 一時保存 = id の無い行、再申請・既存のデータ = id のある行
     } | null; // 新規は null(既定値で始める)
     titleField: string | null; // 表示の項目のコード(案件名の既定の案内に使う)
-    recordId: number | null; // 書くレコードの id(再申請 = 案件のレコード、新規・一時保存 = null。他モジュール参照の候補から除く)
+    recordId: number | null; // 書くレコードの id(再申請 = 案件のレコード、既存のデータ = そのレコード、新規・一時保存 = null。参照の候補から除く)
     baseDate: string; // 申請基準日の初期値と next を引いた日(YYYY-MM-DD。再申請は案件の値)
     baseDateRange: { min: string | null; max: string | null }; // 申請基準日に選べる範囲(再申請は null)
     nameMaxLength: number; // 案件名の文字数の上限(永続化の層の WorkflowCase::NAME_MAX)
@@ -98,6 +104,9 @@ export type WorkflowApplyProps = {
         }[]; // 申請の次に到達するステップの今の展開(位置の順)
         dependsOnContent: boolean; // 次が分岐開始で、内容で到達するステップが決まる
     };
+    attachment: WorkflowApplyAttachment;
+    recordVersion: string | null; // 既存のデータからの申請だけ: 開いたときのレコードの版(申請で record_version に送る)
+    recordTitle: string | null; // 既存のデータからの申請だけ: 見出しの表示の項目の値(無ければ null)
 };
 
 /** 案件一覧のタブと切替(読み取りが解釈した値) */
@@ -115,6 +124,7 @@ export type WorkflowCaseIndexProps = {
         total: number;
     };
     commentMaxLength: number; // コメントの文字数の上限(行の処理のダイアログ)
+    attachmentLimits: WorkflowAttachmentLimits | null; // どの行の入口も添付を受けなければ null
 };
 
 /** 再申請の差分(再申請の行だけ。設計/ワークフロー/画面.md 5 節) */
@@ -284,4 +294,6 @@ export type WorkflowCaseShowProps = {
     nodeActions: WorkflowNodeAction[]; // 自分が処理対象者の現在のステップごと
     pullBackNodes: WorkflowPullBackNode[]; // 自分が引戻せるステップ(写した並び。未完了だけ)
     commentMaxLength: number; // コメントの文字数の上限(処理のダイアログ)
+    canAttachOnWithdraw: boolean; // 取止めで添付を追加できる
+    attachmentLimits: WorkflowAttachmentLimits | null; // どの入口も添付を受けなければ null
 };

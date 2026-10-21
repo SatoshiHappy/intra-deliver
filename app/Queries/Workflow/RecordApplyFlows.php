@@ -80,7 +80,8 @@ class RecordApplyFlows
     }
 
     /**
-     * 渡したフローのうち、自分か代理元のどれかができるものの id(代理元は自分ができないフローだけを、代理元ごとにまとめて判定する)。
+     * 渡したフローのうち、自分か代理元のどれかができるものの id(代理元は自分ができないフローだけを、代理元ごとにまとめて判定する。
+     * 代理元は 1 回で引き、問い合わせの数をフローの数に比例させない)。
      *
      * @param  list<int>  $flowIds
      * @return list<int>
@@ -95,9 +96,11 @@ class RecordApplyFlows
         }
 
         $flowsByPrincipal = [];
+        $rest = array_values(array_diff($flowIds, $allowed));
+        $principalsByFlow = $this->proxies->principalIdsByFlow($userId, $rest, WorkflowProxyKind::Apply, $date);
 
-        foreach (array_diff($flowIds, $allowed) as $flowId) {
-            foreach ($this->principalIdsOf($userId, $flowId, $date) as $principalId) {
+        foreach ($principalsByFlow as $flowId => $principalIds) {
+            foreach ($principalIds as $principalId) {
                 $flowsByPrincipal[$principalId][] = $flowId;
             }
         }

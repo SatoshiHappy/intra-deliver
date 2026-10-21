@@ -142,7 +142,7 @@ final class CaseListQueryTest extends TransactionalTestCase
         $this->assertSame([
             'id' => $active->id, 'number' => 'WF-1234567', 'name' => '案件の名前', 'flowName' => 'wf_rows の名前',
             'applicant' => ['id' => $nameless->id, 'code' => $nameless->code, 'name' => null], 'appliedAt' => $active->applied_at?->toIso8601String(),
-            'currentSummary' => ['state' => 'waiting', 'name' => $this->nodesOf($active)[1]->name], 'state' => 'active', 'completionReason' => null, 'revision' => 0, 'pullBackNodes' => [],
+            'currentSummary' => ['state' => 'waiting', 'name' => $this->nodesOf($active)[1]->name], 'state' => 'active', 'completionReason' => null, 'revision' => 0, 'pullBackNodes' => [], 'canAttachOnWithdraw' => false,
         ], array_diff_key($activeRow, ['can' => true]));
         $this->assertSame(['WF-000001', 'WF-1234567'], [CaseNumbers::format(1), CaseNumbers::format(1_234_567)]);
         $this->assertSame([CaseNumbers::format((int) $completed->case_number), null, 'completed', 'rejected'], [$completedRow['number'], $completedRow['currentSummary'], $completedRow['state'], $completedRow['completionReason']]);

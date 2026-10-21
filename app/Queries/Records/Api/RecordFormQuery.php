@@ -88,14 +88,18 @@ class RecordFormQuery
      * 業務モジュールの判定をしない(呼び手が {@see self::definition()} を update で通してから呼ぶ)。検証しない。判定を求める者は、他モジュール
      * 参照の相手の表示名の出し分けにだけ使う(参照先の read の読み方 = 設計/ワークフロー/業務データとの接続/公開の口.md 7 節の「行の権限」)。
      *
-     * @return array{values: array<string, mixed>, details: array<string, list<DetailRow>>} values = 項目のコード → 値、details = 明細の項目のコード → 行(id と values)
+     * values = 項目のコード → 値、details = 明細の項目のコード → 行(id と values)、version = 編集の画面と同じ版(既存のデータからの申請が
+     * 開いたときの版として送り返す = 設計/ワークフロー/申請の周辺/既存のデータからの申請.md の 3 節)。
+     *
+     * @return array{values: array<string, mixed>, details: array<string, list<DetailRow>>, version: string}
      *
      * @throws ModelNotFoundException<RecordModule|Record> 業務モジュールが無い・明細のモジュールのとき、レコードがその業務モジュールに無いとき
      */
     public function editValues(Requester $requester, string $moduleCode, int $recordId, DateTimeInterface $date, string $localeCode): array
     {
-        $shown = $this->records->show($requester, $this->definitions->load($this->gate->topLevelModule($moduleCode)), $recordId, $date, $localeCode);
+        $module = $this->definitions->load($this->gate->topLevelModule($moduleCode));
+        $editable = $this->records->editable($requester, $module, $recordId, $date, $localeCode);
 
-        return ['values' => $shown['values'], 'details' => $shown['details']];
+        return ['values' => $editable['values'], 'details' => $editable['details'], 'version' => $editable['version']];
     }
 }

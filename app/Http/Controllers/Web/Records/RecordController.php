@@ -97,6 +97,11 @@ class RecordController extends Controller
         $recordId = (int) $record;
         $this->pages->ensureRowAccess($requester, $opened, $recordId, $context->date);
         $loaded = null;
+        $entries = null;
+        // can.apply と applyEntries は 1 つの応答で入口の口を 1 回だけ呼ぶ
+        $applyEntries = function () use (&$entries, $requester, $recordId, $context): array {
+            return $entries ??= $this->pages->applyEntries($requester, $recordId, $context->date);
+        };
         // 1 つの応答で panel() を 1 回だけ呼び、panel と sections に分ける(null の結果も覚える)
         $panel = function () use (&$loaded, $context, $module, $recordId): ?array {
             $loaded ??= ['panel' => $this->panels->panel($context, $module, $recordId)];
@@ -108,7 +113,8 @@ class RecordController extends Controller
             'module' => fn () => $this->pages->definition($opened),
             'record' => fn () => $this->records
                 ->show($requester, $opened, $recordId, $context->date, $context->localeCode),
-            'can' => fn () => $this->pages->detailCan($requester, $opened, $context->date),
+            'can' => fn () => $this->pages->detailCan($requester, $opened, $context->date, $applyEntries()),
+            'applyEntries' => fn () => $applyEntries(),
             'hold' => fn () => $this->pages->hold($recordId),
             'panel' => fn () => $panel()['panel'] ?? null,
             'sections' => fn () => $panel()['sections'] ?? [],
