@@ -16,7 +16,6 @@ use App\Support\AccessContext;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -33,6 +32,7 @@ use Illuminate\Validation\ValidationException;
 class DeleteRecord
 {
     use LocksRecordModule;
+    use RecordWriteTransaction;
 
     /** 外部キー違反の SQLSTATE(restrict_violation と foreign_key_violation) */
     private const FOREIGN_KEY_VIOLATIONS = ['23001', '23503'];
@@ -55,7 +55,7 @@ class DeleteRecord
     {
         $requester = Requester::fromAccessContext($context);
 
-        DB::transaction(function () use ($context, $moduleCode, $recordId, $requester) {
+        $this->writeRecords(function () use ($context, $moduleCode, $recordId, $requester) {
             $module = $this->gate->topLevelModule($moduleCode);
             $this->lockRecordModuleShared($module);
             $this->gate->authorize($requester, $module, RecordModuleAction::Delete, $context->date);
@@ -68,8 +68,9 @@ class DeleteRecord
                 throw ValidationException::withMessages(['record' => [$hold->reason]]);
             }
 
-            $uploadIds = $this->attachments->uploadIdsOf($record->id);
-            RecordAttachment::query()->where('record_id', $record->id)->delete();
+            $uploadIds = $this->attachments->uploadIdsOf($module->id, $record->id);
+            RecordAttachment::query()->where('record_module_id', $module->id)
+                ->where('record_id', $record->id)->delete();
 
             try {
                 Record::query()->whereKey($record->id)->delete();

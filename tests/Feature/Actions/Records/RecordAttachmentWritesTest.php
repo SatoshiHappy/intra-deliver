@@ -7,7 +7,7 @@ use App\Actions\Records\Api\CreateRecord;
 use App\Actions\Records\Api\RecordInput;
 use App\Actions\Records\Api\RecordRevisionOrigin;
 use App\Actions\Records\DetachRecordAttachments;
-use App\Actions\Records\RecordAttachmentWriter;
+use App\Actions\Records\RecordAttachmentGate;
 use App\Enums\Records\RecordModuleAction;
 use App\Models\Records\Record;
 use App\Models\Records\RecordAttachment;
@@ -141,7 +141,7 @@ final class RecordAttachmentWritesTest extends TransactionalTestCase
         $this->attach($recordId, [$this->uploadedFile('a.pdf')]);
         $attachmentId = RecordAttachment::query()->where('record_id', $recordId)->sole()->id;
         $this->module->update(['is_attachment_enabled' => false]);
-        $expected = ['attachments' => RecordAttachmentWriter::DISABLED];
+        $expected = ['attachments' => RecordAttachmentGate::DISABLED];
 
         $file = $this->uploadedFile('b.pdf');
         $this->assertSame($expected, $this->validationErrors(fn () => $this->attach($recordId, [$file])));

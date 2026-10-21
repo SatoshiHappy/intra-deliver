@@ -2,6 +2,7 @@
  * レコードの詳細のサイドパネルと can の型(docs の 設計/業務データの入れ物/レコードの共通機能/詳細の画面/README.md の 6.1 節。
  * サーバーの App\Queries\Records\Api\RecordShowPanelQuery と入口が返す形)。業務ツールの節の中身は
  * 節の口(詳細の画面/節の口.md の 1 節)の @phpstan-type を同じ名前で写す。records.ts が大きさの上限に近いので分けた。
+ * 後ろのモジュールが一覧と詳細に足すものの型も、ここに置く(末尾)。
  */
 import type {
     RecordFieldType,
@@ -187,4 +188,30 @@ export type RecordShowPanelProps = {
     panel: { items: RecordPanelItem[] } | null; // 帯の項目だけ(開いた欄はクエリ panel が正本)
     panelContent: RecordPanelContent | null;
     sections: RecordShowSection[];
+};
+
+/**
+ * 後ろのモジュールが一覧と詳細に足すもの(docs の 設計/業務データの入れ物/画面/業務の画面.md の 2.5。サーバーの
+ * App\Queries\Records\Api\RecordScreenAddons の @phpstan-type を同じ名前で写す)。
+ * 操作 = ダイアログを開くだけ(dialog = 画面の部品の名前、props = 部品に渡す値、changesValues = 値を変える操作か)。
+ */
+export type RecordAddonAction = {
+    code: string;
+    label: string;
+    dialog: string;
+    props: Record<string, string | number | boolean | null>;
+    disabledReason: string | null; // 押せない理由(Tooltip に出す)
+    changesValues: boolean;
+};
+
+export type RecordAddonBadge = { label: string; tone: StatusTone | null };
+
+/** 一覧の見出しの操作 */
+export type RecordIndexAddons = { actions: RecordAddonAction[] };
+
+/** 詳細の操作・見出しの右の札・項目の欄の上の注(項目のコード → 1 行) */
+export type RecordShowAddons = {
+    actions: RecordAddonAction[];
+    badges: RecordAddonBadge[];
+    fieldNotes: Record<string, string>;
 };

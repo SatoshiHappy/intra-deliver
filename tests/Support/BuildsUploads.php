@@ -42,6 +42,10 @@ trait BuildsUploads
     {
         $office = ['docx', 'xlsx', 'pptx'];
 
+        if (MediaSamples::has($kind)) {
+            return MediaSamples::bytes($kind);
+        }
+
         if (in_array($kind, $office, true)) {
             return (string) file_get_contents(base_path("tests/Fixtures/Upload/sample.{$kind}"));
         }

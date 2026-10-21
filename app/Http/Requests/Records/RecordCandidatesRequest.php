@@ -37,7 +37,7 @@ class RecordCandidatesRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'q' => ['bail', 'nullable', 'string', 'max:'.self::MAX_LENGTH],
+            'q' => ['bail', 'nullable', 'string', 'encoding:UTF-8', 'max:'.self::MAX_LENGTH],
             'exclude' => ['bail', 'nullable', 'integer', 'min:1'],
         ];
     }
@@ -49,6 +49,7 @@ class RecordCandidatesRequest extends FormRequest
     {
         return [
             'q.string' => '検索する語の指定が正しくありません',
+            'q.encoding' => '検索する語の指定が正しくありません',
             'q.max' => '検索する語は '.self::MAX_LENGTH.' 文字以内にしてください',
             'exclude.integer' => '除くレコードの指定が正しくありません',
             'exclude.min' => '除くレコードの指定が正しくありません',

@@ -2,6 +2,7 @@
 
 namespace App\Actions\Records;
 
+use App\Actions\Records\Api\RecordInput;
 use App\Enums\Records\RecordModuleAction;
 use App\Models\Records\Record;
 use App\Models\Records\RecordModule;
@@ -24,11 +25,13 @@ class RecordAttachmentGate
 {
     use LocksRecordModule;
 
+    /** 使用しない業務モジュールへの追加・取り外しの文言(レコードの添付.md の 2 節) */
+    public const DISABLED = 'この業務モジュールでは添付ファイルを追加・削除できません';
+
     public function __construct(
         private RecordModuleGate $gate,
         private RecordRowAccess $rows,
         private RecordHoldCatalog $holds,
-        private RecordAttachmentWriter $attachments,
     ) {}
 
     /**
@@ -74,6 +77,30 @@ class RecordAttachmentGate
             throw new InvalidArgumentException("レコード {$record->id} の持ち主に鍵 {$holder} が無い");
         }
 
-        $this->attachments->ensureEnabled($module);
+        $this->ensureEnabled($module);
+    }
+
+    /**
+     * 業務モジュールが添付を使用するか(使用の判定 = レコードの添付.md の 2 節)。
+     *
+     * @throws ValidationException 使用しないとき(キー attachments)
+     */
+    public function ensureEnabled(RecordModule $module): void
+    {
+        if (! $module->is_attachment_enabled) {
+            throw ValidationException::withMessages(['attachments' => [self::DISABLED]]);
+        }
+    }
+
+    /**
+     * 登録・更新の入力に添付があれば、使用の判定をする(認可と同じく値の検証の前)。
+     *
+     * @throws ValidationException 使用しないとき(キー attachments)
+     */
+    public function ensureEnabledFor(RecordModule $module, RecordInput $input): void
+    {
+        if ($input->hasAttachments()) {
+            $this->ensureEnabled($module);
+        }
     }
 }

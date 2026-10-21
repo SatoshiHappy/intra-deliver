@@ -50,11 +50,15 @@ final class UploadResponsesTest extends TransactionalTestCase
      */
     public static function previewable(): array
     {
-        return ['png' => ['a.png', 'png'], 'jpeg' => ['a.jpg', 'jpeg'], 'pdf' => ['a.pdf', 'pdf']];
+        return [
+            'png' => ['a.png', 'png'], 'jpeg' => ['a.jpg', 'jpeg'], 'pdf' => ['a.pdf', 'pdf'],
+            'mp3' => ['a.mp3', 'mp3'], 'wav' => ['a.wav', 'wav'], 'm4a' => ['a.m4a', 'm4a'],
+            'm4a as audio/mp4' => ['a.m4a', 'm4a-mp4'], 'mp4' => ['a.mp4', 'mp4'], 'webm' => ['a.webm', 'webm'],
+        ];
     }
 
     #[DataProvider('previewable')]
-    public function test_a_preview_of_png_jpeg_and_pdf_is_inline(string $name, string $kind): void
+    public function test_a_preview_of_an_image_a_pdf_an_audio_and_a_video_is_inline(string $name, string $kind): void
     {
         $response = app(UploadResponses::class)->preview($this->upload($name, $kind));
 
@@ -105,6 +109,41 @@ final class UploadResponsesTest extends TransactionalTestCase
         $this->assertSame('10', $partial->headers->get('Content-Length'));
         $this->assertSame(416, $outside->getStatusCode());
         $this->assertSame("bytes */{$size}", $outside->headers->get('Content-Range'));
+    }
+
+    /**
+     * @return array<string, array{string, string}>
+     */
+    public static function media(): array
+    {
+        return ['audio' => ['a.mp3', 'mp3'], 'video' => ['a.mp4', 'mp4'], 'webm' => ['a.webm', 'webm']];
+    }
+
+    #[DataProvider('media')]
+    public function test_a_media_preview_answers_a_range_with_206_and_outside_with_416(string $name, string $kind): void
+    {
+        $id = $this->upload($name, $kind);
+        $size = strlen($this->sampleContent($kind));
+        $responses = app(UploadResponses::class);
+
+        $partial = $this->prepared($responses->preview($id), 'bytes=0-9');
+        $tail = $this->prepared($responses->preview($id), 'bytes=10-');
+        $outside = $this->prepared($responses->preview($id), 'bytes=100000-200000');
+
+        $this->assertSame('inline', $partial->headers->get('Content-Disposition'));
+        $this->assertSame('bytes', $partial->headers->get('Accept-Ranges'));
+        $this->assertSame(
+            [206, "bytes 0-9/{$size}"],
+            [$partial->getStatusCode(), $partial->headers->get('Content-Range')],
+        );
+        $this->assertSame(
+            [206, 'bytes 10-'.($size - 1)."/{$size}"],
+            [$tail->getStatusCode(), $tail->headers->get('Content-Range')],
+        );
+        $this->assertSame(
+            [416, "bytes */{$size}"],
+            [$outside->getStatusCode(), $outside->headers->get('Content-Range')],
+        );
     }
 
     public function test_the_query_returns_the_rows_with_the_due_date_of_a_purge(): void

@@ -3,7 +3,9 @@
 namespace Tests\Feature\Http\Controllers\Web\Records;
 
 use App\Actions\Records\Api\AttachRecordUploads;
+use App\Actions\Records\Api\PurgeRecordMedia;
 use App\Actions\Records\DetachRecordAttachments;
+use App\Enums\Records\RecordFieldType;
 use App\Enums\Records\RecordModuleAction;
 use App\Models\Records\Record;
 use App\Models\Records\RecordAttachment;
@@ -141,6 +143,28 @@ final class RecordAttachmentControllerTest extends TransactionalTestCase
         $this->get("{$url}/{$pdf}/preview")->assertOk()->assertHeader('Content-Disposition', 'inline');
         $this->get("{$url}/{$text}/preview")->assertNotFound();
         $this->get("{$url}/{$text}")->assertOk()->assertHeader('X-Content-Type-Options', 'nosniff');
+    }
+
+    public function test_audio_plays_with_ranges_and_a_file_purged_by_its_due_date_is_gone_from_both_routes(): void
+    {
+        $recordId = $this->projectRecord();
+        $module = RecordModule::query()->where('code', 'projects')->sole();
+        $due = $this->field($module, 'purge_on', RecordFieldType::Date);
+        $audio = $this->attach($recordId, 'a.mp3', 'mp3');
+        $pdf = $this->attach($recordId, 'b.pdf');
+        $url = "/records/data/projects/{$recordId}/attachments";
+
+        $this->get("{$url}/{$audio}/preview", ['Range' => 'bytes=0-9'])->assertStatus(206)
+            ->assertHeader('Content-Type', 'audio/mpeg')->assertHeader('Content-Disposition', 'inline')
+            ->assertHeader('Accept-Ranges', 'bytes');
+        $this->get("{$url}/{$audio}/preview", ['Range' => 'bytes=100000-200000'])->assertStatus(416);
+        Record::query()->findOrFail($recordId)->update(['field_values' => [$due->id => '2026-10-10']]);
+        app(PurgeRecordMedia::class)->execute('projects', $recordId, 'purge_on', now());
+
+        $this->get("{$url}/{$audio}")->assertNotFound();
+        $this->get("{$url}/{$audio}/preview")->assertNotFound();
+        $this->get("{$url}/{$pdf}/preview")->assertOk();
+        $this->get("{$url}/{$pdf}")->assertOk();
     }
 
     public function test_an_unrelated_person_gets_404_and_a_related_person_opens_the_file(): void

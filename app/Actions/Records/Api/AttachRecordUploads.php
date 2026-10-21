@@ -5,6 +5,7 @@ namespace App\Actions\Records\Api;
 use App\Actions\Records\RecordAttachmentGate;
 use App\Actions\Records\RecordAttachmentWriter;
 use App\Actions\Records\RecordRevisionWriter;
+use App\Actions\Records\RecordWriteTransaction;
 use App\Enums\Records\RecordRevisionAction;
 use App\Models\Records\Record;
 use App\Models\Records\RecordModule;
@@ -12,7 +13,6 @@ use App\Support\AccessContext;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
 use RuntimeException;
@@ -25,6 +25,8 @@ use RuntimeException;
  */
 class AttachRecordUploads
 {
+    use RecordWriteTransaction;
+
     public function __construct(
         private RecordAttachmentGate $gate,
         private RecordAttachmentWriter $attachments,
@@ -52,7 +54,7 @@ class AttachRecordUploads
     ): void {
         $this->revisions->ensureExecutorIsNotUser($origin, $context->userId);
 
-        DB::transaction(function () use ($context, $moduleCode, $recordId, $files, $holder, $origin): void {
+        $this->writeRecords(function () use ($context, $moduleCode, $recordId, $files, $holder, $origin): void {
             [$module, $record] = $this->gate->lock($context, $moduleCode, $recordId, $holder);
             $this->gate->ensureWritable($module, $record, $holder);
             $this->attachments->attach($record, $origin->executorUserId ?? $context->userId, $files, []);

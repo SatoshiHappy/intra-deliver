@@ -15,6 +15,7 @@ use App\Queries\Records\Api\RecordShowPanelQuery;
 use App\Queries\Records\RecordListQuery;
 use App\Queries\Records\RecordPageQuery;
 use App\Queries\Records\RecordQuery;
+use App\Queries\Records\RecordScreenAddonCatalog;
 use App\Support\AccessContext;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -26,7 +27,9 @@ use Inertia\Support\Header;
  * 業務の画面(docs の 設計/業務データの入れ物/画面/README.md 1.1・設計/業務データの入れ物/画面/業務の画面.md 2 節): 一覧 Records/Index・登録 Records/Create・詳細 Records/Show・更新 Records/Edit と、
  * 登録・更新・削除。ルートの認可(全員)の後に、業務モジュールのアクションを判定する(判定の順 = 認可とメニュー/README.md 2.2)。画面は {@see RecordPageQuery::open()} で 1 回開き、
  * 一覧・詳細・定義・can をそこから作る。
- * 定義 module と can はクロージャで渡し、一覧の検索・並び替え・ページの部分再読み込み(records・query)では作らない。
+ * 定義 module と can はクロージャで渡し、一覧の検索・並び替え・ページの部分再読み込み(records・query・addonBadges)では作らない。
+ * 後ろのモジュールが足す操作・札・注(業務の画面.md 2.5)も、判定の後に求められたときだけ作るためクロージャで渡す。対応表の形の値は、
+ * 空でも JSON のオブジェクトで届くよう (object) にする(画面は自分のキーだけを引く)。
  * 書き込みの成功の戻り方は 画面/README.md 1.1(移り先は {@see self::redirectAfterWrite()})、検証の失敗の戻り方は 項目と規則/規則と業務処理/失敗と定義の変更.md 10 節。
  * 持ち主の鍵は HTTP から来ない(更新はいつも鍵 null を渡し、FormRequest は holder を受けない = 設計/ワークフロー/業務データとの接続/README.md 4 節)。
  * 更新は編集の画面を開いたときの版を業務処理に渡す(項目と規則/規則と業務処理/README.md 9.2 の 2)。
@@ -41,6 +44,7 @@ class RecordController extends Controller
         private UpdateRecord $updateRecord,
         private DeleteRecord $deleteRecord,
         private RecordShowPanelQuery $panels,
+        private RecordScreenAddonCatalog $addons,
     ) {}
 
     public function index(Request $request, string $module): Response
@@ -55,6 +59,10 @@ class RecordController extends Controller
             'records' => $listed['records'],
             'query' => $listed['query'],
             'can' => fn () => $this->pages->can($requester, $opened, [RecordModuleAction::Create], $context->date),
+            'addons' => fn () => $this->addons->index($context, $module),
+            // 行と同じ読み取りの結果(見える範囲で絞った後)から id を取り、行の判定を二重にしない(業務の画面.md 2.5)
+            'addonBadges' => fn () => (object) $this->addons
+                ->badges($context, $module, array_column($listed['records']['data'], 'id')),
         ]);
     }
 
@@ -106,6 +114,12 @@ class RecordController extends Controller
             'sections' => fn () => $panel()['sections'] ?? [],
             'panelContent' => Inertia::merge(fn () => $this->panelContent($request, $context, $module, $recordId))
                 ->append('rows', 'id'),
+            // 閲覧できない見る人に呼ばないため、ensureRowAccess の後のクロージャにする(業務の画面.md 2.5)
+            'addons' => function () use ($context, $module, $recordId): array {
+                $addons = $this->addons->show($context, $module, $recordId);
+
+                return [...$addons, 'fieldNotes' => (object) $addons['fieldNotes']];
+            },
         ]);
     }
 

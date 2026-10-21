@@ -10,7 +10,6 @@ use App\Queries\Records\RecordAttachmentFiles;
 use App\Support\AccessContext;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -19,6 +18,8 @@ use Illuminate\Validation\ValidationException;
  */
 class DetachRecordAttachments
 {
+    use RecordWriteTransaction;
+
     public function __construct(
         private RecordAttachmentGate $gate,
         private RecordAttachmentFiles $files,
@@ -32,9 +33,9 @@ class DetachRecordAttachments
      */
     public function execute(AccessContext $context, string $moduleCode, int $recordId, int $attachmentId): void
     {
-        DB::transaction(function () use ($context, $moduleCode, $recordId, $attachmentId): void {
+        $this->writeRecords(function () use ($context, $moduleCode, $recordId, $attachmentId): void {
             [$module, $record] = $this->gate->lock($context, $moduleCode, $recordId, null);
-            $this->files->attachment($record->id, $attachmentId);
+            $this->files->attachment($module->id, $record->id, $attachmentId);
             $this->gate->ensureWritable($module, $record, null);
             RecordAttachment::query()->whereKey($attachmentId)->delete();
             $this->revisions->write($record->id, RecordRevisionAction::Update, $context->userId, null);

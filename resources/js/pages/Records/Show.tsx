@@ -1,6 +1,8 @@
 import { Head, Link } from '@inertiajs/react';
 import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog';
 import { RecordAttachmentList } from '@/components/RecordAttachmentList';
+import { RecordAddonActions } from '@/components/Records/RecordAddonActions';
+import { RecordAddonBadges } from '@/components/Records/RecordAddonBadges';
 import { RecordDetailTabs } from '@/components/Records/RecordDetailTabs';
 import { RecordHoldNotice } from '@/components/Records/RecordHoldNotice';
 import { RecordRevisionList } from '@/components/RecordRevisionList';
@@ -19,15 +21,17 @@ import type {
     RecordHold,
     RecordModuleDefinition,
     RecordPanelContent,
+    RecordShowAddons,
     RecordShowPanelProps,
 } from '@/types';
 
 type Props = RecordShowPanelProps & {
     module: RecordModuleDefinition;
     record: RecordDetail;
-    /** 権限の判定だけ(持ち主の有無は hold = レコードの共通機能/詳細の画面/README.md の 5.1 節) */
+    /** 権限の判定だけ(持ち主の有無は hold = 設計/業務データの入れ物/レコードの共通機能/詳細の画面/README.md の 5.1 節) */
     can: RecordDetailCan;
     hold: RecordHold | null;
+    addons: RecordShowAddons; // 操作・札・注(docs の 設計/業務データの入れ物/画面/業務の画面.md の 2.5)
 };
 
 /**
@@ -38,10 +42,12 @@ function ShowActions({
     record,
     can,
     hold,
+    addons,
     heading,
 }: Omit<Props, 'panel' | 'panelContent' | 'sections'> & { heading: string }) {
     const held = hold !== null;
     const hasDetails = module.fields.some((field) => field.type === 'details');
+    const route = { module: module.code, record: record.id };
 
     return (
         <div className="flex items-center gap-2">
@@ -50,16 +56,10 @@ function ShowActions({
                     <Button disabled>編集</Button>
                 ) : (
                     <Button asChild>
-                        <Link
-                            href={edit({
-                                module: module.code,
-                                record: record.id,
-                            })}
-                        >
-                            編集
-                        </Link>
+                        <Link href={edit(route)}>編集</Link>
                     </Button>
                 ))}
+            <RecordAddonActions actions={addons.actions} held={held} />
             {can.delete &&
                 (held ? (
                     <Button variant="destructive" disabled>
@@ -73,12 +73,25 @@ function ShowActions({
                             heading,
                             hasDetails,
                         )}
-                        action={destroy({
-                            module: module.code,
-                            record: record.id,
-                        })}
+                        action={destroy(route)}
                     />
                 ))}
+        </div>
+    );
+}
+
+/** 見出しと、後ろのモジュールが足す札(業務の画面.md の 2.5) */
+function ShowHeading({
+    heading,
+    badges,
+}: {
+    heading: string;
+    badges: RecordShowAddons['badges'];
+}) {
+    return (
+        <div className="flex items-center gap-3">
+            <h1 className="text-2xl font-semibold">{heading}</h1>
+            <RecordAddonBadges badges={badges} />
         </div>
     );
 }
@@ -128,7 +141,7 @@ function PanelBody({
 }
 
 export default function Show(props: Props) {
-    const { module, record, hold } = props;
+    const { module, record, hold, addons } = props;
     const heading = recordHeading(module, record);
     const items = props.panel?.items ?? [];
     const panel = useRecordSidePanel(items, props.panelContent);
@@ -139,7 +152,7 @@ export default function Show(props: Props) {
 
             <div className="flex h-full flex-1 flex-col gap-6 p-4">
                 <div className="flex items-center justify-between gap-4">
-                    <h1 className="text-2xl font-semibold">{heading}</h1>
+                    <ShowHeading heading={heading} badges={addons.badges} />
                     <ShowActions {...props} heading={heading} />
                 </div>
                 {hold !== null && <RecordHoldNotice hold={hold} />}
@@ -150,7 +163,11 @@ export default function Show(props: Props) {
                             aria-label={`${heading}の値`}
                             className="rounded-xl border bg-card px-5 pt-1 pb-5 text-card-foreground"
                         >
-                            <RecordDetailTabs module={module} record={record} />
+                            <RecordDetailTabs
+                                module={module}
+                                record={record}
+                                fieldNotes={addons.fieldNotes}
+                            />
                         </section>
                     }
                     side={

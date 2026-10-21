@@ -10,7 +10,7 @@ use App\Actions\Records\Api\RecordUploadInput;
 use App\Actions\Records\Api\UpdateRecord;
 use App\Actions\Records\DeleteRecord;
 use App\Actions\Records\DetachRecordAttachments;
-use App\Actions\Records\RecordAttachmentWriter;
+use App\Actions\Records\RecordAttachmentGate;
 use App\Actions\Upload\Api\StoreUploads;
 use App\Models\Records\Record;
 use App\Models\Records\RecordAttachment;
@@ -141,7 +141,7 @@ final class RecordInputAttachmentsTest extends TransactionalTestCase
         $input = new RecordInput(['title' => '申請'], [], [$this->uploadedFile('a.pdf')]);
         $errors = $this->validationErrors(fn () => $this->create($input));
 
-        $this->assertSame(['attachments' => RecordAttachmentWriter::DISABLED], $errors);
+        $this->assertSame(['attachments' => RecordAttachmentGate::DISABLED], $errors);
         $this->assertSame(0, Upload::query()->count());
     }
 

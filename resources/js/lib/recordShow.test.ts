@@ -5,9 +5,11 @@ import {
     fittingTabCount,
     isLinkableUrl,
     openPanelKey,
+    previewKind,
     revisionActorText,
     revisionOperation,
     selectedTabKey,
+    uploadProgress,
     urlWithQuery,
 } from './recordShow';
 
@@ -171,5 +173,41 @@ describe('isLinkableUrl', () => {
         ]) {
             expect(isLinkableUrl(url), JSON.stringify(url)).toBe(false);
         }
+    });
+});
+
+describe('previewKind', () => {
+    it('画像・音声・動画は型の頭で Dialog の種類を決め、PDF などは新しいタブ', () => {
+        expect(previewKind('image/png')).toBe('image');
+        expect(previewKind('audio/mpeg')).toBe('audio');
+        expect(previewKind('audio/mp4')).toBe('audio');
+        expect(previewKind('video/webm')).toBe('video');
+        expect(previewKind('application/pdf')).toBe('tab');
+        expect(previewKind('text/plain')).toBe('tab');
+    });
+});
+
+describe('uploadProgress', () => {
+    it('割合を丸めて「送信中 N%」と値を返す', () => {
+        expect(uploadProgress(0)).toEqual({ value: 0, text: '送信中 0%' });
+        expect(uploadProgress(42.4)).toEqual({ value: 42, text: '送信中 42%' });
+        expect(uploadProgress(99)).toEqual({ value: 99, text: '送信中 99%' });
+    });
+
+    it('100% は送り終わって処理している間の文言', () => {
+        expect(uploadProgress(100)).toEqual({
+            value: 100,
+            text: '送信が終わりました。処理しています',
+        });
+    });
+
+    it('分からない値は値なし、範囲の外は 0〜100 に丸める', () => {
+        expect(uploadProgress(undefined)).toEqual({
+            value: null,
+            text: '送信しています',
+        });
+        expect(uploadProgress(Number.NaN).value).toBeNull();
+        expect(uploadProgress(-5).value).toBe(0);
+        expect(uploadProgress(180).value).toBe(100);
     });
 });

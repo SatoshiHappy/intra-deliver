@@ -42,9 +42,10 @@ class RecordAttachmentFiles
      *
      * @return list<int>
      */
-    public function uploadIdsOf(int $recordId): array
+    public function uploadIdsOf(int $moduleId, int $recordId): array
     {
-        $current = RecordAttachment::query()->where('record_id', $recordId)->pluck('upload_id')->all();
+        $current = RecordAttachment::query()->where('record_module_id', $moduleId)->where('record_id', $recordId)
+            ->pluck('upload_id')->all();
         $revised = RecordRevision::query()->where('record_id', $recordId)
             ->selectRaw("(jsonb_array_elements(snapshot->'attachments')->>'upload_id')::bigint AS upload_id")
             ->pluck('upload_id')->all();
@@ -61,9 +62,10 @@ class RecordAttachmentFiles
      *
      * @throws ModelNotFoundException<RecordAttachment> そのレコードの今の添付でないとき
      */
-    public function attachment(int $recordId, int $attachmentId): array
+    public function attachment(int $moduleId, int $recordId, int $attachmentId): array
     {
-        $attachment = RecordAttachment::query()->where('record_id', $recordId)->findOrFail($attachmentId);
+        $attachment = RecordAttachment::query()->where('record_module_id', $moduleId)->where('record_id', $recordId)
+            ->findOrFail($attachmentId);
 
         return ['uploadId' => $attachment->upload_id, 'name' => $attachment->name];
     }

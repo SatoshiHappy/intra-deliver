@@ -34,8 +34,8 @@ class RecordAttachmentQuery
      */
     public function forRecord(int $recordId, int $limit, ?int $beforeId = null): array
     {
-        $this->records->topLevel($recordId);
-        $attachments = RecordAttachment::query()->where('record_id', $recordId)
+        $moduleId = $this->records->topLevel($recordId)->record_module_id;
+        $attachments = RecordAttachment::query()->where('record_module_id', $moduleId)->where('record_id', $recordId)
             ->when($beforeId !== null, fn ($query) => $query->where('id', '<', $beforeId))
             ->orderByDesc('id')->limit($limit + 1)->get();
         $page = $attachments->take($limit);
@@ -52,9 +52,9 @@ class RecordAttachmentQuery
      */
     public function countFor(int $recordId): int
     {
-        $this->records->topLevel($recordId);
+        $moduleId = $this->records->topLevel($recordId)->record_module_id;
 
-        return RecordAttachment::query()->where('record_id', $recordId)->count();
+        return RecordAttachment::query()->where('record_module_id', $moduleId)->where('record_id', $recordId)->count();
     }
 
     /**

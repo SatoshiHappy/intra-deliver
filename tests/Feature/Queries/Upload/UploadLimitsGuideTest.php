@@ -20,7 +20,8 @@ final class UploadLimitsGuideTest extends TransactionalTestCase
 
         $this->assertSame(
             '1 ファイル 95MB まで、1 回 3 ファイル・合計 50MB までです。'
-            .'使用できる形式は PDF・PNG・JPEG・GIF・Word・Excel・PowerPoint・テキスト・CSV・Markdown です。',
+            .'使用できる形式は PDF・PNG・JPEG・GIF・Word・Excel・PowerPoint・テキスト・CSV・Markdown・'
+            .'音声(MP3・M4A・WAV)・動画(MP4・WebM)です。',
             app(UploadLimits::class)->guide(),
         );
     }

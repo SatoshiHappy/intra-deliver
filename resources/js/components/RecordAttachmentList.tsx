@@ -1,16 +1,14 @@
-import { Download, Eye, FileText, Plus } from 'lucide-react';
+import { Download, FileText, Plus } from 'lucide-react';
 import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog';
+import { RecordAttachmentPreview } from '@/components/RecordAttachmentPreview';
 import { RecordPanelMore } from '@/components/RecordPanelMore';
 import { Button } from '@/components/ui/button';
-import {
-    Dialog,
-    DialogContent,
-    DialogHeader,
-    DialogTitle,
-    DialogTrigger,
-} from '@/components/ui/dialog';
 import { useAttachmentUpload } from '@/hooks/use-attachment-upload';
-import { fileSizeText, personText } from '@/lib/recordShow';
+import {
+    fileSizeText,
+    personText,
+    type UploadProgress,
+} from '@/lib/recordShow';
 import { formatDate, formatDatetime } from '@/lib/recordValues';
 import type { RecordAttachmentRow } from '@/types';
 import type { RouteDefinition } from '@/wayfinder';
@@ -36,47 +34,6 @@ type ItemProps = Pick<Props, 'canAttach' | 'held'> & {
     row: RecordAttachmentRow;
     deleteAction: RouteDefinition<'delete'>;
 };
-
-/**
- * 画像のプレビュー(Dialog の中。PDF は新しいタブで開く = 添付ファイル/README.md の 4 節)。
- */
-function ImagePreview({ row, url }: { row: RecordAttachmentRow; url: string }) {
-    return (
-        <Dialog>
-            <DialogTrigger asChild>
-                <Button variant="outline" size="sm">
-                    <Eye aria-hidden="true" />
-                    プレビュー
-                </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-3xl">
-                <DialogHeader>
-                    <DialogTitle className="wrap-anywhere">
-                        {row.name}
-                    </DialogTitle>
-                </DialogHeader>
-                <img
-                    src={url}
-                    alt={row.name}
-                    className="max-h-[70svh] w-full object-contain"
-                />
-            </DialogContent>
-        </Dialog>
-    );
-}
-
-function Preview({ row, url }: { row: RecordAttachmentRow; url: string }) {
-    return row.mime.startsWith('image/') ? (
-        <ImagePreview row={row} url={url} />
-    ) : (
-        <Button variant="outline" size="sm" asChild>
-            <a href={url} target="_blank" rel="noopener noreferrer">
-                <Eye aria-hidden="true" />
-                プレビュー
-            </a>
-        </Button>
-    );
-}
 
 /** 行の削除(申請中は押せない形。押せない間は確かめの Dialog を置かない) */
 function DeleteAttachment({ row, held, deleteAction }: ItemProps) {
@@ -111,7 +68,7 @@ function AttachmentActions(props: ItemProps) {
                 </span>
             )}
             {row.previewUrl !== null && (
-                <Preview row={row} url={row.previewUrl} />
+                <RecordAttachmentPreview row={row} url={row.previewUrl} />
             )}
             {row.downloadUrl !== null && (
                 <Button variant="outline" size="sm" asChild>
@@ -156,6 +113,36 @@ function AttachmentItem(props: ItemProps) {
     );
 }
 
+/** 送っている間の進み具合(割合が分からない間は動く表示) */
+function SendingProgress({ progress }: { progress: UploadProgress }) {
+    return (
+        <div className="grid gap-1 text-xs">
+            <progress
+                className="h-1.5 w-full"
+                max={100}
+                value={progress.value ?? undefined}
+                aria-label="送信の進み具合"
+            />
+            <span className="text-muted-foreground">{progress.text}</span>
+        </div>
+    );
+}
+
+/** 送った誤り(キー attachments・attachments.<添字>) */
+function UploadErrors({
+    errors,
+}: {
+    errors: { key: string; message: string }[];
+}) {
+    return errors.length === 0 ? null : (
+        <ul role="alert" className="grid gap-0.5 text-destructive">
+            {errors.map((error) => (
+                <li key={error.key}>{error.message}</li>
+            ))}
+        </ul>
+    );
+}
+
 /**
  * 「ファイルを追加」と送った誤り。
  */
@@ -166,7 +153,8 @@ function AddFiles({
     uploadUrl: string;
     disabled: boolean;
 }) {
-    const { input, sending, errors, send } = useAttachmentUpload(uploadUrl);
+    const { input, sending, progress, errors, send } =
+        useAttachmentUpload(uploadUrl);
 
     return (
         <>
@@ -188,13 +176,8 @@ function AddFiles({
                 <Plus aria-hidden="true" />
                 ファイルを追加
             </Button>
-            {errors.length > 0 && (
-                <ul role="alert" className="grid gap-0.5 text-destructive">
-                    {errors.map((error) => (
-                        <li key={error.key}>{error.message}</li>
-                    ))}
-                </ul>
-            )}
+            {progress !== null && <SendingProgress progress={progress} />}
+            <UploadErrors errors={errors} />
         </>
     );
 }

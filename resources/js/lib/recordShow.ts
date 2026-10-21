@@ -128,6 +128,42 @@ export function fileSizeText(bytes: number): string {
         : `${(bytes / KIB ** 3).toFixed(1)} GB`;
 }
 
+/** プレビューの出し方: 画像・音声・動画は Dialog の中、そのほか(PDF)は新しいタブ */
+export type PreviewKind = 'image' | 'audio' | 'video' | 'tab';
+
+/**
+ * 添付の型からプレビューの出し方を決める(型の頭で見る = 添付ファイル/README.md の 4 節)。
+ */
+export function previewKind(mime: string): PreviewKind {
+    const head = mime.split('/')[0];
+
+    return head === 'image' || head === 'audio' || head === 'video'
+        ? head
+        : 'tab';
+}
+
+/** 送っている間の進み具合の表示(value = null は割合が分からない) */
+export type UploadProgress = { value: number | null; text: string };
+
+/**
+ * 送信の進み具合(Inertia の progress の percentage。0〜100)の描き分け。分からない・範囲の外は丸める。
+ */
+export function uploadProgress(percentage: number | undefined): UploadProgress {
+    if (percentage === undefined || Number.isNaN(percentage)) {
+        return { value: null, text: '送信しています' };
+    }
+
+    const value = Math.min(100, Math.max(0, Math.round(percentage)));
+
+    return {
+        value,
+        text:
+            value >= 100
+                ? '送信が終わりました。処理しています'
+                : `送信中 ${value}%`,
+    };
+}
+
 /**
  * 人の表示(null = ゲスト。名称が無ければコード)。
  */

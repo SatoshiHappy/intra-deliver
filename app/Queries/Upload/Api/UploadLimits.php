@@ -33,7 +33,9 @@ class UploadLimits
     public const MAX_NAME_LENGTH = 255;
 
     /**
-     * 形式の対応表(拡張子(小文字)→ 受ける型)。音声・動画の行は、見本で型を決めてから足す(添付ファイル/README.md の 3 節)。
+     * 形式の対応表(拡張子(小文字)→ 受ける型)。音声・動画の型は見本を流して実測した(型の根拠 = 見本の実測。
+     * 実測した環境は audio/webm・audio/wav を推さないが、正本の表にある型として受ける(配備の PHP の fileinfo の版で変わりうる)。
+     * m4a に video/mp4 を足すのは、Android の録音など中身のブランドが isom・mp42 の m4a が video/mp4 と推されるため)。
      *
      * @var array<string, list<string>>
      */
@@ -49,6 +51,11 @@ class UploadLimits
         'txt' => ['text/plain'],
         'md' => ['text/plain', 'text/markdown'],
         'csv' => ['text/csv', 'text/plain'],
+        'mp3' => ['audio/mpeg'],
+        'm4a' => ['audio/x-m4a', 'audio/mp4', 'video/mp4'],
+        'wav' => ['audio/x-wav', 'audio/wav'],
+        'mp4' => ['video/mp4', 'audio/mp4'],
+        'webm' => ['video/webm', 'audio/webm'],
     ];
 
     /**
@@ -67,9 +74,14 @@ class UploadLimits
         'テキスト' => ['txt'],
         'CSV' => ['csv'],
         'Markdown' => ['md'],
+        '音声(MP3・M4A・WAV)' => ['mp3', 'm4a', 'wav'],
+        '動画(MP4・WebM)' => ['mp4', 'webm'],
     ];
 
     private const UNITS = ['GB' => 1_073_741_824, 'MB' => 1_048_576, 'KB' => 1_024];
+
+    /** @var list<string>|null {@see self::mediaMimes()} の結果(最初に呼んだとき組む) */
+    private ?array $mediaMimes = null;
 
     public function maxFileBytes(): int
     {
@@ -118,8 +130,12 @@ class UploadLimits
             fn (array $extensions) => array_intersect($extensions, array_keys(self::FORMATS)) !== [],
         );
 
+        $formats = implode('・', array_keys($accepted));
+        // 半角の英数字の後ろだけ空ける(「Markdown です」「WebM)です」。文のほかの所と同じ)
+        $space = preg_match('/[A-Za-z0-9]\z/', $formats) === 1 ? ' ' : '';
+
         return '1 ファイル '.self::size($this->maxFileBytes()).' まで、1 回 '.self::MAX_FILES_PER_REQUEST.' ファイル・合計 '
-            .self::size($this->maxRequestBytes()).' までです。使用できる形式は '.implode('・', array_keys($accepted)).' です。';
+            .self::size($this->maxRequestBytes()).' までです。使用できる形式は '.$formats.$space.'です。';
     }
 
     /**
@@ -178,6 +194,20 @@ class UploadLimits
     public function formats(): array
     {
         return self::FORMATS;
+    }
+
+    /**
+     * 対応表が受ける音声・動画の型(型が audio/*・video/* のもの。ブラウザの再生の部品で開ける型 = プレビューの型)。
+     *
+     * @return list<string>
+     */
+    public function mediaMimes(): array
+    {
+        // 定数の表から組むだけなので、この実体の中で 1 回だけ組む(欄の行ごとに組み直さない。静的な状態は持たない)
+        return $this->mediaMimes ??= array_values(array_filter(
+            array_unique(array_merge(...array_values(self::FORMATS))),
+            fn (string $mime) => str_starts_with($mime, 'audio/') || str_starts_with($mime, 'video/'),
+        ));
     }
 
     private static function extension(string $name): string

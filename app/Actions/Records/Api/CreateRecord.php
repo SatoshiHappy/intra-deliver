@@ -3,9 +3,11 @@
 namespace App\Actions\Records\Api;
 
 use App\Actions\Records\LocksRecordModule;
+use App\Actions\Records\RecordAttachmentGate;
 use App\Actions\Records\RecordAttachmentWriter;
 use App\Actions\Records\RecordRevisionWriter;
 use App\Actions\Records\RecordSaver;
+use App\Actions\Records\RecordWriteTransaction;
 use App\Enums\Records\RecordModuleAction;
 use App\Enums\Records\RecordRevisionAction;
 use App\Models\Records\RecordModule;
@@ -15,7 +17,6 @@ use App\Queries\Records\RecordModuleGate;
 use App\Support\AccessContext;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
 
@@ -32,11 +33,13 @@ use InvalidArgumentException;
 class CreateRecord
 {
     use LocksRecordModule;
+    use RecordWriteTransaction;
 
     public function __construct(
         private RecordModuleGate $gate,
         private RecordDefinitionQuery $definitions,
         private RecordSaver $saver,
+        private RecordAttachmentGate $attachmentGate,
         private RecordAttachmentWriter $attachments,
         private RecordRevisionWriter $revisions,
     ) {}
@@ -59,11 +62,11 @@ class CreateRecord
         $requester = Requester::fromAccessContext($context);
         $this->revisions->ensureExecutorIsNotUser($origin, $context->userId);
 
-        return DB::transaction(function () use ($context, $moduleCode, $input, $origin, $requester) {
+        return $this->writeRecords(function () use ($context, $moduleCode, $input, $origin, $requester) {
             $module = $this->gate->topLevelModule($moduleCode);
             $this->lockRecordModuleShared($module);
             $this->gate->authorize($requester, $module, RecordModuleAction::Create, $context->date);
-            $this->attachments->ensureEnabledFor($module, $input);
+            $this->attachmentGate->ensureEnabledFor($module, $input);
             $definition = $this->definitions->load($module);
             $record = $this->saver->save($requester, $context->date, $context->userId, $definition, null, $input);
             $this->attachments->attachInput($record, $origin->executorUserId ?? $context->userId, $input);

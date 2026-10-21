@@ -18,7 +18,8 @@ use Tests\Support\TransactionalTestCase;
 /**
  * 共通マスタの検索の口(docs の 設計/共通マスタ/検索と組織図.md 2 節): GET /master/search?q= が、語を含む d に有効なユーザーと木の組織を
  * 各 10 件まで JSON で返す(氏名・名称・検索用名称はロケールの行だけ、コードも見る。大文字小文字を区別せず、%・_・\ は文字そのもの)。
- * q は任意(無い・空・空白だけは語で絞らず、先頭から各 10 件 = 参照の選択欄が開いた直後)。101 文字・配列は 422。初期データ(兼務の u0009 = 総務部が主所属。退職者 u0014、入社前の u0015)を入れ、今日を 2026-10-10 に固定し、
+ * q は任意(無い・空・空白だけは語で絞らず、先頭から各 10 件 = 参照の選択欄が開いた直後)。101 文字・配列・UTF-8 として正しくない語は 422。
+ * 初期データ(兼務の u0009 = 総務部が主所属。退職者 u0014、入社前の u0015)を入れ、今日を 2026-10-10 に固定し、
  * ルートの認可を外さずにゲストで開く。
  */
 final class SearchControllerTest extends TransactionalTestCase
@@ -165,6 +166,11 @@ final class SearchControllerTest extends TransactionalTestCase
     public function test_rejects_a_keyword_given_as_an_array(): void
     {
         $this->getJson('/master/search?q[]=u0009')->assertUnprocessable()->assertJsonValidationErrors(['q']);
+    }
+
+    public function test_rejects_a_keyword_that_is_not_valid_utf8(): void
+    {
+        $this->search("\xFF")->assertUnprocessable()->assertJsonValidationErrors(['q' => '検索する語の指定が正しくありません']);
     }
 
     /**

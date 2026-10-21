@@ -1,25 +1,21 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { useState } from 'react';
+import { RecordAddonActions } from '@/components/Records/RecordAddonActions';
+import { RecordListRows } from '@/components/Records/RecordListRows';
 import { RecordSearchForm } from '@/components/Records/RecordSearchForm';
-import { RecordValue } from '@/components/RecordValue';
 import { Button } from '@/components/ui/button';
 import {
     Table,
     TableBody,
-    TableCell,
     TableHead,
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
-import {
-    EMPTY_VALUE,
-    formatDatetime,
-    formatRecordValue,
-} from '@/lib/recordValues';
-import { create, index, show } from '@/routes/records/data';
+import { create, index } from '@/routes/records/data';
 import type { QueryParams } from '@/wayfinder';
 import type {
-    RecordFieldDefinition,
+    RecordAddonBadge,
+    RecordIndexAddons,
     RecordList,
     RecordListQuery,
     RecordModuleDefinition,
@@ -30,10 +26,12 @@ type Props = {
     records: RecordList;
     query: RecordListQuery;
     can: { create: boolean };
+    addons: RecordIndexAddons; // 見出しの操作(docs の 設計/業務データの入れ物/画面/業務の画面.md の 2.5)
+    addonBadges: Record<string, RecordAddonBadge[]>; // 行の id → 札(同じ 2.5。JSON のオブジェクト)
 };
 
-/** 検索・並び替え・ページを変えたときに取り直す props(定義 module は取り直さない = 画面/業務の画面.md 2.1) */
-const LIST_PROPS = ['records', 'query'];
+/** 検索・並び替え・ページを変えたときに取り直す props(定義 module は取り直さない。行を入れ替えるので札も = 業務の画面.md の 2.1) */
+const LIST_PROPS = ['records', 'query', 'addonBadges'];
 
 /** 既定の並び(id の降順) */
 const DEFAULT_SORT = '-id';
@@ -210,7 +208,8 @@ function Pagination({
     );
 }
 
-export default function Index({ module, records, query, can }: Props) {
+export default function Index(props: Props) {
+    const { module, records, query, can } = props;
     const listed = module.fields.filter((field) => field.isListed);
     const searchable = module.fields.filter((field) => field.isSearchable);
     const currentFilter = query.filters as QueryParams;
@@ -219,23 +218,6 @@ export default function Index({ module, records, query, can }: Props) {
     const refresh = () => setSearchVersion((version) => version + 1);
     // 並び替え・ページの訪問は今の条件をそのまま送るので、欄を作り直さない(未送信の入力を残す = 修正方針 D1)
     const sortBy = (sort: string) => visit(module.code, currentFilter, sort);
-    const cell = (
-        field: RecordFieldDefinition,
-        record: RecordList['data'][number],
-    ) => {
-        const value = record.values[field.code] ?? null;
-
-        return field.isTitle ? (
-            <Link
-                href={show({ module: module.code, record: record.id })}
-                className="text-primary underline-offset-4 hover:underline"
-            >
-                {formatRecordValue(field, value, 'cell')}
-            </Link>
-        ) : (
-            <RecordValue field={field} value={value} place="cell" />
-        );
-    };
 
     return (
         <>
@@ -244,11 +226,17 @@ export default function Index({ module, records, query, can }: Props) {
             <div className="flex h-full flex-1 flex-col gap-6 p-4">
                 <div className="flex items-center justify-between gap-4">
                     <h1 className="text-2xl font-semibold">{module.name}</h1>
-                    {can.create && (
-                        <Button asChild>
-                            <Link href={create(module.code)}>登録</Link>
-                        </Button>
-                    )}
+                    <div className="flex items-center gap-2">
+                        <RecordAddonActions
+                            actions={props.addons.actions}
+                            held={false}
+                        />
+                        {can.create && (
+                            <Button asChild>
+                                <Link href={create(module.code)}>登録</Link>
+                            </Button>
+                        )}
+                    </div>
                 </div>
                 {searchable.length > 0 && (
                     <RecordSearchForm
@@ -303,41 +291,12 @@ export default function Index({ module, records, query, can }: Props) {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {records.data.length === 0 && (
-                                <TableRow>
-                                    <TableCell
-                                        colSpan={listed.length + 2}
-                                        className="text-center text-muted-foreground"
-                                    >
-                                        レコードはありません
-                                    </TableCell>
-                                </TableRow>
-                            )}
-                            {records.data.map((record) => (
-                                <TableRow key={record.id}>
-                                    <TableCell>
-                                        <Link
-                                            href={show({
-                                                module: module.code,
-                                                record: record.id,
-                                            })}
-                                            className="font-num text-primary tabular-nums underline-offset-4 hover:underline"
-                                        >
-                                            {record.id}
-                                        </Link>
-                                    </TableCell>
-                                    {listed.map((field) => (
-                                        <TableCell key={field.code}>
-                                            {cell(field, record)}
-                                        </TableCell>
-                                    ))}
-                                    <TableCell className="font-num tabular-nums">
-                                        {record.updatedAt === null
-                                            ? EMPTY_VALUE
-                                            : formatDatetime(record.updatedAt)}
-                                    </TableCell>
-                                </TableRow>
-                            ))}
+                            <RecordListRows
+                                moduleCode={module.code}
+                                listed={listed}
+                                records={records}
+                                addonBadges={props.addonBadges}
+                            />
                         </TableBody>
                     </Table>
                     <Pagination

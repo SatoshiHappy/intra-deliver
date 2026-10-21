@@ -7,7 +7,6 @@ use App\Actions\Records\Api\RecordUploadInput;
 use App\Actions\Upload\Api\StoreUploads;
 use App\Models\Records\Record;
 use App\Models\Records\RecordAttachment;
-use App\Models\Records\RecordModule;
 use App\Queries\Records\RecordAttachmentFiles;
 use App\Queries\Upload\Api\UploadLimits;
 use Illuminate\Http\UploadedFile;
@@ -21,38 +20,11 @@ use RuntimeException;
  */
 class RecordAttachmentWriter
 {
-    /** 使用しない業務モジュールへの追加・取り外しの文言(レコードの添付.md の 2 節) */
-    public const DISABLED = 'この業務モジュールでは添付ファイルを追加・削除できません';
-
     public function __construct(
         private StoreUploads $storeUploads,
         private UploadLimits $limits,
         private RecordAttachmentFiles $files,
     ) {}
-
-    /**
-     * 業務モジュールが添付を使用するか(使用の判定 = レコードの添付.md の 2 節)。
-     *
-     * @throws ValidationException 使用しないとき(キー attachments)
-     */
-    public function ensureEnabled(RecordModule $module): void
-    {
-        if (! $module->is_attachment_enabled) {
-            throw ValidationException::withMessages(['attachments' => [self::DISABLED]]);
-        }
-    }
-
-    /**
-     * 登録・更新の入力に添付があれば、使用の判定をする(認可と同じく値の検証の前)。
-     *
-     * @throws ValidationException 使用しないとき(キー attachments)
-     */
-    public function ensureEnabledFor(RecordModule $module, RecordInput $input): void
-    {
-        if (self::hasAttachments($input)) {
-            $this->ensureEnabled($module);
-        }
-    }
 
     /**
      * 登録・更新の入力の添付を付ける(無ければ何もしない)。例外は {@see self::attach()} と同じ。
@@ -61,7 +33,7 @@ class RecordAttachmentWriter
      */
     public function attachInput(Record $record, ?int $userId, RecordInput $input): void
     {
-        if (self::hasAttachments($input)) {
+        if ($input->hasAttachments()) {
             $this->attach($record, $userId, $input->attachFiles, $input->attachUploads);
         }
     }
@@ -103,10 +75,5 @@ class RecordAttachmentWriter
                 'user_id' => $userId,
             ]);
         }
-    }
-
-    private static function hasAttachments(RecordInput $input): bool
-    {
-        return $input->attachFiles !== [] || $input->attachUploads !== [];
     }
 }

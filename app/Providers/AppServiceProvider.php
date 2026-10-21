@@ -17,6 +17,7 @@ use App\Queries\Menu\QuickActionsHomeSection;
 use App\Queries\Notice\Api\NoticeTargets;
 use App\Queries\Records\Api\RecordApplyEntries;
 use App\Queries\Records\Api\RecordHolds;
+use App\Queries\Records\Api\RecordScreenAddons;
 use App\Queries\Records\Api\RecordShowSections;
 use App\Queries\Records\RecordMenuItemVisibility;
 use App\Queries\Records\RecordModuleResourceTypes;
@@ -78,6 +79,10 @@ class AppServiceProvider extends ServiceProvider
         // 依存の逆転: レコードの詳細のサイドパネルに、後ろのモジュールが節を足す(docs の
         // 設計/業務データの入れ物/レコードの共通機能/詳細の画面/節の口.md の 2 節。並び = この配列の順)。節を足すモジュールが実装をここに足す
         $this->app->tag([], RecordShowSections::TAG);
+
+        // 依存の逆転: 業務の一覧とレコードの詳細に、後ろのモジュールがダイアログを開く操作・札・注を足す(docs の
+        // 設計/業務データの入れ物/画面/業務の画面.md の 2.5。並び = この配列の順)。足すモジュールが実装をここに足す
+        $this->app->tag([], RecordScreenAddons::TAG);
 
         // 処理対象者に当たる条件の項(docs の 設計/ワークフロー/ルートの深さ/認可と一覧.md 3 節。代理の項 = 設計/ワークフロー/案件の運用/案件の操作/README.md の 4.2 節)
         $this->app->tag([OwnCaseTargetTerm::class, ProxyTargetTerm::class], CaseTargetTerm::TAG);

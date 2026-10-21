@@ -23,4 +23,12 @@ final readonly class RecordInput
         public array $attachFiles = [],
         public array $attachUploads = [],
     ) {}
+
+    /**
+     * 同じ呼び出しで付ける添付(ファイルか上げ済みの実体)があるか。
+     */
+    public function hasAttachments(): bool
+    {
+        return $this->attachFiles !== [] || $this->attachUploads !== [];
+    }
 }

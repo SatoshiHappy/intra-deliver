@@ -239,6 +239,25 @@ final class CreateRecordTest extends TransactionalTestCase
         $this->assertSame('ownerの値が正しくありません', $errors['values.owner']);
     }
 
+    public function test_checks_the_referenced_records_with_for_key_share_to_wait_for_a_concurrent_delete(): void
+    {
+        $module = $this->recordModule('projects');
+        $customers = $this->recordModule('customers');
+        $this->referenceField($module, 'customer', $customers);
+        $customerRecord = Record::factory()->create(['record_module_id' => $customers->id]);
+        DB::flushQueryLog();
+        DB::enableQueryLog();
+
+        $this->create('projects', ['customer' => $customerRecord->id]);
+
+        $queries = array_column(DB::getQueryLog(), 'query');
+        DB::disableQueryLog();
+        $isLookup = fn (string $query) => str_starts_with($query, 'select "id" from "records"');
+        $lookups = array_values(array_filter($queries, $isLookup));
+        $this->assertCount(1, $lookups);
+        $this->assertStringEndsWith(' for key share', $lookups[0]);
+    }
+
     public function test_rejects_without_the_create_permission_and_writes_nothing(): void
     {
         $module = $this->recordModule('projects', [RecordModuleAction::Read, RecordModuleAction::Update, RecordModuleAction::Delete]);

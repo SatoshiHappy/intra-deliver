@@ -9,6 +9,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { ownValue } from '@/lib/Records/recordAddons';
 import { isWideField } from '@/lib/recordForm';
 import {
     detailsTabKey,
@@ -72,15 +73,53 @@ function DetailsTable({
 }
 
 /**
- * 詳細タブ: 項目の格子(列は左の面の幅の段階 = 帯だけで 3 列、パネルを開くと 2 列 = 詳細の画面/README.md の 1 節。複数行は全幅)と、
- * 作成・更新の日時と人。
+ * 項目の欄 1 つ(名前の下に値)。note = 後ろのモジュールが足す、欄の上の 1 行(docs の 設計/業務データの入れ物/画面/業務の画面.md の 2.5)。
+ * 注は欄の上に見せ、dl の並び(dt の後の dd)は崩さない。
+ */
+function FieldItem({
+    field,
+    record,
+    note,
+}: {
+    field: RecordFieldDefinition;
+    record: RecordDetail;
+    note: string | undefined;
+}) {
+    return (
+        <div
+            className={cn(
+                'flex min-w-0 flex-col gap-1',
+                isWideField(field) && 'col-span-full',
+            )}
+        >
+            <dt className="text-xs text-muted-foreground">{field.name}</dt>
+            {note !== undefined && (
+                <dd className="order-first text-xs text-muted-foreground">
+                    {note}
+                </dd>
+            )}
+            <dd className="min-w-0">
+                <RecordValue
+                    field={field}
+                    value={record.values[field.code] ?? null}
+                />
+            </dd>
+        </div>
+    );
+}
+
+/**
+ * 詳細タブ: 項目の格子(列は左の面の幅の段階 = 帯だけで 3 列、パネルを開くと 2 列 =
+ * 設計/業務データの入れ物/レコードの共通機能/詳細の画面/README.md の 1 節。複数行は全幅)と、作成・更新の日時と人。notes = 後ろのモジュールが足す、項目の欄の上の 1 行(項目のコード → 文)。
  */
 function FieldsTab({
     module,
     record,
+    notes,
 }: {
     module: RecordModuleDefinition;
     record: RecordDetail;
+    notes: Record<string, string>;
 }) {
     const fields = module.fields.filter((field) => field.type !== 'details');
     const authors = [
@@ -92,23 +131,12 @@ function FieldsTab({
         <div className="flex flex-col gap-5">
             <dl className="grid grid-cols-1 gap-x-6 gap-y-4 text-sm @md:grid-cols-2 @3xl:grid-cols-3">
                 {fields.map((field) => (
-                    <div
+                    <FieldItem
                         key={field.code}
-                        className={cn(
-                            'flex min-w-0 flex-col gap-1',
-                            isWideField(field) && 'col-span-full',
-                        )}
-                    >
-                        <dt className="text-xs text-muted-foreground">
-                            {field.name}
-                        </dt>
-                        <dd className="min-w-0">
-                            <RecordValue
-                                field={field}
-                                value={record.values[field.code] ?? null}
-                            />
-                        </dd>
-                    </div>
+                        field={field}
+                        record={record}
+                        note={ownValue(notes, field.code)}
+                    />
                 ))}
             </dl>
             <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1 text-xs text-muted-foreground">
@@ -132,9 +160,11 @@ function FieldsTab({
 export function RecordDetailTabs({
     module,
     record,
+    fieldNotes = {},
 }: {
     module: RecordModuleDefinition;
     record: RecordDetail;
+    fieldNotes?: Record<string, string>;
 }) {
     const { url } = usePage();
     const detailsFields = module.fields.filter(
@@ -165,7 +195,7 @@ export function RecordDetailTabs({
     return (
         <RecordShowTabs tabs={tabs} selected={selected} onSelect={select}>
             {selectedField === undefined ? (
-                <FieldsTab module={module} record={record} />
+                <FieldsTab module={module} record={record} notes={fieldNotes} />
             ) : (
                 <DetailsTable
                     field={selectedField}

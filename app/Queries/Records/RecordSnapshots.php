@@ -56,7 +56,7 @@ class RecordSnapshots
             'values' => $record->field_values ?? [],
             'references' => $this->targets($references, $record->id),
             'details' => $details,
-            'attachments' => $this->attachments($record->id),
+            'attachments' => $this->attachments($record->record_module_id, $record->id),
         ];
     }
 
@@ -83,9 +83,10 @@ class RecordSnapshots
      *
      * @throws LogicException 添付の台帳の行が無いとき(外部キーの不変条件が崩れた)
      */
-    private function attachments(int $recordId): array
+    private function attachments(int $moduleId, int $recordId): array
     {
-        $attachments = RecordAttachment::query()->with('upload')->where('record_id', $recordId)->orderBy('id')->get();
+        $attachments = RecordAttachment::query()->with('upload')
+            ->where('record_module_id', $moduleId)->where('record_id', $recordId)->orderBy('id')->get();
 
         return array_values($attachments->map(function (RecordAttachment $attachment): array {
             $upload = $attachment->upload ?? throw new LogicException("添付 {$attachment->id} の台帳の行が無い");

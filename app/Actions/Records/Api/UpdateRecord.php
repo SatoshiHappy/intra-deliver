@@ -3,9 +3,11 @@
 namespace App\Actions\Records\Api;
 
 use App\Actions\Records\LocksRecordModule;
+use App\Actions\Records\RecordAttachmentGate;
 use App\Actions\Records\RecordAttachmentWriter;
 use App\Actions\Records\RecordRevisionWriter;
 use App\Actions\Records\RecordSaver;
+use App\Actions\Records\RecordWriteTransaction;
 use App\Enums\Records\RecordModuleAction;
 use App\Enums\Records\RecordRevisionAction;
 use App\Models\Records\Record;
@@ -18,7 +20,6 @@ use App\Queries\Records\RecordRowAccess;
 use App\Support\AccessContext;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use InvalidArgumentException;
 
@@ -39,6 +40,7 @@ use InvalidArgumentException;
 class UpdateRecord
 {
     use LocksRecordModule;
+    use RecordWriteTransaction;
 
     /** 開いた後に更新されているときの文言(項目と規則/規則と業務処理/失敗と定義の変更.md 10 節) */
     private const STALE = 'このレコードは、開いた後に更新されています。画面を開き直してから、もう一度保存してください。';
@@ -49,6 +51,7 @@ class UpdateRecord
         private RecordSaver $saver,
         private RecordHoldCatalog $holds,
         private RecordRowAccess $rows,
+        private RecordAttachmentGate $attachmentGate,
         private RecordAttachmentWriter $attachments,
         private RecordRevisionWriter $revisions,
     ) {}
@@ -82,7 +85,7 @@ class UpdateRecord
         $requester = Requester::fromAccessContext($context);
         $this->revisions->ensureExecutorIsNotUser($origin, $context->userId);
 
-        DB::transaction(function () use (
+        $this->writeRecords(function () use (
             $context, $moduleCode, $recordId, $input, $version, $holder, $origin, $requester,
         ): void {
             $module = $this->gate->topLevelModule($moduleCode);
@@ -105,7 +108,7 @@ class UpdateRecord
                 throw ValidationException::withMessages(['record' => [self::STALE]]);
             }
 
-            $this->attachments->ensureEnabledFor($module, $input);
+            $this->attachmentGate->ensureEnabledFor($module, $input);
             $record->load('recordReferences');
 
             $this->saver->save($requester, $context->date, $context->userId, $this->definitions->load($module), $record, $input);

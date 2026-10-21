@@ -135,6 +135,12 @@ final class AuthzSubjectControllerTest extends TransactionalTestCase
         $this->assertStringContainsString('no-store', (string) $response->headers->get('Cache-Control'));
     }
 
+    public function test_the_candidates_reject_a_word_that_is_not_valid_utf8(): void
+    {
+        $this->getJson(self::CANDIDATES_URL.'?kind=user&q=%FF')->assertUnprocessable()
+            ->assertJsonValidationErrors(['q' => '検索する語の指定が正しくありません']);
+    }
+
     public function test_the_candidates_reject_an_unknown_kind_and_are_forbidden_without_the_permission(): void
     {
         $this->getJson(self::CANDIDATES_URL.'?kind=group&q=a')->assertUnprocessable()

@@ -130,6 +130,15 @@ final class AssigneeCandidatesTest extends TransactionalTestCase
         $this->getJson($this->url($case, 'council', 'u000'))->assertForbidden();
     }
 
+    public function test_rejects_a_keyword_that_is_not_valid_utf8(): void
+    {
+        $case = $this->applyOnBranch('u0001', 350);
+        $this->actingAsUser('u0002');
+
+        $this->getJson($this->url($case, 'council', "\xFF"))->assertUnprocessable()
+            ->assertJsonValidationErrors(['q' => '検索する語の指定が正しくありません']);
+    }
+
     private function url(int $caseId, string $nodeCode, string $keyword): string
     {
         return "/workflow/cases/{$caseId}/assignee-candidates?".http_build_query(['node' => $this->nodeIdOf($caseId, $nodeCode), 'q' => $keyword]);

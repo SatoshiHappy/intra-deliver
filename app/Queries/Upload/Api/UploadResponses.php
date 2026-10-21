@@ -15,15 +15,17 @@ use Symfony\Component\HttpFoundation\ResponseHeaderBag;
  */
 class UploadResponses
 {
-    /** プレビューで開ける型(音声・動画は形式の対応表に足すときに足す) */
+    /** プレビューで開ける画像・PDF の型(音声・動画の型は形式の対応表の audio/*・video/* = {@see UploadLimits::mediaMimes()}) */
     private const PREVIEW_MIMES = ['image/png', 'image/jpeg', 'application/pdf'];
+
+    public function __construct(private UploadLimits $limits) {}
 
     /**
      * プレビューで開ける型か(欄の「プレビュー」を出すかと、preview の 404 が同じ規則を使う)。
      */
     public function isPreviewable(string $mime): bool
     {
-        return in_array($mime, self::PREVIEW_MIMES, true);
+        return in_array($mime, [...self::PREVIEW_MIMES, ...$this->limits->mediaMimes()], true);
     }
 
     /**

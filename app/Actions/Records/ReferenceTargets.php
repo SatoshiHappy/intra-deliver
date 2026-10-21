@@ -86,6 +86,9 @@ class ReferenceTargets
     }
 
     /**
+     * 相手のレコードの行に FOR KEY SHARE を取り、同時に走る削除(FOR UPDATE)と並べる。削除が先なら相手は無いとして 422、確かめが先なら
+     * 削除が参照の行を見て 422 になり、どちらの順でも参照の行の書き込みが外部キー違反で落ちない(設計/業務データの入れ物/データモデル/値の形と直列化.md 4 節)。
+     *
      * @param  list<int>  $ids
      * @return list<int>
      */
@@ -97,7 +100,7 @@ class ReferenceTargets
             return [];
         }
 
-        $records = Record::query()->where('record_module_id', $module->id)->whereKey($ids);
+        $records = Record::query()->where('record_module_id', $module->id)->whereKey($ids)->lock('for key share');
 
         return array_values($this->rows->constrain($records, $check->requester, $module, $check->date)->pluck('id')->all());
     }

@@ -23,7 +23,7 @@ class AuthzSubjectCandidatesRequest extends FormRequest
     {
         return [
             'kind' => ['bail', 'required', 'string', Rule::enum(SubjectColumnKind::class)],
-            'q' => ['bail', 'nullable', 'string', 'max:'.self::MAX_LENGTH],
+            'q' => ['bail', 'nullable', 'string', 'encoding:UTF-8', 'max:'.self::MAX_LENGTH],
         ];
     }
 
@@ -35,6 +35,7 @@ class AuthzSubjectCandidatesRequest extends FormRequest
         return [
             'kind' => '種類の指定が正しくありません',
             'q.string' => '検索する語の指定が正しくありません',
+            'q.encoding' => '検索する語の指定が正しくありません',
             'q.max' => '検索する語は '.self::MAX_LENGTH.' 文字以内にしてください',
         ];
     }

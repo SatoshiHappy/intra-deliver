@@ -57,6 +57,7 @@ final class RecordListQueryTest extends TransactionalTestCase
             '選択肢に無いコードは指定なし' => [['status' => 'closed'], [3, 2, 1, 0], []],
             '検索条件にしない項目は指定なし' => [['note' => 'x'], [3, 2, 1, 0], []],
             '数として読めない値は指定なし' => [['budget' => ['from' => 'abc']], [3, 2, 1, 0], []],
+            '文字列の不正な UTF-8 は指定なし' => [['title' => "\xFF"], [3, 2, 1, 0], []],
             '複数は AND' => [['title' => 'portal', 'status' => 'done'], [0], ['title' => 'portal', 'status' => 'done']],
         ];
     }

@@ -152,11 +152,12 @@ class RecordFilters
     }
 
     /**
-     * クエリの値の文字列(前後の空白を除き、空と文字列でないものは null)。
+     * クエリの値の文字列(前後の空白を除き、空と文字列でないものは null)。UTF-8 として正しくない値も、型に合わない値と同じに null にする
+     * (DB に渡すと誤りになるため)。
      */
     private function text(mixed $value): ?string
     {
-        $text = is_string($value) ? Str::trim($value) : null;
+        $text = is_string($value) && mb_check_encoding($value, 'UTF-8') ? Str::trim($value) : null;
 
         return $text === '' ? null : $text;
     }

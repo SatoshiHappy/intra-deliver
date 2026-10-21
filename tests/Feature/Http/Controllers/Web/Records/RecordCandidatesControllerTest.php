@@ -12,7 +12,8 @@ use Tests\Support\TransactionalTestCase;
 /**
  * 他モジュール参照の候補の口(docs の 設計/業務データの入れ物/画面/README.md 4 節、ADR 0008): GET /records/data/{module}/candidates?q= が、
  * 表示の項目の値が語を含むレコードか、語と id が等しいレコードを id の降順で 10 件まで JSON で返す(大文字小文字を区別せず、%・_・\ は文字)。
- * q は任意(無い・空・空白だけは語で絞らず、id の降順の先頭から 10 件 = 参照の選択欄が開いた直後)。101 文字は 422(業務モジュールの 404・403 の後)。初期データを入れ、ゲストで開く。
+ * q は任意(無い・空・空白だけは語で絞らず、id の降順の先頭から 10 件 = 参照の選択欄が開いた直後)。
+ * 101 文字・UTF-8 として正しくない語は 422(業務モジュールの 404・403 の後)。初期データを入れ、ゲストで開く。
  */
 final class RecordCandidatesControllerTest extends TransactionalTestCase
 {
@@ -114,6 +115,13 @@ final class RecordCandidatesControllerTest extends TransactionalTestCase
         $this->candidates('project', str_repeat('a', 100))->assertOk();
         $this->candidates('project', str_repeat('a', 101))->assertUnprocessable()->assertJsonValidationErrors(['q' => '検索する語は 100 文字以内にしてください']);
         $this->getJson('/records/data/project/candidates?q[]=a')->assertUnprocessable()->assertJsonValidationErrors(['q']);
+    }
+
+    public function test_rejects_a_word_that_is_not_valid_utf8(): void
+    {
+        $this->candidates('project', "\xFF")
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors(['q' => '検索する語の指定が正しくありません']);
     }
 
     public function test_a_missing_module_or_a_details_module_is_not_found(): void

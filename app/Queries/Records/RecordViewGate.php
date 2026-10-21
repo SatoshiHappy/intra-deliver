@@ -24,15 +24,21 @@ class RecordViewGate
     ) {}
 
     /**
+     * @return RecordModule 通した業務モジュール
+     *
      * @throws ModelNotFoundException<RecordModule|Record> 業務モジュールが無い・明細のモジュール、読めるがレコードが見えないとき
      * @throws AuthorizationException 見えず、業務モジュールの read も許されないとき
      */
-    public function authorize(Requester $requester, string $moduleCode, int $recordId, DateTimeInterface $date): void
-    {
+    public function authorize(
+        Requester $requester,
+        string $moduleCode,
+        int $recordId,
+        DateTimeInterface $date,
+    ): RecordModule {
         $module = $this->gate->topLevelModule($moduleCode);
 
         if ($this->access->canView($requester, $moduleCode, $recordId, $date)) {
-            return;
+            return $module;
         }
 
         if ($this->gate->allows($requester, $module, RecordModuleAction::Read, $date)) {

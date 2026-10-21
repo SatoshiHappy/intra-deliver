@@ -67,8 +67,8 @@ class RecordAttachmentController extends Controller
     private function opened(Request $request, string $module, int $recordId, int $attachmentId): array
     {
         $context = AccessContext::of($request);
-        $this->views->authorize(Requester::fromAccessContext($context), $module, $recordId, $context->date);
+        $found = $this->views->authorize(Requester::fromAccessContext($context), $module, $recordId, $context->date);
 
-        return $this->files->attachment($recordId, $attachmentId);
+        return $this->files->attachment($found->id, $recordId, $attachmentId);
     }
 }
