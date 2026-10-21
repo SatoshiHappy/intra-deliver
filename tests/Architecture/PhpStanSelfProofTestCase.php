@@ -45,9 +45,7 @@ abstract class PhpStanSelfProofTestCase extends SelfProofTestCase
                 'tests/Architecture/fixtures/'.$fixtureRoot,
             ],
             dirname(__DIR__, 2),
-            // laravel/pao はエージェントの中で動くと phpstan の出力を要約形式に差し替える(30 件で切り詰める)。
-            // 判定に使う出力を誰が実行しても phpstan 本来の JSON にそろえるため止める(規則・判定・走査対象には影響しない)。
-            ['PAO_DISABLE' => '1', 'PHPSTAN_FIXTURES_TMP_DIR' => self::fixturesTmpDir()],
+            ['PHPSTAN_FIXTURES_TMP_DIR' => self::fixturesTmpDir()],
         ));
     }
 

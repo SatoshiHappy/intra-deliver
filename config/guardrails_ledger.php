@@ -25,7 +25,6 @@ return [
             'larastan/larastan',
             'laravel/boost',
             'laravel/pail',
-            'laravel/pao',
             'laravel/pint',
             'laravel/sail',
             'mockery/mockery',
