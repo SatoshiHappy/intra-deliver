@@ -27,12 +27,17 @@ final readonly class AuditCheck implements Check
     private function composer(): array
     {
         $result = $this->commands->run(['composer', 'audit', '--locked', '--format=json', '--no-interaction'], $this->root, 120);
-        $output = Json::parse($result->stdout, 'composer audit');
 
-        return [
-            ...$this->advisoryRows(Json::table($output, 'advisories', 'composer audit')),
-            ...$this->abandonedRows(Json::table($output, 'abandoned', 'composer audit')),
-        ];
+        try {
+            $output = Json::parse($result->stdout, 'composer audit');
+
+            return [
+                ...$this->advisoryRows(Json::table($output, 'advisories', 'composer audit')),
+                ...$this->abandonedRows(Json::table($output, 'abandoned', 'composer audit')),
+            ];
+        } catch (UnconfirmedException $exception) {
+            throw self::withStderr($exception, $result);
+        }
     }
 
     /**
@@ -81,20 +86,47 @@ final readonly class AuditCheck implements Check
     private function npm(): array
     {
         $result = $this->commands->run(['npm', 'audit', '--json'], $this->root, 120);
-        $output = Json::parse($result->stdout, 'npm audit');
-        NpmErrors::throwIfError($output, 'npm audit');
-        $vulnerabilities = Json::table($output, 'vulnerabilities', 'npm audit');
 
-        return array_map(
-            fn (array $vulnerability): Row => new Row(Status::Action, [
-                'npm の脆弱性',
-                Json::string($vulnerability, 'name', 'npm audit の脆弱性'),
-                $this->titles($vulnerability),
-                Json::string($vulnerability, 'severity', 'npm audit の脆弱性'),
-                $this->fix($vulnerability),
-            ]),
-            Json::tables($vulnerabilities, 'npm audit の vulnerabilities'),
-        );
+        try {
+            $output = Json::parse($result->stdout, 'npm audit');
+            NpmErrors::throwIfError($output, 'npm audit');
+            $vulnerabilities = Json::table($output, 'vulnerabilities', 'npm audit');
+
+            return array_map(
+                fn (array $vulnerability): Row => new Row(Status::Action, [
+                    'npm の脆弱性',
+                    Json::string($vulnerability, 'name', 'npm audit の脆弱性'),
+                    $this->titles($vulnerability),
+                    Json::string($vulnerability, 'severity', 'npm audit の脆弱性'),
+                    $this->fix($vulnerability),
+                ]),
+                Json::tables($vulnerabilities, 'npm audit の vulnerabilities'),
+            );
+        } catch (UnconfirmedException $exception) {
+            throw self::withStderr($exception, $result);
+        }
+    }
+
+    /**
+     * 確認できなかった理由に標準エラーを添える。空でない行をつなぎ、長ければ後ろの 300 字を残す(composer は原因の枠を使い方の行の
+     * 直前に出し、前置きの通知は先頭に出るので、最後の行だけでも先頭からでも原因が落ちる)。
+     */
+    private static function withStderr(UnconfirmedException $exception, CommandResult $result): UnconfirmedException
+    {
+        $lines = $result->stderrLines();
+
+        if ($lines === []) {
+            return new UnconfirmedException("{$exception->getMessage()}(標準エラーが空)", previous: $exception);
+        }
+
+        $stderr = implode(' / ', $lines);
+        $overflow = Text::length($stderr) - 300;
+
+        if ($overflow > 0) {
+            $stderr = '…'.substr($stderr, strlen(Text::cut($stderr, $overflow)));
+        }
+
+        return new UnconfirmedException("{$exception->getMessage()}(標準エラー: {$stderr})", previous: $exception);
     }
 
     /**

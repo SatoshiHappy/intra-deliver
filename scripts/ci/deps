@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # D 依存の妥当性と脆弱性監査・ライセンスの検査(#7)。
-# 定義と lock の整合(composer / npm 双方)と、advisory 0、本番の依存のライセンスが許可リストに収まること(例外は台帳⑧ #7 の期限つきの行)を確かめる。
+# 定義と lock の整合(composer / npm 双方)と、本番の依存のライセンスが許可リストに収まること(例外は台帳⑧ #7 の期限つきの行)を確かめる。
+# 依存の監査(advisory・放棄されたパッケージ)は走らせて注意に出し、門では止めない(docs の 設計/コード構成/検査.md 6 節)。
 set -euo pipefail
 
 cd "$(dirname "$0")/../.."
@@ -13,14 +14,11 @@ fi
 echo "==> composer validate(composer.json と composer.lock の整合)"
 scripts/ci/record composer-validate -- composer validate --strict --no-check-publish
 
-echo "==> composer audit(台帳⑤の直接依存・推移的依存とも advisory 0)"
-scripts/ci/record composer-audit -- composer audit --locked
-
 echo "==> npm ci --dry-run(package.json と package-lock.json の整合。作業木は変えない)"
 scripts/ci/record npm-ci-dry-run -- npm ci --ignore-scripts --dry-run
 
-echo "==> npm audit(advisory 0)"
-scripts/ci/record npm-audit -- npm audit --audit-level=low
+echo "==> 依存の監査(composer audit・npm audit。見つかったものは注意に出し、止めない。監査が走らなければ失敗)"
+scripts/ci/record audit -- php scripts/ci/audit.php
 
 if [ ! -d node_modules ]; then
     echo "node_modules が無い。npm ci を先に実行する" >&2

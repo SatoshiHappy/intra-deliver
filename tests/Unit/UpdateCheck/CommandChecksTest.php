@@ -166,6 +166,45 @@ final class CommandChecksTest extends UpdateCheckTestCase
         $this->assertSame('npm audit', $section->unconfirmed[0]->subject);
     }
 
+    public function test_audit_が確認できなかった理由に標準エラーの行を全部添える(): void
+    {
+        // composer は原因の枠の後に使い方の行を出す(最後の行だけでは原因が出ない)
+        $stderr = "\nIn HttpDownloader.php line 329:\n\n  Network disabled, request canceled\n\naudit [--locked]\n";
+        $runner = new FakeCommandRunner([
+            self::COMPOSER_AUDIT => new CommandResult(255, '', $stderr),
+            'npm audit --json' => new CommandResult(0, '{"vulnerabilities":{}}', ''),
+        ]);
+
+        $section = (new AuditCheck($runner, '/x'))->run();
+
+        $this->assertCount(1, $section->unconfirmed);
+        $this->assertSame(
+            'composer audit の出力が JSON として読めない(標準エラー: In HttpDownloader.php line 329: / '
+                .'Network disabled, request canceled / audit [--locked])',
+            $section->unconfirmed[0]->reason,
+        );
+    }
+
+    public function test_audit_の標準エラーが長いときは後ろを残し_空ならそう書く(): void
+    {
+        // 前置きの通知は先頭に、原因の枠と使い方の行は最後に出る
+        $notice = 'Deprecated: a plugin uses an old interface and will stop working soon';
+        $cause = "\n  Network disabled, request canceled\naudit [--locked]\n";
+        $stderr = implode("\n", array_fill(0, 10, $notice)).$cause;
+        $runner = new FakeCommandRunner([
+            self::COMPOSER_AUDIT => new CommandResult(255, '', $stderr),
+            'npm audit --json' => new CommandResult(1, 'not json', ''),
+        ]);
+
+        $section = (new AuditCheck($runner, '/x'))->run();
+
+        $this->assertCount(2, $section->unconfirmed);
+        $this->assertStringContainsString('(標準エラー: …', $section->unconfirmed[0]->reason);
+        $end = ' / Network disabled, request canceled / audit [--locked])';
+        $this->assertStringEndsWith($end, $section->unconfirmed[0]->reason);
+        $this->assertSame('npm audit の出力が JSON として読めない(標準エラーが空)', $section->unconfirmed[1]->reason);
+    }
+
     public function test_npm_ci_が失敗したら_2_だけ確認できなかったにして_outdated_は流さない(): void
     {
         $runner = $this->npmRunner('{}', 1);
