@@ -45,6 +45,7 @@ class CaseOperationTable
             // 再申請・取止めの「誰が」= 申請者(申請のノードの処理対象者は申請者 = 設計/ワークフロー/案件の運用/案件の操作/README.md の 4.3 節)
             WorkflowOperation::Reapply, WorkflowOperation::Withdraw => $roles->isApplicant
                 && $at(WorkflowNodeKind::Apply, WorkflowNodeState::Reapply),
+            WorkflowOperation::Confirm => $state === WorkflowCaseState::Active && $roles->isConfirmTarget,
         };
     }
 

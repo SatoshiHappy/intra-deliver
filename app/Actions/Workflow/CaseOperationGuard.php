@@ -10,6 +10,7 @@ use App\Models\Workflow\WorkflowFlow;
 use App\Queries\Authz\Api\Requester;
 use App\Queries\Workflow\ApplicableFlows;
 use App\Queries\Workflow\ApplicantApprovalGuard;
+use App\Queries\Workflow\BulkApproval;
 use App\Queries\Workflow\CaseActor;
 use App\Queries\Workflow\CaseEntryGate;
 use App\Queries\Workflow\CaseOperationDecider;
@@ -25,8 +26,9 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Validation\ValidationException;
 
 /**
- * 案件の操作の判定の順(docs の 設計/ワークフロー/ルートの深さ/案件の操作/操作.md 7 節の 2、設計/ワークフロー/案件の運用/案件の操作/操作.md の 7 節)。既にある案件の操作はどれも
- * {@see self::lockAndPermit()} の 1 つの入口を通り、結果 {@see CaseOperationPermit} を呼び手が導き直さない(判定と操作が食い違わないため)。
+ * 案件の操作の判定の順(docs の 設計/ワークフロー/ルートの深さ/案件の操作/操作.md 7 節の 2、設計/ワークフロー/案件の運用/案件の操作/操作.md の
+ * 7 節)。既にある案件の操作は {@see self::lockAndPermit()} を通る。確認は改訂番号を見ないので {@see self::lockForConfirm()}、一括承認は
+ * 今の状態で組を出し直すので {@see self::lockForBulkApprove()} を通る。呼び手は結果を導き直さない(判定と操作が食い違わないため)。
  * 判定そのものは読み取りの 1 か所を呼び、ここでは二重に書かない。呼び手は 1 つのトランザクションの中で呼ぶ(鍵はトランザクションの終わりまで持つ)。
  */
 class CaseOperationGuard
@@ -86,6 +88,45 @@ class CaseOperationGuard
         $this->requirePermitted($operation, $context, $situation, $node?->id);
 
         return new CaseOperationPermit($situation, $node, $flow);
+    }
+
+    /**
+     * 確認の判定(設計/ワークフロー/案件の運用/案件の操作/操作.md の 10.4 節)。確認は案件を変えないので改訂番号を見ない。
+     * 状況は自分で読む(確認は代理で行わない)。
+     *
+     * @throws ModelNotFoundException<WorkflowCase> 無い・閲覧できないとき
+     * @throws ValidationException 確認できる確認が無いとき(case)
+     */
+    public function lockForConfirm(AccessContext $context, int $caseId): CaseSituation
+    {
+        $case = $this->lockVisible(WorkflowOperation::Confirm, $context, $caseId);
+        $requester = Requester::fromAccessContext($context);
+        $situation = $this->decider->situationsOf($requester, $context->date, [$case])[$case->id];
+
+        if (! $this->decider->permitsIn(WorkflowOperation::Confirm, $requester, $context->date, $situation, null)) {
+            throw CaseOperationErrors::ofCase(CaseOperationErrors::NO_CONFIRMATION);
+        }
+
+        return $situation;
+    }
+
+    /**
+     * 一括承認の 1 件の鍵と閲覧(単独の承認と同じ)と、今の状態で選べる組(設計/ワークフロー/案件の運用/案件の操作/操作.md の 10.7 節。
+     * 状況は自分で読む)。改訂番号と組の照合は呼び手が行う。
+     *
+     * @return array{WorkflowCase, BulkApproval|null} 鍵を取った案件と組(選べなければ null)
+     *
+     * @throws ModelNotFoundException<WorkflowCase> 無い・閲覧できないとき
+     */
+    public function lockForBulkApprove(AccessContext $context, int $caseId): array
+    {
+        $case = $this->lockVisible(WorkflowOperation::Approve, $context, $caseId);
+        $requester = Requester::fromAccessContext($context);
+        $situations = $this->decider->situationsOf($requester, $context->date, [$case]);
+
+        $approvals = $this->decider->bulkApprovalsOf($requester, $context->date, array_values($situations));
+
+        return [$case, $approvals[$case->id]];
     }
 
     /**
@@ -155,7 +196,11 @@ class CaseOperationGuard
     private function lockVisible(WorkflowOperation $operation, AccessContext $context, int $caseId): WorkflowCase
     {
         $query = WorkflowCase::query();
-        $locked = $operation === WorkflowOperation::DeleteDraft ? $query->lockForUpdate() : $query->lock('for no key update');
+        $locked = match ($operation) {
+            WorkflowOperation::DeleteDraft => $query->lockForUpdate(),
+            WorkflowOperation::Confirm => $query->sharedLock(),
+            default => $query->lock('for no key update'),
+        };
         $case = $locked->findOrFail($caseId);
 
         if (! $this->visibility->isVisible(Requester::fromAccessContext($context), $context->date, $case->id)) {

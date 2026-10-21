@@ -27,7 +27,7 @@ use LogicException;
  * 業務データの入れ物の口には版の契機を渡し、口が書いた版を履歴の行が指す(設計/業務データの入れ物/レコードの共通機能/更新履歴.md の 4.2 節)。
  *
  * @phpstan-type Application array{columns: array<string, mixed>, comment: string|null, revisionId: int,
- *     actor: CaseActor}
+ *     actor: CaseActor, contact: CaseContact|null}
  */
 class ApplyCase
 {
@@ -42,6 +42,8 @@ class ApplyCase
         private ApplicationRecords $records,
         private CreateRecord $createRecord,
         private CurrentDepartment $currentDepartment,
+        private ContactValidator $contactValidator,
+        private SendCaseNotices $notices,
     ) {}
 
     /**
@@ -49,6 +51,7 @@ class ApplyCase
      *
      * @param  string|null  $baseDate  申請基準日の入力(業務処理は既定を持たない = 設計/ワークフロー/ルートの深さ/案件の操作/同時実行と検査.md 13 節)
      * @param  int|null  $applicantUserId  申請者(申請の代理の代理元。null = 自分)
+     * @param  CaseContact|null  $contact  連絡(設計/ワークフロー/案件の運用/案件の操作/操作.md の 10.5 節。誤りは 422 contact.*)
      *
      * @throws ModelNotFoundException<WorkflowFlow> フローが無いとき(業務データの入れ物の 404 も伝わる)
      * @throws AuthorizationException 申請できる人でないとき(ゲストを含む。業務データの入れ物の 403 も伝わる)
@@ -61,13 +64,14 @@ class ApplyCase
         ApplicationInput $input,
         ?string $baseDate,
         ?int $applicantUserId = null,
+        ?CaseContact $contact = null,
     ): CaseOperationResult {
-        return DB::transaction(function () use ($context, $flowCode, $input, $baseDate, $applicantUserId) {
+        return DB::transaction(function () use ($context, $flowCode, $input, $baseDate, $applicantUserId, $contact) {
             $flow = WorkflowFlow::query()->where('code', $flowCode)->sharedLock()->firstOrFail();
             $applicant = $this->proxyChecks->applicantOf($context, $flow->id, $applicantUserId);
             $this->guard->requireApplicable(PrincipalContext::of($context, $applicant), $flow->id);
             $this->guard->permitWithoutCase(WorkflowOperation::Apply);
-            $application = $this->prepare($context, $applicant, $flow, $input, $baseDate);
+            $application = $this->prepare($context, $applicant, $flow, $input, $baseDate, $contact);
 
             $case = WorkflowCase::query()->create(['workflow_flow_id' => $flow->id, 'revision' => 0, ...$application['columns']]);
 
@@ -80,21 +84,28 @@ class ApplyCase
      *
      * @param  int  $revision  画面を開いた時の改訂番号
      * @param  string|null  $baseDate  申請基準日の入力(一時保存の申請基準日は画面が初期値にするだけ)
+     * @param  CaseContact|null  $contact  連絡(誤りは 422 contact.*)
      *
      * @throws ModelNotFoundException<WorkflowCase> 案件が無い・閲覧できないとき(業務データの入れ物の 404 も伝わる)
      * @throws AuthorizationException 申請できる人でないとき(業務データの入れ物の 403 も伝わる)
      * @throws ValidationException 改訂番号・表・展開(case)、案件名(name)・コメント(comment)・申請基準日(base_date)の誤り、業務データの入れ物の値の誤り
      */
-    public function executeFromDraft(AccessContext $context, int $caseId, int $revision, ApplicationInput $input, ?string $baseDate): CaseOperationResult
-    {
-        return DB::transaction(function () use ($context, $caseId, $revision, $input, $baseDate) {
+    public function executeFromDraft(
+        AccessContext $context,
+        int $caseId,
+        int $revision,
+        ApplicationInput $input,
+        ?string $baseDate,
+        ?CaseContact $contact = null,
+    ): CaseOperationResult {
+        return DB::transaction(function () use ($context, $caseId, $revision, $input, $baseDate, $contact) {
             $authorize = fn (WorkflowCase $case) => $this->guard->requireApplicable(
                 $this->proxyChecks->applicantJudgeOf($context, $case),
                 $case->workflow_flow_id,
             );
             $permit = $this->guard->lockAndPermit(WorkflowOperation::Apply, $context, $caseId, $revision, $authorize);
             $case = $permit->case();
-            $application = $this->prepare($context, $permit->processorUserId(), $permit->flow(), $input, $baseDate);
+            $application = $this->prepare($context, $permit->processorUserId(), $permit->flow(), $input, $baseDate, $contact);
 
             $this->writer->advance($case, ['draft_input' => null, ...$application['columns']]);
 
@@ -109,10 +120,17 @@ class ApplyCase
      * @param  int  $applicantUserId  申請者(処理者)
      * @return Application
      */
-    private function prepare(AccessContext $context, int $applicantUserId, WorkflowFlow $flow, ApplicationInput $input, ?string $baseDate): array
-    {
+    private function prepare(
+        AccessContext $context,
+        int $applicantUserId,
+        WorkflowFlow $flow,
+        ApplicationInput $input,
+        ?string $baseDate,
+        ?CaseContact $contact,
+    ): array {
         $applicant = PrincipalContext::of($context, $applicantUserId);
         [$name, $comment] = $this->inputRules->nameAndComment($input->name, $input->comment);
+        $contact = $this->contactValidator->validated($contact, $context);
         [$date, $versionId] = $this->baseDates->resolve($applicant, $flow->id, $baseDate);
         $actor = CaseActor::forProcessor($applicantUserId, $context);
         $origin = $this->records->origin(WorkflowAction::Apply, $this->records->applyNodeName($versionId), $actor);
@@ -136,6 +154,7 @@ class ApplyCase
             'comment' => $comment,
             'revisionId' => $revisionId,
             'actor' => $actor,
+            'contact' => $contact,
         ];
     }
 
@@ -154,6 +173,10 @@ class ApplyCase
 
         $comment = $application['comment'];
 
-        return $this->writer->writePlan($plan, $actor, $comment, $application['revisionId'], advanceRevision: false);
+        $result = $this->writer->writePlan($plan, $actor, $comment, $application['revisionId'], advanceRevision: false);
+
+        $this->notices->execute($result, $application['contact'], $context->date);
+
+        return $result;
     }
 }

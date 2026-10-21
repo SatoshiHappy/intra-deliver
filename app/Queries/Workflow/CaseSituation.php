@@ -8,8 +8,9 @@ use App\Models\Workflow\WorkflowCase;
 
 /**
  * 1 つの案件について、判定の表と can が読む状況(docs の 設計/ワークフロー/ルートの深さ/案件の操作/README.md 1.3・3.1)。作るのは
- * {@see CaseOperationDecider::situationsOf()} だけ。現在のノードは {@see CurrentNodes} の集合(1 つと見なさない)、処理対象者に当たるかはノードごと
- * ({@see CaseTargetTerms} の結果)。役割(d に有効か)はここでは見ず、{@see CaseOperationDecider} が判定を求める者から決める。
+ * {@see CaseOperationDecider::situationsOf()} と、処理者を替える {@see self::withProcessor()}(引戻せるノードを持たない)の 2 つ。
+ * 現在のノードは {@see CurrentNodes} の集合(1 つと見なさない)、処理対象者に当たるかはノードごと({@see CaseTargetTerms} の結果)。
+ * 役割(d に有効か)はここでは見ず、{@see CaseOperationDecider} が判定を求める者から決める。
  */
 final readonly class CaseSituation
 {
@@ -19,6 +20,7 @@ final readonly class CaseSituation
      * @param  array<int, array{name: string, blockedReason: string|null}>  $pullBackNodes  判定を求める者が引戻せるノードの id → 表示名と申請者承認防止の文言(写した並び。{@see PullBackableNodes}。d に有効でなければ空)
      * @param  int|null  $processorUserId  判定の処理者 P(自分か、確かめた代理元・一時保存の持ち主。引戻せるノードは P で読む。d に有効でなければ null)
      * @param  array<int, int>  $holderUserIds  保留中の現在のノードの id → 最新の保留の行の処理者({@see CaseHolders})
+     * @param  list<int>  $confirmNodeIds  判定を求める者(自分)が確認対象者の、開いている確認のノードの id({@see CaseConfirmations})
      */
     public function __construct(
         public WorkflowCase $case,
@@ -27,7 +29,24 @@ final readonly class CaseSituation
         public array $pullBackNodes,
         public ?int $processorUserId,
         public array $holderUserIds,
+        public array $confirmNodeIds = [],
     ) {}
+
+    /**
+     * 処理者を P に替えた状況(一括承認の組を、処理者の候補ごとに同じ表で引くため = {@see BulkApprovals})。引戻せるノードは処理者で読むので持たない。
+     */
+    public function withProcessor(int $processorUserId): self
+    {
+        return new self(
+            $this->case,
+            $this->currentNodes,
+            $this->targetNodeIds,
+            [],
+            $processorUserId,
+            $this->holderUserIds,
+            $this->confirmNodeIds,
+        );
+    }
 
     /**
      * 判定を求める者がそのノードを引戻せるか。

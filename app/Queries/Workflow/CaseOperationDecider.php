@@ -29,6 +29,8 @@ class CaseOperationDecider
         private ApplicantApprovalGuard $applicantGuard,
         private ProcessorRoles $roles,
         private CaseHolders $holders,
+        private CaseConfirmations $confirmations,
+        private BulkApprovals $bulkApprovals,
     ) {}
 
     /**
@@ -95,7 +97,28 @@ class CaseOperationDecider
     }
 
     /**
-     * 案件ごとの状況。問い合わせは現在のノード({@see CurrentNodes})・処理対象者の項({@see CaseTargetTerms})・引戻せるノード({@see PullBackableNodes})で、
+     * 一括承認で選べる組(設計/ワークフロー/案件の運用/案件の操作/操作.md の 10.7 節)。行の can.bulkApprove と一括承認の処理の時の組は
+     * どちらもここを通る(判定は {@see BulkApprovals})。
+     *
+     * @param  list<CaseSituation>  $situations  自分を処理者として読んだ状況
+     * @return array<int, BulkApproval|null> 案件の id → 組(選べなければ null)
+     */
+    public function bulkApprovalsOf(Requester $requester, DateTimeInterface $date, array $situations): array
+    {
+        return $this->bulkApprovals->of($this->membership->effectiveUserId($requester, $date), $date, $situations);
+    }
+
+    /**
+     * 一括確認で選べるか(行の can.confirm = 確認の前提。同じ文書の 10.7 節)。
+     */
+    public function canConfirm(Requester $requester, DateTimeInterface $date, CaseSituation $situation): bool
+    {
+        return $this->permitsIn(WorkflowOperation::Confirm, $requester, $date, $situation, null);
+    }
+
+    /**
+     * 案件ごとの状況。問い合わせは現在のノード({@see CurrentNodes})・処理対象者の項({@see CaseTargetTerms})・引戻せるノード({@see PullBackableNodes})・
+     * 自分が確認対象者の開いている確認({@see CaseConfirmations})で、
      * 案件の数に依らない。判定を求める者が d に有効でなければ、処理対象者の項と引戻せるノードは読まない(役割がどれも偽なので要らない)。
      *
      * @param  list<WorkflowCase>  $cases
@@ -117,6 +140,7 @@ class CaseOperationDecider
         $pullBackNodes = $processor === null ? [] : $this->pullBackableNodes->of($caseIds, $processor);
         $holders = $this->holders->of($this->heldNodeIds($currentNodes));
         $applicants = $this->applicantsOfPreventingPullBacks($cases, $pullBackNodes);
+        $confirmNodeIds = $userId === null ? [] : $this->confirmations->openTargetNodeIds($caseIds, $userId);
         $situations = [];
 
         foreach ($cases as $case) {
@@ -131,7 +155,9 @@ class CaseOperationDecider
 
             $caseNodeIds = array_map(fn (CurrentNode $node) => $node->id, $nodes);
             $heldBy = array_intersect_key($holders, array_flip($caseNodeIds));
-            $situations[$case->id] = new CaseSituation($case, $nodes, $ownTargets, $pullBacks, $processor, $heldBy);
+            $confirms = $confirmNodeIds[$case->id] ?? [];
+            $situation = new CaseSituation($case, $nodes, $ownTargets, $pullBacks, $processor, $heldBy, $confirms);
+            $situations[$case->id] = $situation;
         }
 
         return $situations;

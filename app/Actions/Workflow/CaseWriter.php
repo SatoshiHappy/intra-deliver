@@ -14,10 +14,13 @@ use App\Queries\Workflow\CaseActor;
  */
 class CaseWriter
 {
-    public function __construct(private CaseRoutePlanWriter $planWriter) {}
+    public function __construct(
+        private CaseRoutePlanWriter $planWriter,
+        private CaseConfirmOpening $confirmOpening,
+    ) {}
 
     /**
-     * 計画を書いて、操作の結果の値を返す(9 節の 2〜6、11 節)。
+     * 計画を書いて、操作の結果の値を返す(9 節の 2〜6、11 節。確認を開くのはノードを書いた後 = 設計/ワークフロー/案件の運用/案件の操作/操作.md の 9 節)。
      *
      * @param  int|null  $recordRevisionId  業務データの入れ物の口が書いた更新履歴の版(申請・再申請だけ)
      * @param  array<int, list<int>>  $assignments  検証した指定(指定されたノードの id → 人の並び。承認だけ)
@@ -55,6 +58,7 @@ class CaseWriter
         }
 
         $this->planWriter->apply($plan, $ids, $history->id);
+        $opened = $this->confirmOpening->open($plan);
         $columns = [...$columns, ...($plan->completion === null ? [] : ['state' => WorkflowCaseState::Completed, 'completion_reason' => $plan->completion, 'completed_at' => now()])];
 
         if ($advanceRevision) {
@@ -63,7 +67,11 @@ class CaseWriter
             $case->update($columns);
         }
 
-        return new CaseOperationResult($case->id, $plan->action, $history->id, $plan->reachedNodes($ids), $plan->completion, $actor);
+        $reached = $plan->reachedNodes($ids);
+
+        return new CaseOperationResult(
+            $case->id, $plan->action, $history->id, $reached, $plan->completion, $actor, $plan->targetAdditions($ids), $opened,
+        );
     }
 
     /**

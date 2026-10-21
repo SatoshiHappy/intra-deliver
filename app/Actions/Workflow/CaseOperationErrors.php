@@ -97,6 +97,29 @@ final class CaseOperationErrors
 
     public const DRAFT_INVALID_CHARACTER = '一時保存の内容に使用できない文字が含まれています';
 
+    /** 確認できる確認が無い(422 case。設計/ワークフロー/案件の運用/案件の操作/同時実行と検査.md の 13 節) */
+    public const NO_CONFIRMATION = 'この申請には、確認できるステップがありません。';
+
+    /** 連絡(422 contact.user_ids・contact.message。同じ 13 節) */
+    public const CONTACT_REQUIRED = '連絡する人を選択してください';
+
+    public const CONTACT_TOO_MANY = '連絡する人は '.ContactValidator::MAX_USERS.' 人まで選択できます';
+
+    public const CONTACT_NOT_EFFECTIVE = '有効でないユーザーには連絡できません';
+
+    public const CONTACT_SELF = '自分自身には連絡できません';
+
+    public const CONTACT_DUPLICATE = '同じユーザーを重複して選択できません';
+
+    public const CONTACT_MESSAGE_TOO_LONG = 'ひと言は '.ContactValidator::MESSAGE_MAX.' 文字以内で入力してください';
+
+    public const CONTACT_MESSAGE_INVALID_CHARACTER = 'ひと言に使用できない文字が含まれています';
+
+    /** 一括の選択(422 cases・case_ids。同じ 13 節) */
+    public const BULK_REQUIRED = '申請を 1 件以上選択してください';
+
+    public const BULK_TOO_MANY = '一度に選択できる申請は '.BulkInputValidator::MAX_CASES.' 件までです';
+
     /** 案件そのものの誤りのキー(改訂番号・表・展開) */
     public const CASE_KEY = 'case';
 

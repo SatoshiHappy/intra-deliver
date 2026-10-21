@@ -67,14 +67,15 @@ final class ApplicantApprovalProxyTest extends TransactionalTestCase
 
         foreach ($operations as $operation) {
             foreach ($rows as $label => [$user, $principalUserId]) {
-                $actual[$operation][$label] = $this->outcome(fn () => app($operation)->execute(
-                    $this->contextOf($user),
-                    $case->id,
-                    $this->revisionOf($case),
-                    $this->salesNodeId($case),
-                    null,
-                    principalUserId: $principalUserId,
-                ));
+                $nodeId = $this->salesNodeId($case);
+                $arguments = [$this->contextOf($user), $case->id, $this->revisionOf($case), $nodeId, null];
+                // 承認だけが指定を処理担当者の前に受ける(業務処理ごとの引数の並び)
+                $actual[$operation][$label] = $this->outcome(fn () => match ($operation) {
+                    ApproveCase::class => app(ApproveCase::class)->execute(...[...$arguments, [], $principalUserId]),
+                    ApproveCaseEarly::class => app(ApproveCaseEarly::class)
+                        ->execute(...[...$arguments, $principalUserId]),
+                    RejectCase::class => app(RejectCase::class)->execute(...[...$arguments, $principalUserId]),
+                });
             }
         }
 

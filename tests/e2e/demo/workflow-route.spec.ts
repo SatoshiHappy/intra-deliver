@@ -2,6 +2,7 @@ import { expect, test } from '../support/test';
 import type { Browser, Page } from '@playwright/test';
 import {
     addedProjectStart,
+    hasBaseDate,
     todayInTokyo,
     versionTwoDay,
 } from '../support/seed-dates';
@@ -322,9 +323,8 @@ test('申請者: 申請の画面に申請基準日(既定は今日)と担当組�
     releaseFirst();
     await firstHandled;
     await page.unrouteAll({ behavior: 'wait' });
-    await page.waitForLoadState('networkidle');
+    await expect(page).toHaveURL(hasBaseDate(today));
     expect(firstResponses).toEqual([]);
-    expect(new URL(page.url()).searchParams.get('base_date')).toBe(today);
     await expect(
         page.getByText(
             /申請すると、課長の中村 美咲さんの未処理に表示されます。$/,

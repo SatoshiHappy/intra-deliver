@@ -27,6 +27,7 @@ use App\Queries\Workflow\ProcessedThisMonthHomeSection;
 use App\Queries\Workflow\ProxyTargetTerm;
 use App\Queries\Workflow\WorkflowCountersHomeSection;
 use App\Queries\Workflow\WorkflowLeadHomeSection;
+use App\Queries\Workflow\WorkflowNoticeTargets;
 use App\Queries\Workflow\WorkflowRecordHolds;
 use Carbon\CarbonImmutable;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -67,7 +68,7 @@ class AppServiceProvider extends ServiceProvider
 
         // 依存の逆転: 通知の行の移り先を、対象の種類を持つモジュールの実装が答える(docs の 設計/ワークフロー/案件の運用/通知.md の 5 節)。
         // 対象の種類を持つモジュールが実装をここに足す(実装の無い対象の種類の行は共通の 1 行になる)
-        $this->app->tag([], NoticeTargets::TAG);
+        $this->app->tag([WorkflowNoticeTargets::class], NoticeTargets::TAG);
 
         // 依存の逆転: レコードの詳細のサイドパネルに、後ろのモジュールが節を足す(docs の
         // 設計/業務データの入れ物/レコードの共通機能/詳細の画面/節の口.md の 2 節。並び = この配列の順)。節を足すモジュールが実装をここに足す

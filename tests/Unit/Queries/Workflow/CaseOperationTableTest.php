@@ -15,7 +15,7 @@ use Tests\Feature\Queries\Workflow\CaseOperationDeciderTest;
  * 状態 × 操作の表(docs の 設計/ワークフロー/案件の操作/操作.md 3.2)の全組(同時実行と検査.md 7 節)。DB を使わずに確かめる。
  * 期待値は 操作.md 3.2 の表から書いた(実装から作らない)。申請できる人(403)は表の外なので、「誰が」が申請できる人だけの行(一時保存の新規・申請の新規)は、
  * 表では案件が無ければ誰でも通る(403 は can と業務処理が別に見る)。役割ごとの本番の口の判定は {@see CaseOperationDeciderTest}。
- * 保留・保留解除・振替の行の期待値は 設計/ワークフロー/案件の運用/案件の操作/操作.md の 8 節から書いた。
+ * 保留・保留解除・振替・確認の行の期待値は 設計/ワークフロー/案件の運用/案件の操作/操作.md の 8 節から書いた(確認 = 未完了で確認対象者)。
  */
 final class CaseOperationTableTest extends TestCase
 {
@@ -46,6 +46,7 @@ final class CaseOperationTableTest extends TestCase
         'hold' => self::APPROVABLE,
         'release' => ['held' => ['holdSide']],
         'transfer' => self::HANDLES_APPROVAL,
+        'confirm' => ['confirmOpen' => ['confirmTarget']],
     ];
 
     public function test_the_table_permits_exactly_the_rows_of_the_contract(): void
@@ -77,6 +78,7 @@ final class CaseOperationTableTest extends TestCase
         $target = new CaseRoles(false, true, false, false, true);
         $last = new CaseRoles(false, false, true, false, true);
         $holdSide = new CaseRoles(false, true, false, false, true, isHoldSide: true);
+        $confirmTarget = new CaseRoles(false, false, false, false, true, isConfirmTarget: true);
         $active = fn (WorkflowNodeKind $kind, WorkflowNodeState $state, array $roles) => [WorkflowCaseState::Active, $kind, $state, [...$outsiders, ...$roles, ...$others]];
         $completed = fn (array $roles) => [WorkflowCaseState::Completed, null, null, [...$outsiders, ...$roles, ...$others]];
 
@@ -94,7 +96,9 @@ final class CaseOperationTableTest extends TestCase
             // 申請 A → 承認 1 を B → B が引戻し(承認 1 が承認待ち。処理対象者 = B。最新の行は引戻しなので直前の処理者はいない)
             'afterPullBack' => $active(WorkflowNodeKind::Approve, WorkflowNodeState::Waiting, ['applicant' => $applicant(), 'currentTarget' => $target]),
             // 完了 4 つ(承認 = 最後の承認の B が最新の行を持つ。承認終了・否認は直前の処理者にならない種別。取止めは申請者 A が最新の行)
-            'completedApproved' => $completed(['applicant' => $applicant(), 'lastActor' => $last]),
+            'completedApproved' => $completed([
+                'applicant' => $applicant(), 'lastActor' => $last, 'confirmTarget' => $confirmTarget,
+            ]),
             'completedApprovedEarly' => $completed(['applicant' => $applicant(), 'lastActor' => $none]),
             'completedRejected' => $completed(['applicant' => $applicant(), 'lastActor' => $none]),
             'completedWithdrawn' => $completed(['applicant' => $applicant(), 'earlierActor' => $none]),
@@ -103,6 +107,10 @@ final class CaseOperationTableTest extends TestCase
             // 承認 1 の処理対象者 B・C のうち B が保留(B = 保留者側。C = 保留していない処理対象者)
             'held' => $active(WorkflowNodeKind::Approve, WorkflowNodeState::Hold, [
                 'applicant' => $applicant(), 'holdSide' => $holdSide, 'heldTarget' => $target,
+            ]),
+            // 承認 1 を B が承認して確認が開き(確認対象者 = 承認 1 の確認する人)、承認 2 が承認待ち
+            'confirmOpen' => $active(WorkflowNodeKind::Approve, WorkflowNodeState::Waiting, [
+                'applicant' => $applicant(), 'confirmTarget' => $confirmTarget,
             ]),
         ];
     }

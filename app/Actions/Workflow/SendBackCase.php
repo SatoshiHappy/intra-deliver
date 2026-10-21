@@ -25,6 +25,8 @@ class SendBackCase
         private SendBackCandidates $candidates,
         private CaseRoutePlanner $planner,
         private CaseWriter $writer,
+        private ContactValidator $contactValidator,
+        private SendCaseNotices $notices,
     ) {}
 
     /**
@@ -32,6 +34,7 @@ class SendBackCase
      * @param  int  $nodeId  操作するノード(差戻し元。案件のノードの id)
      * @param  int  $sendBackNodeId  差戻し先(案件のノードの id)
      * @param  int|null  $principalUserId  処理担当者(代理元。null = 自分として = 設計/ワークフロー/案件の運用/案件の操作/README.md の 4.3 節)
+     * @param  CaseContact|null  $contact  連絡(規則 = {@see ContactValidator}。誤りは 422 contact.user_ids・contact.message)
      *
      * @throws ModelNotFoundException<WorkflowCase> 案件が無い・閲覧できないとき
      * @throws ValidationException 改訂番号・ノード・表・戻す相手(case)、差戻し先(send_back_node_id)・コメント(comment)の誤り、
@@ -45,8 +48,11 @@ class SendBackCase
         int $sendBackNodeId,
         ?string $comment,
         ?int $principalUserId = null,
+        ?CaseContact $contact = null,
     ): CaseOperationResult {
-        return DB::transaction(function () use ($context, $caseId, $revision, $nodeId, $sendBackNodeId, $comment, $principalUserId) {
+        return DB::transaction(function () use (
+            $context, $caseId, $revision, $nodeId, $sendBackNodeId, $comment, $principalUserId, $contact,
+        ) {
             $permit = $this->guard->lockAndPermit(
                 WorkflowOperation::SendBack,
                 $context,
@@ -57,10 +63,15 @@ class SendBackCase
             );
             $this->requireCandidate($permit->node()->id, $sendBackNodeId);
             $comment = $this->inputRules->comment($comment);
+            $contact = $this->contactValidator->validated($contact, $context);
             $actor = CaseActor::forProcessor($permit->processorUserId(), $context);
             $plan = $this->planner->plan(CasePlanRequest::by($actor, $context, $permit->case(), $nodeId, WorkflowAction::SendBack, sendBackNodeId: $sendBackNodeId));
 
-            return $this->writer->writePlan($plan, $actor, $comment);
+            $result = $this->writer->writePlan($plan, $actor, $comment);
+
+            $this->notices->execute($result, $contact, $context->date);
+
+            return $result;
         });
     }
 

@@ -22,12 +22,15 @@ class ReleaseCase
         private CaseOperationGuard $guard,
         private CaseInputRules $inputRules,
         private CaseNodeWriter $writer,
+        private ContactValidator $contactValidator,
+        private SendCaseNotices $notices,
     ) {}
 
     /**
      * @param  int  $revision  画面を開いた時の改訂番号
      * @param  int  $nodeId  操作するノード(案件のノードの id)
      * @param  int|null  $principalUserId  処理担当者(代理元。null = 自分として = 設計/ワークフロー/案件の運用/案件の操作/README.md の 4.3 節)
+     * @param  CaseContact|null  $contact  連絡(規則 = {@see ContactValidator}。誤りは 422 contact.user_ids・contact.message)
      *
      * @throws ModelNotFoundException<WorkflowCase> 案件が無い・閲覧できないとき
      * @throws ValidationException 改訂番号・ノード・表(case)、コメント(comment)、処理担当者(principal_user_id)の誤り
@@ -39,8 +42,11 @@ class ReleaseCase
         int $nodeId,
         ?string $comment,
         ?int $principalUserId = null,
+        ?CaseContact $contact = null,
     ): CaseOperationResult {
-        return DB::transaction(function () use ($context, $caseId, $revision, $nodeId, $comment, $principalUserId) {
+        return DB::transaction(function () use (
+            $context, $caseId, $revision, $nodeId, $comment, $principalUserId, $contact,
+        ) {
             $permit = $this->guard->lockAndPermit(
                 WorkflowOperation::Release,
                 $context,
@@ -51,8 +57,14 @@ class ReleaseCase
             );
             $actor = CaseActor::forProcessor($permit->processorUserId(), $context);
             $comment = $this->inputRules->comment($comment);
+            $contact = $this->contactValidator->validated($contact, $context);
 
-            return $this->writer->write($permit, $actor, WorkflowAction::Release, $comment, WorkflowNodeState::Waiting);
+            $waiting = WorkflowNodeState::Waiting;
+            $result = $this->writer->write($permit, $actor, WorkflowAction::Release, $comment, $waiting);
+
+            $this->notices->execute($result, $contact, $context->date);
+
+            return $result;
         });
     }
 }

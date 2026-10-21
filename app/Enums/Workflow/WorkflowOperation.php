@@ -49,4 +49,7 @@ enum WorkflowOperation: string
 
     /** 振替(画面の語は担当変更) */
     case Transfer = 'transfer';
+
+    /** 確認(改訂番号を見ない = 設計/ワークフロー/案件の運用/案件の操作/操作.md の 10.4 節) */
+    case Confirm = 'confirm';
 }

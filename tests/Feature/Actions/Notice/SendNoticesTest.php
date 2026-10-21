@@ -6,6 +6,7 @@ use App\Actions\Notice\Api\NoticeMessage;
 use App\Actions\Notice\Api\SendNotices;
 use App\Models\Master\User;
 use App\Models\Notice\Notice;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
@@ -16,9 +17,19 @@ use Tests\Support\TransactionalTestCase;
 /**
  * 通知を送る口(docs の 設計/ワークフロー/案件の運用/通知.md の 1 節・2 節・3 節): 宛先の重複を除いて 1 人 1 行、0 人で何も書かない、
  * 空の値を JSON のオブジェクトで書く、種類と値の形の誤りと存在しない宛先は例外、呼び手のトランザクションが巻き戻ると通知も残らない。
+ * 初期データは業務処理を通すので通知の行を持つ。確かめるのはテストの前の最後の行より後の行だけ(初期データの件数に依らない)。
  */
 final class SendNoticesTest extends TransactionalTestCase
 {
+    /** テストの前の最後の通知の行の id */
+    private int $lastNoticeId = 0;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->lastNoticeId = (int) Notice::query()->max('id');
+    }
+
     /**
      * @return array<string, array{NoticeMessage}>
      */
@@ -47,7 +58,7 @@ final class SendNoticesTest extends TransactionalTestCase
 
         app(SendNotices::class)->execute($message, [$first, $second, $first]);
 
-        $rows = Notice::query()->orderBy('id')->get();
+        $rows = $this->newNotices()->orderBy('id')->get();
         $this->assertSame([$first, $second], $rows->pluck('user_id')->all());
         ksort($params);
 
@@ -67,7 +78,7 @@ final class SendNoticesTest extends TransactionalTestCase
     {
         app(SendNotices::class)->execute(new NoticeMessage('records.comment', 'record', 1, null, []), []);
 
-        $this->assertSame(0, Notice::query()->count());
+        $this->assertSame(0, $this->newNotices()->count());
     }
 
     public function test_writes_empty_params_as_a_json_object(): void
@@ -76,8 +87,8 @@ final class SendNoticesTest extends TransactionalTestCase
 
         app(SendNotices::class)->execute(new NoticeMessage('records.comment', 'record', 3, null, []), [$recipient]);
 
-        $this->assertSame('{}', DB::table('notices')->value('params'));
-        $this->assertSame([], Notice::query()->sole()->params);
+        $this->assertSame('{}', DB::table('notices')->where('id', '>', $this->lastNoticeId)->value('params'));
+        $this->assertSame([], $this->newNotices()->sole()->params);
     }
 
     #[DataProvider('malformedMessages')]
@@ -89,7 +100,7 @@ final class SendNoticesTest extends TransactionalTestCase
             app(SendNotices::class)->execute($message, [$recipient]);
             $this->fail('例外にならなかった');
         } catch (InvalidArgumentException) {
-            $this->assertSame(0, Notice::query()->count());
+            $this->assertSame(0, $this->newNotices()->count());
         }
     }
 
@@ -117,7 +128,17 @@ final class SendNoticesTest extends TransactionalTestCase
         } catch (RuntimeException) {
         }
 
-        $this->assertSame(0, Notice::query()->count());
+        $this->assertSame(0, $this->newNotices()->count());
+    }
+
+    /**
+     * テストの中で書いた通知の行。
+     *
+     * @return Builder<Notice>
+     */
+    private function newNotices(): Builder
+    {
+        return Notice::query()->where('id', '>', $this->lastNoticeId);
     }
 
     /**

@@ -11,6 +11,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Exceptions;
 use LogicException;
 use Tests\Support\RegistersNoticeTargets;
+use Tests\Support\StartsWithoutSeededNotices;
 use Tests\Support\TransactionalTestCase;
 
 /**
@@ -21,6 +22,7 @@ use Tests\Support\TransactionalTestCase;
 final class NoticeListTest extends TransactionalTestCase
 {
     use RegistersNoticeTargets;
+    use StartsWithoutSeededNotices;
 
     private int $userId;
 
