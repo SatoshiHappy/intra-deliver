@@ -7,7 +7,7 @@ use App\Queries\Master\MembershipQuery;
 use DateTimeInterface;
 
 /**
- * 組織(と役職)に当たるユーザー(docs の 設計/共通マスタ/組織とユーザー.md 9 節「組織 + 役職に当たるユーザー」。規則の 1 か所 =
+ * 組織(と役職)に当たるユーザー(docs の 設計/共通マスタ/組織とユーザー.md 9 節「組織に当たるユーザー」「組織 + 役職に当たるユーザー」。規則の 1 か所 =
  * {@see MembershipQuery::memberUserIdsOn()} を呼ぶだけ)と、その逆向きのユーザーが所属する組織(同じ 9 節「ユーザーの所属組織」。
  * {@see MembershipQuery::membershipsOn()} を呼ぶだけ)。判定しない。鍵を取らない。
  *

@@ -34,7 +34,8 @@ use App\Models\Master\UserTermTranslation;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * 共通マスタの 29 表の列(docs の 設計/共通マスタ/ の組織とユーザー・ロールと認可の表の定義と、共通の規則の 4 節・5.1 の型)。
+ * 共通マスタの 29 表の列(docs の 設計/共通マスタ/ のロールと認可の表の定義と、共通の規則の 4 節・5.1 の型。組織とユーザーの表の列の期待は
+ * ここに置く = docs の 設計/共通マスタ/組織とユーザー.md は意味と規則だけを持つ)。
  *
  * 表 → 列 → 「型 [not null] [default 既定値]」(PostgreSQL の format_type と pg_get_expr の書き方)。
  * すべての表にある id・created_at・updated_at は省く(照合する側が足す)。

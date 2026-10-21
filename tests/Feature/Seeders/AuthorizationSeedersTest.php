@@ -69,7 +69,7 @@ final class AuthorizationSeedersTest extends TransactionalTestCase
 
     public function test_seeds_the_subjects_categories_and_policies_of_the_design(): void
     {
-        // imm_* = ワークフローの処理対象者と参照者の条件(ユーザー・組織・役職)で、サブジェクトタイプが新しいときだけ足すカテゴリ(設計/ワークフロー/初期データ.md 8 節)
+        // imm_* = ワークフローの処理対象者と参照者の条件(ユーザー・組織・役職)で、サブジェクトタイプが新しいときだけ足すカテゴリ(設計/共通マスタ/ロールと認可/対象者.md)
         $this->assertSame(['b_m_role', 'im_authz_meta_subject', 'imm_company_post', 'imm_department', 'imm_user'], AuthzSubjectCategory::query()->orderBy('code')->pluck('code')->all());
         $this->assertSame(['home_quick_actions_pc', 'im_global_nav_pc', 'im_global_nav_sp', 'im_personal_settings_pc', 'im_site_help_pc', 'im_sitemap_pc', 'im_sitemap_sp'], MenuGroupCategory::query()->orderBy('code')->pluck('code')->all());
         $this->assertEqualsCanonicalizing([
@@ -152,7 +152,7 @@ final class AuthorizationSeedersTest extends TransactionalTestCase
 
     /**
      * 後の seeder は対象者を条件で引き直し、同じ対象者を作り足さない(FindsAuthzSubjects)。対象者 = ポリシーの 3 と、ワークフローの処理対象者と参照者の 5
-     * (用途 selection。ルート・フローの業務処理が作る = 設計/ワークフロー/初期データ.md 2 節)の計 8。ポリシー = 118(初期データ.md 8 節 = 54 + メニューの
+     * (用途 selection。ルート・フローの業務処理が作る = 設計/ワークフロー/初期データ.md 2 節)の計 8。ポリシー = 118(54 + メニューの
      * ワークフローのグループ 4 + ホームの主な操作のグループ 1 + ワークフローのルート 38 = ルートの深さ/初期データ.md 6 節。定義の管理のルートはポリシーなし。
      * 通知のルート 8 = 設計/ワークフロー/案件の運用/認可と一覧.md の 4 節。業務モジュールの全件の参照 1 = 設計/業務データの入れ物/認可とメニュー/README.md の 3 節。
      * 添付と外した時点のファイルのルート 6 × 2 = 12 = 設計/業務データの入れ物/レコードの共通機能/認可と初期データ.md の 2.3 節)。

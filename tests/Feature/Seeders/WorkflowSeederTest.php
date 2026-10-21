@@ -33,7 +33,7 @@ use Illuminate\Validation\ValidationException;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * ワークフローの初期データ(docs の 設計/ワークフロー/ルートの深さ/初期データ.md 7 節の検査。設計/ワークフロー/初期データ.md 9 節の確かめを追従させたもの): 定義の件数・版の期間と状態・
+ * ワークフローの初期データ(docs の 設計/ワークフロー/ルートの深さ/初期データ.md 7 節の検査。見せるもの = 設計/ワークフロー/初期データ.md 4 節を追従させたもの): 定義の件数・版の期間と状態・
  * 一本道 A の版の中身、案件の見本 13 の状態・現在のノード・履歴、利用者ごとのタブ(読み取りで)、関連する案件、再申請の差分、未完了の案件のレコードの持ち主、ルートのリソース。
  * 版 3(分岐 B)の中身と足した見本の細部は {@see WorkflowSeederRouteDepthTest}。初期データは DatabaseSeeder が 1 回入れたもの(流し直さない)。
  */
@@ -104,7 +104,7 @@ final class WorkflowSeederTest extends TransactionalTestCase
     }
 
     /**
-     * 利用者ごとのタブ(案件一覧の読み取り。設計/ワークフロー/初期データ.md 7 節): 一時保存と未処理の件数、u0010 の参照(計画のフローの参照者 = 経理部。未完了 6・完了 6)と処理済
+     * 利用者ごとのタブ(案件一覧の読み取り。設計/ワークフロー/ルートの深さ/初期データ.md 7 節): 一時保存と未処理の件数、u0010 の参照(計画のフローの参照者 = 経理部。未完了 6・完了 6)と処理済
      * (完了に WF-000006・WF-000011・WF-000012)、ゲストはすべて 0。
      */
     public function test_each_user_sees_the_tabs_of_the_design(): void
@@ -183,8 +183,9 @@ final class WorkflowSeederTest extends TransactionalTestCase
     }
 
     /**
-     * 設計/ワークフロー/初期データ.md 1 節の 1・5 節: 接頭辞のリソースグループ 6 とルートのリソース 19(設計/ワークフロー/初期データ.md 5 節のルート 18 本と処理対象者の候補。ID・親は名前から決まる。
-     * 表示名 ja・en = 認可と一覧.md 4 節)。
+     * 設計/ワークフロー/ルートの深さ/初期データ.md 1 節、設計/ワークフロー/ルートの深さ/初期データ.md 5 節: 接頭辞のリソースグループ 6 と
+     * ルートのリソース 19(ルート 18 本 = 設計/ワークフロー/認可と一覧.md 4 節と、処理対象者の候補。ID・親は名前から決まる。
+     * 表示名 ja・en = 設計/ワークフロー/認可と一覧.md 4 節)。
      * ポリシー 38(全体 105)は WorkflowRouteAuthorizationTest・AuthorizationSeedersTest が確かめる。(定義の管理を足すときは、そのリソースグループ・ルートとメニュー「フロー定義」をここで確かめる)
      */
     public function test_seeds_the_route_resources_of_the_design(): void
@@ -229,7 +230,7 @@ final class WorkflowSeederTest extends TransactionalTestCase
     }
 
     /**
-     * 対象者の条件 1 つの「種類 相手のコード」(条件は組み方 any・1 つ・eq = 初期データ.md 2 節)。
+     * 対象者の条件 1 つの「種類 相手のコード」(条件は組み方 any・1 つ・eq = 設計/ワークフロー/初期データ.md 2 節)。
      */
     private function conditionOf(int $subjectGroupId): string
     {

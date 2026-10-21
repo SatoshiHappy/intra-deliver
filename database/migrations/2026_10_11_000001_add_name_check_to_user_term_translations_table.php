@@ -5,7 +5,7 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * ユーザーのロケール別の行の氏名 name に、空文字を拒む検査制約を足す
- * (docs の 設計/共通マスタ/組織とユーザー.md 7 節 user_term_translations)。
+ * (docs の 設計/共通マスタ/組織とユーザー.md 7 節の氏名)。
  *
  * 氏名が空文字の行が残っていれば、up は検査制約を作るところで失敗する。
  * down は検査制約を消すだけで、行には触らない。
