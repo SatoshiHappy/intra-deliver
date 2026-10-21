@@ -24,8 +24,11 @@ use App\Enums\Workflow\WorkflowNodeState;
 use App\Models\Authz\Role;
 use App\Models\Master\Department;
 use App\Models\Master\User;
+use App\Models\Notice\Notice;
 use App\Models\Records\Record;
 use App\Models\Workflow\WorkflowCase;
+use App\Models\Workflow\WorkflowCaseConfirmation;
+use App\Models\Workflow\WorkflowCaseConfirmTarget;
 use App\Models\Workflow\WorkflowCaseHistory;
 use App\Models\Workflow\WorkflowCaseHistoryUser;
 use App\Models\Workflow\WorkflowCaseNode;
@@ -247,7 +250,7 @@ trait RunsWorkflowOperations
     }
 
     /**
-     * 案件・ノード・処理対象者・履歴・履歴の人・レコードの行の数(失敗で何も変わらないことの確かめ)。
+     * 案件・ノード・処理対象者・履歴・履歴の人・レコード・確認対象者・確認・通知の行の数(失敗で何も変わらないことの確かめ)。
      *
      * @return array<string, int>
      */
@@ -260,6 +263,9 @@ trait RunsWorkflowOperations
             'histories' => WorkflowCaseHistory::query()->count(),
             'history_users' => WorkflowCaseHistoryUser::query()->count(),
             'records' => Record::query()->count(),
+            'confirm_targets' => WorkflowCaseConfirmTarget::query()->count(),
+            'confirmations' => WorkflowCaseConfirmation::query()->count(),
+            'notices' => Notice::query()->count(),
         ];
     }
 

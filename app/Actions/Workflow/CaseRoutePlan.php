@@ -68,6 +68,48 @@ final readonly class CaseRoutePlan
     }
 
     /**
+     * 処理対象者が増えたノード(操作の後の現在のノードごとに、前の処理対象者に無かった人 = 設計/ワークフロー/案件の運用/案件の操作/操作.md の 11 節)。
+     * 現在のノードでなかったノードの前の処理対象者は空なので、到達したノードは全員になる。
+     *
+     * @param  array<int, int>  $ids  仮の id → 書いた行の id
+     * @return array<int, list<int>> ノードの id(昇順)→ 増えた人(昇順。増えた人の無いノードは入れない)
+     */
+    public function targetAdditions(array $ids = []): array
+    {
+        $added = [];
+
+        foreach ($this->after as $id => $values) {
+            $newcomers = array_values(array_diff($values['targets'], $this->before[$id]['targets']));
+            $users = $values['state']->isCurrent() ? $newcomers : [];
+
+            if ($users !== []) {
+                sort($users);
+                $added[$ids[$id] ?? $id] = $users;
+            }
+        }
+
+        ksort($added);
+
+        return $added;
+    }
+
+    /**
+     * この操作の履歴の行で処理済みになるノード(写しから戻して処理済みに戻すノードは前の履歴の行を指すので入れない
+     * = 設計/ワークフロー/案件の運用/案件の操作/README.md の 1.5 節)。
+     *
+     * @return list<int>
+     */
+    public function newlyProcessedNodeIds(): array
+    {
+        $processed = array_filter(
+            $this->after,
+            fn (array $values) => $values['state'] === WorkflowNodeState::Done && $values['history'] === null,
+        );
+
+        return array_keys($processed);
+    }
+
+    /**
      * 履歴の行の node_changes(この操作が変えた、操作するノード以外のノードの前の状態。ノードの id の昇順。分岐開始は出る辺の前の taken も持つ)。
      * 引戻しの行は持たない(null。引戻した行を指す = 案件の表.md 3.7)。
      *

@@ -67,7 +67,9 @@ final class CaseAttachabilityTest extends TransactionalTestCase
             $this->assertSame($module && $copy, $this->canAttach($operation, $case), $operation->value);
         }
 
-        $this->assertFalse($this->canAttach(WorkflowOperation::DeleteDraft, $case));
+        foreach ([WorkflowOperation::DeleteDraft, WorkflowOperation::Confirm] as $operation) {
+            $this->assertFalse($this->canAttach($operation, $case), $operation->value);
+        }
     }
 
     public function test_the_approval_operations_read_the_step_setting_of_the_operated_node(): void

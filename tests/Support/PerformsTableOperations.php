@@ -5,6 +5,8 @@ namespace Tests\Support;
 use App\Actions\Workflow\ApplyCase;
 use App\Actions\Workflow\ApproveCase;
 use App\Actions\Workflow\ApproveCaseEarly;
+use App\Actions\Workflow\CaseContact;
+use App\Actions\Workflow\ConfirmCase;
 use App\Actions\Workflow\CreateDraft;
 use App\Actions\Workflow\DeleteDraft;
 use App\Actions\Workflow\DraftInput;
@@ -17,8 +19,10 @@ use App\Actions\Workflow\SendBackCase;
 use App\Actions\Workflow\TransferCase;
 use App\Actions\Workflow\UpdateDraft;
 use App\Actions\Workflow\WithdrawCase;
+use App\Enums\Workflow\WorkflowNoticeType;
 use App\Enums\Workflow\WorkflowOperation;
 use App\Models\Master\User;
+use App\Models\Notice\Notice;
 use App\Models\Workflow\WorkflowCase;
 use App\Models\Workflow\WorkflowCaseNode;
 use App\Support\AccessContext;
@@ -35,6 +39,12 @@ trait PerformsTableOperations
 {
     /** 振替先の既定(関わらない人。状況が入力 transferTo で替える) */
     private const TRANSFER_TO = 'U';
+
+    /** 連絡を付けられる操作(設計/ワークフロー/案件の運用/案件の操作/操作.md の 10.5 節) */
+    private const CONTACT_OPERATIONS = [
+        'apply', 'reapply', 'approve', 'approve_early', 'reject', 'send_back', 'pull_back', 'withdraw',
+        'hold', 'release', 'transfer',
+    ];
 
     /**
      * 操作を今の改訂番号で行う(入力が無ければ差戻し先 = 申請のノード)。案件の無い操作は作った案件の id を返す。
@@ -76,41 +86,95 @@ trait PerformsTableOperations
     {
         $nodeOf = fn (int $caseId, ?int $userId) => $inputs['node']
             ?? $this->operatedNodeId($caseId, $principal ?? $userId);
+        $contact = $this->contactOf($inputs);
         $onNode = fn (string $class) => fn (AccessContext $c, int $id, int $rev) => app($class)
-            ->execute($c, $id, $rev, $nodeOf($id, $c->userId), null, $principal);
+            ->execute($c, $id, $rev, $nodeOf($id, $c->userId), null, $principal, $contact);
 
         return [
-            ...$this->onDraft(),
-            'approve' => function (AccessContext $c, int $id, int $rev) use ($inputs, $nodeOf, $principal): void {
+            ...$this->onDraft($contact),
+            'approve' => function (AccessContext $c, int $id, int $rev) use (
+                $inputs, $nodeOf, $principal, $contact,
+            ): void {
                 $nodeId = $nodeOf($id, $c->userId);
                 $assignments = $inputs['assignments'] ?? [];
-                app(ApproveCase::class)->execute($c, $id, $rev, $nodeId, null, $assignments, $principal);
+                app(ApproveCase::class)->execute($c, $id, $rev, $nodeId, null, $assignments, $principal, $contact);
             },
             'approve_early' => $onNode(ApproveCaseEarly::class),
             'reject' => $onNode(RejectCase::class),
-            'send_back' => function (AccessContext $c, int $id, int $rev) use ($inputs, $nodeOf, $principal): void {
+            'send_back' => function (AccessContext $c, int $id, int $rev) use (
+                $inputs, $nodeOf, $principal, $contact,
+            ): void {
                 $nodeId = $nodeOf($id, $c->userId);
                 $toNodeId = $inputs['sendBackTo'] ?? $this->applyNodeIdOf($id);
-                app(SendBackCase::class)->execute($c, $id, $rev, $nodeId, $toNodeId, null, $principal);
+                app(SendBackCase::class)->execute($c, $id, $rev, $nodeId, $toNodeId, null, $principal, $contact);
             },
-            'pull_back' => function (AccessContext $c, int $id, int $rev) use ($inputs, $principal): void {
+            'pull_back' => function (AccessContext $c, int $id, int $rev) use ($inputs, $principal, $contact): void {
                 $nodeId = $inputs['pullBack'] ?? $this->pullBackNodeId($id, $principal ?? $c->userId);
-                app(PullBackCase::class)->execute($c, $id, $rev, $nodeId, null, $principal);
+                app(PullBackCase::class)->execute($c, $id, $rev, $nodeId, null, $principal, $contact);
             },
-            'reapply' => function (AccessContext $c, int $id, int $rev) use ($principal): void {
-                app(ReapplyCase::class)->execute($c, $id, $rev, $this->projectInput(), $principal);
+            'reapply' => function (AccessContext $c, int $id, int $rev) use ($principal, $contact): void {
+                app(ReapplyCase::class)->execute($c, $id, $rev, $this->projectInput(), $principal, $contact);
             },
-            'withdraw' => function (AccessContext $c, int $id, int $rev) use ($principal): void {
-                app(WithdrawCase::class)->execute($c, $id, $rev, null, $principal);
+            'withdraw' => function (AccessContext $c, int $id, int $rev) use ($principal, $contact): void {
+                app(WithdrawCase::class)->execute($c, $id, $rev, null, $principal, $contact);
             },
             'hold' => $onNode(HoldCase::class),
             'release' => $onNode(ReleaseCase::class),
-            'transfer' => function (AccessContext $c, int $id, int $rev) use ($inputs, $nodeOf, $principal): void {
+            'transfer' => function (AccessContext $c, int $id, int $rev) use (
+                $inputs, $nodeOf, $principal, $contact,
+            ): void {
                 $toUserId = $this->person($inputs['transferTo'] ?? self::TRANSFER_TO)?->id;
                 $nodeId = $nodeOf($id, $c->userId);
-                app(TransferCase::class)->execute($c, $id, $rev, $nodeId, $toUserId, null, $principal);
+                app(TransferCase::class)->execute($c, $id, $rev, $nodeId, $toUserId, null, $principal, $contact);
             },
+            'confirm' => fn (AccessContext $c, int $id) => app(ConfirmCase::class)->execute($c, $id),
         ];
+    }
+
+    /**
+     * 入力 contact(連絡する人の記号)の連絡(無ければ null)。
+     *
+     * @param  Inputs|null  $inputs
+     */
+    private function contactOf(?array $inputs): ?CaseContact
+    {
+        $letter = $inputs['contact'] ?? null;
+
+        return $letter === null ? null : new CaseContact([$this->person($letter)->id ?? 0], null);
+    }
+
+    /**
+     * 入力 contact の人への、その案件の連絡の通知の数(連絡を付けられる操作の成功で 1 つ増える)。
+     *
+     * @param  Inputs|null  $inputs
+     */
+    private function contactNoticeCount(?array $inputs, ?WorkflowCase $case): int
+    {
+        $letter = $inputs['contact'] ?? null;
+
+        if ($letter === null || $case === null) {
+            return 0;
+        }
+
+        return Notice::query()->where('type', WorkflowNoticeType::Contact->value)
+            ->where('user_id', $this->person($letter)?->id)->where('target_id', $case->id)->count();
+    }
+
+    /**
+     * 成功した操作が、連絡を付けられる操作なら連絡の通知を 1 つ作った(操作.md の 8 節の「連絡」の行)。
+     *
+     * @param  Inputs|null  $inputs
+     */
+    private function assertContactSent(
+        WorkflowOperation $operation,
+        ?array $inputs,
+        ?WorkflowCase $case,
+        int $before,
+        string $label,
+    ): void {
+        $sends = in_array($operation->value, self::CONTACT_OPERATIONS, true) && ($inputs['contact'] ?? null) !== null;
+        $expected = $before + ($sends && $case !== null ? 1 : 0);
+        $this->assertSame($expected, $this->contactNoticeCount($inputs, $case), "{$label} の連絡");
     }
 
     /**
@@ -118,7 +182,7 @@ trait PerformsTableOperations
      *
      * @return array<string, Closure(AccessContext, int, int): mixed>
      */
-    private function onDraft(): array
+    private function onDraft(?CaseContact $contact): array
     {
         return [
             'overwrite_draft' => function (AccessContext $c, int $id, int $rev): void {
@@ -127,9 +191,9 @@ trait PerformsTableOperations
             'delete_draft' => function (AccessContext $c, int $id, int $rev): void {
                 app(DeleteDraft::class)->execute($c, $id, $rev);
             },
-            'apply' => function (AccessContext $c, int $id, int $rev): void {
+            'apply' => function (AccessContext $c, int $id, int $rev) use ($contact): void {
                 $baseDate = $c->date->toDateString();
-                app(ApplyCase::class)->executeFromDraft($c, $id, $rev, $this->projectInput(), $baseDate);
+                app(ApplyCase::class)->executeFromDraft($c, $id, $rev, $this->projectInput(), $baseDate, $contact);
             },
         ];
     }

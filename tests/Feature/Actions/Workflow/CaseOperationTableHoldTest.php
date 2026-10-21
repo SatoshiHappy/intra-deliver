@@ -24,8 +24,8 @@ final class CaseOperationTableHoldTest extends TransactionalTestCase
     use ChecksCaseOperationTable;
     use RegistersProxies;
 
-    /** 既にある案件の操作の数(一時保存(新規)を除く 13) */
-    private const OPERATIONS = 13;
+    /** 既にある案件の操作の数(一時保存(新規)を除く 14) */
+    private const OPERATIONS = 14;
 
     /** 保留者側の 3 つ(本人・代理先が本人として・ほかの代理先が本人として) */
     private const HOLD_SIDE = ['holder', 'holderProxy', 'otherProxy'];

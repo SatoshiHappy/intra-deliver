@@ -57,6 +57,9 @@ class CaseNodeWriter
 
         $this->writer->advance($case);
 
-        return new CaseOperationResult($case->id, $action, $history->id, [], null, $actor);
+        // 処理対象者が増えるのは振替の振替先だけ(設計/ワークフロー/案件の運用/案件の操作/操作.md の 11 節)
+        $additions = $transferToUserId === null ? [] : [$node->id => [$transferToUserId]];
+
+        return new CaseOperationResult($case->id, $action, $history->id, [], null, $actor, $additions);
     }
 }

@@ -19,6 +19,7 @@ final readonly class CaseRoles
      * @param  bool  $canApply  申請できる人(案件のフローについて、申請のノードの対象者に本人の判定で合い、コンテンツの業務モジュールの create を許される)
      * @param  bool  $canUpdateRecord  コンテンツの業務モジュールの update を許される
      * @param  bool  $isHoldSide  保留中のノードの保留者側({@see ProcessorRoles})
+     * @param  bool  $isConfirmTarget  開いている確認の確認対象者(自分。代理は無い = {@see CaseConfirmations})
      */
     public function __construct(
         public bool $isApplicant,
@@ -27,5 +28,6 @@ final readonly class CaseRoles
         public bool $canApply,
         public bool $canUpdateRecord,
         public bool $isHoldSide = false,
+        public bool $isConfirmTarget = false,
     ) {}
 }

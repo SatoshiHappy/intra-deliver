@@ -46,7 +46,7 @@ class CaseAttachability
         return match ($operation) {
             WorkflowOperation::SaveDraft, WorkflowOperation::OverwriteDraft, WorkflowOperation::Apply,
             WorkflowOperation::Reapply, WorkflowOperation::Withdraw => true,
-            WorkflowOperation::DeleteDraft => false,
+            WorkflowOperation::DeleteDraft, WorkflowOperation::Confirm => false,
             WorkflowOperation::Approve, WorkflowOperation::ApproveEarly, WorkflowOperation::Reject,
             WorkflowOperation::SendBack, WorkflowOperation::PullBack, WorkflowOperation::Hold,
             WorkflowOperation::Release, WorkflowOperation::Transfer => ! ($node

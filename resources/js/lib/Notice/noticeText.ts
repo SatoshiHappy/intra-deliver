@@ -29,13 +29,92 @@ export type NoticeTemplate = {
  * 種類を足すときは case を足す。雛形に無い種類は default の「通知があります。」と札「通知」で行を出す。
  */
 export function noticeTemplate(row: NoticeRow): NoticeTemplate {
+    const caseName = textParam(row, 'case_name');
+    const stepName = textParam(row, 'step_name');
+
     switch (row.type) {
+        case 'workflow.process_request':
+            return {
+                label: '処理依頼',
+                tone: 'pending',
+                sentence: processRequestSentence(row),
+            };
+        case 'workflow.transfer':
+            return {
+                label: '担当変更',
+                tone: 'returned',
+                sentence: `${caseName}　${stepName}の処理担当者が変更されました。`,
+            };
+        case 'workflow.result':
+            return {
+                label: '処理結果',
+                tone: 'settled',
+                sentence: `${caseName}　${resultPhrase(row.params.completion_reason)}`,
+            };
+        case 'workflow.confirm_request':
+            return {
+                label: '確認依頼',
+                tone: 'pending',
+                sentence: `${caseName}　確認をお願いします。`,
+            };
+        case 'workflow.contact':
+            return {
+                label: '連絡',
+                tone: 'settled',
+                sentence: contactSentence(row),
+            };
         default:
             return {
                 label: '通知',
                 tone: 'settled',
                 sentence: '通知があります。',
             };
+    }
+}
+
+/**
+ * 処理依頼の文(申請のステップなら再申請、承認のステップなら承認の依頼)。ステップ名は括弧で後ろに置く(「〜の承認」という名前でも語が重ならない)。
+ */
+function processRequestSentence(row: NoticeRow): string {
+    const caseName = textParam(row, 'case_name');
+
+    return row.params.step_kind === 'apply'
+        ? `${caseName}　再申請をお願いします。`
+        : `${caseName}　承認をお願いします。（${textParam(row, 'step_name')}）`;
+}
+
+/**
+ * 連絡の文(ひと言が無ければ連絡があった旨)。
+ */
+function contactSentence(row: NoticeRow): string {
+    const caseName = textParam(row, 'case_name');
+    const message = textParam(row, 'message');
+
+    return message === ''
+        ? `${caseName}について連絡がありました。`
+        : `${caseName}　${message}`;
+}
+
+/**
+ * 文の値の文字列(無い・文字列でなければ空)。
+ */
+function textParam(row: NoticeRow, key: string): string {
+    const value = row.params[key];
+
+    return typeof value === 'string' ? value : '';
+}
+
+/**
+ * 処理結果の文の後半(完了の理由ごと。通知.md の 3 節)。rejected(否認・合議が可決できなくなった)は既定の枝。
+ */
+function resultPhrase(reason: NoticeRow['params'][string]): string {
+    switch (reason) {
+        case 'approved':
+            return '承認されて完了しました。';
+        case 'approved_early':
+            return '承認終了で完了しました。';
+        default:
+            return '否認されました。';
     }
 }
 

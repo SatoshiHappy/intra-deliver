@@ -1,4 +1,5 @@
 import type { Locator } from '@playwright/test';
+import { expect } from './test';
 
 // 初期データの日付は流す日からの相対で入る(docs の 設計/ワークフロー/案件の運用/初期データ.md 1.1・1.3)ので、E2E の期待も流す日から決める。
 // E2E は SEED_DATE を置かずに流すので、流す日 = 流した時の Asia/Tokyo の今日。E2E は流した直後に走るので、走らせる時の東京の今日を流す日とみなす
@@ -48,12 +49,20 @@ export function versionTwoDay(): string {
 
 /**
  * 申請の入力の申請基準日を版 2 の日にする。申請基準日を変えると次の処理対象者を部分再読み込みで引き直すので、
- * それが済むまで待つ(利用者と同じ順。古い next で送らない)。
+ * それが済むまで待つ(利用者と同じ順。古い next で送らない)。済んだ印は URL の base_date(応答で props と一緒に替わる)。
+ * waitForLoadState は最初の読み込みで済んだ状態をすぐ返し、部分再読み込みを待たない。
  */
 export async function fillVersionTwoBaseDate(form: Locator): Promise<void> {
     await form
         .getByRole('group', { name: '申請基準日', exact: true })
         .locator('input[type="date"]')
         .fill(versionTwoDay());
-    await form.page().waitForLoadState('networkidle');
+    await expect(form.page()).toHaveURL(hasBaseDate(versionTwoDay()));
+}
+
+/**
+ * URL の base_date が day かを見る述語(申請基準日の部分再読み込みの応答が済んだ印。toHaveURL に渡す)。
+ */
+export function hasBaseDate(day: string): (url: URL) => boolean {
+    return (url) => url.searchParams.get('base_date') === day;
 }

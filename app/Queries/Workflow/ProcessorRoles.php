@@ -39,6 +39,7 @@ class ProcessorRoles
             canApply: $canApply,
             canUpdateRecord: $canUpdateRecord,
             isHoldSide: $node !== null && self::isHolder($processor, $situation, $node),
+            isConfirmTarget: $situation->confirmNodeIds !== [],
         );
     }
 

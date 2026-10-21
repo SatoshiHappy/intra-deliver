@@ -38,15 +38,16 @@ trait BuildsRouteVersions
     /**
      * R1 = 初期データの分岐 B と同じ形(申請 → 課長 → 分岐「予算」(部長 / 何もしない)→ 縦配置(合議。人数 2、2〜5 人、防止オン)→ 責任者(動的承認、1〜1 人))。
      *
+     * @param  int|null  $confirmSubjectGroupId  課長の確認する人(null = 確認なし。設計/ワークフロー/案件の運用/案件の操作/同時実行と検査.md の 14.1 節の見本)
      * @return array{list<RouteNodeInput>, list<RouteEdgeInput>}
      */
-    protected function r1(): array
+    protected function r1(?int $confirmSubjectGroupId = null): array
     {
         $front = ['apply', 'section_chief'];
 
         return [[
             $this->applyNode(),
-            new RouteNodeInput('section_chief', '課長', WorkflowNodeKind::Approve, WorkflowTargetKind::Relative, relativeBase: WorkflowRelativeBase::Applicant, relativeScope: WorkflowRelativeScope::Own, companyPostId: $this->postId('section-chief'), preventsApplicantApproval: true, sendBackCodes: ['apply']),
+            new RouteNodeInput('section_chief', '課長', WorkflowNodeKind::Approve, WorkflowTargetKind::Relative, relativeBase: WorkflowRelativeBase::Applicant, relativeScope: WorkflowRelativeScope::Own, companyPostId: $this->postId('section-chief'), preventsApplicantApproval: true, sendBackCodes: ['apply'], confirmSubjectGroupId: $confirmSubjectGroupId),
             new RouteNodeInput('budget', '予算', WorkflowNodeKind::BranchStart, closingCode: 'budget_end'),
             new RouteNodeInput('manager', '部長', WorkflowNodeKind::Approve, WorkflowTargetKind::Relative, relativeBase: WorkflowRelativeBase::Applicant, relativeScope: WorkflowRelativeScope::Parent, companyPostId: $this->postId('manager'), preventsApplicantApproval: true, sendBackCodes: $front),
             new RouteNodeInput('budget_end', '分岐終了', WorkflowNodeKind::BranchEnd),

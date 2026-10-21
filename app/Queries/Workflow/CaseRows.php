@@ -45,8 +45,8 @@ class CaseRows
         return array_values($cases->map(fn (WorkflowCase $case) => [
             'id' => $case->id,
             'number' => $case->case_number === null ? null : CaseNumbers::format($case->case_number),
-            'name' => $this->nameOf($case),
-            'flowName' => $this->flowOf($case)->name,
+            'name' => self::nameOf($case),
+            'flowName' => self::flowOf($case)->name,
             'applicant' => $applicants[$case->user_id],
             'appliedAt' => $case->applied_at?->toIso8601String(),
             'currentSummary' => self::currentSummaryOf($situations[$case->id]),
@@ -75,16 +75,19 @@ class CaseRows
     }
 
     /**
-     * 案件名(一時保存は入力の案件名、無ければフロー名)。
+     * 案件名(一時保存は入力の案件名、無ければフロー名)。一括の結果の行も同じ名前を出す。
      */
-    private function nameOf(WorkflowCase $case): string
+    public static function nameOf(WorkflowCase $case): string
     {
         $name = $case->state === WorkflowCaseState::Draft ? ($case->draft_input['name'] ?? null) : $case->name;
 
-        return is_string($name) && $name !== '' ? $name : $this->flowOf($case)->name;
+        return is_string($name) && $name !== '' ? $name : self::flowOf($case)->name;
     }
 
-    private function flowOf(WorkflowCase $case): WorkflowFlow
+    /**
+     * 読み込んだ案件のフロー(読み込んでいなければ呼び手の誤り)。
+     */
+    public static function flowOf(WorkflowCase $case): WorkflowFlow
     {
         return $case->workflowFlow ?? throw new LogicException("案件 {$case->id} のフローを読み込んでいない");
     }

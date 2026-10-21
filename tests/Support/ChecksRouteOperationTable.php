@@ -31,8 +31,8 @@ trait ChecksRouteOperationTable
         'P' => 'u0012', 'N' => 'u0013', 'U' => 'u0008', 'D' => 'u0004', 'O' => 'u0007', 'X' => 'u0005', 'Y' => 'u0009', 'Z' => 'u0011',
     ];
 
-    /** 既にある案件の操作の数(一時保存(新規)を除く 13) */
-    protected const OPERATIONS = 13;
+    /** 既にある案件の操作の数(一時保存(新規)を除く 14) */
+    protected const OPERATIONS = 14;
 
     /**
      * @return array<string, string|null>

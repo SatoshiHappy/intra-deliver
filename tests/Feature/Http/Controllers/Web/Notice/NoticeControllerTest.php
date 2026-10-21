@@ -8,6 +8,7 @@ use App\Queries\Notice\Api\NoticeTargetLink;
 use Carbon\CarbonImmutable;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\Support\RegistersNoticeTargets;
+use Tests\Support\StartsWithoutSeededNotices;
 use Tests\Support\TransactionalTestCase;
 
 /**
@@ -17,6 +18,7 @@ use Tests\Support\TransactionalTestCase;
 final class NoticeControllerTest extends TransactionalTestCase
 {
     use RegistersNoticeTargets;
+    use StartsWithoutSeededNotices;
 
     private User $user;
 

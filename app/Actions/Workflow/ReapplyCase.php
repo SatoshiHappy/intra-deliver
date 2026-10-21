@@ -34,11 +34,14 @@ class ReapplyCase
         private ApplicationRecords $records,
         private UpdateRecord $updateRecord,
         private CaseAttachmentRules $attachmentRules,
+        private ContactValidator $contactValidator,
+        private SendCaseNotices $notices,
     ) {}
 
     /**
      * @param  int  $revision  画面を開いた時の改訂番号
      * @param  int|null  $principalUserId  処理担当者(代理元。null = 自分として = 設計/ワークフロー/案件の運用/案件の操作/README.md の 4.3 節)
+     * @param  CaseContact|null  $contact  連絡(規則 = {@see ContactValidator}。誤りは 422 contact.user_ids・contact.message)
      *
      * @throws ModelNotFoundException<WorkflowCase> 案件が無い・閲覧できないとき(業務データの入れ物の 404 も伝わる)
      * @throws AuthorizationException 業務モジュールの update を許されないとき
@@ -51,12 +54,14 @@ class ReapplyCase
         int $revision,
         ApplicationInput $input,
         ?int $principalUserId = null,
+        ?CaseContact $contact = null,
     ): CaseOperationResult {
-        return DB::transaction(function () use ($context, $caseId, $revision, $input, $principalUserId) {
+        return DB::transaction(function () use ($context, $caseId, $revision, $input, $principalUserId, $contact) {
             $authorize = fn (WorkflowCase $case) => $this->guard->requireUpdatable($context, $case);
             $permit = $this->guard->lockAndPermit(WorkflowOperation::Reapply, $context, $caseId, $revision, $authorize, null, $principalUserId);
             $case = $permit->case();
             [$name, $comment] = $this->inputRules->nameAndComment($input->name, $input->comment);
+            $contact = $this->contactValidator->validated($contact, $context);
             $flow = WorkflowFlow::query()->findOrFail($case->workflow_flow_id);
             $this->attachmentRules->rejectFiles(WorkflowOperation::Reapply, $flow, $input->attachFiles, $case);
             $recordId = $case->record_id ?? throw new LogicException("未完了の案件 {$case->id} がレコードを指していない");
@@ -73,7 +78,11 @@ class ReapplyCase
 
             $columns = ['name' => $name ?? $this->records->defaultName($flow, $recordId)];
 
-            return $this->writer->writePlan($plan, $actor, $comment, $revisionId, columns: $columns);
+            $result = $this->writer->writePlan($plan, $actor, $comment, $revisionId, columns: $columns);
+
+            $this->notices->execute($result, $contact, $context->date);
+
+            return $result;
         });
     }
 }

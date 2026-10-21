@@ -7,6 +7,7 @@ use App\Models\Notice\Notice;
 use Carbon\CarbonImmutable;
 use Inertia\Testing\AssertableInertia as Assert;
 use PHPUnit\Framework\Attributes\TestWith;
+use Tests\Support\StartsWithoutSeededNotices;
 use Tests\Support\TransactionalTestCase;
 
 /**
@@ -16,6 +17,8 @@ use Tests\Support\TransactionalTestCase;
  */
 final class ShareNoticesTest extends TransactionalTestCase
 {
+    use StartsWithoutSeededNotices;
+
     protected function setUp(): void
     {
         parent::setUp();

@@ -44,6 +44,42 @@ class WorkflowProxies
     }
 
     /**
+     * 自分を代理先とする、d に有効でその別に効く代理の代理元を、渡したフローごとに(問い合わせはフローの数に依らず 1 回)。
+     *
+     * @param  list<int>  $flowIds
+     * @return array<int, list<int>> フローの id → 代理元のユーザーの id(昇順・重ねない。代理元の無いフローは入れない)
+     */
+    public function principalIdsByFlow(
+        int $proxyUserId,
+        array $flowIds,
+        WorkflowProxyKind $kind,
+        DateTimeInterface $date,
+    ): array {
+        if ($flowIds === []) {
+            return [];
+        }
+
+        $ofProxy = WorkflowProxy::query()->where('proxy_user_id', $proxyUserId)->where('kind', $kind);
+        $rows = $this->effective($ofProxy, $date)
+            ->where(fn (Builder $flow) => $flow->whereNull('workflow_flow_id')->orWhereIn('workflow_flow_id', $flowIds))
+            ->orderBy('principal_user_id')->toBase()->get(['principal_user_id', 'workflow_flow_id']);
+        $byFlow = [];
+
+        foreach ($flowIds as $flowId) {
+            $effective = $rows->filter(
+                fn (object $row) => $row->workflow_flow_id === null || (int) $row->workflow_flow_id === $flowId,
+            );
+            $principalIds = array_values(array_map('intval', $effective->pluck('principal_user_id')->unique()->all()));
+
+            if ($principalIds !== []) {
+                $byFlow[$flowId] = $principalIds;
+            }
+        }
+
+        return $byFlow;
+    }
+
+    /**
      * 処理者 P の候補(設計/ワークフロー/案件の運用/案件の操作/README.md の 4.3 節の画面の選択肢と同じ集合。指定の候補の入口の 403 も
      * これを呼ぶ = 操作.md の 8 節): 自分を先頭に、ほかは d に有効でノードの種類と案件のフローに効く代理の代理元(昇順・重ねない)。
      *
@@ -86,6 +122,28 @@ class WorkflowProxies
         $proxies = $this->effective(WorkflowProxy::query()->where('principal_user_id', $principalUserId), $date);
 
         return $this->userIds($this->forFlow($proxies, $flowId), 'proxy_user_id');
+    }
+
+    /**
+     * 代理元を渡した人のどれかとする、d に有効でそのフローとその別に効く代理の代理先(通知の宛先の代理先 =
+     * 設計/ワークフロー/案件の運用/通知.md の 3 節)。問い合わせは 1 回。
+     *
+     * @param  list<int>  $principalUserIds
+     * @return list<int> 代理先のユーザーの id(昇順・重ねない)
+     */
+    public function proxyIdsOfAny(
+        array $principalUserIds,
+        int $flowId,
+        WorkflowProxyKind $kind,
+        DateTimeInterface $date,
+    ): array {
+        if ($principalUserIds === []) {
+            return [];
+        }
+
+        $proxies = $this->effective(WorkflowProxy::query()->whereIn('principal_user_id', $principalUserIds), $date);
+
+        return $this->userIds($this->forFlow($proxies, $flowId)->where('kind', $kind), 'proxy_user_id');
     }
 
     /**

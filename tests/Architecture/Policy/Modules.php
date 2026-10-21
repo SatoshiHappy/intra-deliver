@@ -37,7 +37,8 @@ final class Modules
      * Ai = LLM の呼び出し口・AI の実行の記録・費用の上限・AI の書き込みの口(依頼者の表示名と有効の確かめに Master、閲覧と書き込みの判定に Authz・Records を使う。
      * ワークフローからも AI を使えるよう Workflow より前、使う基盤の Records の後に置く = docs の 設計/業務ツール/モジュール境界.md の「一覧の並び」・設計/AI/README.md)。
      * Workflow = ワークフロー(名前・対象者の判定・ホームの節・申請フォームのレコードを使うので Master・Authz・Menu・Records に依存し、使う基盤の後に置く = docs の 設計/ワークフロー/README.md の「コードのモジュール」。
-     * 申請の一時保存の添付が台帳の行を指すので Upload にも依存する = 設計/業務データの入れ物/レコードの共通機能/README.md の「コードのモジュール」)。
+     * 申請の一時保存の添付が台帳の行を指すので Upload にも依存する = 設計/業務データの入れ物/レコードの共通機能/README.md の「コードのモジュール」。
+     * 案件の操作の通知を送り、案件の移り先を答えるので Notice にも依存する = 設計/ワークフロー/案件の運用/通知.md の 1 節)。
      * 並び = 土台と基盤を先頭に、土台どうしは依存の向き(docs の 設計/共通マスタ/README.md のモジュールの割り当て)。
      *
      * @var array<string, list<string>>
@@ -52,7 +53,7 @@ final class Modules
         'Upload' => ['Master'],
         'Records' => ['Master', 'Authz', 'Menu', 'Upload'],
         'Ai' => ['Master', 'Authz', 'Records'],
-        'Workflow' => ['Master', 'Authz', 'Menu', 'Records', 'Upload'],
+        'Workflow' => ['Master', 'Authz', 'Menu', 'Notice', 'Records', 'Upload'],
     ];
 
     /**

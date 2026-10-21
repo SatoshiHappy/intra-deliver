@@ -24,7 +24,8 @@ use Illuminate\Validation\ValidationException;
  * {@see ChecksRouteOperationTable} が替える)。
  *
  * 操作の入力(inputs)を渡すと、ノードを取る操作(承認・承認終了・否認・差戻し・保留・保留解除・振替)はどの役割でも同じ注目のノード、差戻し先・引戻すノード・指定・
- * 振替先(既定 = 関わらない人 U)も全員に同じ値を使い、
+ * 振替先(既定 = 関わらない人 U)も全員に同じ値を使い、連絡する人(contact)を渡せば連絡を付けられる操作に付けて成功の組で連絡の通知が 1 つできることを確かめ
+ * (設計/ワークフロー/案件の運用/案件の操作/操作.md の 8 節の「連絡」の行。失敗の組は通知を含めて何も変わらない)、
  * 詳細の can は注目のノードの nodeActions で比べる(設計/ワークフロー/ルートの深さ/案件の操作/同時実行と検査.md 14 節)。渡さないときは案件の操作の形(その人の現在のノード・申請のノード・
  * その人の引戻せるノード)。
  * 成功の結果を {@see self::ONLY_INVARIANTS} にした組は、8 節の結果を確かめず 2.7 の不変の条件({@see RunsRoutePlans::assertRouteInvariants()})
@@ -36,6 +37,7 @@ use Illuminate\Validation\ValidationException;
  * @phpstan-type Result array{nodes: list<string>, state: string, histories: int, tabs: array{draft: string, pending: string, processed: string, referenced: string}}
  * @phpstan-type Inputs array{
  *     node: int, sendBackTo: int, pullBack: int, assignments: array<int, list<int>>, transferTo?: string,
+ *     contact?: string,
  * }
  * @phpstan-type Spec array{
  *     roles: array<string, string|null>, visible: string,
@@ -174,6 +176,7 @@ trait ChecksCaseOperationTable
 
         try {
             $before = $this->tableSnapshot($case);
+            $contacts = $this->contactNoticeCount($spec['inputs'] ?? null, $case);
             $principalLetter = $spec['principals'][$role] ?? null;
             $principal = $principalLetter === null ? null : $this->person($principalLetter)?->id;
             $inputs = $spec['inputs'] ?? null;
@@ -181,6 +184,10 @@ trait ChecksCaseOperationTable
             [$outcome, $newId] = $this->outcomeOf($perform);
             $this->assertSame($expected, $outcome, $label);
             $result = $spec['success'][$operation->value][1] ?? null;
+
+            if ($expected === 'success') {
+                $this->assertContactSent($operation, $spec['inputs'] ?? null, $case, $contacts, $label);
+            }
 
             if ($expected === 'success' && $result === self::ONLY_INVARIANTS) {
                 $this->assertRouteInvariants(WorkflowCase::query()->findOrFail($newId ?? $case?->id));

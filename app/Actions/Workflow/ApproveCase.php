@@ -23,6 +23,8 @@ class ApproveCase
         private AssignmentRules $assignmentRules,
         private CaseRoutePlanner $planner,
         private CaseWriter $writer,
+        private ContactValidator $contactValidator,
+        private SendCaseNotices $notices,
     ) {}
 
     /**
@@ -30,6 +32,7 @@ class ApproveCase
      * @param  int  $nodeId  操作するノード(案件のノードの id)
      * @param  array<int, list<int>>  $assignments  指定(指定されるノードの id → ユーザーの id の並び。操作するノードが指定するノードのときだけ)
      * @param  int|null  $principalUserId  処理担当者(代理元。null = 自分として = 設計/ワークフロー/案件の運用/案件の操作/README.md の 4.3 節)
+     * @param  CaseContact|null  $contact  連絡(規則 = {@see ContactValidator}。誤りは 422 contact.user_ids・contact.message)
      *
      * @throws ModelNotFoundException<WorkflowCase> 案件が無い・閲覧できないとき
      * @throws ValidationException 改訂番号・ノード・表・申請者承認防止・展開(case)、コメント(comment)、指定(assignments)の誤り、
@@ -43,8 +46,11 @@ class ApproveCase
         ?string $comment,
         array $assignments = [],
         ?int $principalUserId = null,
+        ?CaseContact $contact = null,
     ): CaseOperationResult {
-        return DB::transaction(function () use ($context, $caseId, $revision, $nodeId, $comment, $assignments, $principalUserId) {
+        return DB::transaction(function () use (
+            $context, $caseId, $revision, $nodeId, $comment, $assignments, $principalUserId, $contact,
+        ) {
             $permit = $this->guard->lockAndPermit(
                 WorkflowOperation::Approve,
                 $context,
@@ -56,10 +62,15 @@ class ApproveCase
             $actor = CaseActor::forProcessor($permit->processorUserId(), $context);
             $this->guard->rejectApplicant($permit, $actor);
             $comment = $this->inputRules->comment($comment);
+            $contact = $this->contactValidator->validated($contact, $context);
             $assignments = $this->assignmentRules->validated($permit->case(), $nodeId, $assignments);
             $plan = $this->planner->plan(CasePlanRequest::by($actor, $context, $permit->case(), $nodeId, WorkflowAction::Approve, $assignments));
 
-            return $this->writer->writePlan($plan, $actor, $comment, assignments: $assignments);
+            $result = $this->writer->writePlan($plan, $actor, $comment, assignments: $assignments);
+
+            $this->notices->execute($result, $contact, $context->date);
+
+            return $result;
         });
     }
 }
