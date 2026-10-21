@@ -134,7 +134,8 @@ final class RecordsSchema
 
     /**
      * 表を作った後のマイグレーションで足した列(表の末尾に付く。書き方は COLUMNS と同じ。データモデル/表.md 2.1、制約の分担と検査.md 5 節。
-     * is_attachment_enabled = 設計/業務データの入れ物/レコードの共通機能/データモデル/表.md の 2.8 節)。
+     * is_attachment_enabled = 設計/業務データの入れ物/レコードの共通機能/データモデル/表.md の 2.8 節、
+     * is_builtin = 設計/業務ツール/共通データ.md の「入れ物の拡張」)。
      *
      * @var array<string, array<string, string>>
      */
@@ -143,10 +144,15 @@ final class RecordsSchema
             'icon' => 'character varying(100)',
             'row_access_scope' => "character varying(20) not null default 'all'::character varying",
             'is_attachment_enabled' => 'boolean not null default true',
+            'is_builtin' => self::FLAG,
         ],
         'record_fields' => [
             'is_multiple' => self::FLAG,
             'grants_row_access' => self::FLAG,
+            'is_builtin' => self::FLAG,
+        ],
+        'record_field_options' => [
+            'is_builtin' => self::FLAG,
         ],
         'record_references' => [
             'sort_key' => self::SORT_KEY,

@@ -80,7 +80,7 @@ test('「管理」の「業務モジュール」で一覧が出て、業務モ�
 
     await expect(page).toHaveURL('/records/admin/modules');
     const list = page.getByRole('region', { name: '業務モジュールの一覧' });
-    await expect(list.getByRole('row')).toHaveCount(4);
+    await expect(list.getByRole('row')).toHaveCount(5);
     // 列は名前・コード(と読み上げ用の業務の一覧)だけで、項目の数・レコードの数は出さない
     await expect(list.getByRole('columnheader')).toHaveText([
         '名前',
@@ -794,15 +794,15 @@ test('分類を 2 つにして取っ手を Space → 上矢印 → Space で動�
     await expect(rows.nth(1)).toContainText('営業');
 });
 
-test('「分類なし」の「備品台帳」の取っ手を Space → 上矢印 → Space で動かすと、サイドバーの「業務」の直下で「プロジェクト」の前に出る', async ({
+test('「分類なし」の「備品台帳」の取っ手を Space → 上矢印 → Space で動かすと、サイドバーの「業務」の直下で「会議」の前に出る', async ({
     page,
 }) => {
     await openAsAdministrator(page, '/records/admin/categories');
     const uncategorized = page
         .getByRole('list', { name: '分類なしの業務モジュール', exact: true })
         .getByRole('listitem');
-    await expect(uncategorized.nth(0)).toContainText('プロジェクト');
-    await expect(uncategorized.nth(1)).toContainText('備品台帳');
+    await expect(uncategorized.nth(1)).toContainText('会議');
+    await expect(uncategorized.nth(2)).toContainText('備品台帳');
 
     await moveByKeyboard(
         page,
@@ -811,16 +811,16 @@ test('「分類なし」の「備品台帳」の取っ手を Space → 上矢印
             exact: true,
         }),
         'ArrowUp',
-        '備品台帳をプロジェクトの位置へ移動しました',
+        '備品台帳を会議の位置へ移動しました',
         '/records/admin/modules/reorder',
     );
 
-    await expect(uncategorized.nth(0)).toContainText('備品台帳');
+    await expect(uncategorized.nth(1)).toContainText('備品台帳');
     await expect(
         navigationGroup(page, '業務')
             .getByRole('link')
-            .filter({ hasText: /^(備品台帳|プロジェクト)$/ }),
-    ).toHaveText(['備品台帳', 'プロジェクト']);
+            .filter({ hasText: /^(備品台帳|会議)$/ }),
+    ).toHaveText(['備品台帳', '会議']);
 });
 
 test('「営業」を選んで削除の Dialog で消すと、件数の文が出て、「課題」が「業務」の直下の末尾に戻る', async ({
@@ -858,7 +858,7 @@ test('「営業」を選んで削除の Dialog で消すと、件数の文が出
     await expect(work.getByRole('link').last()).toHaveAccessibleName('課題');
 });
 
-// 以下の 2 筋は削除の筋の後の状態(分類は「総務」だけで 0 件、「分類なし」の表示中は 備品台帳・プロジェクト・課題)から始め、最後に分類を消して
+// 以下の 2 筋は削除の筋の後の状態(分類は「総務」だけで 0 件、「分類なし」の表示中は プロジェクト・備品台帳・会議・課題)から始め、最後に分類を消して
 // すべての業務モジュールを「業務」の直下に戻す(後の records.spec.ts は直下に「プロジェクト」「課題」のリンクがあることを見る)。
 
 /**
@@ -1056,8 +1056,9 @@ test('「総務」を選んで「業務モジュールの追加」の Dialog で
         exact: true,
     });
     await expect(list.locator('label')).toHaveText([
-        '備品台帳',
         'プロジェクト',
+        '備品台帳',
+        '会議',
         '課題',
     ]);
     for (const name of ['備品台帳', 'プロジェクト', '課題']) {
@@ -1083,13 +1084,8 @@ test('「総務」を選んで「業務モジュールの追加」の Dialog で
     await expect(dialog).toBeHidden();
     await expect(modulesIn(page, '総務')).toHaveText(['プロジェクト', '課題']);
     await expect(
-        page
-            .getByRole('list', {
-                name: '分類なしの業務モジュール',
-                exact: true,
-            })
-            .getByRole('listitem'),
-    ).toHaveText(['備品台帳']);
+        page.getByRole('list', { name: '分類なしの業務モジュール' }),
+    ).toHaveText(/^\s*備品台帳\s*会議\s*$/);
     const work = navigationGroup(page, '業務');
     await expect(
         work
@@ -1125,7 +1121,7 @@ test('取っ手をマウスで別の分類の行へドラッグすると、Ctrl 
 }) => {
     await openAsAdministrator(page, '/records/admin/categories');
 
-    // 「分類なし」の「備品台帳」を「総務」へ = 「総務」の末尾に入り、「分類なし」に表示中の行が無くなる
+    // 「分類なし」の「備品台帳」を「総務」へ = 「総務」の末尾に入り、「分類なし」に表示中の行は初期データの組み込みの会議だけになる
     await dragToCategory(
         page,
         page.getByRole('button', {
@@ -1141,10 +1137,8 @@ test('取っ手をマウスで別の分類の行へドラッグすると、Ctrl 
         '備品台帳',
     ]);
     await expect(
-        page.getByText('分類なしの業務モジュールはありません', {
-            exact: true,
-        }),
-    ).toBeVisible();
+        page.getByRole('list', { name: '分類なしの業務モジュール' }),
+    ).toHaveText(/^\s*会議\s*$/);
 
     // Ctrl を押しながら「総務」の「課題」を「営業」へ = 両方にある
     await createCategory(page, '営業');

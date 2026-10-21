@@ -72,6 +72,15 @@ final class AuthzSubjectGroupPurposeMigrationTest extends TransactionalTestCase
         // 後のマイグレーションの段 3a のワークフローの down は、フロー・案件の行があると止まる(docs の 設計/ワークフロー/ルートの深さ/データモデル/直列化と検査.md 5 節)。
         // 初期データのワークフローの行を TX の中で消してから戻す。
         DB::statement('TRUNCATE workflow_flows, workflow_cases CASCADE');
+        // 後のマイグレーションの項目の検査制約を狭める down は、相対の既定値か 4000 字を超える複数行の最大の文字数の
+        // 項目があると止まる(初期データの組み込みの会議 = docs の 設計/業務ツール/会議/README.md の 1.2)。TX の中で外してから戻す。
+        DB::table('record_fields')->whereRaw("jsonb_typeof(default_value) = 'object'")
+            ->update(['default_value' => null]);
+        DB::table('record_fields')->where('max_length', '>', 4000)->update(['max_length' => null]);
+        // 組み込みの旗の down は、旗の付いた行があると止まる。TX の中で旗を外してから戻す
+        foreach (['record_modules', 'record_fields', 'record_field_options'] as $table) {
+            DB::table($table)->update(['is_builtin' => false]);
+        }
         $steps = DB::table('migrations')->where('migration', '>=', pathinfo(self::MIGRATION, PATHINFO_FILENAME))->count();
 
         $rolledBack = $this->migrator()->rollback([database_path('migrations')], ['step' => $steps]);

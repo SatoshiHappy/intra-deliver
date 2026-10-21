@@ -17,11 +17,9 @@ use Illuminate\Database\Eloquent\Relations\Relation;
 use Illuminate\Validation\ValidationException;
 
 /**
- * 項目を変える(docs の 設計/業務データの入れ物/項目と規則/規則と業務処理/失敗と定義の変更.md 11 節。名前・必須・既定値・最大の文字数・選択肢・一覧と検索の旗・
- * 表示の項目・並び順。コード・型・複数行・複数・参照先・明細のモジュールは変えない)。属性を厳しくしても既存のレコードは書き換えない。
- *
- * 選択肢は配列の全体で、コードで今の選択肢と突き合わせる(名称・並びを変え、無い今の選択肢を消し、新しいものを作る)。消す選択肢を
- * 値に持つレコードか、そのコードを使う規則の条件があれば拒む(4 節。キー options)。共通マスタと業務モジュールの排他の勧告ロック({@see LocksRecordModule})の下で行う。
+ * 項目を変える(docs の 設計/業務データの入れ物/項目と規則/規則と業務処理/失敗と定義の変更.md 11 節)。属性を厳しくしても既存のレコードは書き換えない。
+ * 使われている選択肢と組み込みの選択肢は消せない(項目と規則/README.md 4 節、設計/業務ツール/共通データ.md の「入れ物の拡張」の「組み込みの旗」)。
+ * 業務モジュールの排他の勧告ロック({@see LocksRecordModule})の下で行う。
  */
 class UpdateRecordField
 {
@@ -50,6 +48,13 @@ class UpdateRecordField
             $validated = $this->validator->validateUpdate($module, $field, $input);
             $codes = array_map(fn (array $option) => $option['code'], $validated['options']);
             $removed = array_values(array_diff($field->recordFieldOptions->pluck('code')->all(), $codes));
+
+            $removedBuiltins = $field->recordFieldOptions->filter(fn (RecordFieldOption $option) => $option->is_builtin)
+                ->whereIn('code', $removed);
+
+            if ($removedBuiltins->isNotEmpty()) {
+                throw ValidationException::withMessages(['options' => ['組み込みの選択肢は削除できません']]);
+            }
 
             if ($removed !== [] && $this->optionsInUse($module, $field, $removed)) {
                 throw ValidationException::withMessages(['options' => ['削除する選択肢が、レコードの値か規則の条件で使用されています']]);

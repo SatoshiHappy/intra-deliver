@@ -25,6 +25,9 @@ final class ModuleCategoryControllerTest extends TransactionalTestCase
 {
     use ReadsModuleCategories;
 
+    /** 初期データの組み込みの会議(分類に入れないので「分類なし」に表示中で残る) */
+    private const MEETING = ['code' => 'meeting', 'name' => '会議', 'isVisible' => true];
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -85,7 +88,7 @@ final class ModuleCategoryControllerTest extends TransactionalTestCase
                 ['id' => $first, 'name' => '営業', 'modules' => [['code' => 'project_issue', 'name' => '課題']]],
                 ['id' => $second, 'name' => '総務', 'modules' => [['code' => 'project_issue', 'name' => '課題']]],
             ])
-            ->where('uncategorized', [['code' => 'project', 'name' => 'プロジェクト', 'isVisible' => false]])
+            ->where('uncategorized', [self::MEETING, ['code' => 'project', 'name' => 'プロジェクト', 'isVisible' => false]])
             ->where('textMaxLengths', ['code' => 50, 'name' => 1000, 'description' => 4000])
         );
         // 明細のモジュール(マイルストーン)は出ない。表示中の直下は「業務」の直下の並び、続けて非表示
@@ -93,6 +96,7 @@ final class ModuleCategoryControllerTest extends TransactionalTestCase
         $this->get('/records/admin/categories')->assertInertia(fn (Assert $page) => $page
             ->where('categories.0.modules', [])
             ->where('uncategorized', [
+                self::MEETING,
                 ['code' => 'project_issue', 'name' => '課題', 'isVisible' => true],
                 ['code' => 'project', 'name' => 'プロジェクト', 'isVisible' => false],
             ])
@@ -124,7 +128,7 @@ final class ModuleCategoryControllerTest extends TransactionalTestCase
         // ほかの分類に属さないプロジェクトは「業務」の直下の末尾へ
         $this->get('/records/admin/categories')->assertInertia(fn (Assert $page) => $page
             ->where('categories', [])
-            ->where('uncategorized.1', ['code' => 'project', 'name' => 'プロジェクト', 'isVisible' => true])
+            ->where('uncategorized.2', ['code' => 'project', 'name' => 'プロジェクト', 'isVisible' => true])
         );
     }
 
@@ -151,14 +155,17 @@ final class ModuleCategoryControllerTest extends TransactionalTestCase
         $this->put('/records/admin/modules/project', ['is_visible' => true, 'categories' => []])->assertStatus(303);
         $this->put('/records/admin/modules/project_issue', ['is_visible' => true, 'categories' => []])->assertStatus(303);
         $this->get('/records/admin/categories')->assertOk();
-        $this->put('/records/admin/modules/reorder', ['codes' => ['project_issue', 'project']])
+        $this->put('/records/admin/modules/reorder', ['codes' => ['project_issue', 'project', 'meeting']])
             ->assertStatus(303)->assertRedirect('/records/admin/categories')->assertInertiaFlashMissing('toast');
 
         $this->get('/records/admin/categories')->assertInertia(fn (Assert $page) => $page
             ->where('uncategorized.0.code', 'project_issue')
             ->where('uncategorized.1.code', 'project')
         );
-        $this->assertSame(['global-nav-main-records-project_issue' => 100, 'global-nav-main-records-project' => 110], array_filter(
+        $this->assertSame([
+            'global-nav-main-records-project_issue' => 100, 'global-nav-main-records-project' => 110,
+            'global-nav-main-records-meeting' => 120,
+        ], array_filter(
             $this->children('global-nav-main'),
             fn (string $code) => str_starts_with($code, 'global-nav-main-records-'),
             ARRAY_FILTER_USE_KEY,
@@ -234,7 +241,7 @@ final class ModuleCategoryControllerTest extends TransactionalTestCase
                 ['id' => $first, 'name' => '営業', 'modules' => [['code' => 'project_issue', 'name' => '課題'], ['code' => 'project', 'name' => 'プロジェクト']]],
                 ['id' => $second, 'name' => '総務', 'modules' => [['code' => 'project_issue', 'name' => '課題']]],
             ])
-            ->where('uncategorized', [])
+            ->where('uncategorized', [self::MEETING])
         );
 
         // 外したものは、ほかの分類に属さなければ直下の末尾に、属せばそちらに残る
@@ -242,7 +249,7 @@ final class ModuleCategoryControllerTest extends TransactionalTestCase
         $this->get('/records/admin/categories')->assertInertia(fn (Assert $page) => $page
             ->where('categories.0.modules', [])
             ->where('categories.1.modules', [['code' => 'project_issue', 'name' => '課題']])
-            ->where('uncategorized', [['code' => 'project', 'name' => 'プロジェクト', 'isVisible' => true]])
+            ->where('uncategorized', [self::MEETING, ['code' => 'project', 'name' => 'プロジェクト', 'isVisible' => true]])
         );
     }
 
@@ -281,7 +288,7 @@ final class ModuleCategoryControllerTest extends TransactionalTestCase
                 ['id' => $first, 'name' => '営業', 'modules' => []],
                 ['id' => $second, 'name' => '総務', 'modules' => [['code' => 'project_issue', 'name' => '課題']]],
             ])
-            ->where('uncategorized', [['code' => 'project', 'name' => 'プロジェクト', 'isVisible' => true]])
+            ->where('uncategorized', [self::MEETING, ['code' => 'project', 'name' => 'プロジェクト', 'isVisible' => true]])
         );
     }
 

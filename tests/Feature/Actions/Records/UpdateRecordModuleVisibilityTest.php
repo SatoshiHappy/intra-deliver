@@ -19,7 +19,7 @@ use Tests\Support\TransactionalTestCase;
  * 認可とメニュー/メニューと初期データ.md 5.1・8 節の「業務モジュールを変える業務処理」の非表示の分): is_visible の偽は「業務」の 2 つのアイテム(と表示名)を消し、
  * リソース・ポリシー・レコードは残る。真は無いアイテムを今の名前とアイコンで末尾に作る。変える前の状態とは比べないので、片方だけの状態からも揃う。
  * 戻り値は表示の変化(グローバルナビのアイテムの有無の前後の比較)。アイテムを作る・消す段の失敗はキー is_visible で、全体が巻き戻る。
- * 初期データのプロジェクト(並び 100)と課題(並び 110)を使う。
+ * 初期データのプロジェクト(並び 100)・課題(並び 110)と組み込みの会議(並び 120)を使う。
  */
 final class UpdateRecordModuleVisibilityTest extends TransactionalTestCase
 {
@@ -55,8 +55,8 @@ final class UpdateRecordModuleVisibilityTest extends TransactionalTestCase
             'global-nav-main-records-project' => [['en' => '案件', 'ja' => '案件'], 'truck'],
             'sitemap-main-records-project' => [['en' => '案件', 'ja' => '案件'], 'truck'],
         ], $this->items('project'));
-        // 初期データのアイテムの並びはプロジェクト 100・課題 110。戻したプロジェクトは残った課題の後(最大 + 10)
-        $this->assertSame(['global-nav-main-records-project' => 120, 'sitemap-main-records-project' => 120], array_map(fn (array $row) => $row['sort_number'], $this->itemRows('project')));
+        // 初期データのアイテムの並びはプロジェクト 100・課題 110・会議 120。戻したプロジェクトは残った会議の後(最大 + 10)
+        $this->assertSame(['global-nav-main-records-project' => 130, 'sitemap-main-records-project' => 130], array_map(fn (array $row) => $row['sort_number'], $this->itemRows('project')));
     }
 
     public function test_showing_and_renaming_in_one_update_creates_the_items_with_the_new_name(): void

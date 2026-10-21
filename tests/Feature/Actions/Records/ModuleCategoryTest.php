@@ -24,7 +24,7 @@ use Tests\Support\TransactionalTestCase;
  * モジュール分類の持ち方・並び・名前・並び替え(docs の 設計/業務データの入れ物/モジュール分類/README.md 1 節・2 節、業務処理.md 3.2・3.3・3.5・3.6、
  * 画面と検査.md 6 節の「持ち方」「並び」「名前」「権限の組み合わせ」の業務処理の分): 作ると 2 木のルートの直下に分類のフォルダができ、10 + 位置で
  * 初期のアイテム(0〜2)と直下の業務モジュール(100〜)の間に並ぶ。91 個目・名前の誤り・順列でない ids と codes は 422 で何も変わらない。
- * 無い分類の名前の変更・中の並べ替えは ModelNotFoundException で何も変わらない。初期データのプロジェクト(直下 100)と課題(直下 110)を使う。
+ * 無い分類の名前の変更・中の並べ替えは ModelNotFoundException で何も変わらない。初期データのプロジェクト(直下 100)・課題(直下 110)と組み込みの会議(直下 120)を使う。
  */
 final class ModuleCategoryTest extends TransactionalTestCase
 {
@@ -55,7 +55,7 @@ final class ModuleCategoryTest extends TransactionalTestCase
             $this->assertSame([
                 "{$group->value}-menu-home", "{$group->value}-master-organization-chart", "{$group->value}-menu-sitemap",
                 "{$group->value}-cat-{$first}", "{$group->value}-cat-{$second}",
-                "{$group->value}-records-project", "{$group->value}-records-project_issue",
+                "{$group->value}-records-project", "{$group->value}-records-project_issue", "{$group->value}-records-meeting",
             ], array_keys($this->children($group->value)));
         }
 
@@ -187,13 +187,14 @@ final class ModuleCategoryTest extends TransactionalTestCase
     {
         $categoryId = $this->createCategory('営業');
 
-        app(ReorderRecordModuleItems::class)->execute(null, ['project_issue', 'project']);
+        app(ReorderRecordModuleItems::class)->execute(null, ['project_issue', 'meeting', 'project']);
 
         foreach (WorkMenuGroup::cases() as $group) {
             $this->assertSame([
                 "{$group->value}-menu-home" => 0, "{$group->value}-master-organization-chart" => 1, "{$group->value}-menu-sitemap" => 2,
                 "{$group->value}-cat-{$categoryId}" => 10,
-                "{$group->value}-records-project_issue" => 100, "{$group->value}-records-project" => 110,
+                "{$group->value}-records-project_issue" => 100, "{$group->value}-records-meeting" => 110,
+                "{$group->value}-records-project" => 120,
             ], $this->children($group->value));
         }
     }
@@ -202,8 +203,8 @@ final class ModuleCategoryTest extends TransactionalTestCase
      * @param  list<string>  $codes
      */
     #[TestWith([['project']])]
-    #[TestWith([['project_issue', 'project', 'project']])]
-    #[TestWith([['project_issue', 'project', 'project_milestone']])]
+    #[TestWith([['project_issue', 'project', 'meeting', 'project']])]
+    #[TestWith([['project_issue', 'project', 'meeting', 'project_milestone']])]
     public function test_direct_codes_that_are_not_a_permutation_are_rejected_and_nothing_changes(array $codes): void
     {
         $before = $this->children('global-nav-main');
@@ -218,11 +219,16 @@ final class ModuleCategoryTest extends TransactionalTestCase
     {
         $this->update('project', ['is_visible' => false]);
 
-        $errors = $this->validationErrors(fn () => app(ReorderRecordModuleItems::class)->execute(null, ['project_issue', 'project']));
+        $codes = ['project_issue', 'project', 'meeting'];
+
+        $errors = $this->validationErrors(fn () => app(ReorderRecordModuleItems::class)->execute(null, $codes));
 
         $this->assertSame(['codes' => '業務モジュールの並びが今の並びと一致しません。画面を再読み込みしてから再度操作してください'], $errors);
-        app(ReorderRecordModuleItems::class)->execute(null, ['project_issue']);
-        $this->assertSame(['global-nav-main-records-project_issue' => 100], array_filter($this->children('global-nav-main'), fn (int $sortNumber) => $sortNumber >= 100));
+        app(ReorderRecordModuleItems::class)->execute(null, ['meeting', 'project_issue']);
+        $this->assertSame(
+            ['global-nav-main-records-meeting' => 100, 'global-nav-main-records-project_issue' => 110],
+            array_filter($this->children('global-nav-main'), fn (int $sortNumber) => $sortNumber >= 100),
+        );
     }
 
     public function test_a_missing_category_is_not_found_for_rename_delete_and_reorder_and_nothing_changes(): void

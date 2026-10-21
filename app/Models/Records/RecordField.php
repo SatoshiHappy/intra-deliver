@@ -13,7 +13,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 /**
  * 項目(業務モジュールの部品)。表 record_fields(docs の 設計/業務データの入れ物/データモデル/表.md 2.2、型と属性は 項目と規則/README.md 1 節)。
  * 既定値 default_value は値の JSON の形(設計/業務データの入れ物/データモデル/値の形と直列化.md 3 節)の 1 つの値で、読むと文字列・数・真偽になる
- * (日付・日時の相対の既定値は {@see RelativeDefault}。NULL = 既定値なし)。
+ * (日付・日時の相対の既定値は {@see RelativeDefault}。NULL = 既定値なし)。組み込みの旗 is_builtin = 設計/業務ツール/共通データ.md の「入れ物の拡張」
+ * (入力から立てないので fillable に入れない)。
  */
 #[Fillable(['record_module_id', 'code', 'name', 'type', 'is_required', 'is_multiline', 'max_length', 'default_value', 'referenced_record_module_id', 'child_record_module_id', 'is_listed', 'is_searchable', 'is_title', 'is_multiple', 'grants_row_access', 'sort_key'])]
 class RecordField extends Model
@@ -38,6 +39,7 @@ class RecordField extends Model
             'is_multiple' => 'boolean',
             'grants_row_access' => 'boolean',
             'sort_key' => 'integer',
+            'is_builtin' => 'boolean',
         ];
     }
 

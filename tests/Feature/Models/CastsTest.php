@@ -15,6 +15,7 @@ use App\Models\Master\UserTerm;
 use App\Models\Menu\Menu;
 use App\Models\Menu\MenuGroupCategory;
 use App\Models\Records\RecordField;
+use App\Models\Records\RecordFieldOption;
 use App\Models\Records\RecordModule;
 use Carbon\CarbonInterface;
 use Illuminate\Database\Eloquent\Factories\Factory;
@@ -62,6 +63,9 @@ final class CastsTest extends TransactionalTestCase
             'RecordField.is_listed' => [RecordField::class, 'is_listed'],
             'RecordField.is_searchable' => [RecordField::class, 'is_searchable'],
             'RecordField.is_title' => [RecordField::class, 'is_title'],
+            'RecordModule.is_builtin' => [RecordModule::class, 'is_builtin'],
+            'RecordField.is_builtin' => [RecordField::class, 'is_builtin'],
+            'RecordFieldOption.is_builtin' => [RecordFieldOption::class, 'is_builtin'],
         ];
     }
 

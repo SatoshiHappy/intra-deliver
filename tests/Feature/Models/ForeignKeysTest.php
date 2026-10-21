@@ -9,6 +9,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use stdClass;
 use Tests\Support\AssertsConstraintViolations;
 use Tests\Support\CommonMasterSchema;
+use Tests\Support\MeetingSchema;
 use Tests\Support\MenuSchema;
 use Tests\Support\NoticeSchema;
 use Tests\Support\RecordsCommonSchema;
@@ -23,11 +24,12 @@ use Tests\Support\WorkflowSchema;
  * 外部キーの削除の動作とリレーション(docs の 設計/共通マスタ/共通の規則.md 7 節。自分の部品は CASCADE、ほかの事柄への参照は RESTRICT。
  * メニューの表も同じ = 設計/メニュー/表.md。業務データの入れ物の表も同じ = 設計/業務データの入れ物/データモデル/表.md 2 節・制約の分担と検査.md 7 節。
  * ワークフローの表も同じ = 設計/ワークフロー/データモデル/表.md 2 節、直列化と検査.md 6 節。通知の表も同じ = 設計/ワークフロー/案件の運用/通知.md の 2 節。
- * レコードの共通機能の表とアップロードの台帳も同じ = 設計/業務データの入れ物/レコードの共通機能/データモデル/表.md の 2.9 節)。
+ * レコードの共通機能の表とアップロードの台帳も同じ = 設計/業務データの入れ物/レコードの共通機能/データモデル/表.md の 2.9 節。
+ * 会議の表も同じ = 設計/業務ツール/共通データ.md の「専用の表」)。
  *
  * 外部キーの行はモジュールごとの表の形(tests/Support/ の CommonMasterSchema・MenuSchema・RecordsSchema・WorkflowSchema・
- * WorkflowCaseHandlingSchema・NoticeSchema・RecordsCommonSchema・UploadSchema・WorkflowAttachmentSchema の FOREIGN_KEYS)に置き、
- * ここで並べる(一時保存の添付の表 = 設計/ワークフロー/申請の周辺/データモデル.md の 3.3 節)。
+ * WorkflowCaseHandlingSchema・NoticeSchema・RecordsCommonSchema・UploadSchema・WorkflowAttachmentSchema・
+ * MeetingSchema の FOREIGN_KEYS)に置き、ここで並べる(一時保存の添付の表 = 設計/ワークフロー/申請の周辺/データモデル.md の 3.3 節)。
  * 1 行 = 1 つの外部キー: 参照する側のモデル、factory の状態、列、参照先の表と列、削除の動作、
  * 参照する側のリレーション、参照先の側のリレーション(参照先のモジュールから参照する側のモジュールへ依存できないとき・同じ向きのリレーションが
  * 別の行にあるときは null)。削除の動作は、参照先の行を参照先の列のすべてで選んで消して確かめる(複合外部キーの参照先の列が id で終わらないため。
@@ -48,6 +50,7 @@ final class ForeignKeysTest extends TransactionalTestCase
         ...NoticeSchema::FOREIGN_KEYS,
         ...UploadSchema::FOREIGN_KEYS,
         ...WorkflowAttachmentSchema::FOREIGN_KEYS,
+        ...MeetingSchema::FOREIGN_KEYS,
     ];
 
     /**
@@ -235,7 +238,7 @@ final class ForeignKeysTest extends TransactionalTestCase
     }
 
     /**
-     * 外部キーを数える表(共通マスタ・メニュー・業務データの入れ物・ワークフロー・通知・アップロードの台帳)の列の定義。
+     * 外部キーを数える表(共通マスタ・メニュー・業務データの入れ物・ワークフロー・通知・アップロードの台帳・会議)の列の定義。
      *
      * @return array<string, array<string, string>>
      */
@@ -243,7 +246,7 @@ final class ForeignKeysTest extends TransactionalTestCase
     {
         return CommonMasterSchema::COLUMNS + MenuSchema::COLUMNS + RecordsSchema::COLUMNS + RecordsCommonSchema::COLUMNS
             + WorkflowSchema::COLUMNS + WorkflowCaseHandlingSchema::COLUMNS + NoticeSchema::COLUMNS + UploadSchema::COLUMNS
-            + WorkflowAttachmentSchema::COLUMNS;
+            + WorkflowAttachmentSchema::COLUMNS + MeetingSchema::COLUMNS;
     }
 
     /**

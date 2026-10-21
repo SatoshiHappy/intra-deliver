@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Seeders;
 
+use App\Enums\Builtin\Meeting;
 use App\Enums\Records\RecordFieldType;
 use App\Models\Authz\AuthzPolicy;
 use App\Models\Menu\Menu;
@@ -19,7 +20,7 @@ use Tests\Support\TransactionalTestCase;
  * 業務データの入れ物の初期データ(docs の 設計/業務データの入れ物/認可とメニュー/メニューと初期データ.md 7 節・8 節の「初期データ」の件数): 業務モジュール 3 つ(明細 1)、
  * 項目 21・規則 2、レコード(プロジェクト 3・マイルストーン 7・課題 5)。型は 11 種すべてが 1 つ以上ある。
  * レコードの件数・参照・作成者は、ワークフローの初期データの案件の見本が申請で作る分(プロジェクト 5・マイルストーン 3・課題 3 = 設計/ワークフロー/初期データ.md 4 節の見本)を含む。
- * ポリシーの件数(37 件 = 業務のルート 8 本 × 2・セット 5(全件の参照を含む)・業務モジュール 2 つ × 8)は AuthorizationSeedersTest。
+ * ポリシーの件数は AuthorizationSeedersTest。定義は組み込みでないもの(この seeder が作るもの)に絞って確かめる(組み込みの会議は BuiltinSeederTest)。
  */
 final class RecordsSeederTest extends TransactionalTestCase
 {
@@ -31,26 +32,26 @@ final class RecordsSeederTest extends TransactionalTestCase
 
     public function test_seeds_the_modules_fields_and_rules_of_the_design(): void
     {
-        $modules = RecordModule::query()->with('parentRecordModule')->orderBy('id')->get()
+        $modules = RecordModule::query()->with('parentRecordModule')->where('is_builtin', false)->orderBy('id')->get()
             ->map(fn (RecordModule $module) => [$module->code, $module->name, $module->parentRecordModule?->code])->all();
         $fieldCounts = RecordField::query()->join('record_modules', 'record_modules.id', '=', 'record_fields.record_module_id')
-            ->groupBy('record_modules.code')->selectRaw('record_modules.code, count(*) as fields')->pluck('fields', 'code')->all();
+            ->where('record_fields.is_builtin', false)->groupBy('record_modules.code')->selectRaw('record_modules.code, count(*) as fields')->pluck('fields', 'code')->all();
 
         $this->assertSame([['project', 'プロジェクト', null], ['project_issue', '課題', null], ['project_milestone', 'マイルストーン', 'project']], $modules);
         $this->assertEquals(['project' => 9, 'project_milestone' => 4, 'project_issue' => 8], $fieldCounts);
         $this->assertSame(2, RecordRule::query()->count());
         $this->assertEqualsCanonicalizing(
             array_map(fn (RecordFieldType $type) => $type->value, RecordFieldType::cases()),
-            RecordField::query()->distinct()->pluck('type')->map(fn (RecordFieldType $type) => $type->value)->all(),
+            RecordField::query()->where('is_builtin', false)->distinct()->pluck('type')->map(fn (RecordFieldType $type) => $type->value)->all(),
         );
     }
 
     public function test_no_field_name_is_duplicated_within_a_module_and_its_details_modules(): void
     {
-        $modules = RecordModule::query()->get();
+        $modules = RecordModule::query()->where('is_builtin', false)->get();
         $names = [];
 
-        foreach (RecordField::query()->get(['record_module_id', 'name']) as $field) {
+        foreach (RecordField::query()->where('is_builtin', false)->get(['record_module_id', 'name']) as $field) {
             $module = $modules->firstOrFail('id', $field->record_module_id);
             $names[$module->parent_record_module_id ?? $module->id][] = $field->name;
         }
@@ -64,13 +65,16 @@ final class RecordsSeederTest extends TransactionalTestCase
 
     public function test_makes_every_field_except_details_a_search_condition(): void
     {
-        $this->assertSame([], RecordField::query()->where('type', '<>', RecordFieldType::Details)->where('is_searchable', false)->pluck('code')->all());
-        $this->assertSame(0, RecordField::query()->where('type', RecordFieldType::Details)->where('is_searchable', true)->count());
+        $fields = fn () => RecordField::query()->where('is_builtin', false);
+
+        $this->assertSame([], $fields()->where('type', '<>', RecordFieldType::Details)->where('is_searchable', false)->pluck('code')->all());
+        $this->assertSame(0, $fields()->where('type', RecordFieldType::Details)->where('is_searchable', true)->count());
     }
 
     public function test_gives_the_work_menu_items_the_icon_of_each_module(): void
     {
-        $icons = Menu::query()->where('code', 'like', '%-main-records-%')->orderBy('code')->pluck('icon_32', 'code')->all();
+        $icons = Menu::query()->where('code', 'like', '%-main-records-%')->where('code', 'not like', '%-main-records-'.Meeting::CODE)
+            ->orderBy('code')->pluck('icon_32', 'code')->all();
 
         $this->assertSame([
             'global-nav-main-records-project' => 'folder-kanban',

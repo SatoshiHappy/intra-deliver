@@ -18,7 +18,7 @@ use Tests\Support\TransactionalTestCase;
  * モジュール分類を消す(docs の 設計/業務データの入れ物/モジュール分類/業務処理.md 3.4、画面と検査.md 6 節の「消す」): ほかの分類に属さない業務モジュールは
  * 「業務」の直下の末尾に(2 木。中の並びの順に)、ほかの分類にも属すものはそちらに残り直下にできない。非表示の業務モジュールのはぐれたアイテムは消えるだけ。
  * 2 つのフォルダが消え、残る分類が付け直される。下位の業務処理の拒否はキー category で、全体が巻き戻る。
- * 初期データのプロジェクト(直下 100)と課題(直下 110)を使う。
+ * 初期データのプロジェクト(直下 100)・課題(直下 110)と組み込みの会議(直下 120)を使う。
  */
 final class DeleteModuleCategoryTest extends TransactionalTestCase
 {
@@ -43,7 +43,8 @@ final class DeleteModuleCategoryTest extends TransactionalTestCase
             $this->assertNull(Menu::query()->where('code', $group->categoryFolderCode($deleted))->first());
             $this->assertSame([
                 "{$group->value}-cat-{$kept}" => 10, "{$group->value}-cat-{$last}" => 11,
-                "{$group->value}-records-example_extra" => 100, "{$group->value}-records-project" => 110,
+                "{$group->value}-records-meeting" => 120,
+                "{$group->value}-records-example_extra" => 130, "{$group->value}-records-project" => 140,
             ], array_filter($this->children($group->value), fn (int $sortNumber) => $sortNumber >= 10));
             $this->assertSame([$group->categoryItemCode($kept, 'project_issue') => 100], $this->children($group->categoryFolderCode($kept)));
         }

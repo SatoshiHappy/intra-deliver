@@ -146,7 +146,7 @@ final class RecordModuleEditControllerTest extends TransactionalTestCase
             ->assertStatus(303)->assertRedirect('/records/admin/modules/project')
             ->assertInertiaFlash('toast', ['type' => 'success', 'message' => '業務モジュールを更新し、サイドバーで非表示にしました']);
         $this->assertSame(0, Menu::query()->where('code', 'like', '%-records-project')->count());
-        $this->get('/records/admin/modules')->assertInertia(fn (Assert $page) => $page->where('modules.0.code', 'project')->where('modules.0.isVisible', false));
+        $this->get('/records/admin/modules')->assertInertia(fn (Assert $page) => $page->where('modules.1.code', 'project')->where('modules.1.isVisible', false));
         $this->get('/records/admin/modules/project/edit')->assertInertia(fn (Assert $page) => $page->where('module.isVisible', false));
 
         $this->put('/records/admin/modules/project', ['name' => 'プロジェクト', 'is_visible' => false])

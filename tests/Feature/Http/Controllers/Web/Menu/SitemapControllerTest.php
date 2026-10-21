@@ -29,6 +29,10 @@ final class SitemapControllerTest extends TransactionalTestCase
                     ['code' => 'sitemap-main-menu-sitemap', 'type' => 'item', 'name' => 'サイトマップ', 'icon' => 'map', 'href' => '/menu/sitemap', 'isExternal' => false],
                     ['code' => 'sitemap-main-records-project', 'type' => 'item', 'name' => 'プロジェクト', 'icon' => 'folder-kanban', 'href' => '/records/data/project', 'isExternal' => false],
                     ['code' => 'sitemap-main-records-project_issue', 'type' => 'item', 'name' => '課題', 'icon' => 'list-todo', 'href' => '/records/data/project_issue', 'isExternal' => false],
+                    [
+                        'code' => 'sitemap-main-records-meeting', 'type' => 'item', 'name' => '会議', 'icon' => 'users',
+                        'href' => '/records/data/meeting', 'isExternal' => false,
+                    ],
                 ],
             ], [
                 'code' => 'sitemap-workflow',

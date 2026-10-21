@@ -42,6 +42,7 @@ final class RecordModuleIconMigrationTest extends TransactionalTestCase
             'icon_null' => 'table',
             'icon_outside' => 'table',
             'icon_sitemap_only' => 'table',
+            'meeting' => 'users',
             'project' => 'folder-kanban',
             'project_issue' => 'list-todo',
             'project_milestone' => null,

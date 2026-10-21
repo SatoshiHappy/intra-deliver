@@ -19,7 +19,7 @@ use Tests\Support\TransactionalTestCase;
  * 「追加の Dialog の口の巻き戻し」): codes の業務モジュールが 2 木のその分類の末尾に codes の順で入り、ほかの分類に属さないものは直下から消える。外したものは
  * ほかの分類に属さなければ直下の末尾に(分類の中の並びの順)、属せばそちらに残る。今と同じ集合なら何も変わらない。片方の木だけの状態から 1 回で揃う。
  * codes の誤りはキー codes、下位の業務処理の拒否はキー category で、何も変わらない。サイトマップ側のフォルダの作り直しは
- * {@see ModuleCategoryMissingSitemapFolderTest} が見る。初期データのプロジェクト(直下 100)と課題(直下 110)を使う。
+ * {@see ModuleCategoryMissingSitemapFolderTest} が見る。初期データのプロジェクト(直下 100)・課題(直下 110)と組み込みの会議(直下 120)を使う。
  */
 final class SetModuleCategoryModulesTest extends TransactionalTestCase
 {
@@ -44,7 +44,7 @@ final class SetModuleCategoryModulesTest extends TransactionalTestCase
                 $group->categoryItemCode($categoryId, 'project') => 120,
             ], $this->children($group->categoryFolderCode($categoryId)));
             $this->assertSame([$group->categoryItemCode($other, 'project_issue') => 100], $this->children($group->categoryFolderCode($other)));
-            $this->assertSame([], array_filter($this->children($group->value), fn (int $sortNumber) => $sortNumber >= 100));
+            $this->assertSame(["{$group->value}-records-meeting" => 120], array_filter($this->children($group->value), fn (int $sortNumber) => $sortNumber >= 100));
         }
     }
 
@@ -63,7 +63,8 @@ final class SetModuleCategoryModulesTest extends TransactionalTestCase
             $this->assertSame([$group->categoryItemCode($categoryId, 'example_extra') => 120], $this->children($group->categoryFolderCode($categoryId)));
             $this->assertSame([$group->categoryItemCode($other, 'project_issue') => 100], $this->children($group->categoryFolderCode($other)));
             $this->assertSame([
-                "{$group->value}-records-project" => 100,
+                "{$group->value}-records-meeting" => 120,
+                "{$group->value}-records-project" => 130,
             ], array_filter($this->children($group->value), fn (int $sortNumber) => $sortNumber >= 100));
         }
 
@@ -72,8 +73,9 @@ final class SetModuleCategoryModulesTest extends TransactionalTestCase
         foreach (WorkMenuGroup::cases() as $group) {
             $this->assertSame([], $this->children($group->categoryFolderCode($categoryId)));
             $this->assertSame([
-                "{$group->value}-records-project" => 100,
-                "{$group->value}-records-example_extra" => 110,
+                "{$group->value}-records-meeting" => 120,
+                "{$group->value}-records-project" => 130,
+                "{$group->value}-records-example_extra" => 140,
             ], array_filter($this->children($group->value), fn (int $sortNumber) => $sortNumber >= 100));
         }
     }

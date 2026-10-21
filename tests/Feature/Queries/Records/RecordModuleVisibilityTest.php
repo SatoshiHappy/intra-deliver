@@ -40,6 +40,7 @@ final class RecordModuleVisibilityTest extends TransactionalTestCase
         $this->assertSame([], $props['categories']);
         $this->assertSame([
             ['code' => 'project_issue', 'name' => '課題', 'isVisible' => true],
+            ['code' => 'meeting', 'name' => '会議', 'isVisible' => true],
             ['code' => 'project', 'name' => 'プロジェクト', 'isVisible' => false],
         ], $props['uncategorized']);
     }
@@ -110,7 +111,7 @@ final class RecordModuleVisibilityTest extends TransactionalTestCase
         app(UpdateRecordModule::class)->execute('project_issue', ['is_visible' => true, 'categories' => [$categoryId]]);
         RecordModule::factory()->create(['code' => 'hidden_one', 'name' => '非表示']);
 
-        $codes = ['project', 'project_issue', 'hidden_one'];
+        $codes = ['project', 'project_issue', 'meeting', 'hidden_one'];
         $this->assertEqualsCanonicalizing($codes, RecordModule::query()->whereNull('parent_record_module_id')->pluck('code')->all());
         $visible = app(RecordModuleVisibility::class)->visibleCodes($codes);
         $props = app(ModuleCategoryPageQuery::class)->props();
@@ -120,7 +121,7 @@ final class RecordModuleVisibilityTest extends TransactionalTestCase
         ];
         $hidden = array_column(array_filter($props['uncategorized'], fn (array $module) => ! $module['isVisible']), 'code');
 
-        $this->assertEqualsCanonicalizing(['project', 'project_issue'], $visible);
+        $this->assertEqualsCanonicalizing(['project', 'project_issue', 'meeting'], $visible);
         foreach ($codes as $code) {
             $this->assertSame(in_array($code, $visible, true) ? [true, false] : [false, true], [in_array($code, $shown, true), in_array($code, $hidden, true)], $code);
         }

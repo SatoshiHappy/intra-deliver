@@ -33,10 +33,13 @@ final class RecordModuleMenuItemsTest extends TransactionalTestCase
         $response = $this->get(route('menu.sitemap'));
 
         $this->assertSame(
-            ['global-nav-main-records-project_issue'],
+            ['global-nav-main-records-project_issue', 'global-nav-main-records-meeting'],
             $this->recordItemCodes($response, 'globalNavigation'),
         );
-        $this->assertSame(['sitemap-main-records-project_issue'], $this->recordItemCodes($response, 'groups'));
+        $this->assertSame(
+            ['sitemap-main-records-project_issue', 'sitemap-main-records-meeting'],
+            $this->recordItemCodes($response, 'groups'),
+        );
     }
 
     /**
@@ -48,9 +51,12 @@ final class RecordModuleMenuItemsTest extends TransactionalTestCase
         $this->deny('project_issue', RecordModuleAction::Read);
         $after = $this->get(route('menu.sitemap'));
 
-        $both = ['sitemap-main-records-project', 'sitemap-main-records-project_issue'];
-        $this->assertSame($both, $this->recordItemCodes($before, 'groups'));
-        $this->assertSame(['sitemap-main-records-project'], $this->recordItemCodes($after, 'groups'));
+        $all = ['sitemap-main-records-project', 'sitemap-main-records-project_issue', 'sitemap-main-records-meeting'];
+        $this->assertSame($all, $this->recordItemCodes($before, 'groups'));
+        $this->assertSame(
+            ['sitemap-main-records-project', 'sitemap-main-records-meeting'],
+            $this->recordItemCodes($after, 'groups'),
+        );
     }
 
     public function test_hides_the_quick_action_of_a_module_whose_read_is_denied_and_shows_it_while_permitted(): void
@@ -81,7 +87,7 @@ final class RecordModuleMenuItemsTest extends TransactionalTestCase
 
         $response->assertOk();
         $this->assertSame(
-            ['global-nav-main-records-project_issue'],
+            ['global-nav-main-records-project_issue', 'global-nav-main-records-meeting'],
             $this->recordItemCodes($response, 'globalNavigation'),
         );
         $this->assertSame('project_issue', $response->inertiaProps('module.code'));

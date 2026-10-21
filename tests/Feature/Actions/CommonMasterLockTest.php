@@ -191,7 +191,7 @@ final class CommonMasterLockTest extends TransactionalTestCase
             ModuleCategoryFolders::class => [fn (self $test) => app(ModuleCategoryFolders::class)->write($test->moduleCategory(), false, fn () => null)],
             ReorderModuleCategories::class => [fn (self $test) => app(ReorderModuleCategories::class)->execute([$test->moduleCategory()])],
             ReorderRecordFields::class => [fn (self $test) => app(ReorderRecordFields::class)->execute('project', array_reverse($test->projectFieldCodes()))],
-            ReorderRecordModuleItems::class => [fn (self $test) => app(ReorderRecordModuleItems::class)->execute(null, ['project', 'project_issue'])],
+            ReorderRecordModuleItems::class => [fn (self $test) => app(ReorderRecordModuleItems::class)->execute(null, ['project', 'project_issue', 'meeting'])],
             SyncRecordModuleItems::class => [fn (self $test) => app(SyncRecordModuleItems::class)->execute(RecordModule::factory()->create(), [], ['ja' => '備品'])],
             UpdateRecordField::class => [fn (self $test) => app(UpdateRecordField::class)->execute('project', 'summary', ['name' => '要旨'])],
             UpdateRecordModule::class => [fn (self $test) => app(UpdateRecordModule::class)->execute('project', ['description' => '説明'])],

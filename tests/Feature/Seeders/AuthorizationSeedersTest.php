@@ -50,7 +50,7 @@ final class AuthorizationSeedersTest extends TransactionalTestCase
         });
 
         $this->assertSame([], $invalid->pluck('code')->all());
-        $this->assertSame(24, Menu::query()->where('type', MenuType::Item)->count());
+        $this->assertSame(26, Menu::query()->where('type', MenuType::Item)->count());
     }
 
     public function test_the_system_administrator_is_permitted_every_action_of_the_types_in_each_set(): void
@@ -151,16 +151,16 @@ final class AuthorizationSeedersTest extends TransactionalTestCase
     }
 
     /**
-     * 後の seeder は対象者を条件で引き直し、同じ対象者を作り足さない(FindsAuthzSubjects)。対象者 = ポリシーの 3 と、ワークフローの処理対象者と参照者の 5
-     * (用途 selection。ルート・フローの業務処理が作る = 設計/ワークフロー/初期データ.md 2 節)の計 8。ポリシー = 124(54 + メニューの
-     * ワークフローのグループ 4 + ホームの主な操作のグループ 1 + ワークフローのルート 38 = ルートの深さ/初期データ.md 6 節。定義の管理のルートはポリシーなし。
-     * 通知のルート 8 = 設計/ワークフロー/案件の運用/認可と一覧.md の 4 節。業務モジュールの全件の参照 1 = 設計/業務データの入れ物/認可とメニュー/README.md の 3 節。
-     * 添付と外した時点のファイルのルート 6 × 2 = 12、コメントのルート 3 × 2 = 6 = 設計/業務データの入れ物/レコードの共通機能/認可と初期データ.md の 2.3 節)。
+     * 後の seeder は対象者を条件で引き直し、同じ対象者を作り足さない(FindsAuthzSubjects)。対象者 = ポリシーの 3 と、ワークフローの処理対象者と参照者の 5(用途 selection。
+     * ルート・フローの業務処理が作る = 設計/ワークフロー/初期データ.md 2 節)の計 8。ポリシー = 132(54 + メニューのワークフローのグループ 4 + ホームの主な操作のグループ 1 + ワークフローのルート
+     * 38 = ルートの深さ/初期データ.md 6 節。定義の管理のルートはポリシーなし。通知のルート 8 = 設計/ワークフロー/案件の運用/認可と一覧.md の 4 節。業務モジュールの全件の参照 1 =
+     * 設計/業務データの入れ物/認可とメニュー/README.md の 3 節。添付と外した時点のファイルのルート 6 × 2 = 12、コメントのルート 3 × 2 = 6 =
+     * 設計/業務データの入れ物/レコードの共通機能/認可と初期データ.md の 2.3 節。組み込みの会議の業務モジュール 8 = 設計/業務ツール/モジュール境界.md の「組み込みの業務モジュールの置き場」)。
      */
     public function test_the_seeders_reuse_the_subjects(): void
     {
         $this->assertEquals(['policy' => 3, 'selection' => 5], AuthzSubjectGroup::query()->groupBy('purpose')->orderBy('purpose')->selectRaw('purpose, count(*) as subject_groups')->pluck('subject_groups', 'purpose')->all());
-        $this->assertCount(124, $this->policySummaries());
+        $this->assertCount(132, $this->policySummaries());
     }
 
     public function test_a_guest_sees_the_home_and_the_sitemap(): void
@@ -182,8 +182,8 @@ final class AuthorizationSeedersTest extends TransactionalTestCase
     }
 
     /**
-     * 業務データの入れ物の初期データのポリシー(55 件 = 業務のルート 17 本 × 2・セット record-modules 5(全件の参照を含む)・業務モジュール 2 つ × 8。
-     * docs の 設計/業務データの入れ物/認可とメニュー/メニューと初期データ.md の 7 節)。
+     * 業務データの入れ物の初期データのポリシー(63 件 = 業務のルート 17 本 × 2・セット record-modules 5(全件の参照を含む)・業務モジュール 3 つ × 8。
+     * docs の 設計/業務データの入れ物/認可とメニュー/メニューと初期データ.md の 7 節。会議 = 設計/業務ツール/モジュール境界.md の「組み込みの業務モジュールの置き場」)。
      *
      * @return list<string>
      */
@@ -208,6 +208,7 @@ final class AuthorizationSeedersTest extends TransactionalTestCase
             ...$this->permits('record-modules', $allModuleActions, ['システム管理者']),
             ...$this->permits('record-module-project', $moduleActions, $everyone),
             ...$this->permits('record-module-project_issue', $moduleActions, $everyone),
+            ...$this->permits('record-module-meeting', $moduleActions, $everyone),
         ];
     }
 

@@ -63,6 +63,7 @@ final class RecordAdminControllerTest extends TransactionalTestCase
         $this->actingAs($this->user('u0004'))->get('/records/admin/modules')->assertOk()->assertInertia(fn (Assert $page) => $page
             ->component('Records/Admin/ModuleIndex')
             ->where('modules', [
+                ['code' => 'meeting', 'name' => '会議', 'parentCode' => null, 'isVisible' => true],
                 ['code' => 'project', 'name' => 'プロジェクト', 'parentCode' => null, 'isVisible' => true],
                 ['code' => 'project_milestone', 'name' => 'マイルストーン', 'parentCode' => 'project', 'isVisible' => null],
                 ['code' => 'project_issue', 'name' => '課題', 'parentCode' => null, 'isVisible' => true],
@@ -165,7 +166,10 @@ final class RecordAdminControllerTest extends TransactionalTestCase
             ->component('Records/Admin/FieldForm')
             ->where('module', ['code' => 'equipment', 'name' => '備品', 'isDetails' => false])
             ->where('field', null)
-            ->where('referableModules', [['code' => 'equipment', 'name' => '備品'], ['code' => 'project', 'name' => 'プロジェクト'], ['code' => 'project_issue', 'name' => '課題']])
+            ->where('referableModules', [
+                ['code' => 'equipment', 'name' => '備品'], ['code' => 'meeting', 'name' => '会議'],
+                ['code' => 'project', 'name' => 'プロジェクト'], ['code' => 'project_issue', 'name' => '課題'],
+            ])
             ->where('textMaxLengths', ['code' => 50, 'name' => 1000, 'description' => 4000])
             ->where('stringMaxLengths', ['singleLine' => 1000, 'multiline' => 4000, 'multilineMax' => 20000])
         );

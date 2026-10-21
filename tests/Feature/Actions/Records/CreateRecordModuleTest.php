@@ -66,8 +66,8 @@ final class CreateRecordModuleTest extends TransactionalTestCase
             'read 認証済みユーザ', 'create 認証済みユーザ', 'update 認証済みユーザ', 'delete 認証済みユーザ',
         ], $this->policiesOn($group->id));
         $this->assertSame([
-            ['global-nav-main-records-equipment', 'global-nav-main', '/records/data/equipment', 'table', 120, ['備品', '備品']],
-            ['sitemap-main-records-equipment', 'sitemap-main', '/records/data/equipment', 'table', 120, ['備品', '備品']],
+            ['global-nav-main-records-equipment', 'global-nav-main', '/records/data/equipment', 'table', 130, ['備品', '備品']],
+            ['sitemap-main-records-equipment', 'sitemap-main', '/records/data/equipment', 'table', 130, ['備品', '備品']],
         ], $this->itemsOf('equipment'));
         $this->assertSame([100, 100, 110, 110], Menu::query()->where('code', 'like', '%-records-project%')->orderBy('sort_number')->pluck('sort_number')->all());
     }
