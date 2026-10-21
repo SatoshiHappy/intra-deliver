@@ -107,7 +107,7 @@ services:
     tunnel:
         # remotely-managed の Tunnel。TUNNEL_TOKEN(tunnel.env)が --token に当たる。イメージのエントリポイントは cloudflared --no-autoupdate。
         # イメージに HEALTHCHECK もシェルも無いので healthcheck は書かない
-        image: cloudflare/cloudflared:2026.10.0@sha256:9b49eed8f62806d5d45ddf59ecefb5710429598ea6d3fcccd2af938f621b2b07
+        image: cloudflare/cloudflared:2026.10.3@sha256:faa8e0a1475f137c910be6025f43c8e4092fdd35461b31e19fd1390657a1ff39
         command: ['tunnel', 'run']
         env_file:
             - ${PUBLISH_CONFIG_DIR:?PUBLISH_CONFIG_DIR を compose.env に設定してください}/tunnel.env
