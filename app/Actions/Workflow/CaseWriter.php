@@ -22,7 +22,7 @@ class CaseWriter
     /**
      * 計画を書いて、操作の結果の値を返す(9 節の 2〜6、11 節。確認を開くのはノードを書いた後 = 設計/ワークフロー/案件の運用/案件の操作/操作.md の 9 節)。
      *
-     * @param  int|null  $recordRevisionId  業務データの入れ物の口が書いた更新履歴の版(申請・再申請だけ)
+     * @param  int|null  $recordRevisionId  業務データの入れ物の口が書いた更新履歴の版(申請・再申請と、添付を付けたステップの処理)
      * @param  array<int, list<int>>  $assignments  検証した指定(指定されたノードの id → 人の並び。承認だけ)
      * @param  array<string, mixed>  $columns  案件の行にほかに書く列(申請・再申請の案件名など)
      * @param  bool  $advanceRevision  改訂番号を進めるか(偽 = 申請。案件の行を計画の前に書いてある = 操作.md 9 節の最後の箇条)

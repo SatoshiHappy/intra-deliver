@@ -43,6 +43,17 @@ class ProcessorRoles
         );
     }
 
+    /**
+     * 状況の処理者 P が、その現在のノードの保留者側か(表の保留解除の「誰が」と同じ規則。添付の可否の保留解除が読む)。
+     */
+    public static function isHoldSideAt(CaseSituation $situation, int $nodeId): bool
+    {
+        $node = $situation->currentNode($nodeId);
+        $processor = $situation->processorUserId;
+
+        return $node !== null && $processor !== null && self::isHolder($processor, $situation, $node);
+    }
+
     private static function isHolder(int $processor, CaseSituation $situation, CurrentNode $node): bool
     {
         return $node->state === WorkflowNodeState::Hold && $situation->holderOf($node->id) === $processor

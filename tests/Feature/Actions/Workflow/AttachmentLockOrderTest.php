@@ -5,17 +5,18 @@ namespace Tests\Feature\Actions\Workflow;
 use App\Actions\Workflow\ReapplyCase;
 use App\Models\Workflow\WorkflowCase;
 use Closure;
-use Tests\Support\OperatesCaseAttachments;
+use Tests\Support\OperatesStepAttachments;
 use Tests\Support\TransactionalTestCase;
 
 /**
  * 添付を書く操作の鍵の順(docs の 設計/ワークフロー/申請の周辺/データモデル.md の 4 節、呼ぶ順 = 設計/ワークフロー/申請の周辺/添付/書く順と検査.md の 6 節):
  * 台帳の鍵(StoreUploads の排他の勧告ロック)は、どの操作でも案件の行の鍵(一時保存の新規は案件の行を書いた後)より後で、
  * 申請の経路では業務データの入れ物の口の中(業務モジュールの共有の勧告ロックの後)で取る。ワークフローが先に実体を上げない。
+ * ステップの処理は、判定と鍵の後・履歴の行を書く前に口を呼ぶ。
  */
 final class AttachmentLockOrderTest extends TransactionalTestCase
 {
-    use OperatesCaseAttachments;
+    use OperatesStepAttachments;
 
     private const LEDGER_LOCK = 'select pg_advisory_xact_lock(?)';
 
@@ -62,6 +63,30 @@ final class AttachmentLockOrderTest extends TransactionalTestCase
         $this->assertOrder($fromDraft, [$isCaseLock, $isFlowLock, $isModuleLock]);
         $this->assertOrder($new, [$isFlowLock, $isModuleLock]);
         $this->assertOrder($reapplied, [$isCaseLock, $isModuleLock, $isRecordLock]);
+    }
+
+    /**
+     * 承認(計画を書く処理)と保留解除(計画を呼ばない処理): 案件の行 → 業務モジュールの共有 → レコードの行 → 台帳 → 実体の行 → 履歴の行。
+     */
+    public function test_the_steps_call_the_record_port_after_the_case_lock_and_before_the_history(): void
+    {
+        $isCaseLock = fn (string $sql) => preg_match(self::CASE_LOCK, $sql) === 1;
+        $isModuleLock = fn (string $sql) => $sql === self::MODULE_LOCK;
+        $isRecordLock = fn (string $sql) => str_contains($sql, 'from "records"')
+            && str_ends_with($sql, 'for no key update');
+        $isUpload = fn (string $sql) => str_starts_with($sql, 'insert into "uploads"');
+        $isHistory = fn (string $sql) => str_starts_with($sql, 'insert into "workflow_case_histories"');
+
+        foreach (['approve', 'release'] as $name) {
+            [$case, $user] = $this->caseReadyFor($name);
+            $files = [$this->uploadedFile("{$name}.pdf")];
+            $queries = $this->recordedSql(fn () => $this->step($name, $user, $case, $files));
+
+            $this->assertOrder($queries, [$isCaseLock, $isModuleLock, $isRecordLock]);
+            $this->assertCount(1, array_filter($queries, $isHistory), $name);
+            $historyAt = $this->firstIndex($queries, $isHistory);
+            $this->assertLessThan($historyAt, $this->firstIndex($queries, $isUpload), $name);
+        }
     }
 
     /**

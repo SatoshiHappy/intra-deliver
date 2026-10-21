@@ -20,6 +20,7 @@ class CaseNodeWriter
     /**
      * @param  WorkflowNodeState  $state  操作の後のノードの状態
      * @param  int|null  $transferToUserId  振替先(振替だけ)
+     * @param  int|null  $recordRevisionId  添付を付けたときに業務データの入れ物の口が書いた更新履歴の版
      */
     public function write(
         CaseOperationPermit $permit,
@@ -28,6 +29,7 @@ class CaseNodeWriter
         ?string $comment,
         WorkflowNodeState $state,
         ?int $transferToUserId = null,
+        ?int $recordRevisionId = null,
     ): CaseOperationResult {
         [$case, $node] = [$permit->case(), $permit->node()];
         $history = WorkflowCaseHistory::query()->create([
@@ -37,6 +39,7 @@ class CaseNodeWriter
             'user_id' => $actor->processorUserId,
             'executor_user_id' => $actor->recordedExecutorUserId(),
             'comment' => $comment,
+            'record_revision_id' => $recordRevisionId,
             'node_changes' => [],
         ]);
 

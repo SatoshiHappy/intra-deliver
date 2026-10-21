@@ -16,7 +16,7 @@ final readonly class CaseOperationPermit
 {
     /**
      * @param  CaseSituation  $situation  判定に使った状況(case = 鍵を取った行)
-     * @param  WorkflowCaseNode|null  $node  操作するノード(承認・承認終了・否認・差戻し・引戻しは入力の node_id、再申請・取止めは申請のノード。ほかは null)
+     * @param  WorkflowCaseNode|null  $node  操作するノード(承認・承認終了・否認・差戻し・引戻し・保留・保留解除・振替は入力の node_id、再申請・取止めは申請のノード。ほかは null)
      * @param  WorkflowFlow|null  $flow  FOR SHARE で鍵を取ったフローの行(申請 = 一時保存からの申請だけ)
      */
     public function __construct(

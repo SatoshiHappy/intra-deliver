@@ -8,6 +8,7 @@ use App\Models\Workflow\WorkflowCaseDraftAttachment;
 use App\Models\Workflow\WorkflowCaseNode;
 use App\Models\Workflow\WorkflowFlow;
 use App\Queries\Workflow\CaseAttachability;
+use App\Queries\Workflow\CaseSituation;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\UploadedFile;
@@ -34,7 +35,7 @@ class CaseAttachmentRules
      * 送った添付が 1 つ以上で、可否が偽なら拒む(可否を読むのは送ったときだけ)。
      *
      * @param  list<UploadedFile>  $files
-     * @param  WorkflowCase|null  $case  申請の後の操作の案件({@see CaseAttachability::canAttach()} と同じ)
+     * @param  WorkflowCase|null  $case  申請の後の操作の案件(案件・ノード・状況は {@see CaseAttachability::canAttach()} と同じ)
      *
      * @throws ValidationException 可否が偽のとき(attachments)
      */
@@ -44,8 +45,9 @@ class CaseAttachmentRules
         array $files,
         ?WorkflowCase $case = null,
         ?WorkflowCaseNode $node = null,
+        ?CaseSituation $situation = null,
     ): void {
-        if ($files !== [] && ! $this->attachability->canAttach($operation, $flow, $case, $node)) {
+        if ($files !== [] && ! $this->attachability->canAttach($operation, $flow, $case, $node, $situation)) {
             throw ValidationException::withMessages(['attachments' => [self::NOT_ATTACHABLE]]);
         }
     }

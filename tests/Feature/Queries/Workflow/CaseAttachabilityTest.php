@@ -2,12 +2,15 @@
 
 namespace Tests\Feature\Queries\Workflow;
 
+use App\Actions\Workflow\HoldCase;
 use App\Enums\Workflow\WorkflowOperation;
 use App\Models\Records\RecordModule;
 use App\Models\Workflow\WorkflowCase;
 use App\Models\Workflow\WorkflowCaseNode;
 use App\Models\Workflow\WorkflowFlow;
+use App\Queries\Authz\Api\Requester;
 use App\Queries\Workflow\CaseAttachability;
+use App\Queries\Workflow\CaseOperationDecider;
 use LogicException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Support\RunsWorkflowOperations;
@@ -16,6 +19,7 @@ use Tests\Support\TransactionalTestCase;
 /**
  * 添付の可否の判定(docs の 設計/ワークフロー/申請の周辺/添付/README.md の 1.1 節・2 節の表): 業務モジュール・フロー・ステップの AND。
  * フローの値は、申請の前はフローの今の値、申請の後は案件に写した値。申請の系統はステップを見ず、承認の系統は操作するノードの写した設定を見る。
+ * 保留解除は加えて処理者が保留者側か(2 節の「保留解除」)。
  */
 final class CaseAttachabilityTest extends TransactionalTestCase
 {
@@ -79,7 +83,7 @@ final class CaseAttachabilityTest extends TransactionalTestCase
         $operations = [
             WorkflowOperation::Approve, WorkflowOperation::ApproveEarly, WorkflowOperation::Reject,
             WorkflowOperation::SendBack, WorkflowOperation::PullBack, WorkflowOperation::Hold,
-            WorkflowOperation::Release, WorkflowOperation::Transfer,
+            WorkflowOperation::Transfer,
         ];
 
         foreach ($operations as $operation) {
@@ -97,6 +101,25 @@ final class CaseAttachabilityTest extends TransactionalTestCase
         $this->assertFalse($this->canAttach(WorkflowOperation::PullBack, $case, $this->caseNode($case, 'apply')));
     }
 
+    /**
+     * 保留解除は、状況の処理者が保留者側のときだけ付けられる(保留した人と、その人を処理者にした代理先)。処理者が保留者側でない形
+     * (案件の管理者として解除する形)は偽。保留者側の人が案件の管理者を兼ねても、処理者が保留者側なので真。
+     */
+    public function test_a_release_reads_whether_the_processor_is_on_the_hold_side(): void
+    {
+        $case = $this->applyAs($this->seededUser('u0001'));
+        $node = $this->caseNode($case, 'approval1');
+        $u0002 = $this->seededUser('u0002');
+        $this->assertFalse($this->releasable($case, $node, 'u0002', $u0002->id));
+        app(HoldCase::class)->execute($this->contextOf($u0002), $case->id, $this->revisionOf($case), $node->id, null);
+
+        $this->assertTrue($this->releasable($case, $node, 'u0002', $u0002->id));
+        $this->assertTrue($this->releasable($case, $node, 'u0004', $u0002->id));
+        $this->assertFalse($this->releasable($case, $node, 'u0003', $this->seededUser('u0003')->id));
+        $node->update(['prevents_attachment_add' => true]);
+        $this->assertFalse($this->releasable($case, $node, 'u0002', $u0002->id));
+    }
+
     public function test_a_case_or_a_node_that_does_not_fit_the_operation_is_a_caller_error(): void
     {
         $case = $this->applyAs($this->seededUser('u0001'));
@@ -105,6 +128,9 @@ final class CaseAttachabilityTest extends TransactionalTestCase
             '申請の前に案件' => fn () => $this->canAttach(WorkflowOperation::OverwriteDraft, $draft),
             '申請の後に案件なし' => fn () => $this->canAttach(WorkflowOperation::Reapply),
             '承認にノードなし' => fn () => $this->canAttach(WorkflowOperation::Approve, $case),
+            '保留解除に状況なし' => fn () => $this->canAttach(
+                WorkflowOperation::Release, $case, $this->caseNode($case, 'approval1'),
+            ),
         ];
 
         foreach ($calls as $label => $call) {
@@ -124,6 +150,24 @@ final class CaseAttachabilityTest extends TransactionalTestCase
     ): bool {
         return app(CaseAttachability::class)
             ->canAttach($operation, $this->flow(), $case?->refresh(), $node?->refresh());
+    }
+
+    /**
+     * 判定を求める者 $requesterCode・処理者 $processorUserId で読んだ状況での、保留解除の可否。
+     */
+    private function releasable(
+        WorkflowCase $case,
+        WorkflowCaseNode $node,
+        string $requesterCode,
+        int $processorUserId,
+    ): bool {
+        $requester = new Requester($this->seededUser($requesterCode)->id, null);
+        $case->refresh();
+        $situation = app(CaseOperationDecider::class)
+            ->situationsOf($requester, $this->operationDay(), [$case], $processorUserId)[$case->id];
+
+        return app(CaseAttachability::class)
+            ->canAttach(WorkflowOperation::Release, $this->flow(), $case, $node->refresh(), $situation);
     }
 
     private function flow(): WorkflowFlow
