@@ -3,6 +3,7 @@ import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog';
 import { RecordAttachmentList } from '@/components/RecordAttachmentList';
 import { RecordAddonActions } from '@/components/Records/RecordAddonActions';
 import { RecordAddonBadges } from '@/components/Records/RecordAddonBadges';
+import { RecordCommentsPane } from '@/components/Records/RecordCommentsPane';
 import { RecordDetailTabs } from '@/components/Records/RecordDetailTabs';
 import { RecordHoldNotice } from '@/components/Records/RecordHoldNotice';
 import { RecordRevisionList } from '@/components/RecordRevisionList';
@@ -123,6 +124,15 @@ function PanelBody({
                     deleteActionOf={(row) =>
                         attachments.destroy({ ...route, attachment: row.id })
                     }
+                    loading={panel.loading}
+                    onMore={panel.more}
+                />
+            );
+        case 'comments':
+            return (
+                <RecordCommentsPane
+                    content={content}
+                    route={route}
                     loading={panel.loading}
                     onMore={panel.more}
                 />

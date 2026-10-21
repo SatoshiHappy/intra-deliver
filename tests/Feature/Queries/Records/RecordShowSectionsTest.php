@@ -51,6 +51,7 @@ final class RecordShowSectionsTest extends TransactionalTestCase
         $this->assertSame(
             [
                 ['attachments', '添付ファイル', '添付', 0, 'attachments'],
+                ['comments', 'コメント', 'コメント', 0, 'comments'],
                 ['revisions', '更新履歴', '更新履歴', null, 'revisions'],
                 ['test-first', '外部参照の一覧', '外部参照', 3, 'section'],
                 ['test-second', 'メモ', 'メモ', null, 'section'],

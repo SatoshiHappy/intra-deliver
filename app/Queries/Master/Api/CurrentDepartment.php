@@ -23,4 +23,18 @@ class CurrentDepartment
     {
         return $this->memberships->currentMembershipOn($userId, $selectedDepartmentId, $date)?->department_id;
     }
+
+    /**
+     * ユーザーの d のカレント組織の候補(選び方の入力。規則の 1 か所 = {@see MembershipQuery::currentDepartmentCandidatesOn()})。
+     * 兼務の組織を選べば開ける人まで含めて判定したいとき(ほかのユーザーについての判定)に、候補ごとに判定を求める者を作る。
+     *
+     * @return list<int> 候補の組織の id(昇順。重ねない)。無い・d に有効でないユーザー、候補の所属が無いユーザーは空
+     */
+    public function candidateDepartmentIdsOn(int $userId, DateTimeInterface $date): array
+    {
+        $candidates = $this->memberships->currentDepartmentCandidatesOn($userId, $date);
+        $ids = $candidates->pluck('department_id')->unique()->sort()->values();
+
+        return array_values(array_map('intval', $ids->all()));
+    }
 }

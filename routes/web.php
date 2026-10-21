@@ -16,6 +16,8 @@ use App\Http\Controllers\Web\Records\ModuleCategoryController;
 use App\Http\Controllers\Web\Records\ModuleController;
 use App\Http\Controllers\Web\Records\RecordAttachmentController;
 use App\Http\Controllers\Web\Records\RecordCandidatesController;
+use App\Http\Controllers\Web\Records\RecordCommentAdminController;
+use App\Http\Controllers\Web\Records\RecordCommentController;
 use App\Http\Controllers\Web\Records\RecordController;
 use App\Http\Controllers\Web\Records\RecordRevisionFileController;
 use App\Http\Controllers\Web\Records\RuleController;
@@ -69,12 +71,14 @@ Route::put('/records/data/{module}/{record}', [RecordController::class, 'update'
 Route::delete('/records/data/{module}/{record}', [RecordController::class, 'destroy'])->name('records.data.destroy')->where(['module' => '[a-z][a-z0-9_]{0,49}', 'record' => '[0-9]{1,18}']);
 
 // レコードの添付と外した時点のファイル(docs の 設計/業務データの入れ物/レコードの共通機能/認可と初期データ.md の 2.1 節)。
-// {attachment} = record_attachments.id、{upload} = uploads.id(どちらも {record} と同じ 18 桁までの数字)。
+// {attachment} = record_attachments.id、{upload} = uploads.id、{comment} = record_comments.id
+// (どれも {record} と同じ 18 桁までの数字)。
 $recordFile = [
     'module' => '[a-z][a-z0-9_]{0,49}',
     'record' => '[0-9]{1,18}',
     'attachment' => '[0-9]{1,18}',
     'upload' => '[0-9]{1,18}',
+    'comment' => '[0-9]{1,18}',
 ];
 $recordPath = '/records/data/{module}/{record}';
 Route::post("{$recordPath}/attachments", [RecordAttachmentController::class, 'store'])
@@ -85,6 +89,15 @@ Route::get("{$recordPath}/attachments/{attachment}", [RecordAttachmentController
     ->name('records.data.attachments.show')->where($recordFile);
 Route::get("{$recordPath}/attachments/{attachment}/preview", [RecordAttachmentController::class, 'preview'])
     ->name('records.data.attachments.preview')->where($recordFile);
+// コメント(docs の 設計/業務データの入れ物/レコードの共通機能/コメント.md の 6 節)。candidates は {comment} と重ならない(GET と DELETE)。
+Route::post("{$recordPath}/comments", [RecordCommentController::class, 'store'])
+    ->name('records.data.comments.store')->where($recordFile);
+Route::get("{$recordPath}/comments/candidates", [RecordCommentController::class, 'candidates'])
+    ->name('records.data.comments.candidates')->where($recordFile);
+Route::delete("{$recordPath}/comments/{comment}", [RecordCommentController::class, 'destroy'])
+    ->name('records.data.comments.destroy')->where($recordFile);
+Route::delete('/records/admin/comments/{comment}', [RecordCommentAdminController::class, 'destroy'])
+    ->name('records.admin.comments.destroy')->where($recordFile);
 Route::get("{$recordPath}/revision-files/{upload}", [RecordRevisionFileController::class, 'show'])
     ->name('records.data.revision-files.show')->where($recordFile);
 Route::get("{$recordPath}/revision-files/{upload}/preview", [RecordRevisionFileController::class, 'preview'])

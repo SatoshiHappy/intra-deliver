@@ -4,8 +4,10 @@ namespace Tests\Feature\Http\Controllers\Web\Records;
 
 use App\Actions\Records\DetachRecordAttachments;
 use App\Enums\Records\RecordModuleAction;
+use App\Models\Master\User;
 use App\Models\Records\Record;
 use App\Models\Records\RecordAttachment;
+use App\Models\Records\RecordComment;
 use App\Models\Records\RecordModule;
 use App\Models\Upload\Upload;
 use Carbon\CarbonImmutable;
@@ -57,6 +59,7 @@ final class RecordShowPanelControllerTest extends TransactionalTestCase
                     'key' => 'attachments', 'name' => '添付ファイル', 'shortName' => '添付', 'count' => 0,
                     'kind' => 'attachments',
                 ],
+                ['key' => 'comments', 'name' => 'コメント', 'shortName' => 'コメント', 'count' => 0, 'kind' => 'comments'],
                 ['key' => 'revisions', 'name' => '更新履歴', 'shortName' => '更新履歴', 'count' => null, 'kind' => 'revisions'],
                 ['key' => 'test-notes', 'name' => '外部参照の一覧', 'shortName' => '外部参照', 'count' => 2, 'kind' => 'section'],
             ])
@@ -81,6 +84,28 @@ final class RecordShowPanelControllerTest extends TransactionalTestCase
                     === array_slice(array_reverse($ids), 0, 5))
                 ->where('panelContent.hasMore', true)
             );
+    }
+
+    public function test_the_comments_pane_reads_the_newest_rows_and_a_partial_reload_appends_the_rest_by_id(): void
+    {
+        $writer = User::factory()->create();
+        $ids = array_reverse(RecordComment::factory()->count(6)->create([
+            'record_module_id' => $this->module->id, 'record_id' => $this->record->id, 'user_id' => $writer->id,
+        ])->modelKeys());
+
+        $this->get($this->url(['panel' => 'comments']))->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('panelContent.kind', 'comments')
+                ->where('panelContent.rows', fn ($rows) => array_column($rows->all(), 'id') === array_slice($ids, 0, 5))
+                ->where('panelContent.hasMore', true)
+                ->where('panelContent.canPost', false)
+            );
+        $page = $this->partial(['panel' => 'comments', 'before' => (string) $ids[4]], 'panelContent')
+            ->assertOk()->viewData('page');
+
+        $this->assertSame([$ids[5]], array_column($page['props']['panelContent']['rows'], 'id'));
+        $this->assertContains('panelContent.rows', $page['mergeProps'] ?? []);
+        $this->assertContains('panelContent.rows.id', $page['matchPropsOn'] ?? []);
     }
 
     public function test_a_partial_reload_evaluates_only_the_content_and_appends_the_rows_by_id(): void
@@ -121,7 +146,7 @@ final class RecordShowPanelControllerTest extends TransactionalTestCase
         $unused->update(['is_attachment_enabled' => false]);
         $bare = Record::factory()->create(['record_module_id' => $unused->id]);
 
-        foreach (['comments', 'unknown', '<script>', 'test-other'] as $key) {
+        foreach (['unknown', '<script>', 'test-other'] as $key) {
             $this->get($this->url(['panel' => $key]))
                 ->assertInertia(fn (Assert $page) => $page->where('panelContent', null));
         }

@@ -33,7 +33,8 @@ final class Modules
      * Records = 業務データの入れ物(業務モジュール・項目・規則・レコード。参照の項目がユーザー・組織を指し、定義の書き込みが共通マスタの勧告ロックを使い、
      * 業務モジュールの認可のリソース・ポリシーを作って判定し、メニューのアイテムを足すので Master・Authz・Menu に依存する。後の段の複数の製品から
      * 使われる基盤なので、土台(取り外せるモジュールを含む)の直後に置く = docs の 設計/業務データの入れ物/README.md の「コードのモジュール」。
-     * 添付の台帳の行を指すので Upload にも依存する = 設計/業務データの入れ物/レコードの共通機能/README.md の「コードのモジュール」)。
+     * 添付の台帳の行を指すので Upload にも依存する = 設計/業務データの入れ物/レコードの共通機能/README.md の「コードのモジュール」。
+     * コメントの宛先に通知を送り、レコードの移り先を答えるので Notice にも依存する = 設計/業務データの入れ物/レコードの共通機能/コメント.md の 3 節)。
      * Ai = LLM の呼び出し口・AI の実行の記録・費用の上限・AI の書き込みの口(依頼者の表示名と有効の確かめに Master、閲覧と書き込みの判定に Authz・Records を使う。
      * ワークフローからも AI を使えるよう Workflow より前、使う基盤の Records の後に置く = docs の 設計/業務ツール/モジュール境界.md の「一覧の並び」・設計/AI/README.md)。
      * Workflow = ワークフロー(名前・対象者の判定・ホームの節・申請フォームのレコードを使うので Master・Authz・Menu・Records に依存し、使う基盤の後に置く = docs の 設計/ワークフロー/README.md の「コードのモジュール」。
@@ -51,7 +52,7 @@ final class Modules
         'Demo' => ['Master', 'Authz', 'Account', 'Menu'],
         'Notice' => ['Master'],
         'Upload' => ['Master'],
-        'Records' => ['Master', 'Authz', 'Menu', 'Upload'],
+        'Records' => ['Master', 'Authz', 'Menu', 'Notice', 'Upload'],
         'Ai' => ['Master', 'Authz', 'Records'],
         'Workflow' => ['Master', 'Authz', 'Menu', 'Notice', 'Records', 'Upload'],
     ];

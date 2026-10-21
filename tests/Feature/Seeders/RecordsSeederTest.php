@@ -5,7 +5,9 @@ namespace Tests\Feature\Seeders;
 use App\Enums\Records\RecordFieldType;
 use App\Models\Authz\AuthzPolicy;
 use App\Models\Menu\Menu;
+use App\Models\Notice\Notice;
 use App\Models\Records\Record;
+use App\Models\Records\RecordComment;
 use App\Models\Records\RecordField;
 use App\Models\Records\RecordModule;
 use App\Models\Records\RecordReference;
@@ -110,5 +112,51 @@ final class RecordsSeederTest extends TransactionalTestCase
     {
         $this->assertSame(['u0004', 'u0001', 'u0010', 'u0009'], Record::query()->with('createdByUser')->orderBy('id')->get()->map(fn (Record $record) => $record->createdByUser?->code)->unique()->values()->all());
         $this->assertSame(0, AuthzPolicy::query()->where('effect', '<>', 'permit')->count());
+    }
+
+    /**
+     * 見本のコメント(docs の 設計/業務データの入れ物/レコードの共通機能/認可と初期データ.md の 4 節): 「プロジェクト」の最初の見本のレコードに
+     * 3 件(宛先つき 2 件)。通知は宛先から書いた人を除いた 3 行で、対象はそのレコード。時刻は時計を合わせた過去の日時(Asia/Tokyo)。
+     */
+    public function test_seeds_three_comments_on_the_first_project_two_with_mentions_and_their_notices(): void
+    {
+        $projects = RecordModule::query()->where('code', 'project')->sole();
+        $first = Record::query()->where('record_module_id', $projects->id)->orderBy('id')->firstOrFail();
+        $comments = RecordComment::query()->with(['user', 'recordCommentMentions.user'])->orderBy('id')->get();
+
+        $this->assertSame([$first->id, $first->id, $first->id], $comments->pluck('record_id')->all());
+        $this->assertSame(
+            ['u0011', 'u0004', 'u0012'],
+            $comments->map(fn (RecordComment $comment) => $comment->user?->code)->all(),
+        );
+        $this->assertSame([[], ['u0012', 'u0011'], ['u0004']], $comments->map(
+            fn (RecordComment $comment) => $comment->recordCommentMentions
+                ->map(fn ($mention) => $mention->user?->code)->all(),
+        )->all());
+        $this->assertSame(
+            ['2026-10-12 10:00', '2026-10-13 15:30', '2026-10-14 09:45'],
+            $comments->map(
+                fn (RecordComment $comment) => $comment->created_at?->setTimezone('Asia/Tokyo')->format('Y-m-d H:i'),
+            )->all(),
+        );
+        $this->assertSame(3, $comments->whereNull('deleted_at')->count());
+        $this->assertNotes($first->id);
+    }
+
+    /**
+     * 見本のコメントの通知(宛先 ← 書いた人。対象は record-comment、本文を写さない params は空のオブジェクト)。
+     */
+    private function assertNotes(int $recordId): void
+    {
+        $notices = Notice::query()->with(['user', 'actor'])->where('type', 'records.comment')->orderBy('id')->get();
+
+        $this->assertSame(
+            [['u0012', 'u0004'], ['u0011', 'u0004'], ['u0004', 'u0012']],
+            $notices->map(fn (Notice $notice) => [$notice->user?->code, $notice->actor?->code])->all(),
+        );
+        $this->assertSame(['record-comment'], $notices->pluck('target_type')->unique()->values()->all());
+        $this->assertSame([$recordId], $notices->pluck('target_id')->unique()->values()->all());
+        $this->assertSame([[], [], []], $notices->pluck('params')->all());
+        $this->assertSame([null], $notices->pluck('read_at')->unique()->values()->all());
     }
 }

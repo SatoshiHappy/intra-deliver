@@ -1,3 +1,4 @@
+import { nameOrCode } from '@/lib/nameOrCode';
 import type { NoticeRow, StatusTone } from '@/types';
 
 /** 件数の札に出す上限(これを超えたら「99+」。docs の 設計/ワークフロー/案件の運用/画面/管理と通知の画面.md 7.5) */
@@ -63,6 +64,12 @@ export function noticeTemplate(row: NoticeRow): NoticeTemplate {
                 tone: 'settled',
                 sentence: contactSentence(row),
             };
+        case 'records.comment':
+            return {
+                label: 'コメント',
+                tone: 'settled',
+                sentence: commentSentence(row),
+            };
         default:
             return {
                 label: '通知',
@@ -70,6 +77,15 @@ export function noticeTemplate(row: NoticeRow): NoticeTemplate {
                 sentence: '通知があります。',
             };
     }
+}
+
+/**
+ * コメントの宛先の文(起こした人は名前、無ければコード。docs の 設計/業務データの入れ物/レコードの共通機能/コメント.md の 3 節)。
+ */
+function commentSentence(row: NoticeRow): string {
+    const actor = row.actor === null ? '' : nameOrCode(row.actor);
+
+    return `${actor}さんがコメントの宛先にあなたを指定しました。`;
 }
 
 /**

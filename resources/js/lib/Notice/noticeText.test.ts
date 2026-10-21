@@ -136,6 +136,31 @@ describe('noticeTemplate(ワークフローの処理結果・確認依頼・連�
     });
 });
 
+describe('noticeTemplate(レコードのコメント)', () => {
+    it('起こした人の名前(無ければコード)で、コメントの宛先に指定された文(札は「コメント」)', () => {
+        expect(
+            noticeTemplate(
+                row({
+                    type: 'records.comment',
+                    actor: { name: '中村 美咲', code: 'u0002' },
+                }),
+            ),
+        ).toEqual({
+            label: 'コメント',
+            tone: 'settled',
+            sentence: '中村 美咲さんがコメントの宛先にあなたを指定しました。',
+        });
+        expect(
+            noticeTemplate(
+                row({
+                    type: 'records.comment',
+                    actor: { name: null, code: 'u0002' },
+                }),
+            ).sentence,
+        ).toBe('u0002さんがコメントの宛先にあなたを指定しました。');
+    });
+});
+
 describe('noticeSubLine', () => {
     it('対象の表示名、無ければ見えないときの 1 行、どちらも無ければ null', () => {
         expect(

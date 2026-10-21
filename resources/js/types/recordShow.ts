@@ -94,6 +94,27 @@ export type RecordAttachmentRow = {
     previewUrl: string | null;
 };
 
+/**
+ * コメントの欄の 1 行(新しい順)。削除の印の行は本文・書いた人・宛先を持たず、削除した人と日時を持つ(deleted)。
+ * mine = 自分の書いたコメント(削除できる)。ほかの人の分を消せるかは欄の canDeleteOthers。
+ */
+export type RecordCommentRow = {
+    id: number;
+    author: RecordReferenceValue | null;
+    body: string | null;
+    createdAt: string | null;
+    mentions: RecordReferenceValue[];
+    deleted: { by: RecordReferenceValue | null; at: string | null } | null;
+    mine: boolean;
+};
+
+/** コメントの宛先の候補 1 人(宛先の候補の口の JSON の 1 要素) */
+export type RecordMentionCandidate = {
+    id: number;
+    name: string;
+    department: string | null;
+};
+
 /** 更新履歴の変化の値を描く項目の定義(後の版の定義の写し。値の部品 RecordValue に渡す分) */
 export type RecordRevisionField = {
     code: string;
@@ -161,7 +182,6 @@ export type RecordRevisionRow = {
 
 /**
  * 開いた欄の中身(欄の種類ごと)。section の content = null は節が出す内容を返さなかった(「表示する内容がありません」)。
- * 拡張点(コメントの欄を足すときはここに comments の形を足す)
  */
 export type RecordPanelContent =
     | {
@@ -170,6 +190,13 @@ export type RecordPanelContent =
           hasMore: boolean;
           notice: string | null; // 使用しない業務モジュール・申請中の 1 行
           guide: string; // 「ファイルを追加」の案内の 1 行(上限と形式)
+      }
+    | {
+          kind: 'comments';
+          rows: RecordCommentRow[];
+          hasMore: boolean;
+          canPost: boolean; // ユーザーがいる(ゲストは書けない)
+          canDeleteOthers: boolean; // コメントの管理の権限(ほかの人の分も消せる)
       }
     | { kind: 'revisions'; rows: RecordRevisionRow[]; hasMore: boolean }
     | {

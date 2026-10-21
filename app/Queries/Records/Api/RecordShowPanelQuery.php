@@ -4,6 +4,7 @@ namespace App\Queries\Records\Api;
 
 use App\Models\Records\RecordModule;
 use App\Queries\Authz\Api\Requester;
+use App\Queries\Records\RecordCommentQuery;
 use App\Queries\Records\RecordHoldCatalog;
 use App\Queries\Records\RecordRevisionRows;
 use App\Queries\Records\RecordShowSectionCatalog;
@@ -19,12 +20,13 @@ use LogicException;
  *
  * @phpstan-import-type AttachmentItem from RecordAttachmentQuery
  * @phpstan-import-type ReferenceValue from RecordValueReader
+ * @phpstan-import-type CommentsContent from RecordCommentQuery
  * @phpstan-import-type RevisionRow from RecordRevisionRows
  * @phpstan-import-type SectionPresence from RecordShowSectionCatalog
  * @phpstan-import-type SectionContent from RecordShowSectionCatalog
  *
  * @phpstan-type PanelItem array{key: string, name: string, shortName: string, count: int|null,
- *     kind: 'attachments'|'revisions'|'section'}
+ *     kind: 'attachments'|'comments'|'revisions'|'section'}
  * @phpstan-type AttachmentRow array{id: int, uploadId: int, name: string, size: int, mime: string, previewable: bool,
  *     attachedBy: ReferenceValue|null, attachedAt: string|null, purgeDueOn: string|null}
  * @phpstan-type AttachmentsContent array{kind: 'attachments', rows: list<AttachmentRow>, hasMore: bool,
@@ -44,12 +46,14 @@ class RecordShowPanelQuery
     /** Records の欄(キー → 正式の名前・帯の名前。帯の名前の規則 = 詳細の画面/README.md の 2.1 節) */
     private const PANES = [
         'attachments' => ['添付ファイル', '添付'],
+        'comments' => ['コメント', 'コメント'],
         'revisions' => ['更新履歴', '更新履歴'],
     ];
 
     public function __construct(
         private RecordViewAccess $access,
         private RecordAttachmentQuery $attachments,
+        private RecordCommentQuery $comments,
         private RecordRevisionRows $revisions,
         private RecordShowSectionCatalog $sections,
         private RecordHoldCatalog $holds,
@@ -77,7 +81,7 @@ class RecordShowPanelQuery
             $items[] = $this->pane('attachments', $attachmentCount);
         }
 
-        // 拡張点(コメントの欄を足すときはここ = 添付ファイルと更新履歴の間)
+        $items[] = $this->pane('comments', $this->comments->countFor($recordId));
         $items[] = $this->pane('revisions', null);
         $sections = $this->sections->presences($context, $moduleCode, $recordId);
 
@@ -99,7 +103,7 @@ class RecordShowPanelQuery
      * 業務ツールの節はその節の section() だけを呼ぶ(presence() を呼ばない)。
      *
      * @param  int|null  $beforeId  「さらに表示」の時、今の一覧の最後の行の id
-     * @return AttachmentsContent|RevisionsContent|SectionPanelContent|null
+     * @return AttachmentsContent|CommentsContent|RevisionsContent|SectionPanelContent|null
      *
      * @throws LogicException 業務ツールの節の名札の誤り
      */
@@ -116,6 +120,7 @@ class RecordShowPanelQuery
 
         return match ($key) {
             'attachments' => $this->attachmentsContent($context, $moduleCode, $recordId, $beforeId),
+            'comments' => $this->comments->content($context, $recordId, self::PAGE_SIZE, $beforeId),
             'revisions' => ['kind' => 'revisions', ...$this->revisions->page(
                 Requester::fromAccessContext($context),
                 $recordId,
@@ -186,6 +191,7 @@ class RecordShowPanelQuery
     }
 
     /**
+     * @param  'attachments'|'comments'|'revisions'  $key
      * @return PanelItem
      */
     private function pane(string $key, ?int $count): array
@@ -197,7 +203,7 @@ class RecordShowPanelQuery
             'name' => $name,
             'shortName' => $shortName,
             'count' => $count,
-            'kind' => $key === 'attachments' ? 'attachments' : 'revisions',
+            'kind' => $key,
         ];
     }
 

@@ -40,6 +40,17 @@ final class CurrentDepartmentTest extends TransactionalTestCase
         $this->assertNull($this->current((int) User::query()->max('id') + 1, null));
     }
 
+    public function test_lists_the_candidate_departments_in_id_order_without_duplicates(): void
+    {
+        $expected = [$this->departmentId('general-affairs'), $this->departmentId('human-resources')];
+        sort($expected);
+
+        $this->assertSame($expected, $this->candidates($this->userId('u0009')));
+        $this->assertSame([], $this->candidates($this->user()->id));
+        $this->assertSame([], $this->candidates($this->userId('u0014'), '2025-10-01'));
+        $this->assertSame([], $this->candidates((int) User::query()->max('id') + 1));
+    }
+
     public function test_gives_the_same_department_as_the_current_membership_for_every_seeded_user_and_selection(): void
     {
         $date = self::day(self::TODAY);
@@ -60,6 +71,14 @@ final class CurrentDepartmentTest extends TransactionalTestCase
     private function current(int $userId, ?int $selectedDepartmentId, string $date = self::TODAY): ?int
     {
         return app(CurrentDepartment::class)->departmentIdOn($userId, $selectedDepartmentId, self::day($date));
+    }
+
+    /**
+     * @return list<int>
+     */
+    private function candidates(int $userId, string $date = self::TODAY): array
+    {
+        return app(CurrentDepartment::class)->candidateDepartmentIdsOn($userId, self::day($date));
     }
 
     private function userId(string $code): int

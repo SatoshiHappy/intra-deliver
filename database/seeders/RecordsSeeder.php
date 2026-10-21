@@ -29,7 +29,7 @@ use Illuminate\Database\Seeder;
  * 2. セット record-modules と、システム管理者への 5 つのアクション(全件の参照を含む)の許可(全部を許すロール = 認可とメニュー/README.md 3 節)
  * 3. 業務モジュール「プロジェクト」「課題」(業務モジュールを作る業務処理 = リソース・初期ポリシー・「業務」のアイテム)と、明細「マイルストーン」
  * 4. 項目・選択肢・規則、5. レコード(判定の入力 = u0004 伊藤 涼子、基準日 = 流す日の Asia/Tokyo の日付、ロケール ja)。
- *    レコードの日付の項目は流す日からの相対({@see SeedingDates})
+ *    レコードの日付の項目は流す日からの相対({@see SeedingDates})。続けて見本のコメント({@see RecordCommentsSeeder})
  *
  * AccountSeeder の後に 1 回入れる前提。すべて業務処理を通す。中身の正本はこの seeder(設計の値 = 7.2・7.3)。
  */
@@ -42,8 +42,10 @@ class RecordsSeeder extends Seeder
         'records' => ['業務データ', 'Records'],
         'records.data' => ['レコード', 'Record data'],
         'records.data.attachments' => ['添付ファイル', 'Record attachments'],
+        'records.data.comments' => ['コメント', 'Record comments'],
         'records.data.revision-files' => ['更新履歴のファイル', 'Revision files'],
         'records.admin' => ['業務データの管理', 'Records administration'],
+        'records.admin.comments' => ['コメントの管理', 'Comment administration'],
         'records.admin.modules' => ['業務モジュール', 'Record modules'],
         'records.admin.fields' => ['項目', 'Fields'],
         'records.admin.rules' => ['規則', 'Rules'],
@@ -64,12 +66,16 @@ class RecordsSeeder extends Seeder
         'records.data.attachments.destroy' => ['添付ファイルの削除', 'Remove attachment'],
         'records.data.attachments.show' => ['添付ファイルのダウンロード', 'Download attachment'],
         'records.data.attachments.preview' => ['添付ファイルのプレビュー', 'Preview attachment'],
+        'records.data.comments.store' => ['コメントの投稿', 'Post comment'],
+        'records.data.comments.destroy' => ['コメントの削除', 'Delete comment'],
+        'records.data.comments.candidates' => ['コメントの宛先の候補', 'Comment mention candidates'],
         'records.data.revision-files.show' => ['更新履歴のファイルのダウンロード', 'Download revision file'],
         'records.data.revision-files.preview' => ['更新履歴のファイルのプレビュー', 'Preview revision file'],
     ];
 
     /** 管理のルート: 名前 => [表示名(ja), 表示名(en)](ポリシーを置かない。システム管理者が http-services の先頭の許可を継承する = 認可とメニュー/README.md 4 節) */
     private const ADMIN_ROUTES = [
+        'records.admin.comments.destroy' => ['コメントの削除(管理)', 'Delete comment as administrator'],
         'records.admin.modules.index' => ['業務モジュールの一覧', 'Record module list'],
         'records.admin.modules.create' => ['業務モジュールの作成画面', 'New record module form'],
         'records.admin.modules.store' => ['業務モジュールの作成', 'Create record module'],
@@ -212,6 +218,7 @@ class RecordsSeeder extends Seeder
         }
 
         $this->createRecords();
+        $this->call(RecordCommentsSeeder::class);
     }
 
     /**

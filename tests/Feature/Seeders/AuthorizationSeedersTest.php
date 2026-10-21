@@ -152,15 +152,15 @@ final class AuthorizationSeedersTest extends TransactionalTestCase
 
     /**
      * 後の seeder は対象者を条件で引き直し、同じ対象者を作り足さない(FindsAuthzSubjects)。対象者 = ポリシーの 3 と、ワークフローの処理対象者と参照者の 5
-     * (用途 selection。ルート・フローの業務処理が作る = 設計/ワークフロー/初期データ.md 2 節)の計 8。ポリシー = 118(54 + メニューの
+     * (用途 selection。ルート・フローの業務処理が作る = 設計/ワークフロー/初期データ.md 2 節)の計 8。ポリシー = 124(54 + メニューの
      * ワークフローのグループ 4 + ホームの主な操作のグループ 1 + ワークフローのルート 38 = ルートの深さ/初期データ.md 6 節。定義の管理のルートはポリシーなし。
      * 通知のルート 8 = 設計/ワークフロー/案件の運用/認可と一覧.md の 4 節。業務モジュールの全件の参照 1 = 設計/業務データの入れ物/認可とメニュー/README.md の 3 節。
-     * 添付と外した時点のファイルのルート 6 × 2 = 12 = 設計/業務データの入れ物/レコードの共通機能/認可と初期データ.md の 2.3 節)。
+     * 添付と外した時点のファイルのルート 6 × 2 = 12、コメントのルート 3 × 2 = 6 = 設計/業務データの入れ物/レコードの共通機能/認可と初期データ.md の 2.3 節)。
      */
     public function test_the_seeders_reuse_the_subjects(): void
     {
         $this->assertEquals(['policy' => 3, 'selection' => 5], AuthzSubjectGroup::query()->groupBy('purpose')->orderBy('purpose')->selectRaw('purpose, count(*) as subject_groups')->pluck('subject_groups', 'purpose')->all());
-        $this->assertCount(118, $this->policySummaries());
+        $this->assertCount(124, $this->policySummaries());
     }
 
     public function test_a_guest_sees_the_home_and_the_sitemap(): void
@@ -182,7 +182,7 @@ final class AuthorizationSeedersTest extends TransactionalTestCase
     }
 
     /**
-     * 業務データの入れ物の初期データのポリシー(49 件 = 業務のルート 14 本 × 2・セット record-modules 5(全件の参照を含む)・業務モジュール 2 つ × 8。
+     * 業務データの入れ物の初期データのポリシー(55 件 = 業務のルート 17 本 × 2・セット record-modules 5(全件の参照を含む)・業務モジュール 2 つ × 8。
      * docs の 設計/業務データの入れ物/認可とメニュー/メニューと初期データ.md の 7 節)。
      *
      * @return list<string>
@@ -196,6 +196,7 @@ final class AuthorizationSeedersTest extends TransactionalTestCase
         $dataRoutes = [
             'index', 'create', 'store', 'show', 'edit', 'update', 'destroy', 'candidates',
             'attachments.store', 'attachments.destroy', 'attachments.show', 'attachments.preview',
+            'comments.store', 'comments.destroy', 'comments.candidates',
             'revision-files.show', 'revision-files.preview',
         ];
 

@@ -83,9 +83,15 @@ final class RecordShowPanelQueryTest extends TransactionalTestCase
         $attached = Record::factory()->create(['record_module_id' => $unused->id]);
         RecordAttachment::factory()->create(['record_module_id' => $unused->id, 'record_id' => $attached->id]);
 
-        $this->assertSame([['attachments', 0], ['revisions', null]], $this->items('projects', $used->id));
-        $this->assertSame([['revisions', null]], $this->items('memos', $bare->id));
-        $this->assertSame([['attachments', 1], ['revisions', null]], $this->items('memos', $attached->id));
+        $this->assertSame(
+            [['attachments', 0], ['comments', 0], ['revisions', null]],
+            $this->items('projects', $used->id),
+        );
+        $this->assertSame([['comments', 0], ['revisions', null]], $this->items('memos', $bare->id));
+        $this->assertSame(
+            [['attachments', 1], ['comments', 0], ['revisions', null]],
+            $this->items('memos', $attached->id),
+        );
         $this->assertNull($this->content($bare->id, 'attachments', null, 'memos'));
         $this->assertSame(
             RecordShowPanelQuery::UNUSED_NOTICE,

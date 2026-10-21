@@ -47,6 +47,18 @@ final class ModulesTest extends TestCase
     }
 
     /**
+     * 業務データの入れ物は、コメントの宛先に通知を送り、レコードの移り先を答えるので、通知のモジュールに依存する
+     * (docs の 設計/業務データの入れ物/レコードの共通機能/コメント.md の 3 節。通知は業務データの入れ物より前にあるので向きは変わらない)。
+     */
+    public function test_records_depends_on_notice(): void
+    {
+        $names = Modules::names();
+
+        $this->assertContains('Notice', Modules::DECLARATION['Records']);
+        $this->assertLessThan(array_search('Records', $names, true), array_search('Notice', $names, true));
+    }
+
+    /**
      * アップロードの台帳のモジュールは共通マスタだけに依存して持ち主を知らず、添付を持つ業務データの入れ物・ワークフローより前に置き、
      * その 2 つが依存する(docs の 設計/業務データの入れ物/レコードの共通機能/添付ファイル/README.md の 1 節)。
      */
