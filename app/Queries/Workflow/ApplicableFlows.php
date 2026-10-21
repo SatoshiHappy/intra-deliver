@@ -24,6 +24,9 @@ use LogicException;
  */
 class ApplicableFlows
 {
+    /** 新規の申請が業務モジュールに求めるアクション(既存のデータからの申請は呼び手が渡す) */
+    private const NEW_APPLICATION = [RecordModuleAction::Create];
+
     public function __construct(
         private SubjectGroupMembership $membership,
         private RecordFormQuery $forms,
@@ -60,15 +63,22 @@ class ApplicableFlows
      * 部分と、業務モジュールごとの判定の部分だけになる)。
      *
      * @param  list<int>  $flowIds
+     * @param  list<RecordModuleAction>  $actions  コンテンツの業務モジュールに求めるアクション(既存のデータからの申請は read と update =
+     *                                             設計/ワークフロー/申請の周辺/既存のデータからの申請.md の 1 節)
      * @return list<int>
      */
-    public function applicableIds(Requester $requester, DateTimeInterface $date, array $flowIds): array
-    {
+    public function applicableIds(
+        Requester $requester,
+        DateTimeInterface $date,
+        array $flowIds,
+        array $actions = self::NEW_APPLICATION,
+    ): array {
         if ($flowIds === []) {
             return [];
         }
 
-        $flows = $this->applicable($requester, $date, WorkflowFlow::query()->whereKey($flowIds)->orderBy('id'));
+        $candidates = WorkflowFlow::query()->whereKey($flowIds)->orderBy('id');
+        $flows = $this->applicable($requester, $date, $candidates, $actions);
 
         return array_values($flows->map(fn (WorkflowFlow $flow) => $flow->id)->all());
     }
@@ -77,10 +87,15 @@ class ApplicableFlows
      * 候補のフローのうち申請できるもの(候補の並びのまま)。
      *
      * @param  Builder<WorkflowFlow>  $candidates
+     * @param  list<RecordModuleAction>  $actions
      * @return Collection<int, WorkflowFlow>
      */
-    private function applicable(Requester $requester, DateTimeInterface $date, Builder $candidates): Collection
-    {
+    private function applicable(
+        Requester $requester,
+        DateTimeInterface $date,
+        Builder $candidates,
+        array $actions = self::NEW_APPLICATION,
+    ): Collection {
         if ($this->membership->effectiveUserId($requester, $date) === null) {
             return new Collection;
         }
@@ -97,15 +112,31 @@ class ApplicableFlows
         $matched = $this->membership->matchingIds($requester, array_values(array_unique(array_filter($applyGroupByFlow, fn (?int $id): bool => $id !== null))), $date);
         $allowedByModule = [];
 
-        return $flows->filter(function (WorkflowFlow $flow) use ($applyGroupByFlow, $matched, $requester, $date, &$allowedByModule) {
+        return $flows->filter(function (WorkflowFlow $flow) use (
+            $applyGroupByFlow, $matched, $requester, $date, $actions, &$allowedByModule,
+        ) {
             if (! in_array($applyGroupByFlow[$flow->id] ?? null, $matched, true)) {
                 return false;
             }
 
             $moduleCode = $this->moduleOf($flow)->code;
 
-            return $allowedByModule[$moduleCode] ??= $this->forms->allows($requester, $moduleCode, RecordModuleAction::Create, $date);
+            return $allowedByModule[$moduleCode] ??= $this->allowsAll($requester, $moduleCode, $actions, $date);
         })->values();
+    }
+
+    /**
+     * @param  list<RecordModuleAction>  $actions
+     */
+    private function allowsAll(Requester $requester, string $moduleCode, array $actions, DateTimeInterface $date): bool
+    {
+        foreach ($actions as $action) {
+            if (! $this->forms->allows($requester, $moduleCode, $action, $date)) {
+                return false;
+            }
+        }
+
+        return true;
     }
 
     /**

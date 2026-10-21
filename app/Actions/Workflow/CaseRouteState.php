@@ -218,8 +218,8 @@ final class CaseRouteState
     }
 
     /**
-     * 展開の行を足す(書いていない行。名前 = 「承認 <番号>」)。親の値を写す列(申請者承認防止・期限の日数)は
-     * 設計/ワークフロー/案件の運用/データモデル/表.md の 3.2 節。
+     * 展開の行を足す(書いていない行。名前 = 「承認 <番号>」)。親の値を写す列(申請者承認防止・期限の日数・添付を追加できない)は
+     * 設計/ワークフロー/案件の運用/データモデル/表.md の 3.2 節と 設計/ワークフロー/申請の周辺/データモデル.md の 3.1 節。
      *
      * @return int 仮の id(負)
      */
@@ -230,7 +230,7 @@ final class CaseRouteState
         $child = new WorkflowCaseNode([
             'workflow_case_id' => $this->case->id, 'name' => "承認 {$sequence}", 'kind' => WorkflowNodeKind::Approve, 'parent_workflow_case_node_id' => $parentId,
             'sequence' => $sequence, 'prevents_applicant_approval' => $parent->prevents_applicant_approval, 'state' => WorkflowNodeState::Unreached,
-            'deadline_days' => $parent->deadline_days,
+            'deadline_days' => $parent->deadline_days, 'prevents_attachment_add' => $parent->prevents_attachment_add,
         ]);
         $child->setRelation('parent', $parent);
         $this->newChildren[$id] = $child;

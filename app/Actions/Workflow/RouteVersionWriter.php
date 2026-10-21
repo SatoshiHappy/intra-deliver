@@ -59,6 +59,7 @@ class RouteVersionWriter
             decisionRule: $node->decision_rule, decisionValue: $node->decision_value, preventsApplicantApproval: $node->prevents_applicant_approval,
             closingCode: $code($node->closing_workflow_route_node_id),
             deadlineDays: $node->deadline_days, confirmSubjectGroupId: $node->confirm_authz_subject_group_id,
+            preventsAttachmentAdd: $node->prevents_attachment_add,
             sendBackCodes: array_values(array_map(fn (WorkflowRouteSendBack $sendBack) => (string) $code($sendBack->target_workflow_route_node_id), $sendBacks->get($node->id)?->all() ?? [])),
         ))->all());
         $edgeInputs = array_values($edges->map(fn (WorkflowRouteEdge $edge) => new RouteEdgeInput((string) $code($edge->from_workflow_route_node_id), (string) $code($edge->to_workflow_route_node_id), $edge->sort_key, $edge->label, $edge->condition))->all());
@@ -124,6 +125,7 @@ class RouteVersionWriter
                 'prevents_applicant_approval' => $node->preventsApplicantApproval,
                 'deadline_days' => $node->deadlineDays,
                 'confirm_authz_subject_group_id' => $node->confirmSubjectGroupId,
+                'prevents_attachment_add' => $node->preventsAttachmentAdd,
                 'closing_workflow_route_node_id' => $node->closingCode === null ? null : $ids[$node->closingCode],
             ])->id;
         }

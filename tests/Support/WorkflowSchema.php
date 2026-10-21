@@ -70,6 +70,9 @@ final class WorkflowSchema
         'confirm_authz_subject_group_id' => self::OPTIONAL_KEY,
     ];
 
+    /** ステップの「添付を追加できない」(ルートのノードと案件のノードで同じ) */
+    private const PREVENTS_ATTACHMENT_ADD = 'boolean not null default false';
+
     /** 表 → モデル(テストのデータを factory で作るため) */
     public const MODELS = [
         'workflow_contents' => WorkflowContent::class,
@@ -251,10 +254,15 @@ final class WorkflowSchema
      * 段 3a で既存の表に足した列(表 → 列。表の末尾に付く = SchemaTest の COLUMNS_ADDED_LATER)。案件の運用で足した列はその後ろ
      * (設計/ワークフロー/案件の運用/データモデル/表.md の 2.3 節・3.2 節・3.7 節。足した表は {@see WorkflowCaseHandlingSchema})。
      * 履歴の版の参照 record_revision_id は最後(設計/業務データの入れ物/レコードの共通機能/更新履歴.md の 4.2 節)。
+     * 添付の列(フローの「添付を使う」とその写し、ステップの「添付を追加できない」とその写し)はその後ろ
+     * (設計/ワークフロー/申請の周辺/データモデル.md の 2 節・3 節。足した表は {@see WorkflowAttachmentSchema})。
      *
      * @var array<string, array<string, string>>
      */
     public const COLUMNS_ADDED_LATER = [
+        'workflow_flows' => [
+            'is_attachment_enabled' => 'boolean not null default true',
+        ],
         'workflow_route_nodes' => [
             'workflow_flow_version_id' => self::KEY,
             ...self::NODE_SETTINGS,
@@ -262,10 +270,12 @@ final class WorkflowSchema
             ...self::NODE_SETTINGS_AFTER_DESIGNATOR,
             'closing_workflow_route_node_id' => self::OPTIONAL_KEY,
             ...self::NODE_DEADLINE_CONFIRM,
+            'prevents_attachment_add' => self::PREVENTS_ATTACHMENT_ADD,
         ],
         'workflow_cases' => [
             'workflow_flow_version_id' => self::OPTIONAL_KEY,
             'base_date' => 'date',
+            'is_attachment_enabled' => 'boolean',
         ],
         'workflow_case_nodes' => [
             ...self::NODE_SETTINGS,
@@ -278,6 +288,7 @@ final class WorkflowSchema
             'previous_user_id' => self::OPTIONAL_KEY,
             'previous_department_id' => self::OPTIONAL_KEY,
             ...self::NODE_DEADLINE_CONFIRM,
+            'prevents_attachment_add' => self::PREVENTS_ATTACHMENT_ADD,
         ],
         'workflow_case_histories' => [
             'node_changes' => 'jsonb',

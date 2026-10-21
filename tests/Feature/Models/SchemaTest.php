@@ -14,14 +14,16 @@ use Tests\Support\RecordsCommonSchema;
 use Tests\Support\RecordsSchema;
 use Tests\Support\TransactionalTestCase;
 use Tests\Support\UploadSchema;
+use Tests\Support\WorkflowAttachmentSchema;
 use Tests\Support\WorkflowCaseHandlingSchema;
 use Tests\Support\WorkflowSchema;
 
 /**
- * 共通マスタの 29 表・メニューの 7 表・業務データの入れ物の 6 表・ワークフローの 17 表の列(型・長さ・NULL 可否・既定値)と、外部キーの索引の規則(docs の
+ * 共通マスタの 29 表・メニューの 7 表・業務データの入れ物の 6 表・ワークフローの 18 表の列(型・長さ・NULL 可否・既定値)と、外部キーの索引の規則(docs の
  * 設計/共通マスタ/共通の規則.md 4 節・9 節。メニューの表も同じ規則に従う = 設計/メニュー/README.md の方針 1。入れ物の表は採った規則だけ = 設計/業務データの入れ物/データモデル/ 1 節・7 節。
  * ワークフローの表も採った規則だけ = 設計/ワークフロー/データモデル/README.md 1 節、直列化と検査.md 6 節)と、通知の表(設計/ワークフロー/案件の運用/通知.md の 2 節)、
  * レコードの共通機能の 6 表とアップロードの台帳(設計/業務データの入れ物/レコードの共通機能/データモデル/表.md の 2 節)。
+ * ワークフローの 18 表には一時保存の添付の表を含む(設計/ワークフロー/申請の周辺/データモデル.md の 1.1 節)。
  */
 final class SchemaTest extends TransactionalTestCase
 {
@@ -30,7 +32,7 @@ final class SchemaTest extends TransactionalTestCase
     /** 表 → 列の定義 */
     private const COLUMNS = CommonMasterSchema::COLUMNS + MenuSchema::COLUMNS + RecordsSchema::COLUMNS
         + RecordsCommonSchema::COLUMNS + WorkflowSchema::COLUMNS + WorkflowCaseHandlingSchema::COLUMNS
-        + NoticeSchema::COLUMNS + UploadSchema::COLUMNS;
+        + NoticeSchema::COLUMNS + UploadSchema::COLUMNS + WorkflowAttachmentSchema::COLUMNS;
 
     /** 表を作った後に足した列(表 → 列。表の末尾に付く) */
     private const COLUMNS_ADDED_LATER = CommonMasterSchema::COLUMNS_ADDED_LATER + RecordsSchema::COLUMNS_ADDED_LATER + WorkflowSchema::COLUMNS_ADDED_LATER;
@@ -38,7 +40,7 @@ final class SchemaTest extends TransactionalTestCase
     /** 表 → モデル */
     private const MODELS = CommonMasterSchema::MODELS + MenuSchema::MODELS + RecordsSchema::MODELS
         + RecordsCommonSchema::MODELS + WorkflowSchema::MODELS + WorkflowCaseHandlingSchema::MODELS
-        + NoticeSchema::MODELS + UploadSchema::MODELS;
+        + NoticeSchema::MODELS + UploadSchema::MODELS + WorkflowAttachmentSchema::MODELS;
 
     /**
      * @return array<string, array{string}>

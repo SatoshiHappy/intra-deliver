@@ -20,6 +20,7 @@ use LogicException;
  * 申請した案件の申請基準日は今日(渡せば渡した日)、版はフローのその日に有効な版(申請に使う版の規則 = 定義の表.md 2.1。読み取りの口
  * App\Queries\Workflow\EffectiveFlowVersions と同じ条件。factory は読み取りの層に依存できないので、同じ有効の定義(HasPeriod の effectiveOn)で引く)。
  * フローに版が 1 つも無ければ、2000-01-01 から上限なしの版を作る。版があってその日に有効な版が無ければ例外。
+ * 申請した案件の「添付を使う」の写しは、フローの既定と同じ true(一時保存は NULL = 設計/ワークフロー/申請の周辺/データモデル.md の 3.4 節)。
  *
  * @extends Factory<WorkflowCase>
  */
@@ -69,6 +70,8 @@ class WorkflowCaseFactory extends Factory
             'completed_at' => null,
             'base_date' => now()->toDateString(),
             'workflow_flow_version_id' => fn (array $attributes): int => $this->versionOn($attributes['workflow_flow_id'], CarbonImmutable::parse($attributes['base_date'] ?? 'today')),
+            'is_attachment_enabled' => fn (array $attributes): bool => WorkflowFlow::query()
+                ->whereKey($attributes['workflow_flow_id'])->sole()->is_attachment_enabled,
         ]);
     }
 
@@ -118,6 +121,7 @@ class WorkflowCaseFactory extends Factory
             'completed_at' => null,
             'base_date' => null,
             'workflow_flow_version_id' => null,
+            'is_attachment_enabled' => null,
         ];
     }
 }

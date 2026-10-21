@@ -20,7 +20,7 @@ class CaseRoutePlanWriter
     /** 展開の行を足すときに書く列 */
     private const CHILD_COLUMNS = [
         'workflow_case_id', 'name', 'kind', 'parent_workflow_case_node_id', 'sequence', 'prevents_applicant_approval',
-        'state', 'deadline_days',
+        'state', 'deadline_days', 'prevents_attachment_add',
     ];
 
     /**

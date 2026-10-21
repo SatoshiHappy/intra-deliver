@@ -26,12 +26,14 @@ use LogicException;
  * 処理済みのノードだけが、処理済みにした履歴の行(このノードの履歴)を指す。指すノード(親・指定するノード・対の終了)は同じ案件のノード(複合外部キー)。
  * 生成列 purpose はアプリが書かず読まない。到達日時と到達の前処理者・起点の組織は計画が到達のときに書き、期限の日数と確認する人は写しの列
  * (設計/ワークフロー/案件の運用/データモデル/表.md の 3.2 節)。現在のノード(承認待ち・再申請待ち・保留)は到達日時を持つ(検査制約)。
+ * 「添付を追加できない」も写しの列で、展開の行は親の値を写す(設計/ワークフロー/申請の周辺/データモデル.md の 3.1 節)。
  */
 #[Fillable([
     'workflow_case_id', 'position', 'code', 'name', 'kind', 'target_kind', 'authz_subject_group_id', 'relative_base', 'relative_scope', 'company_post_id',
     'designator_workflow_case_node_id', 'min_assignees', 'max_assignees', 'decision_rule', 'decision_value', 'prevents_applicant_approval', 'closing_workflow_case_node_id',
     'parent_workflow_case_node_id', 'sequence', 'state', 'workflow_case_history_id',
     'reached_at', 'previous_user_id', 'previous_department_id', 'deadline_days', 'confirm_authz_subject_group_id',
+    'prevents_attachment_add',
 ])]
 class WorkflowCaseNode extends Model
 {
@@ -58,6 +60,7 @@ class WorkflowCaseNode extends Model
             'state' => WorkflowNodeState::class,
             'reached_at' => 'datetime',
             'deadline_days' => 'integer',
+            'prevents_attachment_add' => 'boolean',
         ];
     }
 

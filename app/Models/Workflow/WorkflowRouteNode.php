@@ -21,11 +21,12 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * 位置 1 だけが申請のノード。種類と処理対象者の指定の種類・指定の列・人数・可決の条件・申請者承認防止・対の終了の組は検査制約が止める。
  * 指定するノード・対の終了は同じ版のノード(複合外部キー)。処理対象者の指定(fixed)は用途 selection の認可の対象者(生成列 purpose はアプリが書かず読まない)。
  * 処理期限の日数と確認する人はステップの設定の列(設計/ワークフロー/案件の運用/データモデル/表.md の 2.3 節)。確認する人も用途 selection の対象者。
+ * 「添付を追加できない」もステップの設定の列で、真を持てるのは承認・横配置・縦配置だけ(設計/ワークフロー/申請の周辺/データモデル.md の 2.2 節)。
  */
 #[Fillable([
     'workflow_flow_version_id', 'code', 'name', 'kind', 'position', 'target_kind', 'authz_subject_group_id', 'relative_base', 'relative_scope', 'company_post_id',
     'designator_workflow_route_node_id', 'min_assignees', 'max_assignees', 'decision_rule', 'decision_value', 'prevents_applicant_approval', 'closing_workflow_route_node_id',
-    'deadline_days', 'confirm_authz_subject_group_id',
+    'deadline_days', 'confirm_authz_subject_group_id', 'prevents_attachment_add',
 ])]
 class WorkflowRouteNode extends Model
 {
@@ -49,6 +50,7 @@ class WorkflowRouteNode extends Model
             'decision_value' => 'integer',
             'prevents_applicant_approval' => 'boolean',
             'deadline_days' => 'integer',
+            'prevents_attachment_add' => 'boolean',
         ];
     }
 

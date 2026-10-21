@@ -15,7 +15,8 @@ use App\Models\Workflow\WorkflowRouteSendBack;
  * 申請の写し(docs の 設計/ワークフロー/ルートの深さ/データモデル/案件の表.md 3.2〜3.4): 版のノード(状態はすべて到達していない)・辺(taken は NULL)・
  * 差戻しできる先を案件へ全部写す。ノードは参照される側(対の終了・指定するノード)を先に書き({@see ReferenceFirstOrder})、指す列は写した案件のノードを
  * 最初から指す(NULL で入れて指し直すと遅延できない検査制約に当たる)。定義の表は鍵を取らずに読む。呼び手のトランザクションの中で書く。
- * 期限の日数・確認する人も同じ写しの列(設計/ワークフロー/案件の運用/データモデル/表.md の 3.2 節)。
+ * 期限の日数・確認する人も同じ写しの列(設計/ワークフロー/案件の運用/データモデル/表.md の 3.2 節)。添付を追加できないも同じ
+ * (設計/ワークフロー/申請の周辺/データモデル.md の 3.1 節)。
  */
 class CaseRouteCopier
 {
@@ -23,7 +24,7 @@ class CaseRouteCopier
     private const COPIED_COLUMNS = [
         'position', 'code', 'name', 'kind', 'target_kind', 'authz_subject_group_id', 'relative_base', 'relative_scope', 'company_post_id',
         'min_assignees', 'max_assignees', 'decision_rule', 'decision_value', 'prevents_applicant_approval',
-        'deadline_days', 'confirm_authz_subject_group_id',
+        'deadline_days', 'confirm_authz_subject_group_id', 'prevents_attachment_add',
     ];
 
     public function __construct(private ReferenceFirstOrder $order) {}
