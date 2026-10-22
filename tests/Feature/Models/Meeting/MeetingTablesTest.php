@@ -2,7 +2,7 @@
 
 namespace Tests\Feature\Models\Meeting;
 
-use App\Actions\Ai\Api\RunRequestRejected;
+use App\Actions\Ai\Api\RunRequestDeclined;
 use App\Enums\Meeting\MeetingRunDecline;
 use App\Enums\Meeting\MeetingRunOrigin;
 use App\Enums\Meeting\MeetingRunStage;
@@ -160,7 +160,7 @@ final class MeetingTablesTest extends TransactionalTestCase
     public function test_the_decline_reasons_are_the_reasons_of_the_ai_request(): void
     {
         $this->assertSame(
-            [RunRequestRejected::BUDGET, RunRequestRejected::TOO_LONG],
+            [RunRequestDeclined::BUDGET, RunRequestDeclined::TOO_LONG],
             array_map(fn (MeetingRunDecline $reason) => $reason->value, MeetingRunDecline::cases()),
         );
     }

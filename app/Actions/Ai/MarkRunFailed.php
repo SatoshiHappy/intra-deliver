@@ -19,15 +19,13 @@ class MarkRunFailed
 {
     private const MESSAGE_MAX_CHARS = 1000;
 
-    public function __construct(private RunCosts $costs) {}
-
     /**
-     * @param  LlmResult|null  $result  応答(使用量が分かったとき。分からなければ null = 使用量・費用は NULL のまま見積もりで数える)
+     * @param  RunResult|null  $result  分かった分の使用量・費用・原文(分からなければ null = 使用量・費用は NULL のまま見積もりで数える)
      * @return bool 失敗にした = true。もう終わっていた = false(何も書かない)
      *
      * @throws Throwable 書き込みに失敗したとき
      */
-    public function execute(int $runId, AiRunErrorCode $errorCode, ?Throwable $exception, ?LlmResult $result = null): bool
+    public function execute(int $runId, AiRunErrorCode $errorCode, ?Throwable $exception, ?RunResult $result = null): bool
     {
         try {
             return DB::transaction(function () use ($runId, $errorCode, $exception, $result): bool {
@@ -38,15 +36,15 @@ class MarkRunFailed
                 }
 
                 $run->fill([
-                    ...($result === null ? [] : $this->costs->usageAttributes($run->provider, $run->model, $result)),
+                    ...($result->usage ?? []),
                     'status' => AiRunStatus::Failed,
                     'error_code' => $errorCode,
                     'error_message' => mb_substr($exception?->getMessage() ?? '', 0, self::MESSAGE_MAX_CHARS),
                     'finished_at' => now(),
                 ])->save();
 
-                if ($result !== null) {
-                    AiRunText::query()->whereKey($runId)->update(['output_text' => $result->text]);
+                if ($result?->outputText !== null) {
+                    AiRunText::query()->whereKey($runId)->update(['output_text' => $result->outputText]);
                 }
 
                 return true;

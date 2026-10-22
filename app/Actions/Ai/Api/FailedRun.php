@@ -33,7 +33,7 @@ final readonly class FailedRun
      * @param  int  $requesterUserId  依頼者(users.id)
      * @param  string  $errorCode  失敗の種類(ai_runs.error_code の値)
      * @param  string|null  $reason  細かい理由(このクラスの定数か、受け手が投げた {@see RunCompletionFailed} のコードか、2 段目の依頼が断られた
-     *                               {@see RunRequestRejected} のコード。無ければ null)
+     *                               {@see RunRequestDeclined} のコード。無ければ null)
      */
     public function __construct(
         public int $runId,

@@ -23,7 +23,7 @@ class RunBudgetQuery
     public function __construct(private RunSpending $spending, private RunEstimates $estimates) {}
 
     /**
-     * 区分の「使った額 + その区分に属する文章の種類の見積もりの上限の最大」が上限を超える期間。複数なら長い方。無ければ null。
+     * 区分の「使った額 + その区分に属する種類(文章・文字起こし)の見積もりの上限の最大」が上限を超える期間。複数なら長い方。無ければ null。
      * 見積もりの上限は依頼の口の確かめと同じ計算(短い依頼なら受けられる場合も超えたと返す = 多めに止まる側)。
      *
      * @param  DateTimeInterface  $at  日と月の境を決める時刻(Asia/Tokyo の暦で切る)

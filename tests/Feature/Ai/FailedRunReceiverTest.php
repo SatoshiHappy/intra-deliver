@@ -5,7 +5,7 @@ namespace Tests\Feature\Ai;
 use App\Actions\Ai\Api\FailedRun;
 use App\Actions\Ai\Api\RequestPrompt;
 use App\Actions\Ai\Api\RunCompletionFailed;
-use App\Actions\Ai\Api\RunRequestRejected;
+use App\Actions\Ai\Api\RunRequestDeclined;
 use App\Actions\Ai\ExecutePrompt;
 use App\Actions\Ai\PromptAgent;
 use App\Enums\Ai\AiRunStatus;
@@ -111,12 +111,12 @@ final class FailedRunReceiverTest extends TransactionalTestCase
                 FailedRun::RECORD_REJECTED,
             ],
             '2 段目の依頼が上限で断られた(422)' => [
-                fn () => new RunRequestRejected(RunRequestRejected::BUDGET, '上限'),
-                RunRequestRejected::BUDGET,
+                fn () => new RunRequestDeclined(RunRequestDeclined::BUDGET, '上限'),
+                RunRequestDeclined::BUDGET,
             ],
             '2 段目の依頼が長すぎて断られた(422)' => [
-                fn () => new RunRequestRejected(RunRequestRejected::TOO_LONG, '長すぎる'),
-                RunRequestRejected::TOO_LONG,
+                fn () => new RunRequestDeclined(RunRequestDeclined::TOO_LONG, '長すぎる'),
+                RunRequestDeclined::TOO_LONG,
             ],
             '受け手が決めた理由' => [fn () => new RunCompletionFailed('segments_empty', '区間が空'), 'segments_empty'],
             'ほかの例外' => [fn () => new RuntimeException('出力を解釈できない'), null],
@@ -161,12 +161,12 @@ final class FailedRunReceiverTest extends TransactionalTestCase
         $this->assertSame([], $this->recordingKind->failed);
     }
 
-    public function test_is_not_called_for_a_request_rejected_with_422(): void
+    public function test_is_not_called_for_a_request_declined_with_422(): void
     {
         $this->setKindSetting(RecordingPromptKind::CODE, 'max_input_chars', 10);
 
         $request = fn () => app(RequestPrompt::class)->execute($this->requesterContext(), $this->promptRequest());
-        $this->assertThrows($request, RunRequestRejected::class);
+        $this->assertThrows($request, RunRequestDeclined::class);
 
         $this->assertSame([0, []], [AiRun::query()->count(), $this->recordingKind->failed]);
     }

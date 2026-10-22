@@ -72,9 +72,14 @@ final class PruneRunTextsTest extends TransactionalTestCase
     {
         $this->freezeTime();
         $expired = $this->runWithText(now()->subDays(91));
+        $emptyDirectory = sys_get_temp_dir().'/prune-run-texts-test-'.bin2hex(random_bytes(6));
+        config(['ai_runs.transcription.temp_directory' => $emptyDirectory]);
 
         $this->assertSame(0, Artisan::call('ai:prune-run-texts'));
-        $this->assertSame("AI の原文を 1 件消し、例外の文を 0 件空にした\n", Artisan::output());
+        $this->assertSame(
+            "AI の原文を 1 件消し、例外の文を 0 件空にした\n残った文字起こしの一時ファイルのディレクトリを 0 件消した\n",
+            Artisan::output(),
+        );
         $this->assertSame(0, AiRunText::query()->whereKey($expired)->count());
 
         $this->assertSame(['0 0 * * *'], $this->scheduled('ai:prune-run-texts'));

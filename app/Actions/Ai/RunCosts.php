@@ -2,12 +2,13 @@
 
 namespace App\Actions\Ai;
 
+use App\Actions\Ai\Api\FailedRun;
 use App\Queries\Ai\AiSettings;
 use App\Queries\Ai\RunEstimates;
 use LogicException;
 
 /**
- * AI の実行の費用(docs の 設計/AI/実行と費用.md 5.1)。額は小数 6 桁の文字列(表の numeric(12,6) と同じ)。見積もり(5.2)は {@see RunEstimates}。
+ * AI の実行の費用(docs の 設計/AI/実行と費用.md 5.1。文章はトークンの段、文字起こしは音声の分単価)。額は小数 6 桁の文字列(表の numeric(12,6) と同じ)。見積もり(5.2)は {@see RunEstimates}。
  *
  * @phpstan-import-type PriceTier from AiSettings
  */
@@ -35,24 +36,60 @@ class RunCosts
     }
 
     /**
-     * 応答の使用量・使った単価の段・費用(表 ai_runs の列)。
-     *
-     * @return array{input_tokens: int, output_tokens: int, cache_read_input_tokens: int|null, cache_write_input_tokens: int|null, reasoning_tokens: int|null, pricing: PriceTier, cost_usd: string}
+     * LLM の応答の使用量・使った単価の段・費用(表 ai_runs の列)と原文。不完全の理由は応答の終わりの理由から決める。
      *
      * @throws LogicException 単価が無いとき
      */
-    public function usageAttributes(string $provider, string $model, LlmResult $result): array
+    public function promptResult(string $provider, string $model, LlmResult $result): RunResult
     {
         $tier = $this->estimates->tierFor($provider, $model, $result->inputTokens);
+        $cost = $this->costOf(
+            $tier,
+            $result->inputTokens,
+            $result->outputTokens,
+            $result->cacheReadInputTokens,
+            $result->cacheWriteInputTokens,
+        );
+        $incompleteReason = match (true) {
+            $result->isTruncated() => FailedRun::OUTPUT_TRUNCATED,
+            $result->isRefused() => FailedRun::CONTENT_REFUSED,
+            default => null,
+        };
 
-        return [
+        return new RunResult([
             'input_tokens' => $result->inputTokens,
             'output_tokens' => $result->outputTokens,
             'cache_read_input_tokens' => $result->cacheReadInputTokens,
             'cache_write_input_tokens' => $result->cacheWriteInputTokens,
             'reasoning_tokens' => $result->reasoningTokens,
             'pricing' => $tier,
-            'cost_usd' => $this->costOf($tier, $result->inputTokens, $result->outputTokens, $result->cacheReadInputTokens, $result->cacheWriteInputTokens),
-        ];
+            'cost_usd' => $cost,
+        ], $result->text, $incompleteReason);
+    }
+
+    /**
+     * 文字起こしの費用(呼んだ区切りの長さで数え、失敗した区切りも数える = 5.1。見積もりと同じ式 = {@see RunEstimates::audioCost()})と、
+     * 使用量(分からなければ入れない)・単価の写し・原文。
+     *
+     * @param  array{int, int}|null  $tokens  入力と出力のトークンの和(呼んだ区切りのすべてが応答を返したときだけ)
+     *
+     * @throws LogicException 分単価が無いとき
+     */
+    public function transcriptionResult(
+        string $provider,
+        string $model,
+        float $calledSeconds,
+        ?array $tokens,
+        ?string $outputText,
+        ?string $incompleteReason = null,
+    ): RunResult {
+        $price = $this->estimates->audioMinutePriceOf($provider, $model);
+        $usage = $tokens === null ? [] : ['input_tokens' => $tokens[0], 'output_tokens' => $tokens[1]];
+
+        return new RunResult([
+            ...$usage,
+            'pricing' => ['per_audio_minute' => $price],
+            'cost_usd' => RunEstimates::audioCost($price, $calledSeconds),
+        ], $outputText, $incompleteReason);
     }
 }

@@ -9,6 +9,7 @@ use App\Jobs\Ai\RunPromptJob;
 use App\Models\Ai\AiRun;
 use App\Models\Ai\AiRunText;
 use App\Queries\Ai\AiSettings;
+use App\Queries\Ai\KindSettings;
 use App\Queries\Ai\RunEstimates;
 use App\Queries\Records\Api\RecordDisplayQuery;
 use App\Support\AccessContext;
@@ -31,7 +32,7 @@ class RequestPrompt
 
     public function __construct(
         private PromptKinds $kinds,
-        private AiSettings $settings,
+        private KindSettings $settings,
         private RunEstimates $estimates,
         private RunBudget $budget,
         private RecordDisplayQuery $records,
@@ -42,17 +43,17 @@ class RequestPrompt
      *
      * @throws AuthorizationException ゲストのとき(403)
      * @throws LogicException 未登録・設定に無い種類、無い対象のレコードのとき(作りの誤り)
-     * @throws RunRequestRejected 送る文が長すぎる・上限を超えるとき(422。キー ai)
+     * @throws RunRequestDeclined 送る文が長すぎる・上限を超えるとき(422。キー ai)
      */
     public function execute(AccessContext $context, PromptRequest $request): int
     {
         $requesterUserId = $context->userId ?? throw new AuthorizationException(self::GUEST);
         $this->kinds->of($request->kindCode);
-        $kind = $this->settings->kind($request->kindCode) ?? throw new LogicException("AI の実行の種類 {$request->kindCode} が設定(config/ai_runs.php の kinds)に無い");
+        $kind = $this->settings->prompt($request->kindCode) ?? throw new LogicException("AI の実行の種類 {$request->kindCode} が設定(config/ai_runs.php の kinds)に無い");
         $chars = mb_strlen($request->systemText) + mb_strlen($request->userText);
 
         if ($chars > $kind['max_input_chars']) {
-            throw new RunRequestRejected(RunRequestRejected::TOO_LONG, str_replace(':max', (string) $kind['max_input_chars'], self::INPUT_TOO_LONG));
+            throw new RunRequestDeclined(RunRequestDeclined::TOO_LONG, str_replace(':max', (string) $kind['max_input_chars'], self::INPUT_TOO_LONG));
         }
 
         $moduleCode = $request->recordId === null ? null : ($this->records->topLevelModuleCodeOf($request->recordId) ?? throw new LogicException("AI の実行の対象のレコード {$request->recordId} が無い"));

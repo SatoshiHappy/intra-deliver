@@ -2,7 +2,7 @@
 
 namespace App\Actions\Ai;
 
-use App\Actions\Ai\Api\RunRequestRejected;
+use App\Actions\Ai\Api\RunRequestDeclined;
 use App\Queries\Ai\Api\RunBudgetQuery;
 use App\Queries\Ai\RunSpending;
 use Carbon\CarbonImmutable;
@@ -71,7 +71,7 @@ class RunBudget
      * @param  string  $budget  予算の区分
      * @param  string  $reservedUsd  この依頼の見積もり(小数 6 桁)
      *
-     * @throws RunRequestRejected 上限を超えるとき(422。キー ai)
+     * @throws RunRequestDeclined 上限を超えるとき(422。キー ai)
      * @throws LogicException 設定に無い区分のとき
      */
     public function ensureWithin(string $budget, string $reservedUsd): void
@@ -81,7 +81,7 @@ class RunBudget
         if ($period !== null) {
             $message = self::MESSAGES[$budget][$period] ?? throw new LogicException("予算の区分 {$budget} の上限を超えたときの文が無い");
 
-            throw new RunRequestRejected(RunRequestRejected::BUDGET, $message);
+            throw new RunRequestDeclined(RunRequestDeclined::BUDGET, $message);
         }
     }
 }

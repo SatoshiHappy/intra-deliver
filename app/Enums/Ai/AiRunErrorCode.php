@@ -16,6 +16,9 @@ enum AiRunErrorCode: string
     /** 出力が上限のトークンで切れた・接続先が応答を断った。使用量は分かる */
     case Incomplete = 'incomplete';
 
+    /** 音声の変換の失敗・音声の実体が無い(文字起こし)。費用は呼んだ区切りの分 */
+    case Conversion = 'conversion';
+
     /** 種類の実装の complete の例外(出力の解釈の失敗など)。使用量は分かる */
     case Completion = 'completion';
 

@@ -3,7 +3,7 @@
 namespace App\Actions\Meeting;
 
 use App\Actions\Ai\Api\RequestPrompt;
-use App\Actions\Ai\Api\RunRequestRejected;
+use App\Actions\Ai\Api\RunRequestDeclined;
 use App\Enums\Meeting\MeetingProcessingState;
 use App\Enums\Meeting\MeetingRunOrigin;
 use App\Enums\Meeting\MeetingRunStage;
@@ -65,7 +65,7 @@ class RegenerateMinutes
      * @return int 依頼した実行の id
      *
      * @throws ValidationException 追加の指示の誤り(キー instructions)・申請中・処理中・書き起こしが無いとき(キー meeting)
-     * @throws RunRequestRejected 依頼が上限を超える・長すぎるとき(キー ai)
+     * @throws RunRequestDeclined 依頼が上限を超える・長すぎるとき(キー ai)
      * @throws ModelNotFoundException 依頼者が会議を閲覧できないとき
      */
     public function execute(AccessContext $context, int $recordId, ?string $instructions): int

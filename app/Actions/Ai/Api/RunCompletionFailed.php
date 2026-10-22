@@ -16,7 +16,7 @@ final class RunCompletionFailed extends RuntimeException
     private const REASON_PATTERN = '/^[a-z_]{1,32}$/D';
 
     /**
-     * @param  string  $reason  理由のコード(英小文字と _、32 字まで。受け手が決めるコードは {@see FailedRun} と {@see RunRequestRejected} の定数と重ねない)
+     * @param  string  $reason  理由のコード(英小文字と _、32 字まで。受け手が決めるコードは {@see FailedRun} と {@see RunRequestDeclined} の定数と重ねない)
      * @param  string  $message  例外の文(実行の記録の例外の文に残る。画面には出さない)
      *
      * @throws LogicException 理由のコードの形が違うとき(作りの誤り)

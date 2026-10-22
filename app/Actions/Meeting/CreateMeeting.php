@@ -3,7 +3,7 @@
 namespace App\Actions\Meeting;
 
 use App\Actions\Ai\Api\RequestPrompt;
-use App\Actions\Ai\Api\RunRequestRejected;
+use App\Actions\Ai\Api\RunRequestDeclined;
 use App\Enums\Meeting\MeetingRunOrigin;
 use App\Enums\Meeting\MeetingRunStage;
 use App\Models\Meeting\MeetingRun;
@@ -42,7 +42,7 @@ class CreateMeeting
      * @return int 作った会議の id
      *
      * @throws ValidationException 入力のテキストの誤り(キー file・text)・欄の検証の失敗(キー values.<コード>)のとき
-     * @throws RunRequestRejected 依頼が上限を超える・長すぎるとき(キー ai)
+     * @throws RunRequestDeclined 依頼が上限を超える・長すぎるとき(キー ai)
      * @throws AuthorizationException 登録を許されない・ゲストのとき
      */
     public function execute(AccessContext $context, ?UploadedFile $file, ?string $text, array $values): int
