@@ -8,13 +8,14 @@ use App\Actions\Records\DeleteRecord;
 use App\Enums\Records\RecordModuleAction;
 use App\Enums\Records\RecordWriteDestination;
 use App\Http\Controllers\Controller;
-use App\Http\Requests\Records\RecordInputRequest;
+use App\Http\Requests\Records\RecordStoreRequest;
 use App\Http\Requests\Records\RecordUpdateRequest;
 use App\Queries\Authz\Api\Requester;
 use App\Queries\Records\Api\RecordShowPanelQuery;
 use App\Queries\Records\RecordListQuery;
 use App\Queries\Records\RecordPageQuery;
 use App\Queries\Records\RecordQuery;
+use App\Queries\Records\RecordRelatedProps;
 use App\Queries\Records\RecordScreenAddonCatalog;
 use App\Support\AccessContext;
 use Illuminate\Http\RedirectResponse;
@@ -33,6 +34,7 @@ use Inertia\Support\Header;
  * 書き込みの成功の戻り方は 画面/README.md 1.1(移り先は {@see self::redirectAfterWrite()})、検証の失敗の戻り方は 項目と規則/規則と業務処理/失敗と定義の変更.md 10 節。
  * 持ち主の鍵は HTTP から来ない(更新はいつも鍵 null を渡し、FormRequest は holder を受けない = 設計/ワークフロー/業務データとの接続/README.md 4 節)。
  * 更新は編集の画面を開いたときの版を業務処理に渡す(項目と規則/規則と業務処理/README.md 9.2 の 2)。
+ * 登録の画面のクエリ copy = 複製(レコードの共通機能/複製.md の 1 節)、登録の入力 related = 関連レコードのダイアログの新規(関連レコード.md の 4.2 節)。
  */
 class RecordController extends Controller
 {
@@ -45,6 +47,7 @@ class RecordController extends Controller
         private DeleteRecord $deleteRecord,
         private RecordShowPanelQuery $panels,
         private RecordScreenAddonCatalog $addons,
+        private RecordRelatedProps $related,
     ) {}
 
     public function index(Request $request, string $module): Response
@@ -66,22 +69,44 @@ class RecordController extends Controller
         ]);
     }
 
+    /**
+     * 複製(クエリ copy)は元の値を返すので create と read の両方を求め、その後に copy の形と元のレコードの有無・行の判定を見る
+     * (複製.md の 1 節・4 節。read が無ければ copy の値によらず 403)。
+     */
     public function create(Request $request, string $module): Response
     {
         $context = AccessContext::of($request);
         $requester = Requester::fromAccessContext($context);
-        $opened = $this->pages->open($requester, $module, $context->date, RecordModuleAction::Create);
+        $copy = $request->query('copy');
+        $copyActions = $copy === null ? [] : [RecordModuleAction::Read];
+        $opened = $this->pages->open($requester, $module, $context->date, RecordModuleAction::Create, ...$copyActions);
+        $copyId = self::copyId($copy);
+
+        if ($copyId !== null) {
+            $this->pages->ensureRowAccess($requester, $opened, $copyId, $context->date);
+        }
 
         return Inertia::render('Records/Create', [
             'module' => fn () => $this->pages->definition($opened),
             'headings' => fn () => $this->panels->headings($opened->id),
             'can' => fn () => $this->pages->can($requester, $opened, [RecordModuleAction::Read], $context->date),
+            'copySource' => fn () => $copyId === null
+                ? null
+                : $this->records->copySource($requester, $opened, $copyId, $context->date, $context->localeCode),
         ]);
     }
 
-    public function store(RecordInputRequest $request, string $module): RedirectResponse
+    /**
+     * 関連レコードのダイアログの新規(related あり)は、成功の応答を元の画面へ戻す(back() の 303。トーストなし = 関連レコード.md の 4.2 節、
+     * 戻り先と安全の前提 = 詳細の画面/README.md の 3 節)。
+     */
+    public function store(RecordStoreRequest $request, string $module): RedirectResponse
     {
         $recordId = $this->createRecord->execute(AccessContext::of($request), $module, $request->recordInput());
+
+        if ($request->isRelated()) {
+            return redirect()->back(303);
+        }
 
         return $this->redirectAfterWrite($request, $module, $recordId, '登録しました');
     }
@@ -122,6 +147,12 @@ class RecordController extends Controller
             'sections' => fn () => $panel()['sections'] ?? [],
             'panelContent' => Inertia::merge(fn () => $this->panelContent($request, $context, $module, $recordId))
                 ->append('rows', 'id'),
+            // 関連レコード(関連レコード.md の 7 節)。表は tab が related のとき、フォームは「新規」を開いた部分の再読み込みでだけ
+            'relatedRecords' => fn () => $this->related->records($context, $recordId),
+            'relatedRecordRows' => fn () => $this->related->rows($context, $recordId, $request->query('tab'),
+                $request->query('related'), self::isPartial($request) ? $request->query('relatedPage') : null),
+            'relatedRecordForm' => Inertia::optional(fn () => $this->related
+                ->form($context, $recordId, $request->query('related'))),
             // 閲覧できない見る人に呼ばないため、ensureRowAccess の後のクロージャにする(業務の画面.md 2.5)
             'addons' => function () use ($context, $module, $recordId): array {
                 $addons = self::withObjectProps($this->addons->show($context, $module, $recordId));
@@ -129,6 +160,30 @@ class RecordController extends Controller
                 return [...$addons, 'fieldNotes' => (object) $addons['fieldNotes']];
             },
         ]);
+    }
+
+    /**
+     * 詳細の画面の部分の再読み込みか(before・relatedPage は部分の再読み込みのときだけ読む = 詳細の画面/README.md の 2.2 節・3 節)。
+     */
+    private static function isPartial(Request $request): bool
+    {
+        return $request->header(Header::PARTIAL_COMPONENT) === 'Records/Show';
+    }
+
+    /**
+     * 複製の元のレコードの id(クエリ copy が無ければ null。整数の形でなければ 404。ルートの {record} と同じ形)。判定の後に呼ぶ。
+     */
+    private static function copyId(mixed $copy): ?int
+    {
+        if ($copy === null) {
+            return null;
+        }
+
+        if (! is_string($copy) || preg_match('/^[0-9]{1,18}\z/', $copy) !== 1) {
+            abort(404);
+        }
+
+        return (int) $copy;
     }
 
     /**
@@ -207,10 +262,8 @@ class RecordController extends Controller
     {
         $key = $request->query('panel');
         $before = $request->query('before');
-        $partial = $request->header(Header::PARTIAL_COMPONENT) === 'Records/Show';
-        $beforeId = $partial && is_string($before) && preg_match('/^[1-9][0-9]{0,17}\z/', $before) === 1
-            ? (int) $before
-            : null;
+        $beforeId = self::isPartial($request) && is_string($before)
+            && preg_match('/^[1-9][0-9]{0,17}\z/', $before) === 1 ? (int) $before : null;
         $content = is_string($key) ? $this->panels->content($context, $module, $recordId, $key, $beforeId) : null;
         $route = ['module' => $module, 'record' => $recordId];
 

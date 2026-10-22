@@ -70,6 +70,44 @@ class RecordQuery
     }
 
     /**
+     * 複製の登録の画面の初期値(レコードの共通機能/複製.md の 1 節・2 節): 写すのはレコードの値(項目と明細)だけで、
+     * 明細の行は id を持たない。参照の表示名は編集の画面の初期値と同じ形(読めない参照先は label が null)。
+     * 判定(create と元の read・行の判定)は呼び手の責任。引数と例外は {@see self::show()} と同じ。
+     *
+     * @param  RecordModule  $module  定義を読み込んだ業務モジュール(判定は呼び手の責任)
+     * @return array{id: int, values: array<string, mixed>,
+     *     details: array<string, list<array{values: array<string, mixed>}>>}
+     *
+     * @throws ModelNotFoundException<Record> レコードがその業務モジュールに無いとき(判定の後に見る)
+     */
+    public function copySource(
+        Requester $requester,
+        RecordModule $module,
+        int $recordId,
+        DateTimeInterface $date,
+        string $localeCode,
+    ): array {
+        $read = $this->read($requester, $module, $recordId, $date, $localeCode);
+
+        return [
+            'id' => $read['record']->id,
+            'values' => $read['values'],
+            'details' => array_map(self::withoutIds(...), $read['details']),
+        ];
+    }
+
+    /**
+     * 明細の行から id を外す(複製の初期値の行は新しい行)。
+     *
+     * @param  list<DetailRow>  $rows
+     * @return list<array{values: array<string, mixed>}>
+     */
+    private static function withoutIds(array $rows): array
+    {
+        return array_map(fn (array $row) => ['values' => $row['values']], $rows);
+    }
+
+    /**
      * 親の無いレコード(明細の行は単独で扱わない = 項目と規則/README.md 6 節)。業務データの入れ物の公開の口がレコードの id から引く 1 か所。
      *
      * @throws ModelNotFoundException<Record> 無い・明細の行のとき

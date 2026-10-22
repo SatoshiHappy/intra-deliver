@@ -53,6 +53,7 @@ use App\Actions\Records\ModuleCategoryFolders;
 use App\Actions\Records\ReorderModuleCategories;
 use App\Actions\Records\ReorderRecordFields;
 use App\Actions\Records\ReorderRecordModuleItems;
+use App\Actions\Records\SetRecordRelatedColumns;
 use App\Actions\Records\SyncRecordModuleItems;
 use App\Actions\Records\UpdateRecordField;
 use App\Actions\Records\UpdateRecordFieldHeading;
@@ -199,6 +200,7 @@ final class CommonMasterLockTest extends TransactionalTestCase
             ReorderModuleCategories::class => [fn (self $test) => app(ReorderModuleCategories::class)->execute([$test->moduleCategory()])],
             ReorderRecordFields::class => [fn (self $test) => $test->reorderFields()],
             ReorderRecordModuleItems::class => [fn (self $test) => app(ReorderRecordModuleItems::class)->execute(null, ['project', 'project_issue', 'meeting'])],
+            SetRecordRelatedColumns::class => [fn (self $test) => $test->setRelatedColumns()],
             SyncRecordModuleItems::class => [fn (self $test) => app(SyncRecordModuleItems::class)->execute(RecordModule::factory()->create(), [], ['ja' => '備品'])],
             UpdateRecordField::class => [fn (self $test) => app(UpdateRecordField::class)->execute('project', 'summary', ['name' => '要旨'])],
             UpdateRecordFieldHeading::class => [fn (self $test) => $test->renameHeading()],
@@ -288,6 +290,11 @@ final class CommonMasterLockTest extends TransactionalTestCase
     public function projectRule(): RecordRule
     {
         return RecordRule::query()->where('record_module_id', self::project()->id)->sole();
+    }
+
+    public function setRelatedColumns(): void
+    {
+        app(SetRecordRelatedColumns::class)->execute('project_issue', ['entry' => 'project', 'columns' => ['title']]);
     }
 
     public function addHeading(): void

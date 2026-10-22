@@ -3,6 +3,7 @@ import { RecordDetailsEditor } from '@/components/RecordDetailsEditor';
 import { RecordFieldInput } from '@/components/RecordFieldInput';
 import { RecordHeadingGroups } from '@/components/RecordHeadingGroups';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import type { RecordFieldDraft, RecordFormData } from '@/lib/recordForm';
 import { drawnDetailsFields, isWideField, valueFields } from '@/lib/recordForm';
 import {
@@ -38,6 +39,34 @@ type Props = {
     onRowsReordered: (prefix: string) => void;
     /** 検証のエラー(キー → 文言。values.<コード>・details.<コード>…) */
     errors: Record<string, string | undefined>;
+    /** 変えられない欄(関連レコードの新規の入口の項目 = レコードの共通機能/関連レコード.md の 4.2 節)。text = 見せる値、hint = 下の 1 行 */
+    fixedField?: FixedField;
+};
+
+/** 変えられない欄 */
+type FixedField = { code: string; text: string; hint: string };
+
+/**
+ * 欄に結びつく値の誤り(欄に結びつかない誤りは入力欄の上に出す = 業務の画面.md 2.2「エラー」)。
+ */
+function fieldErrorsOf(errors: Props['errors']): Props['errors'] {
+    return Object.fromEntries(
+        Object.entries(errors).filter(([key]) => isRecordFieldKey(key)),
+    );
+}
+
+type FieldRowProps = {
+    module: RecordModuleDefinition;
+    field: RecordFieldDefinition;
+    recordId: number | null;
+    /** 業務モジュールの欄の値 */
+    values: Record<string, RecordFieldDraft>;
+    onChange: (draft: RecordFieldDraft) => void;
+    errors: Record<string, string | undefined>;
+    /** prefix で始まるキーの誤りを消す */
+    onClearErrors: (prefix: string) => void;
+    /** 変えられない欄なら、その値と下の 1 行 */
+    fixed: FixedField | undefined;
 };
 
 /**
@@ -51,17 +80,8 @@ function FieldRow({
     onChange,
     errors,
     onClearErrors,
-}: {
-    module: RecordModuleDefinition;
-    field: RecordFieldDefinition;
-    recordId: number | null;
-    /** 業務モジュールの欄の値 */
-    values: Record<string, RecordFieldDraft>;
-    onChange: (draft: RecordFieldDraft) => void;
-    errors: Record<string, string | undefined>;
-    /** prefix で始まるキーの誤りを消す */
-    onClearErrors: (prefix: string) => void;
-}) {
+    fixed,
+}: FieldRowProps) {
     const id = `record-field-${field.code}`;
     const key = `values.${field.code}`;
     const required = isRequiredNow(module, field, values);
@@ -75,18 +95,23 @@ function FieldRow({
                 required ? <Badge variant="secondary">必須</Badge> : undefined
             }
             error={error}
+            hint={fixed?.hint}
             className={isWideField(field) ? 'md:col-span-2' : undefined}
         >
-            <RecordFieldInput
-                id={id}
-                field={field}
-                recordId={recordId}
-                draft={values[field.code] ?? null}
-                onChange={onChange}
-                isRequiredNow={required}
-                invalid={error !== undefined}
-                itemErrors={referenceItemErrors(errors, key, onClearErrors)}
-            />
+            {fixed === undefined ? (
+                <RecordFieldInput
+                    id={id}
+                    field={field}
+                    recordId={recordId}
+                    draft={values[field.code] ?? null}
+                    onChange={onChange}
+                    isRequiredNow={required}
+                    invalid={error !== undefined}
+                    itemErrors={referenceItemErrors(errors, key, onClearErrors)}
+                />
+            ) : (
+                <Input id={id} value={fixed.text} disabled readOnly />
+            )}
         </FormBlock>
     );
 }
@@ -102,7 +127,8 @@ function FieldsGrid({
     onChange,
     errors,
     onClearErrors,
-}: Pick<Props, 'module' | 'recordId' | 'data' | 'errors'> & {
+    fixedField,
+}: Pick<Props, 'module' | 'recordId' | 'data' | 'errors' | 'fixedField'> & {
     codes: string[];
     onChange: (code: string, draft: RecordFieldDraft) => void;
     onClearErrors: (prefix: string) => void;
@@ -123,6 +149,9 @@ function FieldsGrid({
                     onChange={(draft) => onChange(field.code, draft)}
                     errors={errors}
                     onClearErrors={onClearErrors}
+                    fixed={
+                        fixedField?.code === field.code ? fixedField : undefined
+                    }
                 />
             ))}
         </div>
@@ -175,16 +204,12 @@ export function RecordFields({
     onChange,
     onRowsReordered,
     errors,
+    fixedField,
 }: Props) {
-    // 欄に結びつかない値の誤りは入力欄の上に出す(業務の画面.md 2.2「エラー」)
-    const fieldErrors = Object.fromEntries(
-        Object.entries(errors).filter(([key]) => isRecordFieldKey(key)),
-    );
-
     return (
         <>
             <UnshownErrors
-                errors={fieldErrors}
+                errors={fieldErrorsOf(errors)}
                 shownKeys={shownRecordKeys(module, data)}
             />
             <RecordHeadingGroups
@@ -202,6 +227,7 @@ export function RecordFields({
                         recordId={recordId}
                         data={data}
                         errors={errors}
+                        fixedField={fixedField}
                         onChange={(code, draft) =>
                             onChange((current) => ({
                                 ...current,

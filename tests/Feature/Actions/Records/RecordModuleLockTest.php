@@ -13,6 +13,7 @@ use App\Actions\Records\DeleteRecordField;
 use App\Actions\Records\DeleteRecordFieldHeading;
 use App\Actions\Records\DeleteRecordRule;
 use App\Actions\Records\ReorderRecordFields;
+use App\Actions\Records\SetRecordRelatedColumns;
 use App\Actions\Records\UpdateRecordField;
 use App\Actions\Records\UpdateRecordFieldHeading;
 use App\Actions\Records\UpdateRecordModule;
@@ -118,6 +119,25 @@ final class RecordModuleLockTest extends TransactionalTestCase
         $childKey = self::LOCK_BASE + $this->childOf($tasks)->id;
         $this->assertNull($this->indexOf($childAdded, fn (string $sql, array $bindings) => ($bindings[0] ?? null) === $childKey), '明細のモジュールが自分の id の鍵を取った');
         $this->assertNull($this->indexOf($childModuleChanged, fn (string $sql, array $bindings) => ($bindings[0] ?? null) === $childKey), '明細のモジュールの変更が自分の id の鍵を取った');
+    }
+
+    public function test_setting_related_columns_takes_the_exclusive_lock_of_the_module_for_a_details_entry_too(): void
+    {
+        $projects = $this->recordModule('projects');
+        $module = $this->recordModule('estimates');
+        $this->field($module, 'title');
+        $this->referenceField($module, 'customer', $projects);
+        $lines = $this->detailsField($module, 'lines');
+        $this->referenceField($this->childOf($lines), 'product', $projects);
+        $key = self::LOCK_BASE + $module->id;
+        $set = fn (string $entry) => app(SetRecordRelatedColumns::class)
+            ->execute('estimates', ['entry' => $entry, 'columns' => ['title']]);
+
+        $own = $this->queries(fn () => $set('customer'));
+        $details = $this->queries(fn () => $set('lines.product'));
+
+        $this->assertLockedBefore(self::EXCLUSIVE, $key, 'delete from "record_related_columns"', $own);
+        $this->assertLockedBefore(self::EXCLUSIVE, $key, 'delete from "record_related_columns"', $details);
     }
 
     private function addHeading(string $name): void

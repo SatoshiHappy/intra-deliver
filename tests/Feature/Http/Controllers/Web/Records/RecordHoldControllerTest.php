@@ -51,7 +51,7 @@ final class RecordHoldControllerTest extends TransactionalTestCase
     {
         $this->get("/records/data/hold_check/{$this->held->id}")->assertOk()->assertInertia(fn (Assert $page) => $page
             ->component('Records/Show')
-            ->where('can', ['update' => true, 'delete' => true, 'attach' => true, 'apply' => false])
+            ->where('can', ['update' => true, 'delete' => true, 'copy' => true, 'attach' => true, 'apply' => false])
             ->where('hold', ['reason' => self::HOLD_REASON])
         );
     }
@@ -69,7 +69,7 @@ final class RecordHoldControllerTest extends TransactionalTestCase
     public function test_the_detail_of_a_record_without_a_holder_is_as_before(): void
     {
         $this->get("/records/data/hold_check/{$this->free->id}")->assertOk()->assertInertia(fn (Assert $page) => $page
-            ->where('can', ['update' => true, 'delete' => true, 'attach' => true, 'apply' => false])
+            ->where('can', ['update' => true, 'delete' => true, 'copy' => true, 'attach' => true, 'apply' => false])
             ->where('hold', null)
         );
     }

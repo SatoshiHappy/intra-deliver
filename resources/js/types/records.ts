@@ -150,6 +150,13 @@ export type RecordDetail = {
     updatedBy: RecordReferenceValue | null;
 };
 
+/** 複製の登録の画面の初期値(Records/Create の copySource。明細の行は id を持たない = レコードの共通機能/複製.md の 1 節) */
+export type RecordCopySource = {
+    id: number;
+    values: Record<string, RecordFieldValue>;
+    details: Record<string, { values: Record<string, RecordFieldValue> }[]>;
+};
+
 /** レコードの持ち主(詳細・編集のページの hold。理由だけを出し、案件の番号や名前は出さない = 画面/業務の画面.md 2.2・2.3) */
 export type RecordHold = { reason: string };
 

@@ -1,8 +1,12 @@
 import { Head } from '@inertiajs/react';
 import { RecordForm } from '@/components/Records/RecordForm';
-import { createFormData } from '@/lib/recordForm';
-import { create, index, store } from '@/routes/records/data';
-import type { RecordHeadingGroup, RecordModuleDefinition } from '@/types';
+import { createFormData, editFormData } from '@/lib/recordForm';
+import { create, index, show, store } from '@/routes/records/data';
+import type {
+    RecordCopySource,
+    RecordHeadingGroup,
+    RecordModuleDefinition,
+} from '@/types';
 
 type Props = {
     module: RecordModuleDefinition;
@@ -10,6 +14,8 @@ type Props = {
     headings: RecordHeadingGroup[];
     /** 一覧を開けるか(登録だけを許された利用者には、キャンセルとパンくずの一覧へのリンクを出さない) */
     can: { read: boolean };
+    /** 複製の元の値(クエリ copy のときだけ。レコードの共通機能/複製.md の 1 節) */
+    copySource: RecordCopySource | null;
 };
 
 /**
@@ -27,9 +33,20 @@ function listHrefOf(module: RecordModuleDefinition, can: Props['can']) {
 }
 
 /**
- * 業務の登録(docs の 設計/業務データの入れ物/画面/業務の画面.md 2.2)。
+ * 「キャンセル」の移り先(複製は元のレコードの詳細 = 複製.md の 1 節、ほかは一覧)。
  */
-export default function Create({ module, headings, can }: Props) {
+function cancelHrefOf(props: Props) {
+    return props.copySource === null
+        ? listHrefOf(props.module, props.can)
+        : show({ module: props.module.code, record: props.copySource.id });
+}
+
+/**
+ * 業務の登録(docs の 設計/業務データの入れ物/画面/業務の画面.md 2.2)。複製は元の値(項目と明細。明細の行は新しい行)を初期値にする
+ * (レコードの共通機能/複製.md の 1 節)。
+ */
+export default function Create(props: Props) {
+    const { module, headings, copySource } = props;
     const heading = headingOf(module);
 
     return (
@@ -42,10 +59,14 @@ export default function Create({ module, headings, can }: Props) {
                     module={module}
                     headings={headings}
                     recordId={null}
-                    initialData={createFormData(module)}
+                    initialData={
+                        copySource === null
+                            ? createFormData(module)
+                            : editFormData(module, copySource)
+                    }
                     action={store(module.code)}
                     submitLabel="登録"
-                    cancelHref={listHrefOf(module, can)}
+                    cancelHref={cancelHrefOf(props)}
                 />
             </div>
         </>

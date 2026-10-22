@@ -24,7 +24,7 @@ use Illuminate\Database\Seeder;
 
 /**
  * 業務データの入れ物の初期データ(docs の 設計/業務データの入れ物/認可とメニュー/メニューと初期データ.md 6 節・7 節、設計/メニュー/初期データ.md 4 節):
- * 1. 接頭辞のリソースグループ http-services.records・…data・…admin(・modules・fields・headings・rules・categories)と、業務のルートのリソースとポリシー(ゲストユーザと認証済みユーザに
+ * 1. 接頭辞のリソースグループ http-services.records・…data・…admin(・modules・fields・headings・related-columns・rules・categories)と、業務のルートのリソースとポリシー(ゲストユーザと認証済みユーザに
  *    execute の許可。接頭辞には置かない)、管理のルートのリソース(ポリシーなし)
  * 2. セット record-modules と、システム管理者への 5 つのアクション(全件の参照を含む)の許可(全部を許すロール = 認可とメニュー/README.md 3 節)
  * 3. 業務モジュール「プロジェクト」「課題」(業務モジュールを作る業務処理 = リソース・初期ポリシー・「業務」のアイテム)と、明細「マイルストーン」
@@ -50,6 +50,7 @@ class RecordsSeeder extends Seeder
         'records.admin.modules' => ['業務モジュール', 'Record modules'],
         'records.admin.fields' => ['項目', 'Fields'],
         'records.admin.headings' => ['見出し', 'Field headings'],
+        'records.admin.related-columns' => ['関連レコードの列', 'Related record columns'],
         'records.admin.rules' => ['規則', 'Rules'],
         'records.admin.categories' => ['モジュール分類', 'Module categories'],
     ];
@@ -95,6 +96,7 @@ class RecordsSeeder extends Seeder
         'records.admin.headings.store' => ['見出しの追加', 'Create field heading'],
         'records.admin.headings.update' => ['見出しの更新', 'Update field heading'],
         'records.admin.headings.destroy' => ['見出しの削除', 'Delete field heading'],
+        'records.admin.related-columns.update' => ['関連レコードの列の保存', 'Save related record columns'],
         'records.admin.rules.store' => ['規則の追加', 'Create rule'],
         'records.admin.rules.update' => ['規則の更新', 'Update rule'],
         'records.admin.rules.destroy' => ['規則の削除', 'Delete rule'],

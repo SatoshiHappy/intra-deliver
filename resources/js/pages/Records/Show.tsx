@@ -6,15 +6,24 @@ import { RecordAddonBadges } from '@/components/Records/RecordAddonBadges';
 import { RecordCommentsPane } from '@/components/Records/RecordCommentsPane';
 import { RecordDetailTabs } from '@/components/Records/RecordDetailTabs';
 import { RecordHoldNotice } from '@/components/Records/RecordHoldNotice';
+import { RecordRelatedDialog } from '@/components/RecordRelatedDialog';
 import { RecordRevisionList } from '@/components/RecordRevisionList';
 import { RecordShowLayout } from '@/components/RecordShowLayout';
 import { RecordShowSection } from '@/components/RecordShowSection';
 import { RecordSidePanel } from '@/components/RecordSidePanel';
 import { Button } from '@/components/ui/button';
+import { useRecordRelated } from '@/hooks/use-record-related';
 import { useRecordSidePanel } from '@/hooks/use-record-side-panel';
 import { deleteRecordDescription } from '@/lib/recordShow';
 import { recordHeading } from '@/lib/recordValues';
-import { destroy, edit, index, show } from '@/routes/records/data';
+import {
+    create,
+    destroy,
+    edit,
+    index,
+    show,
+    store,
+} from '@/routes/records/data';
 import attachments from '@/routes/records/data/attachments';
 import type {
     RecordDetail,
@@ -23,20 +32,22 @@ import type {
     RecordHold,
     RecordModuleDefinition,
     RecordPanelContent,
+    RecordRelatedProps,
     RecordShowAddons,
     RecordShowPanelProps,
 } from '@/types';
 
-type Props = RecordShowPanelProps & {
-    module: RecordModuleDefinition;
-    /** 見出しのまとまり(詳細タブの項目を見出しごとに畳める) */
-    headings: RecordHeadingGroup[];
-    record: RecordDetail;
-    /** 権限の判定だけ(持ち主の有無は hold = 設計/業務データの入れ物/レコードの共通機能/詳細の画面/README.md の 5.1 節) */
-    can: RecordDetailCan;
-    hold: RecordHold | null;
-    addons: RecordShowAddons; // 操作・札・注(docs の 設計/業務データの入れ物/画面/業務の画面.md の 2.5)
-};
+type Props = RecordShowPanelProps &
+    RecordRelatedProps & {
+        module: RecordModuleDefinition;
+        /** 見出しのまとまり(詳細タブの項目を見出しごとに畳める) */
+        headings: RecordHeadingGroup[];
+        record: RecordDetail;
+        /** 権限の判定だけ(持ち主の有無は hold = 設計/業務データの入れ物/レコードの共通機能/詳細の画面/README.md の 5.1 節) */
+        can: RecordDetailCan;
+        hold: RecordHold | null;
+        addons: RecordShowAddons; // 操作・札・注(docs の 設計/業務データの入れ物/画面/業務の画面.md の 2.5)
+    };
 
 /**
  * 見出しの右の操作(詳細の画面/README.md の 5.1 節): 権限が無ければ出さず、持ち主(申請中)があれば押せない形で出す(理由は見出しの下の 1 行)。
@@ -48,7 +59,9 @@ function ShowActions({
     hold,
     addons,
     heading,
-}: Omit<Props, 'panel' | 'panelContent' | 'sections'> & { heading: string }) {
+}: Pick<Props, 'module' | 'record' | 'can' | 'hold' | 'addons'> & {
+    heading: string;
+}) {
     const held = hold !== null;
     const hasDetails = module.fields.some((field) => field.type === 'details');
     const route = { module: module.code, record: record.id };
@@ -64,6 +77,9 @@ function ShowActions({
                     </Button>
                 ))}
             <RecordAddonActions actions={addons.actions} held={held} />
+            {can.copy && (
+                <CopyButton moduleCode={module.code} recordId={record.id} />
+            )}
             {can.delete &&
                 (held ? (
                     <Button variant="destructive" disabled>
@@ -81,6 +97,23 @@ function ShowActions({
                     />
                 ))}
         </div>
+    );
+}
+
+/** 「複製」(押せば登録の画面に元の値が入る。申請中も押せる = レコードの共通機能/複製.md の 1 節) */
+function CopyButton({
+    moduleCode,
+    recordId,
+}: {
+    moduleCode: string;
+    recordId: number;
+}) {
+    return (
+        <Button variant="outline" asChild>
+            <Link href={create.url(moduleCode, { query: { copy: recordId } })}>
+                複製
+            </Link>
+        </Button>
     );
 }
 
@@ -153,6 +186,46 @@ function PanelBody({
     }
 }
 
+/** 行の詳細の URL(関連レコードの表のリンク) */
+function recordHref(moduleCode: string, recordId: number): string {
+    return show.url({ module: moduleCode, record: recordId });
+}
+
+/**
+ * 左の詳細の面(タブ)と、関連レコードの「新規」のダイアログ(関連レコード.md の 3・4 節)。
+ */
+function ShowMain({ props, heading }: { props: Props; heading: string }) {
+    const { module, record } = props;
+    const related = useRecordRelated(
+        props.relatedRecords,
+        props.relatedRecordRows,
+    );
+
+    return (
+        <section
+            aria-label={`${heading}の値`}
+            className="rounded-xl border bg-card px-5 pt-1 pb-5 text-card-foreground"
+        >
+            <RecordDetailTabs
+                module={module}
+                headings={props.headings}
+                record={record}
+                fieldNotes={props.addons.fieldNotes}
+                related={{ ...related, rowHref: recordHref }}
+            />
+            <RecordRelatedDialog
+                open={related.dialog.open}
+                form={related.dialog.form}
+                status={related.dialog.status}
+                recordId={record.id}
+                ownerText={`${module.name}「${heading}」`}
+                storeAction={(moduleCode) => store(moduleCode)}
+                onClose={related.dialog.close}
+            />
+        </section>
+    );
+}
+
 export default function Show(props: Props) {
     const { module, record, hold, addons } = props;
     const heading = recordHeading(module, record);
@@ -171,19 +244,7 @@ export default function Show(props: Props) {
                 {hold !== null && <RecordHoldNotice hold={hold} />}
                 <RecordShowLayout
                     open={panel.openKey !== null}
-                    main={
-                        <section
-                            aria-label={`${heading}の値`}
-                            className="rounded-xl border bg-card px-5 pt-1 pb-5 text-card-foreground"
-                        >
-                            <RecordDetailTabs
-                                module={module}
-                                headings={props.headings}
-                                record={record}
-                                fieldNotes={addons.fieldNotes}
-                            />
-                        </section>
-                    }
+                    main={<ShowMain props={props} heading={heading} />}
                     side={
                         <RecordSidePanel
                             items={items}

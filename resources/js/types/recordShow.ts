@@ -11,10 +11,11 @@ import type {
 } from './records';
 import type { StatusTone } from './status';
 
-/** レコードの詳細の can(権限の判定だけ。持ち主の有無は hold)。拡張点(複製のボタンを足すときはここ) */
+/** レコードの詳細の can(権限の判定だけ。持ち主の有無は hold) */
 export type RecordDetailCan = {
     update: boolean;
     delete: boolean;
+    copy: boolean; // 業務モジュールの create(複製)
     attach: boolean; // 業務モジュールの update かつ添付ファイルを使用する
     apply: boolean; // 申請の入口(applyEntries)がある
 };

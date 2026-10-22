@@ -22,6 +22,7 @@ use App\Http\Controllers\Web\Records\RecordCommentAdminController;
 use App\Http\Controllers\Web\Records\RecordCommentController;
 use App\Http\Controllers\Web\Records\RecordController;
 use App\Http\Controllers\Web\Records\RecordRevisionFileController;
+use App\Http\Controllers\Web\Records\RelatedColumnController;
 use App\Http\Controllers\Web\Records\RuleController;
 use App\Http\Controllers\Web\Workflow\ApplicationController;
 use App\Http\Controllers\Web\Workflow\AssigneeCandidateController;
@@ -137,6 +138,8 @@ Route::put('/records/admin/modules/{module}/headings/{heading}', [HeadingControl
     ->name('records.admin.headings.update')->where($adminHeading);
 Route::delete('/records/admin/modules/{module}/headings/{heading}', [HeadingController::class, 'destroy'])
     ->name('records.admin.headings.destroy')->where($adminHeading);
+Route::put('/records/admin/modules/{module}/related-columns', [RelatedColumnController::class, 'update'])
+    ->name('records.admin.related-columns.update')->where('module', '[a-z][a-z0-9_]{0,49}');
 Route::post('/records/admin/modules/{module}/rules', [RuleController::class, 'store'])->name('records.admin.rules.store')->where('module', '[a-z][a-z0-9_]{0,49}');
 Route::put('/records/admin/modules/{module}/rules/{rule}', [RuleController::class, 'update'])->name('records.admin.rules.update')->where(['module' => '[a-z][a-z0-9_]{0,49}', 'rule' => '[0-9]{1,18}']);
 Route::delete('/records/admin/modules/{module}/rules/{rule}', [RuleController::class, 'destroy'])->name('records.admin.rules.destroy')->where(['module' => '[a-z][a-z0-9_]{0,49}', 'rule' => '[0-9]{1,18}']);

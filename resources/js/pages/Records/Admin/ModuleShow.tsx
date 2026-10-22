@@ -1,7 +1,7 @@
 import { Head, Link, router } from '@inertiajs/react';
-import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog';
 import { RecordFieldsSection } from '@/components/Records/RecordFieldsSection';
-import { RecordRuleDialog } from '@/components/Records/RecordRuleDialog';
+import { RecordRelatedColumnsSection } from '@/components/Records/RecordRelatedColumnsSection';
+import { RecordRulesSection } from '@/components/Records/RecordRulesSection';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -11,17 +11,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from '@/components/ui/table';
-import { RULE_KIND_LABELS, ruleSummary } from '@/lib/Records/recordDefinitions';
 import { edit, index, show } from '@/routes/records/admin/modules';
-import { destroy as destroyRule } from '@/routes/records/admin/rules';
 import { index as recordList } from '@/routes/records/data';
 import type {
     DefinitionTextMaxLengths,
@@ -29,6 +19,7 @@ import type {
     RecordAdminItem,
     RecordAdminModule,
     RecordModuleSummary,
+    RecordRelatedColumnSetting,
 } from '@/types';
 
 type Props = {
@@ -43,6 +34,8 @@ type Props = {
     modules: RecordModuleSummary[];
     /** 規則の文言の文字数の上限(name を使う) */
     textMaxLengths: DefinitionTextMaxLengths;
+    /** 関連レコードの列の行(他モジュール参照の項目ごと。明細のモジュールは空 = レコードの共通機能/業務モジュールの管理.md の 4・6 節) */
+    relatedColumns: RecordRelatedColumnSetting[];
 };
 
 /**
@@ -87,6 +80,7 @@ export default function ModuleShow({
     fieldUsage,
     modules,
     textMaxLengths,
+    relatedColumns,
 }: Props) {
     return (
         <>
@@ -160,96 +154,14 @@ export default function ModuleShow({
                     nameMaxLength={textMaxLengths.name}
                 />
 
-                <section
-                    aria-labelledby="module-rules"
-                    className="flex flex-col gap-4 rounded-xl border bg-card p-5 text-card-foreground"
-                >
-                    <div className="flex items-center justify-between gap-4">
-                        <h2
-                            id="module-rules"
-                            className="text-[15px] font-semibold"
-                        >
-                            規則
-                        </h2>
-                        <RecordRuleDialog
-                            module={module}
-                            rule={null}
-                            trigger={<Button size="sm">規則を追加</Button>}
-                            messageMaxLength={textMaxLengths.name}
-                        />
-                    </div>
-                    {module.rules.length === 0 ? (
-                        <p className="text-sm text-muted-foreground">
-                            規則はありません
-                        </p>
-                    ) : (
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>種別</TableHead>
-                                    <TableHead>中身</TableHead>
-                                    <TableHead>文言</TableHead>
-                                    <TableHead>
-                                        <span className="sr-only">操作</span>
-                                    </TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {module.rules.map((rule) => {
-                                    const summary = ruleSummary(module, rule);
-
-                                    return (
-                                        <TableRow key={rule.id}>
-                                            <TableCell>
-                                                {RULE_KIND_LABELS[rule.kind]}
-                                            </TableCell>
-                                            <TableCell className="whitespace-normal">
-                                                {summary}
-                                            </TableCell>
-                                            <TableCell className="whitespace-normal">
-                                                {rule.message ?? (
-                                                    <span className="text-muted-foreground">
-                                                        既定の文言
-                                                    </span>
-                                                )}
-                                            </TableCell>
-                                            <TableCell>
-                                                <div className="flex items-center justify-end gap-1">
-                                                    <RecordRuleDialog
-                                                        module={module}
-                                                        rule={rule}
-                                                        messageMaxLength={
-                                                            textMaxLengths.name
-                                                        }
-                                                        trigger={
-                                                            <Button
-                                                                variant="ghost"
-                                                                size="sm"
-                                                                aria-label={`規則「${summary}」を編集`}
-                                                            >
-                                                                編集
-                                                            </Button>
-                                                        }
-                                                    />
-                                                    <ConfirmDeleteDialog
-                                                        preserveScroll
-                                                        triggerLabel={`規則「${summary}」を削除`}
-                                                        title="規則の削除"
-                                                        description={`規則「${summary}」を削除しますか。既存のレコードは変更されません。`}
-                                                        action={destroyRule({
-                                                            module: module.code,
-                                                            rule: rule.id,
-                                                        })}
-                                                    />
-                                                </div>
-                                            </TableCell>
-                                        </TableRow>
-                                    );
-                                })}
-                            </TableBody>
-                        </Table>
-                    )}
-                </section>
+                <RecordRulesSection
+                    module={module}
+                    messageMaxLength={textMaxLengths.name}
+                />
+                <RecordRelatedColumnsSection
+                    moduleCode={module.code}
+                    settings={relatedColumns}
+                />
             </div>
         </>
     );

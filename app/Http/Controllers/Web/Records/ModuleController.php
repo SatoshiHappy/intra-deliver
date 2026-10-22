@@ -12,13 +12,15 @@ use App\Http\Requests\Records\RecordModuleInputRequest;
 use App\Http\Requests\Records\RecordModuleOrderRequest;
 use App\Http\Requests\Records\RecordModuleUpdateRequest;
 use App\Queries\Records\RecordAdminQuery;
+use App\Queries\Records\RecordRelatedColumns;
 use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
 use Inertia\Response;
 
 /**
  * 管理の業務モジュールの画面と、作成・更新・「業務」の直下の並び替え・分類の更新(docs の 設計/業務データの入れ物/画面/README.md 1.1、
- * 設計/業務データの入れ物/画面/管理の画面.md 3.1〜3.3・3.5、設計/業務データの入れ物/モジュール分類/画面と検査.md 4.3)。
+ * 設計/業務データの入れ物/画面/管理の画面.md 3.1〜3.3・3.5、設計/業務データの入れ物/モジュール分類/画面と検査.md 4.3)。定義の画面の relatedColumns =
+ * 関連レコードの列の行(設計/業務データの入れ物/レコードの共通機能/業務モジュールの管理.md の 4 節・6 節)。
  * 業務モジュールの判定をせず、ルートの認可だけで絞る(認可とメニュー/README.md 4 節)。
  */
 class ModuleController extends Controller
@@ -28,6 +30,7 @@ class ModuleController extends Controller
         private CreateRecordModule $createModule,
         private UpdateRecordModule $updateModule,
         private ReorderRecordModuleItems $reorderItems,
+        private RecordRelatedColumns $relatedColumns,
     ) {}
 
     public function index(): Response
@@ -50,7 +53,10 @@ class ModuleController extends Controller
 
     public function show(string $module): Response
     {
-        return Inertia::render('Records/Admin/ModuleShow', $this->admin->module($module));
+        return Inertia::render('Records/Admin/ModuleShow', [
+            ...$this->admin->module($module),
+            'relatedColumns' => $this->relatedColumns->adminProps($module),
+        ]);
     }
 
     public function edit(string $module): Response

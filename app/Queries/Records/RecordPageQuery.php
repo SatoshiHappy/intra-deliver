@@ -115,11 +115,11 @@ class RecordPageQuery
     }
 
     /**
-     * レコードの詳細の can(詳細の画面/README.md の 6.1 節)。attach = 業務モジュールの update かつ添付ファイルを使用する、apply = 申請の入口
-     * ({@see self::applyEntries()} の結果)が空でない(拡張点 = 複製のボタンの判定を足すときはここ)。
+     * レコードの詳細の can(詳細の画面/README.md の 6.1 節)。copy = 業務モジュールの create(複製.md の 1 節)、attach = 業務モジュールの update かつ
+     * 添付ファイルを使用する、apply = 申請の入口({@see self::applyEntries()} の結果)が空でない。
      *
      * @param  list<ApplyEntry>  $applyEntries
-     * @return array{update: bool, delete: bool, attach: bool, apply: bool}
+     * @return array{update: bool, delete: bool, copy: bool, attach: bool, apply: bool}
      */
     public function detailCan(
         Requester $requester,
@@ -132,6 +132,7 @@ class RecordPageQuery
         return [
             'update' => $update,
             'delete' => $this->gate->allows($requester, $opened, RecordModuleAction::Delete, $date),
+            'copy' => $this->gate->allows($requester, $opened, RecordModuleAction::Create, $date),
             'attach' => $update && $opened->is_attachment_enabled,
             'apply' => $applyEntries !== [],
         ];
