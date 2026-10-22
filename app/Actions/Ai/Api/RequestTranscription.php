@@ -10,11 +10,11 @@ use App\Enums\Ai\AiRunStatus;
 use App\Jobs\Ai\RunTranscriptionJob;
 use App\Models\Ai\AiRun;
 use App\Models\Ai\AiRunText;
+use App\Queries\Ai\Api\TranscriptionFormats;
 use App\Queries\Ai\KindSettings;
 use App\Queries\Ai\RunEstimates;
 use App\Queries\Ai\TranscriptionSettings;
 use App\Queries\Records\Api\RecordDisplayQuery;
-use App\Queries\Upload\Api\UploadLimits;
 use App\Queries\Upload\Api\UploadQuery;
 use App\Support\AccessContext;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -38,9 +38,6 @@ class RequestTranscription
 
     public const TOO_LONG = '音声が長すぎます。:hours 時間までの音声を取り込んでください';
 
-    /** 受ける音声の形式(添付の形式の表の音声 = 設計/業務ツール/会議/文字起こしと議事録.md の 4.3) */
-    private const AUDIO_EXTENSIONS = ['mp3', 'm4a', 'wav'];
-
     private const SECONDS_PER_HOUR = 3600;
 
     public function __construct(
@@ -51,7 +48,7 @@ class RequestTranscription
         private RunBudget $budget,
         private RecordDisplayQuery $records,
         private UploadQuery $uploads,
-        private UploadLimits $uploadLimits,
+        private TranscriptionFormats $formats,
         private AudioConverter $converter,
     ) {}
 
@@ -114,12 +111,8 @@ class RequestTranscription
     private function audioPath(int $uploadId): string
     {
         $file = $this->uploads->find([$uploadId])[$uploadId] ?? null;
-        $audioMimes = array_merge(...array_values(array_intersect_key(
-            $this->uploadLimits->formats(),
-            array_flip(self::AUDIO_EXTENSIONS),
-        )));
 
-        if ($file !== null && ! in_array($file->mime, $audioMimes, true)) {
+        if ($file !== null && ! in_array($file->mime, $this->formats->mimes(), true)) {
             throw new LogicException("添付 {$uploadId} の型 {$file->mime} は音声の形式でない");
         }
 

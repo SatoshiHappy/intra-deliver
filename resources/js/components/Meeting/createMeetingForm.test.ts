@@ -1,13 +1,17 @@
 import { describe, expect, it } from 'vite-plus/test';
+import { unshownErrorKeys } from '@/lib/formErrors';
 import { recordField } from '@/lib/recordField.testing';
 import type { RecordModuleDefinition } from '@/types';
 import type { CreateMeetingData } from './createMeetingForm';
 import {
+    acceptedFiles,
+    blockedFileError,
     createMeetingPayload,
     dialogFields,
+    importFileGuide,
     initialCreateMeetingData,
+    namedErrors,
     shownErrorKeys,
-    topErrors,
 } from './createMeetingForm';
 
 /** 会議の業務モジュールの定義(項目の並びは定義の順。ダイアログは自分の並びで出す) */
@@ -187,33 +191,84 @@ describe('shownErrorKeys', () => {
     });
 });
 
-describe('topErrors', () => {
-    it('欄の上には欄の下に出さない誤りを出し、ダイアログに無い項目の誤りには項目の名前を添える', () => {
-        const errors = {
+describe('namedErrors と欄の上の誤り', () => {
+    const errors = {
+        file: 'ファイルを選ぶか、テキストを貼り付けてください(どちらか 1 つ)',
+        ai: 'AI の利用の上限に達しました',
+        'values.purge_due_on': '削除予定日を入力してください',
+        'values.held_at': '日時を入力してください',
+        'values.unknown': '形が正しくありません',
+        text: undefined,
+    };
+
+    it('項目の値のキーには項目の名前を添え、値の無いキーは除く', () => {
+        expect(namedErrors(meeting, errors)).toEqual({
             file: 'ファイルを選ぶか、テキストを貼り付けてください(どちらか 1 つ)',
             ai: 'AI の利用の上限に達しました',
-            'values.purge_due_on': '削除予定日を入力してください',
-            'values.held_at': '日時を入力してください',
+            'values.purge_due_on': '削除予定日：削除予定日を入力してください',
+            'values.held_at': '日時：日時を入力してください',
             'values.unknown': '形が正しくありません',
-            text: undefined,
-        };
+        });
+    });
+
+    it('欄の上には欄の下に出さない誤りをキーの順に出す(札で取り込みの欄が替わる)', () => {
+        const named = namedErrors(meeting, errors);
 
         expect(
-            topErrors(meeting, errors, shownErrorKeys(meeting, data())),
-        ).toEqual([
-            { key: 'ai', message: 'AI の利用の上限に達しました' },
-            {
-                key: 'values.purge_due_on',
-                message: '削除予定日：削除予定日を入力してください',
-            },
-            { key: 'values.unknown', message: '形が正しくありません' },
-        ]);
+            unshownErrorKeys(named, shownErrorKeys(meeting, data())),
+        ).toEqual(['ai', 'values.purge_due_on', 'values.unknown']);
         expect(
-            topErrors(
-                meeting,
-                errors,
+            unshownErrorKeys(
+                named,
                 shownErrorKeys(meeting, data({ source: 'paste' })),
-            ).map((error) => error.key),
+            ),
         ).toEqual(['ai', 'file', 'values.purge_due_on', 'values.unknown']);
+    });
+});
+
+describe('importFileGuide・acceptedFiles', () => {
+    it('案内は音声とテキストの形式と、音声 1 本の上限(割り切れる最大の単位)', () => {
+        expect(importFileGuide(99_614_720)).toBe(
+            '音声(m4a・mp3・wav)・テキスト(.txt・.vtt・.md)を 1 つ選択できます。1 ファイル 95MB までです。',
+        );
+    });
+
+    it('選べるのは音声とテキストで、音声の取り込みを先に止めているときはテキストだけ', () => {
+        expect(acceptedFiles(false)).toBe('.m4a,.mp3,.wav,.txt,.vtt,.md');
+        expect(acceptedFiles(true)).toBe('.txt,.vtt,.md');
+    });
+});
+
+describe('blockedFileError', () => {
+    const blocked = '今日の AI の利用の上限に近いため、音声は選べません。';
+
+    it('先に止めているときにファイルの札で音声を選ぶと、先の止め方の文を誤りにする(拡張子の大文字小文字を問わない)', () => {
+        for (const name of ['定例.mp3', '定例.M4A', '定例.wav']) {
+            expect(
+                blockedFileError(data({ file: new File([''], name) }), blocked),
+            ).toBe(blocked);
+        }
+    });
+
+    it('テキストのファイルと貼り付けは選べる', () => {
+        expect(
+            blockedFileError(
+                data({ file: new File([''], '定例.txt') }),
+                blocked,
+            ),
+        ).toBeNull();
+        expect(
+            blockedFileError(
+                data({ source: 'paste', file: new File([''], '定例.mp3') }),
+                blocked,
+            ),
+        ).toBeNull();
+        expect(blockedFileError(data(), blocked)).toBeNull();
+    });
+
+    it('先に止めていなければ音声も誤りにしない', () => {
+        expect(
+            blockedFileError(data({ file: new File([''], '定例.mp3') }), null),
+        ).toBeNull();
     });
 });

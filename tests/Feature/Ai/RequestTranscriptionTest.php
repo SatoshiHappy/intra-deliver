@@ -70,10 +70,12 @@ final class RequestTranscriptionTest extends TransactionalTestCase
 
     public function test_an_unregistered_kind_and_an_attachment_that_is_not_audio_are_logic_errors(): void
     {
+        $kinds = (array) config('ai_runs.kinds');
+        config(['ai_runs.kinds' => [...$kinds, 'test.unregistered' => $kinds[RecordingTranscriptionKind::CODE]]]);
         $uploadId = $this->sine();
         $pdf = Upload::factory()->create()->id;
         $calls = [
-            fn () => $this->execute(new TranscriptionRequest('meeting.transcription', $this->recordId(), $uploadId)),
+            fn () => $this->execute(new TranscriptionRequest('test.unregistered', $this->recordId(), $uploadId)),
             fn () => $this->execute($this->request($pdf)),
         ];
 

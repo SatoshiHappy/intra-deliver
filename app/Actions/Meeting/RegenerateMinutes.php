@@ -11,6 +11,7 @@ use App\Models\Meeting\MeetingRun;
 use App\Models\Meeting\Transcript;
 use App\Models\Meeting\TranscriptSegment;
 use App\Queries\Authz\Api\Requester;
+use App\Queries\Meeting\MeetingAudioQuery;
 use App\Queries\Meeting\MeetingFieldsQuery;
 use App\Queries\Meeting\MeetingLimits;
 use App\Queries\Meeting\MeetingProcessingQuery;
@@ -23,9 +24,10 @@ use Illuminate\Support\LazyCollection;
 use Illuminate\Validation\ValidationException;
 
 /**
- * 書き起こしから議事録を作り直す(docs の 設計/業務ツール/会議/処理.md の 3.7、材料 = 文字起こしと議事録.md の 5.3・5.4)。会議ごとの勧告ロックの中で
+ * 議事録を作り直す(docs の 設計/業務ツール/会議/処理.md の 3.7、材料 = 文字起こしと議事録.md の 5.3・5.4)。会議ごとの勧告ロックの中で
  * 押せる時を確かめてから依頼する(鍵の順 = 会議ごとの鍵 → AI の費用の鍵 = 設計/業務データの入れ物/レコードの共通機能/データモデル/README.md の 4 節)。
- * 再作成は件名を書かない。入口の判定は {@see MeetingRequestGate::ensureCanRegenerate()}。
+ * 書き起こしがあれば書き起こしから議事録を、無ければ会議の今の添付のうち受ける形式で実体のある最も新しい音声から文字起こしを依頼する
+ * (完了の後に続けて議事録を作る)。再作成は件名を書かない。入口の判定は {@see MeetingRequestGate::ensureCanRegenerate()}。
  */
 class RegenerateMinutes
 {
@@ -45,13 +47,15 @@ class RegenerateMinutes
 
     public const NO_TRANSCRIPT = '書き起こしと音声が無いため、再作成できません';
 
-    /** 会議ごとの勧告ロックの鍵の起点(ほかの勧告ロックの鍵と重ならない空間に、会議の id を足す) */
-    private const LOCK_KEY_BASE = 4_500_000_000_000_000;
+    public const INSTRUCTIONS_WITHOUT_TRANSCRIPT = '書き起こしが無いため、追加の指示は付けられません';
 
     /** 発言の行を読む単位 */
     private const CHUNK_SIZE = 1000;
 
     public function __construct(
+        private MeetingLock $lock,
+        private MeetingAudioQuery $audio,
+        private MeetingAudioRequest $audioRequest,
         private RecordHoldQuery $holds,
         private MeetingProcessingQuery $states,
         private MeetingFieldsQuery $fields,
@@ -64,8 +68,9 @@ class RegenerateMinutes
      * @param  string|null  $instructions  追加の指示(任意)
      * @return int 依頼した実行の id
      *
-     * @throws ValidationException 追加の指示の誤り(キー instructions)・申請中・処理中・書き起こしが無いとき(キー meeting)
-     * @throws RunRequestDeclined 依頼が上限を超える・長すぎるとき(キー ai)
+     * @throws ValidationException 追加の指示の誤り・書き起こしが無いのに追加の指示があるとき(キー instructions)・申請中・処理中・
+     *                             書き起こしと音声が無いとき(キー meeting)
+     * @throws RunRequestDeclined 依頼が上限を超える・長すぎる・音声を読み取れない・音声が削除されたとき(キー ai)
      * @throws ModelNotFoundException 依頼者が会議を閲覧できないとき
      */
     public function execute(AccessContext $context, int $recordId, ?string $instructions): int
@@ -74,8 +79,13 @@ class RegenerateMinutes
         self::ensureInstructions($instructions);
 
         return DB::transaction(function () use ($context, $recordId, $instructions): int {
-            DB::select('SELECT pg_advisory_xact_lock(?)', [self::LOCK_KEY_BASE + $recordId]);
+            $this->lock->lock($recordId);
             $transcriptId = $this->regenerableTranscript($recordId);
+
+            if ($transcriptId === null) {
+                return $this->fromAudio($context, $recordId, $instructions);
+            }
+
             $requester = Requester::fromAccessContext($context);
             $fields = $this->fields->read($requester, $recordId, $context->date, $context->localeCode);
             $title = $this->titles->isProvisional($recordId, $fields->title) ? null : $fields->title;
@@ -112,11 +122,28 @@ class RegenerateMinutes
     }
 
     /**
-     * 押せる時(申請中でない・処理中でない・書き起こしがある)を確かめ、書き起こしの id を返す。
+     * 書き起こしの無い会議の、音声からの再作成(追加の指示は受けない = 処理.md の 3.7)。
+     *
+     * @throws ValidationException
+     * @throws RunRequestDeclined
+     */
+    private function fromAudio(AccessContext $context, int $recordId, ?string $instructions): int
+    {
+        if ($instructions !== null) {
+            throw ValidationException::withMessages([self::INSTRUCTIONS => self::INSTRUCTIONS_WITHOUT_TRANSCRIPT]);
+        }
+
+        $uploadId = $this->audio->latestAudioOf($recordId) ?? throw self::notRegenerable(self::NO_TRANSCRIPT);
+
+        return $this->audioRequest->execute($context, $recordId, $uploadId, MeetingRunOrigin::Regenerate, false);
+    }
+
+    /**
+     * 押せる時(申請中でない・処理中でない)を確かめ、書き起こしの id を返す(無ければ null)。
      *
      * @throws ValidationException
      */
-    private function regenerableTranscript(int $recordId): int
+    private function regenerableTranscript(int $recordId): ?int
     {
         if ($this->holds->isHeld($recordId)) {
             throw self::notRegenerable(self::HELD);
@@ -128,7 +155,7 @@ class RegenerateMinutes
 
         $transcriptId = Transcript::query()->where('record_id', $recordId)->value('id');
 
-        return is_int($transcriptId) ? $transcriptId : throw self::notRegenerable(self::NO_TRANSCRIPT);
+        return is_int($transcriptId) ? $transcriptId : null;
     }
 
     private static function notRegenerable(string $message): ValidationException

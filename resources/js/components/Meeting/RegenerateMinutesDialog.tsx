@@ -2,19 +2,25 @@ import { useForm, usePage } from '@inertiajs/react';
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { CountedTextInput } from '@/components/CountedTextInput';
-import { FormBlock } from '@/components/FormBlock';
-import { topErrors } from '@/components/Meeting/createMeetingForm';
+import { FormBlock, UnshownErrors } from '@/components/FormBlock';
+import { namedErrors } from '@/components/Meeting/createMeetingForm';
 import {
+    MeetingAudioBlockedNotice,
     MeetingDialogFooter,
-    MeetingFormErrors,
     MeetingNotices,
     useFocusFirstError,
     useReportSending,
 } from '@/components/Meeting/MeetingDialogParts';
 import {
     acceptsOpenChange,
+    booleanProp,
+    nullableStringProp,
     numberProp,
 } from '@/components/Meeting/meetingDialog';
+import {
+    FROM_AUDIO_NOTE,
+    regeneratePayload,
+} from '@/components/Meeting/regenerateMinutesForm';
 import {
     Dialog,
     DialogContent,
@@ -70,22 +76,65 @@ function InstructionsField({
     );
 }
 
-/** フォームの props(会議は詳細の画面から、上限は操作の props から、送っている間は親へ知らせる) */
+/** 操作の props の値(書き起こしの有無・追加の指示の上限・音声から作り直すときの先の止め方の文) */
+type RegenerateValues = {
+    hasTranscript: boolean;
+    instructionsMaxLength: number;
+    audioBlockedMessage: string | null;
+};
+
+/**
+ * 先の止め方の文と、追加の指示の欄(書き起こしが無ければ欄の代わりに音声から作り直す文)。
+ */
+function RegenerateInputs({
+    values,
+    instructions,
+    error,
+    onInstructionsChange,
+}: {
+    values: RegenerateValues;
+    instructions: string;
+    error: string | undefined;
+    onInstructionsChange: (value: string) => void;
+}) {
+    const { audioBlockedMessage } = values;
+
+    return (
+        <>
+            {audioBlockedMessage !== null && (
+                <MeetingAudioBlockedNotice message={audioBlockedMessage} />
+            )}
+            {values.hasTranscript ? (
+                <InstructionsField
+                    value={instructions}
+                    max={values.instructionsMaxLength}
+                    error={error}
+                    onChange={onInstructionsChange}
+                />
+            ) : (
+                <p className="text-sm">{FROM_AUDIO_NOTE}</p>
+            )}
+        </>
+    );
+}
+
+/** フォームの props(会議は詳細の画面から、値は操作の props から、送っている間は親へ知らせる) */
 type FormProps = {
     module: RecordModuleDefinition;
     recordId: number;
-    instructionsMaxLength: number;
+    values: RegenerateValues;
     onSendingChange: (sending: boolean) => void;
     onDone: () => void;
 };
 
 /**
  * ダイアログの中のフォーム(開くたびに作り直す)。成功したら閉じる(入口が会議の詳細へ戻し、トーストを出す)。
- * 送っている間かを親へ知らせる(親が送る間の「閉じる」を捨てる)。
+ * 送っている間かを親へ知らせる(親が送る間の「閉じる」を捨てる)。書き起こしが無ければ追加の指示の欄を出さず送らない(音声から作り直す)。
+ * 先の止め方の文があれば出し、送るボタンを押せない形にする。
  */
 function RegenerateMinutesForm(props: FormProps) {
-    const { module, recordId, instructionsMaxLength, onSendingChange, onDone } =
-        props;
+    const { module, recordId, values, onSendingChange, onDone } = props;
+    const { hasTranscript } = values;
     const form = useForm({ instructions: '' });
     const errors = form.errors as Record<string, string | undefined>;
     const { formRef, focusFirstError } = useFocusFirstError();
@@ -94,6 +143,9 @@ function RegenerateMinutesForm(props: FormProps) {
 
     const submit = (event: FormEvent) => {
         event.preventDefault();
+        form.transform((data) =>
+            regeneratePayload(hasTranscript, data.instructions),
+        );
         form.submit(regenerate(recordId), {
             preserveScroll: true,
             onSuccess: onDone,
@@ -107,27 +159,31 @@ function RegenerateMinutesForm(props: FormProps) {
                 <DialogTitle>再作成</DialogTitle>
                 <DialogDescription>{DESCRIPTION}</DialogDescription>
             </DialogHeader>
-            <MeetingFormErrors
-                errors={topErrors(module, errors, ['instructions'])}
+            <UnshownErrors
+                errors={namedErrors(module, errors)}
+                shownKeys={hasTranscript ? ['instructions'] : []}
             />
-            <InstructionsField
-                value={form.data.instructions}
-                max={instructionsMaxLength}
+            <RegenerateInputs
+                values={values}
+                instructions={form.data.instructions}
                 error={errors.instructions}
-                onChange={(value) => form.setData('instructions', value)}
+                onInstructionsChange={(value) =>
+                    form.setData('instructions', value)
+                }
             />
             <MeetingNotices withConsent={false} />
             <MeetingDialogFooter
                 processing={form.processing}
                 submitLabel="再作成"
+                submitDisabled={values.audioBlockedMessage !== null}
             />
         </form>
     );
 }
 
 /**
- * 「再作成」のダイアログ(docs の 設計/業務ツール/会議/公開デモと画面.md の 9.3。会議の詳細の操作の口が開く)。書き起こしから議事録を
- * 作り直す入口へ送る(会議は詳細の画面の props record から、追加の指示の上限は操作の props から引く)。送っている間は閉じない。
+ * 「再作成」のダイアログ(docs の 設計/業務ツール/会議/公開デモと画面.md の 9.3。会議の詳細の操作の口が開く)。議事録を作り直す入口へ送る
+ * (会議は詳細の画面の props record から、書き起こしの有無・追加の指示の上限・先の止め方の文は操作の props から引く)。送っている間は閉じない。
  */
 export function RegenerateMinutesDialog({ open, onOpenChange, values }: Props) {
     const { module, record } = usePage<{
@@ -149,10 +205,17 @@ export function RegenerateMinutesDialog({ open, onOpenChange, values }: Props) {
                 <RegenerateMinutesForm
                     module={module}
                     recordId={record.id}
-                    instructionsMaxLength={numberProp(
-                        values,
-                        'instructionsMaxLength',
-                    )}
+                    values={{
+                        hasTranscript: booleanProp(values, 'hasTranscript'),
+                        instructionsMaxLength: numberProp(
+                            values,
+                            'instructionsMaxLength',
+                        ),
+                        audioBlockedMessage: nullableStringProp(
+                            values,
+                            'audioBlockedMessage',
+                        ),
+                    }}
                     onSendingChange={setSending}
                     onDone={() => onOpenChange(false)}
                 />

@@ -22,3 +22,15 @@ export function clearRowErrors(
         Object.keys(form.errors).filter((key) => key.startsWith(prefix)),
     );
 }
+
+/**
+ * 欄の下に出さない誤りのキー(キーの順。フォームの先頭に出す = FormBlock の UnshownErrors)。shownKeys = その画面が欄の下に出すキー。
+ */
+export function unshownErrorKeys(
+    errors: Record<string, string | undefined>,
+    shownKeys: string[],
+): string[] {
+    return Object.keys(errors)
+        .filter((key) => !shownKeys.includes(key))
+        .sort();
+}

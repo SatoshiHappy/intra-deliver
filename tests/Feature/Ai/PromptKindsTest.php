@@ -61,13 +61,25 @@ final class PromptKindsTest extends TransactionalTestCase
         $this->assertSame(['予算の区分 custom に超えたときの文が無い(RunBudget)'], app(PromptKinds::class)->problems());
     }
 
-    /** 文字起こしの種類のジョブの時間はもっと長いので外し、文章の種類の時間だけを見る */
+    /**
+     * 文字起こしの種類のジョブの時間はもっと長いので、登録した会議の文字起こしの種類を短い設定にし(区切りは 2 つ・呼び出し 1 秒・変換 1 秒)、
+     * 文章の種類の時間だけを見る。
+     */
     public function test_detects_a_job_time_that_is_not_below_the_retry_after_of_the_queue(): void
     {
         $this->configureKinds(['test.slow' => [...$this->kindSettings(), 'timeout_seconds' => 301]]);
         $kinds = (array) config('ai_runs.kinds');
-        unset($kinds['meeting.transcription']);
-        config(['ai_runs.kinds' => $kinds]);
+        $kinds['meeting.transcription'] = [
+            ...(array) $kinds['meeting.transcription'],
+            'timeout_seconds' => 1,
+            'max_audio_seconds' => 3600,
+            'chunk_seconds' => 3600,
+        ];
+        config([
+            'ai_runs.kinds' => $kinds,
+            'ai_runs.transcription.conversion_timeout_seconds' => 1,
+            'ai_runs.transcription.silence_window_seconds' => 1,
+        ]);
         $problem = '種類 test.slow のジョブの時間 622 秒がキューの retry_after 622 秒以上(config/queue.php)';
 
         config(['queue.connections.database.retry_after' => 623]);

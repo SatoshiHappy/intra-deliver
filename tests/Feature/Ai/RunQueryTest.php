@@ -10,6 +10,7 @@ use App\Models\Ai\AiRun;
 use App\Models\Master\User;
 use App\Models\Records\Record;
 use App\Models\Records\RecordModule;
+use App\Models\Upload\Upload;
 use App\Queries\Ai\Api\RunQuery;
 use App\Queries\Ai\Api\RunView;
 use App\Queries\Authz\Api\Requester;
@@ -53,6 +54,35 @@ final class RunQueryTest extends TransactionalTestCase
         DB::enableQueryLog();
 
         $this->assertSame([], app(RunQuery::class)->statusesOf([]));
+        $this->assertSame([], DB::getQueryLog());
+    }
+
+    /**
+     * 入力の音声の一覧は主体の判定をせず、実行ごとの今の音声の台帳の id を返す(文章の実行・音声の台帳の行が消された実行・無い id は入らない。
+     * 空の一覧は問い合わせない)。
+     */
+    public function test_the_input_uploads_of_runs_leave_out_runs_without_audio(): void
+    {
+        $upload = Upload::factory()->create(['mime' => 'audio/wav']);
+        $removed = Upload::factory()->create(['mime' => 'audio/wav']);
+        $audio = ['audio_seconds' => '6.000', 'max_output_tokens' => null, 'budget' => 'transcription'];
+        $withAudio = AiRun::factory()->create([
+            ...$audio, 'input_upload_id' => $upload->id, 'original_input_upload_id' => $upload->id,
+        ]);
+        $withoutUpload = AiRun::factory()->create([
+            ...$audio, 'input_upload_id' => $removed->id, 'original_input_upload_id' => $removed->id,
+        ]);
+        $removed->delete();
+        $prompt = $this->aiRun(null);
+        $query = app(RunQuery::class);
+
+        $this->assertSame(
+            [$withAudio->id => $upload->id],
+            $query->inputUploadIdsOf([$withAudio->id, $withoutUpload->id, $prompt->id, 999_999_999]),
+        );
+
+        DB::enableQueryLog();
+        $this->assertSame([], $query->inputUploadIdsOf([]));
         $this->assertSame([], DB::getQueryLog());
     }
 

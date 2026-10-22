@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Actions\Ai\Api\PromptKind;
 use App\Actions\Ai\Api\TranscriptionKind;
 use App\Actions\Meeting\MeetingMinutesKind;
+use App\Actions\Meeting\MeetingTranscriptionKind;
 use App\Models\Master\User;
 use App\Queries\Authz\Api\ResourceTypes;
 use App\Queries\Authz\ServiceResourceTypes;
@@ -70,7 +71,7 @@ class AppServiceProvider extends ServiceProvider
 
         // 依存の逆転: AI の実行の種類(文章・文字起こし。docs の 設計/AI/公開の口.md 3.1)。呼び手のモジュールが実装を足す(コードは設定にあり型をまたいで一意)
         $this->app->tag([MeetingMinutesKind::class], PromptKind::TAG);
-        $this->app->tag([], TranscriptionKind::TAG);
+        $this->app->tag([MeetingTranscriptionKind::class], TranscriptionKind::TAG);
 
         // 依存の逆転: 通知の行の移り先を、対象の種類を持つモジュールの実装が答える(docs の 設計/ワークフロー/案件の運用/通知.md の 5 節)。
         // 対象の種類を持つモジュールが実装をここに足す(実装の無い対象の種類の行は共通の 1 行になる)

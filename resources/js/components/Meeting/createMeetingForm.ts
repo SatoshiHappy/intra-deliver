@@ -1,5 +1,7 @@
+import { limitSizeText } from '@/components/Meeting/meetingDialog';
 import type { RecordFieldDraft, RecordPayloadValue } from '@/lib/recordForm';
 import { createFormData, payloadValue } from '@/lib/recordForm';
+import { shownValueKeys } from '@/lib/recordFormErrors';
 import type { RecordFieldDefinition, RecordModuleDefinition } from '@/types';
 
 /**
@@ -23,8 +25,11 @@ export type CreateMeetingPayload =
     | { file: File; envelope: string }
     | { text?: string; values: Record<string, RecordPayloadValue> };
 
-/** 誤りの 1 行(key = 誤りのキー) */
-export type MeetingFormError = { key: string; message: string };
+/** 選べる音声の拡張子(案内の文の並び) */
+const AUDIO_EXTENSIONS = ['m4a', 'mp3', 'wav'];
+
+/** 選べるテキストの拡張子 */
+const TEXT_EXTENSIONS = ['txt', 'vtt', 'md'];
 
 /** 件名の欄(任意。空なら AI が付ける) */
 export const TITLE_FIELD_CODE = 'title';
@@ -105,39 +110,25 @@ export function shownErrorKeys(
 ): string[] {
     return [
         data.source === 'file' ? 'file' : 'text',
-        ...dialogFields(module).flatMap((field) => {
-            const key = `values.${field.code}`;
-            const draft = data.values[field.code];
-
-            return [
-                key,
-                ...(Array.isArray(draft)
-                    ? draft.map((_, index) => `${key}.${index}`)
-                    : []),
-            ];
-        }),
+        ...shownValueKeys(dialogFields(module), data.values),
     ];
 }
 
 /**
- * 欄の上に出す誤り(欄の下に出さないキー。キーの順)。項目の値のキー(values.<コード>)には項目の名前を添える
- * (ダイアログに無い項目の誤りを、どの項目か分かるように = 9.2)。
+ * 欄の上に出す誤りの文言(値の無いキーは除く)。項目の値のキー(values.<コード>)には「項目の名前：」を添える
+ * (ダイアログに無い項目の誤りを、どの項目か分かるように = 9.2)。欄の下の誤りは素の文言のまま出す。
  */
-export function topErrors(
+export function namedErrors(
     module: RecordModuleDefinition,
     errors: Record<string, string | undefined>,
-    shownKeys: string[],
-): MeetingFormError[] {
-    return Object.keys(errors)
-        .filter((key) => !shownKeys.includes(key))
-        .sort()
-        .flatMap((key) => {
-            const message = errors[key];
-
-            return message === undefined
+): Record<string, string> {
+    return Object.fromEntries(
+        Object.entries(errors).flatMap(([key, message]) =>
+            message === undefined
                 ? []
-                : [{ key, message: withFieldName(module, key, message) }];
-        });
+                : [[key, withFieldName(module, key, message)]],
+        ),
+    );
 }
 
 /**
@@ -155,4 +146,57 @@ function withFieldName(
             : undefined;
 
     return field === undefined ? message : `${field.name}：${message}`;
+}
+
+/** 拡張子に「.」を付ける */
+function dotted(extensions: string[]): string[] {
+    return extensions.map((extension) => `.${extension}`);
+}
+
+/**
+ * ファイルの欄の案内(9.2。maxBytes = 音声 1 本の上限。テキストの上限は入口が 422 で知らせる)。
+ */
+export function importFileGuide(maxBytes: number): string {
+    const audio = AUDIO_EXTENSIONS.join('・');
+    const text = dotted(TEXT_EXTENSIONS).join('・');
+
+    return `音声(${audio})・テキスト(${text})を 1 つ選択できます。1 ファイル ${limitSizeText(maxBytes)} までです。`;
+}
+
+/**
+ * ファイルの欄の accept(音声の取り込みを先に止めているときはテキストだけ)。
+ */
+export function acceptedFiles(audioBlocked: boolean): string {
+    const extensions = audioBlocked
+        ? TEXT_EXTENSIONS
+        : [...AUDIO_EXTENSIONS, ...TEXT_EXTENSIONS];
+
+    return dotted(extensions).join(',');
+}
+
+/**
+ * 名前の拡張子(大文字小文字を区別しない)が音声か。
+ */
+function isAudioName(name: string): boolean {
+    const dot = name.lastIndexOf('.');
+
+    return (
+        dot >= 0 && AUDIO_EXTENSIONS.includes(name.slice(dot + 1).toLowerCase())
+    );
+}
+
+/**
+ * 音声の取り込みを先に止めている(blockedMessage = 先の止め方の文)のに、ファイルの札で音声を選んだときの、ファイルの欄の誤り
+ * (9.2。送らない)。ほかは null(テキストと貼り付けは選べる)。
+ */
+export function blockedFileError(
+    data: CreateMeetingData,
+    blockedMessage: string | null,
+): string | null {
+    return blockedMessage !== null &&
+        data.source === 'file' &&
+        data.file !== null &&
+        isAudioName(data.file.name)
+        ? blockedMessage
+        : null;
 }

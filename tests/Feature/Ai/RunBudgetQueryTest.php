@@ -171,6 +171,41 @@ final class RunBudgetQueryTest extends TransactionalTestCase
         $this->exceededPeriod('missing');
     }
 
+    /**
+     * 種類のコードから区分を引く(文章の種類 test.small = default、文字起こしの種類 test.audio = transcription)。返すものは区分の状態と同じ。
+     */
+    public function test_the_state_of_a_kind_is_the_state_of_its_budget(): void
+    {
+        config(['ai_runs.kinds' => [...(array) config('ai_runs.kinds'), 'test.audio' => [
+            'type' => 'transcription',
+            'provider' => 'gemini',
+            'model' => 'gemini-3.5-transcribe',
+            'budget' => 'transcription',
+            'timeout_seconds' => 180,
+            'language' => 'ja',
+            'max_audio_seconds' => 60,
+            'chunk_seconds' => 30,
+        ]]]);
+        $this->spend('1.000000');
+        $this->setLimit('daily_usd', 1.0);
+        $query = app(RunBudgetQuery::class);
+        $now = CarbonImmutable::now();
+
+        $this->assertSame(RunBudgetQuery::DAY, $query->exceededPeriodOfKind('test.small', $now));
+        $this->assertNull($query->exceededPeriodOfKind('test.audio', $now));
+
+        $this->spend('1.000000', null, 'transcription');
+        $this->setLimit('monthly_usd', 1.0, 'transcription');
+        $this->assertSame(RunBudgetQuery::MONTH, $query->exceededPeriodOfKind('test.audio', $now));
+    }
+
+    public function test_a_kind_that_is_not_in_the_settings_is_a_logic_error(): void
+    {
+        $this->expectException(LogicException::class);
+
+        app(RunBudgetQuery::class)->exceededPeriodOfKind('test.missing', CarbonImmutable::now());
+    }
+
     private function exceededPeriod(string $budget, ?CarbonImmutable $at = null): ?string
     {
         return app(RunBudgetQuery::class)->exceededPeriod($budget, $at ?? CarbonImmutable::now());

@@ -6,6 +6,7 @@ import {
     TooltipContent,
     TooltipTrigger,
 } from '@/components/ui/tooltip';
+import { unshownErrorKeys } from '@/lib/formErrors';
 import { cn } from '@/lib/utils';
 
 type Props = {
@@ -83,11 +84,7 @@ export function UnshownErrors({
     errors: Record<string, string | undefined>;
     shownKeys: string[];
 }) {
-    const unshown = Object.keys(errors)
-        .filter((key) => !shownKeys.includes(key))
-        .sort();
-
-    return unshown.map((key) => (
+    return unshownErrorKeys(errors, shownKeys).map((key) => (
         <p
             key={key}
             role="alert"

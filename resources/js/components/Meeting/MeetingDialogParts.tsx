@@ -1,10 +1,8 @@
-import { Info } from 'lucide-react';
+import { CircleAlert, Info } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
-import type { MeetingFormError } from '@/components/Meeting/createMeetingForm';
 import { Button } from '@/components/ui/button';
 import { DialogClose, DialogFooter } from '@/components/ui/dialog';
 import { useFocusFirstInvalid } from '@/hooks/use-focus-first-invalid';
-import { uploadProgress } from '@/lib/recordShow';
 
 /** 録音の同意と個人情報の注意書き(docs の 設計/業務ツール/会議/公開デモと画面.md の 8.2 の 1 つ目) */
 const CONSENT_NOTICE =
@@ -42,41 +40,17 @@ export function MeetingNotices({ withConsent }: { withConsent: boolean }) {
 }
 
 /**
- * 欄の上に出す誤り(送った後に最初の誤りへフォーカスを移せるよう tabIndex を付ける)。
+ * 音声の取り込みの先の止め方の文(公開デモと画面.md の 9.2・9.3。口が渡す文をそのまま、欄の上に先に出す)。
  */
-export function MeetingFormErrors({ errors }: { errors: MeetingFormError[] }) {
-    return errors.map((error) => (
-        <p
-            key={error.key}
-            role="alert"
-            tabIndex={-1}
-            className="text-sm text-destructive"
-        >
-            {error.message}
-        </p>
-    ));
-}
-
-/**
- * 送っている間の進み具合(Inertia の progress の percentage。割合が分からない間は値なし)。
- */
-export function MeetingSendingProgress({
-    percentage,
-}: {
-    percentage: number | undefined;
-}) {
-    const progress = uploadProgress(percentage);
-
+export function MeetingAudioBlockedNotice({ message }: { message: string }) {
     return (
-        <div className="grid gap-1 text-xs">
-            <progress
-                className="h-1.5 w-full"
-                max={100}
-                value={progress.value ?? undefined}
-                aria-label="送信の進み具合"
+        <p className="flex gap-2 rounded-md border border-destructive/40 px-3 py-2.5 text-sm text-destructive">
+            <CircleAlert
+                className="mt-0.5 size-4 shrink-0"
+                aria-hidden="true"
             />
-            <span className="text-muted-foreground">{progress.text}</span>
-        </div>
+            <span>{message}</span>
+        </p>
     );
 }
 
@@ -111,14 +85,16 @@ export function useReportSending(
 }
 
 /**
- * 「キャンセル」と送るボタン(送っている間はどちらも押せない)。
+ * 「キャンセル」と送るボタン(送っている間はどちらも押せない。送るボタンは submitDisabled の間も押せない)。
  */
 export function MeetingDialogFooter({
     processing,
     submitLabel,
+    submitDisabled = false,
 }: {
     processing: boolean;
     submitLabel: string;
+    submitDisabled?: boolean;
 }) {
     return (
         <DialogFooter>
@@ -127,7 +103,7 @@ export function MeetingDialogFooter({
                     キャンセル
                 </Button>
             </DialogClose>
-            <Button type="submit" disabled={processing}>
+            <Button type="submit" disabled={processing || submitDisabled}>
                 {submitLabel}
             </Button>
         </DialogFooter>
