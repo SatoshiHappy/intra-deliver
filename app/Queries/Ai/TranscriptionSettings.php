@@ -18,6 +18,12 @@ class TranscriptionSettings
         return $this->positiveInt('conversion_timeout_seconds');
     }
 
+    /** 依頼の時点に長さを測るとき、復号できるかを確かめる先頭の長さ(秒) */
+    public function decodeCheckSeconds(): int
+    {
+        return $this->positiveInt('decode_check_seconds');
+    }
+
     /** 無音を探す幅(秒。区切りの目標の時刻の前のこの幅の中の無音に境を寄せる) */
     public function silenceWindowSeconds(): int
     {

@@ -2,7 +2,8 @@
 # 呼び出しは scripts/deploy/dc(-p intra-deliver-portfolio-publish と --env-file <公開用の設定ディレクトリ>/compose.env を毎回付ける)。
 # 補間に使う値は compose.env の IMAGE_TAG・PUBLISH_CONFIG_DIR だけ(秘密を持たない)。秘密と設定はコンテナごとの env_file で渡す。
 # ホストのディレクトリを載せない・ports: を書かない(外から届くのは tunnel → app だけ)。設定を展開して出す config は秘密を出すので流さない。
-# 強化は 3 つとも同じ(read_only・cap_drop: [ALL]・no-new-privileges)。起動に要る書き込み先は tmpfs で足す。
+# 外へ出られるネットワーク(egress)に属すのは tunnel と、AI の接続先を呼ぶ queue だけ。AI の接続先の鍵(ai.env)は queue だけが受ける。
+# 強化はどのサービスも同じ(read_only・cap_drop: [ALL]・no-new-privileges)。起動に要る書き込み先は tmpfs で足す。
 name: intra-deliver-portfolio-publish
 
 x-logging: &logging
@@ -104,6 +105,81 @@ services:
         mem_limit: 512m
         logging: *logging
 
+    # キューの worker(AI の実行のジョブを 1 つずつ処理する = 構成.md の 3.1 節)。app と同じイメージ・同じ版で、起動のコマンドだけが違う
+    queue:
+        image: intra-deliver-portfolio-publish-app:${IMAGE_TAG:?IMAGE_TAG を compose.env に設定してください}
+        # PHP のメモリの上限は php.ini(app の値)をここで上書きする。worker の --memory は memory_limit の内側に置く
+        # (超えたらジョブの後に worker が抜け、restart で起き直す)。--tries・--timeout は AI のジョブが持つ
+        command:
+            [
+                'php',
+                '-d',
+                'memory_limit=256M',
+                'artisan',
+                'queue:work',
+                '--memory=192',
+            ]
+        # Docker の init を PID 1 にする(子の ffmpeg・ffprobe の後始末と、SIGTERM を php へ渡すこと)
+        init: true
+        env_file:
+            - ${PUBLISH_CONFIG_DIR:?PUBLISH_CONFIG_DIR を compose.env に設定してください}/app.env
+            - ${PUBLISH_CONFIG_DIR:?PUBLISH_CONFIG_DIR を compose.env に設定してください}/ai.env
+        networks:
+            - back
+            - egress
+        volumes:
+            - app-storage:/app/storage/app
+        # /tmp は文字起こしの区切りの一時ファイルの置き場(3 時間の音声で約 22MB)。tmpfs はコンテナが止まると消えるので、
+        # worker が落ちて起き直すと残りも消える(scheduler の一時ファイルの掃除は、開発の環境とコンテナでない配備のため)
+        tmpfs:
+            - /app/storage/framework:uid=10001,gid=10001
+            - /app/bootstrap/cache:uid=10001,gid=10001
+            - /tmp:size=64m,uid=10001,gid=10001
+        read_only: true
+        cap_drop:
+            - ALL
+        security_opt:
+            - no-new-privileges:true
+        restart: unless-stopped
+        # 止めるときは SIGTERM の後、処理中のジョブを終えてから抜ける(pcntl)。ジョブの時間の上限 < キューが配り直すまでの時間
+        # (config/queue.php の database の retry_after の既定。docs の 設計/AI/実行と費用.md の 4.1 節)≤ この値
+        stop_grace_period: 3600s
+        depends_on:
+            db:
+                condition: service_healthy
+        mem_limit: 512m
+        logging: *logging
+
+    # スケジューラ(定期の処理 = routes/console.php)。app と同じイメージ・同じ版で、外へ出ない
+    scheduler:
+        image: intra-deliver-portfolio-publish-app:${IMAGE_TAG:?IMAGE_TAG を compose.env に設定してください}
+        # schedule:work が毎分 schedule:run を子のプロセスで起こし、子は -d を受け継がないので、どのプロセスも php.ini の値で動く
+        command: ['php', 'artisan', 'schedule:work']
+        # Docker の init を PID 1 にする(子の schedule:run と定期のコマンドの後始末と、SIGTERM を php へ渡すこと)
+        init: true
+        env_file:
+            - ${PUBLISH_CONFIG_DIR:?PUBLISH_CONFIG_DIR を compose.env に設定してください}/app.env
+        networks:
+            - back
+        volumes:
+            - app-storage:/app/storage/app
+        tmpfs:
+            - /app/storage/framework:uid=10001,gid=10001
+            - /app/bootstrap/cache:uid=10001,gid=10001
+            - /tmp:size=16m,uid=10001,gid=10001
+        read_only: true
+        cap_drop:
+            - ALL
+        security_opt:
+            - no-new-privileges:true
+        restart: unless-stopped
+        depends_on:
+            db:
+                condition: service_healthy
+        # 同時に動く 3 つ(schedule:work・schedule:run・定期のコマンド)× memory_limit 96MB + 常駐の余白 96MB
+        mem_limit: 384m
+        logging: *logging
+
     tunnel:
         # remotely-managed の Tunnel。TUNNEL_TOKEN(tunnel.env)が --token に当たる。イメージのエントリポイントは cloudflared --no-autoupdate。
         # イメージに HEALTHCHECK もシェルも無いので healthcheck は書かない
@@ -130,10 +206,10 @@ networks:
     # tunnel・app。外へ出られない
     front:
         internal: true
-    # app・db。外へ出られない
+    # app・queue・scheduler・db。外へ出られない
     back:
         internal: true
-    # tunnel だけ。外へ出られる(既定のブリッジ)
+    # tunnel・queue。外へ出られる(既定のブリッジ)
     egress: {}
 
 volumes:

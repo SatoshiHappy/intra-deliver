@@ -20,17 +20,35 @@ class AudioConverter
     /** 道具が見つからない・走らせられない終了コード(シェルの 127・126。音声のせいでないので読み取れない音声と分ける) */
     private const NOT_RUN_EXIT_CODES = [126, 127];
 
+    /**
+     * 受ける入れ物の demuxer(添付の音声の mp3・m4a・wav)。公開用のイメージの ffmpeg の構成(Dockerfile の --enable-demuxer)と同じ一覧。
+     * 入力をこの demuxer と file の protocol だけに絞る(全部入りの ffmpeg でも、プレイリストや参照を辿る形式とネットワークを開かない)。
+     */
+    public const DEMUXERS = ['mp3', 'mov', 'wav'];
+
     public function __construct(private TranscriptionSettings $settings) {}
 
     /**
-     * 音声の長さ(秒)。
+     * 音声の長さ(秒)。先頭を復号できることも確かめる(長さは入れ物の見出しだけで測れるので、ffmpeg が復号できない符号化と
+     * 中身の壊れた音声を、費用を予約する前の依頼の時点に断るため = 設計/AI/実行と費用.md 4.2)。
      *
-     * @throws AudioUnreadable 壊れた音声・音声の流れが無いとき
+     * @throws AudioUnreadable 壊れた音声・音声の流れが無い・先頭を復号できないとき
      * @throws AudioConversionFailed 外部のプロセスの時間切れ・起動の失敗のとき
      */
     public function measure(string $path): float
     {
-        return $this->duration($path, $this->deadline());
+        $deadline = $this->deadline();
+        $duration = $this->duration($path, $deadline);
+        $result = $this->run([
+            'ffmpeg', '-hide_banner', '-nostdin', '-v', 'error',
+            '-t', (string) $this->settings->decodeCheckSeconds(), ...self::input($path), '-vn', '-f', 'null', '-',
+        ], $deadline);
+
+        if ($result->failed()) {
+            throw new AudioUnreadable("音声を復号できない(ffmpeg の終了コード {$result->exitCode()}): ".self::excerpt($result));
+        }
+
+        return $duration;
     }
 
     /**
@@ -68,7 +86,8 @@ class AudioConverter
     private function duration(string $path, float $deadline): float
     {
         $result = $this->run(
-            ['ffprobe', '-v', 'error', '-show_entries', 'stream=codec_type:format=duration', '-of', 'json', $path],
+            ['ffprobe', '-v', 'error', '-show_entries', 'stream=codec_type:format=duration', '-of', 'json',
+                ...self::input($path)],
             $deadline,
         );
         $probe = json_decode($result->output(), true);
@@ -93,7 +112,8 @@ class AudioConverter
         $noise = $this->settings->silenceNoiseDb();
         $filter = sprintf('silencedetect=noise=%sdB:d=%s', $noise, $this->settings->silenceMinSeconds());
         $result = $this->run(
-            ['ffmpeg', '-hide_banner', '-nostdin', '-nostats', '-i', $path, '-vn', '-af', $filter, '-f', 'null', '-'],
+            ['ffmpeg', '-hide_banner', '-nostdin', '-nostats', ...self::input($path),
+                '-vn', '-af', $filter, '-f', 'null', '-'],
             $deadline,
         );
         self::ensureSucceeded($result, '無音を探せない');
@@ -141,7 +161,7 @@ class AudioConverter
     {
         $result = $this->run([
             'ffmpeg', '-hide_banner', '-nostdin', '-v', 'error', '-y',
-            '-ss', sprintf('%.3f', $start), '-t', sprintf('%.3f', $length), '-i', $path, '-vn',
+            '-ss', sprintf('%.3f', $start), '-t', sprintf('%.3f', $length), ...self::input($path), '-vn',
             '-ac', (string) $this->settings->channels(), '-ar', (string) $this->settings->sampleRate(),
             '-c:a', 'libmp3lame', '-b:a', $this->settings->bitrateKbps().'k', $chunkPath,
         ], $deadline);
@@ -178,6 +198,16 @@ class AudioConverter
         }
 
         return $result;
+    }
+
+    /**
+     * 入力の指定(ffmpeg・ffprobe の共通)。許可の一覧は入力の形式の option なので -i の前に置く(一覧の外の形式は開く時に誤りになる)。
+     *
+     * @return list<string>
+     */
+    private static function input(string $path): array
+    {
+        return ['-protocol_whitelist', 'file', '-format_whitelist', implode(',', self::DEMUXERS), '-i', $path];
     }
 
     private function deadline(): float

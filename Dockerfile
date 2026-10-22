@@ -1,6 +1,7 @@
 # 公開用の app のイメージ(docs の 設計/公開の配備/構成.md 3.3.1)。build の文脈は配備専用の作業木(git が追跡するファイルだけ)。
 # BuildKit 専用の構文(syntax の指示・RUN --mount・ヒアドキュメント・COPY --link)を使わない(legacy builder でも通す)。
-# 段: base = 公式の FrankenPHP(Debian 系・PHP 8.4)に PHP の拡張を足した共通の土台 / build = 依存と資産を作る / app = 最終(非 root・Node 無し)。
+# 段: ffmpeg = 公式の版の source から LGPL の最小の構成で ffmpeg・ffprobe を作る / base = 公式の FrankenPHP(Debian 系・PHP 8.4)に
+# PHP の拡張と ffmpeg を足した共通の土台 / build = 依存と資産を作る / app = 最終(非 root・Node 無し)。
 # 土台・ビルド用のイメージは「タグ@digest」で固定する(frankenphp は提供元が出している最も細かい版 = PHP のパッチ版まで書く)。
 # 版を上げるのは更新チェック(.github/workflows/update-check.yml)の報告を受けた取り込みの作業だけで、タグと digest を一緒に書き換える(digest だけの書き換えも土台の変更にあたる)。
 # 同じイメージを書く場所(node の 2 行)は同じタグ@digest にそろえる。
@@ -8,10 +9,70 @@
 # 土台は build の引数で差し替えられる(更新チェックが、新しい土台でも同じ脆弱性が残るかを調べるのに使う。既定 = 固定した値)。
 # 書き換えるときはこの ARG の 1 行だけ(タグと digest を一緒に)。
 ARG FRANKENPHP_IMAGE=dunglas/frankenphp:1.13.1-php8.4.27-trixie@sha256:62f1ef7e0f7a43984d23d109eee58c5b1fb36232f49aaa675c17fee006ee883d
+
+# ffmpeg の版(ffmpeg.org の releases の安定版)と tarball の sha256。版を上げるときは 2 行を一緒に書き換える
+ARG FFMPEG_VERSION=9.0.2
+ARG FFMPEG_SHA256=8c3850283eb25fa026482078a04051e0be17347b09ef81a0849bec15a96e002e
+
+
+# ffmpeg は Debian のパッケージ(GPL の構成)を使わず、source から LGPL の構成で作る(docs の 設計/業務ツール/会議/文字起こしと議事録.md の 4.3 節)。
+# 信頼しない音声を読む部分を、アプリの呼び方(app/Actions/Ai/AudioConverter.php)が受ける形式(mp3・m4a・wav)だけに絞る。
+# decoder は受ける入れ物ごとの行(mp3 / m4a / wav の PCM / wav の ADPCM)で、主な符号化だけ。
+# decoder 1 つに見本 1 つ(docker/app/ffmpeg-check/samples/<decoder>.<拡張子>)。足すときは両方を足す。
+# 外のライブラリは mp3 の符号化の libmp3lame だけ。null の muxer は pcm_s16le の符号化を要る(無音の検出の -f null)。
+# 強化の toolchain(hardened = FORTIFY・stack-protector・relro・now・PIE)で作る
+FROM ${FRANKENPHP_IMAGE} AS ffmpeg
+
+ARG FFMPEG_VERSION
+ARG FFMPEG_SHA256
+
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends gcc libc6-dev make nasm libmp3lame-dev xz-utils \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /usr/src/ffmpeg
+
+# 取得は通信の切断で落ちることがあるので再試行する(取り違えは直後の sha256 の照合が止める)
+RUN curl --fail --silent --show-error --location --retry 5 --retry-all-errors --output ffmpeg.tar.xz \
+        "https://ffmpeg.org/releases/ffmpeg-${FFMPEG_VERSION}.tar.xz" \
+    && echo "${FFMPEG_SHA256}  ffmpeg.tar.xz" | sha256sum -c - \
+    && tar -xJf ffmpeg.tar.xz --strip-components=1 \
+    && ./configure --prefix=/opt/ffmpeg \
+        --disable-everything --disable-autodetect --disable-iconv --disable-network \
+        --disable-doc --disable-ffplay --disable-avdevice --disable-swscale --disable-debug \
+        --enable-libmp3lame \
+        --enable-protocol=file \
+        --enable-demuxer=mp3,mov,wav \
+        --enable-parser=mpegaudio,aac \
+        --enable-decoder=mp3float \
+        --enable-decoder=aac,alac \
+        --enable-decoder=pcm_u8,pcm_s16le,pcm_s24le,pcm_s32le,pcm_f32le,pcm_f64le,pcm_alaw,pcm_mulaw \
+        --enable-decoder=adpcm_ima_wav,adpcm_ms \
+        --enable-filter=silencedetect,aresample,aformat,anull,atrim \
+        --enable-encoder=libmp3lame,pcm_s16le \
+        --enable-muxer=mp3,null \
+        --toolchain=hardened \
+    && make -j"$(nproc)" \
+    && make install
+
+# 構成が LGPL のままであることを確かめる(落ちれば build が止まる)
+COPY docker/app/ffmpeg-check/check /usr/src/ffmpeg-check
+RUN PATH="/opt/ffmpeg/bin:$PATH" sh /usr/src/ffmpeg-check
+
+
 FROM ${FRANKENPHP_IMAGE} AS base
 
-# 公式の手順(install-php-extensions)で拡張を足す。既知の問題のある拡張(imagick など)は入れない
-RUN install-php-extensions pdo_pgsql pgsql intl opcache zip
+# 公式の手順(install-php-extensions)で拡張を足す。既知の問題のある拡張(imagick など)は入れない。
+# pcntl = キューの worker のジョブの時間の上限と、止めるときに処理中のジョブを終えてから抜けること(Laravel の Queue\Worker が要る)
+RUN install-php-extensions pdo_pgsql pgsql intl opcache zip pcntl
+
+# ffmpeg・ffprobe と、動くのに要る共有ライブラリ(libmp3lame)。写した後に共有ライブラリの欠けが無いことを確かめる
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends libmp3lame0 \
+    && rm -rf /var/lib/apt/lists/*
+COPY --from=ffmpeg /opt/ffmpeg/bin/ffmpeg /opt/ffmpeg/bin/ffprobe /usr/local/bin/
+RUN ffmpeg -hide_banner -version \
+    && ffprobe -hide_banner -version
 
 WORKDIR /app
 
@@ -46,6 +107,10 @@ RUN composer dump-autoload --optimize --no-dev --no-scripts \
 RUN mkdir -p storage/framework/cache storage/framework/sessions storage/framework/views bootstrap/cache \
     && npm run build
 
+# 実物の AudioConverter(長さの測り・依頼の時点の復号の確かめ・区切りの変換)を base の ffmpeg・ffprobe で見本の音声(decoder ごとに 1 つ)に
+# 流す(アプリの呼び方と受ける符号化に ffmpeg の構成が足りること。落ちれば build が止まる。DB に触れない)
+RUN php artisan ai:check-audio docker/app/ffmpeg-check/samples/*
+
 
 FROM base AS app
 
@@ -75,6 +140,10 @@ ENV SERVER_NAME=:8080
 USER app
 
 EXPOSE 8080
+
+# 土台のイメージの HEALTHCHECK(Caddy の管理の口)を受け継がない。同じイメージの queue・scheduler・一回きりのコンテナは
+# HTTP の口を持たず、app のヘルスは compose の healthcheck(/up)が決める
+HEALTHCHECK NONE
 
 ENTRYPOINT ["app-entrypoint"]
 CMD ["frankenphp", "run", "--config", "/etc/frankenphp/Caddyfile", "--adapter", "caddyfile"]

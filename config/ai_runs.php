@@ -88,6 +88,7 @@ return [
     // 一時ファイルは置き場の下に実行の id で分けたディレクトリに置く(設計/AI/データと失敗と検査.md 6 節)
     'transcription' => [
         'conversion_timeout_seconds' => 300,
+        'decode_check_seconds' => 10,
         'silence_window_seconds' => 60,
         'silence_noise_db' => -35,
         'silence_min_seconds' => 0.5,

@@ -1,0 +1,20 @@
+#!/bin/sh
+# 公開用の app のイメージに入れる ffmpeg の構成の確かめ(docs の 設計/公開の配備/構成.md の 3.3.1 節)。
+# Dockerfile の ffmpeg の段が build の中で流し、落ちれば build が止まる。PATH の先頭の ffmpeg を確かめる。
+# 構成が LGPL のまま = ffmpeg -version の構成の行に --enable-gpl・--enable-nonfree が無く、ffmpeg -L が LGPL を出す。
+# アプリの呼び方の確かめは、build の段が実物の AudioConverter をこの置き場の見本の音声に流す(php artisan ai:check-audio)。
+set -eu
+
+fail() {
+    echo "ffmpeg の確かめが落ちた: $*" >&2
+    exit 1
+}
+
+configuration=$(ffmpeg -hide_banner -version | grep '^configuration:') || fail '構成の行が無い'
+
+case "$configuration" in
+    *--enable-gpl* | *--enable-nonfree*) fail "GPL か nonfree の構成がある: $configuration" ;;
+esac
+
+ffmpeg -hide_banner -L | grep -q 'GNU Lesser General Public' || fail 'ffmpeg -L が LGPL でない'
+echo "ffmpeg の確かめ: 構成は LGPL($configuration)"

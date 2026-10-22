@@ -71,6 +71,51 @@ final class AudioConverterTest extends TransactionalTestCase
         }
     }
 
+    /**
+     * 長さは入れ物の見出しで測れても、先頭を復号できない音声(ffmpeg に decoder の無い符号化・中身の壊れた音声)は、依頼の時点に
+     * 読み取れない音声になる(費用を予約する前に断る)。ffprobe は通り、復号の ffmpeg だけが落ちる形を偽物で作る。
+     */
+    public function test_an_audio_whose_head_cannot_be_decoded_cannot_be_measured(): void
+    {
+        $path = $this->audio('sin(2*PI*440*t)', 5);
+        Process::fake([
+            "'ffprobe'*" => Process::result('{"streams": [{"codec_type": "audio"}], "format": {"duration": "5.0"}}'),
+            "'ffmpeg'*" => Process::result('', 'Decoding requested, but no decoder found for: alac', 1),
+        ]);
+
+        try {
+            app(AudioConverter::class)->measure($path);
+            $this->fail('復号できない音声が測れてしまった');
+        } catch (AudioUnreadable $exception) {
+            $this->assertStringContainsString('音声を復号できない(ffmpeg の終了コード 1)', $exception->getMessage());
+        }
+
+        Process::assertRan(fn ($process): bool => str_starts_with((string) $process->command[0], 'ffmpeg')
+            && in_array('-t', $process->command, true));
+    }
+
+    /**
+     * 入力は受ける demuxer(mp3・mov・wav)と file の protocol だけに絞る。手元の全部入りの ffmpeg なら読める形式
+     * (ogg・ほかのファイルを参照する concat の一覧)と、file 以外の protocol(開く前に断るので接続しない)は読み取れない音声になる。
+     */
+    public function test_formats_and_protocols_outside_the_allowed_lists_cannot_be_measured(): void
+    {
+        $wav = $this->audio('sin(2*PI*440*t)', 5);
+        $ogg = "{$this->directory}/audio.ogg";
+        $this->ffmpeg(['-i', $wav, '-c:a', 'flac', '-f', 'ogg', $ogg]);
+        $concat = "{$this->directory}/list.txt";
+        File::put($concat, "ffconcat version 1.0\nfile '".basename($wav)."'\n");
+
+        foreach ([$ogg, $concat, 'http://127.0.0.1:9/audio.wav'] as $path) {
+            try {
+                app(AudioConverter::class)->measure($path);
+                $this->fail("{$path} が測れてしまった");
+            } catch (AudioUnreadable $exception) {
+                $this->assertStringContainsString('not on whitelist', $exception->getMessage(), $path);
+            }
+        }
+    }
+
     public function test_the_chunks_are_mono_16khz_16kbps_mp3(): void
     {
         $chunks = $this->split($this->audio('sin(2*PI*440*t)', 5), 10);

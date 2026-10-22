@@ -6,6 +6,7 @@ use App\Queries\Ai\AiSettings;
 use App\Queries\Ai\KindSettings;
 use App\Queries\Ai\RunEstimates;
 use App\Queries\Ai\TranscriptionSettings;
+use LogicException;
 
 /**
  * 種類と予算の区分の設定の食い違い(`ai:check-settings` とテストが落とす = docs の 設計/AI/データと失敗と検査.md 8 節、実行と費用.md 4.1・5 節・5.2)。
@@ -17,6 +18,9 @@ class KindLimitChecks
 {
     /** 文字起こしの 1 本の長さの上限の刻み(超えたときの文が「<N> 時間まで」なので時間の倍数) */
     private const SECONDS_PER_HOUR = 3600;
+
+    /** 予算の区分の期間(config/ai_runs.php の budget の鍵) */
+    private const BUDGET_PERIODS = ['daily_usd', 'monthly_usd', 'total_usd'];
 
     public function __construct(
         private AiSettings $settings,
@@ -83,14 +87,21 @@ class KindLimitChecks
 
     /**
      * 区分ごとの食い違い(守る条件 = 実行と費用.md 5.2)。見積もりの上限は単価が要るので、単価の食い違いが無いときだけ呼ぶ。
+     * 期間の上限(日・月・累計)はどれも数として読む(数でない値は作りの誤りとして起動で止める = 実行と費用.md 5 節)。
      *
      * @return list<string>
+     *
+     * @throws LogicException 期間の上限が数でないとき
      */
     public function budgetProblems(): array
     {
         $problems = [];
 
         foreach ($this->settings->budgetNames() as $budget) {
+            foreach (self::BUDGET_PERIODS as $period) {
+                $this->settings->budget($budget, $period);
+            }
+
             if (! RunBudget::hasMessages($budget)) {
                 $problems[] = "予算の区分 {$budget} に超えたときの文が無い(RunBudget)";
             }
