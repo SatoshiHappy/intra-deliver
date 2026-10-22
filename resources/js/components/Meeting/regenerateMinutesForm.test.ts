@@ -14,41 +14,55 @@ describe('regeneratePayload', () => {
     });
 });
 
-describe('regenerateView', () => {
-    const blocked = '今日の AI の利用の上限に近いため、音声は選べません。';
+const blocked = '今日の AI の利用の上限に近いため、音声から作り直せません。';
 
-    it.each([
-        {
-            case: '書き起こしがあり、止めていない',
-            hasTranscript: true,
-            message: null,
-            expected: {
-                submitDisabled: false,
-                shownErrorKeys: ['instructions'],
-            },
+const viewCases = [
+    {
+        case: '書き起こしがあり、止めていない',
+        hasTranscript: true,
+        message: null,
+        expected: {
+            showInstructions: true,
+            submitDisabled: false,
+            shownErrorKeys: ['instructions'],
         },
-        {
-            case: '書き起こしがあり、止めている',
-            hasTranscript: true,
-            message: blocked,
-            expected: {
-                submitDisabled: true,
-                shownErrorKeys: ['instructions'],
-            },
+    },
+    {
+        case: '書き起こしがあれば、止めていても書き起こしから作れる',
+        hasTranscript: true,
+        message: blocked,
+        expected: {
+            showInstructions: true,
+            submitDisabled: false,
+            shownErrorKeys: ['instructions'],
         },
-        {
-            case: '書き起こしが無く、止めていない',
-            hasTranscript: false,
-            message: null,
-            expected: { submitDisabled: false, shownErrorKeys: [] },
+    },
+    {
+        case: '書き起こしが無く、止めていない',
+        hasTranscript: false,
+        message: null,
+        expected: {
+            showInstructions: false,
+            submitDisabled: false,
+            shownErrorKeys: [],
         },
-        {
-            case: '書き起こしが無く、止めている',
-            hasTranscript: false,
-            message: blocked,
-            expected: { submitDisabled: true, shownErrorKeys: [] },
+    },
+    {
+        case: '書き起こしが無く、止めている',
+        hasTranscript: false,
+        message: blocked,
+        expected: {
+            showInstructions: false,
+            submitDisabled: true,
+            shownErrorKeys: [],
         },
-    ])('$case', ({ hasTranscript, message, expected }) => {
-        expect(regenerateView(hasTranscript, message)).toEqual(expected);
+    },
+];
+
+describe('regenerateView', () => {
+    it.each(viewCases)('$case', ({ hasTranscript, message, expected }) => {
+        expect(
+            regenerateView({ hasTranscript, audioBlockedMessage: message }),
+        ).toEqual(expected);
     });
 });

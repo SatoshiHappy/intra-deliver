@@ -101,7 +101,7 @@ final class RegenerateFromAudioTest extends TransactionalTestCase
             $this->attach($recordId, UploadedFile::fake()->createWithContent('録画.mp4', $this->sampleContent('mp4')));
         }
 
-        $this->regenerate($recordId, [])->assertSessionHasErrors(['meeting' => MeetingRegenerableQuery::NO_TRANSCRIPT]);
+        $this->regenerate($recordId, [])->assertSessionHasErrors(['meeting' => MeetingRegenerableQuery::NO_MATERIAL]);
     }
 
     /**
@@ -113,7 +113,7 @@ final class RegenerateFromAudioTest extends TransactionalTestCase
         RecordAttachment::query()->where('record_id', $recordId)->delete();
 
         $this->regenerate($recordId, ['instructions' => '短く'])
-            ->assertSessionHasErrors(['meeting' => MeetingRegenerableQuery::NO_TRANSCRIPT])
+            ->assertSessionHasErrors(['meeting' => MeetingRegenerableQuery::NO_MATERIAL])
             ->assertSessionDoesntHaveErrors('instructions');
     }
 

@@ -19,22 +19,27 @@ export function regeneratePayload(
     return hasTranscript ? { instructions } : {};
 }
 
-/** 送るボタンの形と、欄の上に出す誤りから除くキー */
+/** 再作成のダイアログの描き分け(追加の指示の欄を出すか・送るボタンを押せないか・欄の下に出すので欄の上からは除く誤りのキー) */
 export type RegenerateView = {
+    showInstructions: boolean;
     submitDisabled: boolean;
     shownErrorKeys: string[];
 };
 
 /**
- * 送るボタンを押せないか(音声の取り込みを先に止めているとき)と、欄の下に出すので欄の上からは除く誤りのキー
- * (書き起こしがあれば追加の指示の欄がある。無ければ欄が無いので、すべて欄の上に出す)。
+ * 再作成のダイアログの描き分け。追加の指示の欄があるのは書き起こしがあるときだけ(無ければ音声から作り直す)。送るボタンを押せないのは、
+ * 音声から作り直すときに音声の取り込みを先に止めているときだけ(書き起こしから作るなら音声の止め方に関わらない = 公開デモと画面.md の 9.3)。
  */
-export function regenerateView(
-    hasTranscript: boolean,
-    audioBlockedMessage: string | null,
-): RegenerateView {
+export function regenerateView({
+    hasTranscript,
+    audioBlockedMessage,
+}: {
+    hasTranscript: boolean;
+    audioBlockedMessage: string | null;
+}): RegenerateView {
     return {
-        submitDisabled: audioBlockedMessage !== null,
+        showInstructions: hasTranscript,
+        submitDisabled: !hasTranscript && audioBlockedMessage !== null,
         shownErrorKeys: hasTranscript ? ['instructions'] : [],
     };
 }

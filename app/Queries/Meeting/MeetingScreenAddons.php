@@ -31,7 +31,6 @@ class MeetingScreenAddons implements RecordScreenAddons
         private MeetingPermissions $permissions,
         private MeetingProcessingQuery $states,
         private MeetingAudioBudget $budget,
-        private MeetingAudioQuery $audio,
         private MeetingRegenerableQuery $regenerables,
         private UploadLimits $limits,
     ) {}
@@ -80,13 +79,12 @@ class MeetingScreenAddons implements RecordScreenAddons
     public function show(AccessContext $context, int $recordId): array
     {
         $found = $this->regenerables->of($recordId);
-        $hasTranscript = $found['transcriptId'] !== null;
         $regenerable = $found['regenerable'];
         $state = $this->states->statesOf([$recordId])[$recordId] ?? null;
         $canRegenerate = $regenerable && $this->permissions->canRegenerate($context);
 
         return [
-            'actions' => $canRegenerate ? [$this->regenerateAction($recordId, $hasTranscript, $state)] : [],
+            'actions' => $canRegenerate ? [$this->regenerateAction($recordId, $found, $state)] : [],
             'badges' => $state === null ? [] : [self::badgeOf($state)],
             'fieldNotes' => $regenerable ? [Meeting::Summary->value => self::MINUTES_NOTE] : [],
         ];
@@ -94,16 +92,17 @@ class MeetingScreenAddons implements RecordScreenAddons
 
     /**
      * 部品には書き起こしの有無(送り先を分ける = 処理.md の 3.7)と、追加の指示の上限と、音声から作り直すときの先の止め方の文
-     * (書き起こしが無く受ける音声があるときだけ。ほかは null = 公開デモと画面.md の 9.3)を渡す。書き起こしも受ける音声も無いときは
-     * 押せない形にする(理由 = 再作成の入口の 422 と同じ文)。
+     * (書き起こしが無く受ける音声があるときだけ。ほかは null = 公開デモと画面.md の 9.3)を渡す。作り直す材料の有無は
+     * {@see MeetingRegenerableQuery} の値を読む(入口と同じ定義)。
      *
+     * @param  array{regenerable: bool, transcriptId: int|null, audioUploadId: int|null}  $found
      * @return RecordAddonAction
      */
-    private function regenerateAction(int $recordId, bool $hasTranscript, ?MeetingProcessingState $state): array
+    private function regenerateAction(int $recordId, array $found, ?MeetingProcessingState $state): array
     {
-        $hasAudio = $this->audio->latestAudioOf($recordId) !== null;
-        $fromAudio = ! $hasTranscript && $hasAudio;
-        $blocked = $fromAudio
+        $hasTranscript = $found['transcriptId'] !== null;
+        $hasAudio = $found['audioUploadId'] !== null;
+        $blocked = $hasAudio
             ? $this->budget->blockedMessage(MeetingRunOrigin::Regenerate, CarbonImmutable::now())
             : null;
 
@@ -122,7 +121,7 @@ class MeetingScreenAddons implements RecordScreenAddons
     }
 
     /**
-     * 再作成の押せない理由(処理中を先に。書き起こしも受ける音声も無ければ、入口の 422 と同じ文。押せるなら null)。
+     * 再作成の押せない理由。処理中は材料の有無によらず押せないので先に返す(公開デモと画面.md の 9.3、処理.md の 3.7)。
      */
     private function disabledReason(?MeetingProcessingState $state, bool $hasMaterial): ?string
     {
@@ -130,7 +129,7 @@ class MeetingScreenAddons implements RecordScreenAddons
             return self::PROCESSING_REASON;
         }
 
-        return $hasMaterial ? null : MeetingRegenerableQuery::NO_TRANSCRIPT;
+        return $hasMaterial ? null : MeetingRegenerableQuery::NO_MATERIAL;
     }
 
     /**

@@ -89,11 +89,13 @@ type RegenerateValues = {
  */
 function RegenerateInputs({
     values,
+    showInstructions,
     instructions,
     error,
     onInstructionsChange,
 }: {
     values: RegenerateValues;
+    showInstructions: boolean;
     instructions: string;
     error: string | undefined;
     onInstructionsChange: (value: string) => void;
@@ -105,7 +107,7 @@ function RegenerateInputs({
             {audioBlockedMessage !== null && (
                 <MeetingAudioBlockedNotice message={audioBlockedMessage} />
             )}
-            {values.hasTranscript ? (
+            {showInstructions ? (
                 <InstructionsField
                     value={instructions}
                     max={values.instructionsMaxLength}
@@ -131,12 +133,11 @@ type FormProps = {
 /**
  * ダイアログの中のフォーム(開くたびに作り直す)。成功したら閉じる(入口が会議の詳細へ戻し、トーストを出す)。
  * 送っている間かを親へ知らせる(親が送る間の「閉じる」を捨てる)。書き起こしが無ければ追加の指示の欄を出さず送らない(音声から作り直す)。
- * 先の止め方の文があれば出し、送るボタンを押せない形にする。
+ * 先の止め方の文があれば出し、音声から作り直すときは送るボタンを押せない形にする。
  */
 function RegenerateMinutesForm(props: FormProps) {
     const { module, recordId, values, onSendingChange, onDone } = props;
-    const { hasTranscript } = values;
-    const view = regenerateView(hasTranscript, values.audioBlockedMessage);
+    const view = regenerateView(values);
     const form = useForm({ instructions: '' });
     const errors = form.errors as Record<string, string | undefined>;
     const { formRef, focusFirstError } = useFocusFirstError();
@@ -146,7 +147,7 @@ function RegenerateMinutesForm(props: FormProps) {
     const submit = (event: FormEvent) => {
         event.preventDefault();
         form.transform((data) =>
-            regeneratePayload(hasTranscript, data.instructions),
+            regeneratePayload(view.showInstructions, data.instructions),
         );
         form.submit(regenerate(recordId), {
             preserveScroll: true,
@@ -167,6 +168,7 @@ function RegenerateMinutesForm(props: FormProps) {
             />
             <RegenerateInputs
                 values={values}
+                showInstructions={view.showInstructions}
                 instructions={form.data.instructions}
                 error={errors.instructions}
                 onInstructionsChange={(value) =>

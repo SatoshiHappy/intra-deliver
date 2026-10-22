@@ -10,7 +10,6 @@ use App\Enums\Meeting\MeetingRunStage;
 use App\Models\Meeting\MeetingRun;
 use App\Models\Meeting\TranscriptSegment;
 use App\Queries\Authz\Api\Requester;
-use App\Queries\Meeting\MeetingAudioQuery;
 use App\Queries\Meeting\MeetingFieldsQuery;
 use App\Queries\Meeting\MeetingLimits;
 use App\Queries\Meeting\MeetingProcessingQuery;
@@ -54,7 +53,6 @@ class RegenerateMinutes
 
     public function __construct(
         private MeetingLock $lock,
-        private MeetingAudioQuery $audio,
         private MeetingAudioRequest $audioRequest,
         private RecordHoldQuery $holds,
         private MeetingProcessingQuery $states,
@@ -81,10 +79,11 @@ class RegenerateMinutes
 
         return DB::transaction(function () use ($context, $recordId, $instructions): int {
             $this->lock->lock($recordId);
-            $transcriptId = $this->regenerableTranscript($recordId);
+            $found = $this->regenerableMaterial($recordId);
+            $transcriptId = $found['transcriptId'];
 
             if ($transcriptId === null) {
-                return $this->fromAudio($context, $recordId, $instructions);
+                return $this->fromAudio($context, $recordId, $found['audioUploadId'], $instructions);
             }
 
             $requester = Requester::fromAccessContext($context);
@@ -128,10 +127,9 @@ class RegenerateMinutes
      * @throws ValidationException
      * @throws RunRequestDeclined
      */
-    private function fromAudio(AccessContext $context, int $recordId, ?string $instructions): int
+    private function fromAudio(AccessContext $context, int $recordId, ?int $uploadId, ?string $instructions): int
     {
-        $uploadId = $this->audio->latestAudioOf($recordId)
-            ?? throw self::notRegenerable(MeetingRegenerableQuery::NO_TRANSCRIPT);
+        $uploadId ??= throw self::notRegenerable(MeetingRegenerableQuery::NO_MATERIAL);
 
         if ($instructions !== null) {
             throw ValidationException::withMessages([self::INSTRUCTIONS => self::INSTRUCTIONS_WITHOUT_TRANSCRIPT]);
@@ -141,11 +139,13 @@ class RegenerateMinutes
     }
 
     /**
-     * 押せる会議と押せる時(申請中でない・処理中でない)を確かめ、書き起こしの id を返す(無ければ null)。
+     * 押せる会議と押せる時(申請中でない・処理中でない)を確かめ、書き起こしの id と受ける音声の実体の id を返す(無ければ null)。
+     *
+     * @return array{regenerable: bool, transcriptId: int|null, audioUploadId: int|null}
      *
      * @throws ValidationException
      */
-    private function regenerableTranscript(int $recordId): ?int
+    private function regenerableMaterial(int $recordId): array
     {
         $found = $this->regenerables->of($recordId);
 
@@ -161,7 +161,7 @@ class RegenerateMinutes
             throw self::notRegenerable(self::PROCESSING);
         }
 
-        return $found['transcriptId'];
+        return $found;
     }
 
     private static function notRegenerable(string $message): ValidationException

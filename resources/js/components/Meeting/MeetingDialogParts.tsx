@@ -67,9 +67,14 @@ export function useFocusFirstError() {
     return {
         formRef,
         focusFirstError: () => setRequest((count) => count + 1),
-        // 残った誤りに先に当たらないよう、欄の入力を id で直に指す
-        focusField: (id: string) =>
-            formRef.current?.querySelector<HTMLElement>(`#${id}`)?.focus(),
+        // 残った誤りに先に当たらないよう、フォームの入力を id で直に指す(セレクタに埋めない)
+        focusField: (id: string) => {
+            const field = formRef.current?.elements.namedItem(id);
+
+            if (field instanceof HTMLElement) {
+                field.focus();
+            }
+        },
     };
 }
 
