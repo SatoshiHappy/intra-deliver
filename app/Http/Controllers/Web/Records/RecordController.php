@@ -74,6 +74,7 @@ class RecordController extends Controller
 
         return Inertia::render('Records/Create', [
             'module' => fn () => $this->pages->definition($opened),
+            'headings' => fn () => $this->panels->headings($opened->id),
             'can' => fn () => $this->pages->can($requester, $opened, [RecordModuleAction::Read], $context->date),
         ]);
     }
@@ -111,6 +112,7 @@ class RecordController extends Controller
 
         return Inertia::render('Records/Show', [
             'module' => fn () => $this->pages->definition($opened),
+            'headings' => fn () => $this->panels->headings($opened->id),
             'record' => fn () => $this->records
                 ->show($requester, $opened, $recordId, $context->date, $context->localeCode),
             'can' => fn () => $this->pages->detailCan($requester, $opened, $context->date, $applyEntries()),
@@ -158,6 +160,7 @@ class RecordController extends Controller
 
         return Inertia::render('Records/Edit', [
             'module' => fn () => $this->pages->definition($opened),
+            'headings' => fn () => $this->panels->headings($opened->id),
             'record' => $editable,
             'hold' => fn () => $this->pages->hold($editable['id']),
         ]);

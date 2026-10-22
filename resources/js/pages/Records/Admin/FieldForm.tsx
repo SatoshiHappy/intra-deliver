@@ -1,5 +1,5 @@
 import { Head, Link, useForm } from '@inertiajs/react';
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { CountedTextInput } from '@/components/CountedTextInput';
 import { FormBlock, invalidProps } from '@/components/FormBlock';
@@ -21,6 +21,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { useCodeCheck } from '@/hooks/Records/use-code-check';
+import { useFocusFirstInvalid } from '@/hooks/use-focus-first-invalid';
 import { clearRowErrors, clearServerErrors } from '@/lib/formErrors';
 import {
     defaultValueField,
@@ -59,9 +60,6 @@ type Props = {
     /** 文字列の型の上限と複数行に指定できる上限(最大の文字数の説明文と、既定値の欄の上限) */
     stringMaxLengths: StringMaxLengths;
 };
-
-/** エラーのある欄と、フォームの先頭の文(並び順の誤り)。文書の順で最初のものへフォーカスを移す */
-const INVALID_SELECTOR = '[aria-invalid="true"], [role="alert"]';
 
 /**
  * 見出し(追加 =「項目の追加」、編集 =「項目「<名前>」の編集」)。
@@ -161,13 +159,7 @@ export default function FieldForm({
     const set: SetField = (key, value) =>
         form.setData((current) => ({ ...current, [key]: value }));
 
-    useEffect(() => {
-        if (focusRequest > 0) {
-            formRef.current
-                ?.querySelector<HTMLElement>(INVALID_SELECTOR)
-                ?.focus();
-        }
-    }, [focusRequest]);
+    useFocusFirstInvalid(formRef, focusRequest);
 
     const submit = (event: FormEvent) => {
         event.preventDefault();

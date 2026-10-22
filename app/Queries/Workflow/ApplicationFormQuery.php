@@ -12,6 +12,7 @@ use App\Models\Workflow\WorkflowFlow;
 use App\Queries\Authz\Api\Requester;
 use App\Queries\Records\Api\RecordDisplayQuery;
 use App\Queries\Records\Api\RecordFormQuery;
+use App\Queries\Records\Api\RecordShowPanelQuery;
 use App\Support\AccessContext;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -25,7 +26,7 @@ use LogicException;
  * @phpstan-import-type Next from ApplicationNext
  * @phpstan-import-type ApplyAttachment from ApplyAttachments
  *
- * @phpstan-type ApplyForm array{mode: string, flow: array{code: string, name: string, description: string|null}, case: array{id: int, number: string|null, revision: int}|null, module: array<string, mixed>, initial: array{name: string|null, comment: string|null, values: array<string, mixed>, details: array<string, list<array<string, mixed>>>}|null, titleField: string|null, recordId: int|null, baseDate: string, baseDateRange: array{min: string|null, max: string|null}, next: Next, nameMaxLength: int, commentMaxLength: int, attachment: ApplyAttachment,
+ * @phpstan-type ApplyForm array{mode: string, flow: array{code: string, name: string, description: string|null}, case: array{id: int, number: string|null, revision: int}|null, module: array<string, mixed>, headings: list<array{id: int|null, name: string|null, fieldCodes: list<string>}>, initial: array{name: string|null, comment: string|null, values: array<string, mixed>, details: array<string, list<array<string, mixed>>>}|null, titleField: string|null, recordId: int|null, baseDate: string, baseDateRange: array{min: string|null, max: string|null}, next: Next, nameMaxLength: int, commentMaxLength: int, attachment: ApplyAttachment,
  *     recordVersion: string|null, recordTitle: string|null}
  */
 class ApplicationFormQuery
@@ -35,6 +36,7 @@ class ApplicationFormQuery
         private CaseVisibility $visibility,
         private CaseOperationDecider $decider,
         private RecordFormQuery $forms,
+        private RecordShowPanelQuery $panels,
         private ApplicationNext $next,
         private RecordApplyFlows $recordApplyFlows,
         private ApplyAttachments $attachments,
@@ -212,6 +214,7 @@ class ApplicationFormQuery
             'flow' => ['code' => $flow->code, 'name' => $flow->name, 'description' => $flow->description],
             'case' => $case,
             'module' => $module,
+            'headings' => $this->panels->headings($this->moduleOf($flow)->id),
             'initial' => $initial,
             'titleField' => $this->titleFieldOf($module),
             'recordId' => $recordId,

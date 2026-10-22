@@ -1,6 +1,7 @@
 import type {
     RecordDetail,
     RecordFieldValue,
+    RecordHeadingGroup,
     RecordModuleDefinition,
 } from './records';
 import type { RouteStepState } from './status';
@@ -16,10 +17,7 @@ import type {
     WorkflowNodeState,
 } from './workflowValues';
 
-/**
- * ワークフローの画面の型(docs の 設計/ワークフロー/画面.md 1.2・2〜5 節。サーバーの App\Queries\Workflow が返す形)。
- * 日時は時差つきの文字列(画面は Asia/Tokyo で出す)。人の名前が無ければ画面はコードを出す。
- */
+/** ワークフローの画面の型(設計/ワークフロー/画面.md 1.2・2〜5 節。App\Queries\Workflow の形。日時は時差つき。人の名前が無ければコード) */
 
 /** 人(名前が無ければ画面はコードを出す) */
 export type WorkflowPerson = { id: number; code: string; name: string | null };
@@ -81,6 +79,7 @@ export type WorkflowApplyProps = {
     flow: { code: string; name: string; description: string | null };
     case: { id: number; number: string | null; revision: number } | null; // 新規は null
     module: RecordModuleDefinition; // 業務データの入れ物の定義(新規・一時保存 = create、再申請・既存のデータ = update の判定の後)
+    headings: RecordHeadingGroup[]; // 見出しのまとまり(レコードの共通機能/詳細の画面/見出し.md の 3 節。フォームの欄を見出しで畳む)
     initial: {
         name: string | null;
         comment: string | null;

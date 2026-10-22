@@ -1,4 +1,5 @@
 import { router, usePage } from '@inertiajs/react';
+import { RecordHeadingGroups } from '@/components/RecordHeadingGroups';
 import { RecordShowTabs } from '@/components/RecordShowTabs';
 import { RecordValue } from '@/components/RecordValue';
 import {
@@ -24,6 +25,7 @@ import type {
     RecordDetail,
     RecordDetailRow,
     RecordFieldDefinition,
+    RecordHeadingGroup,
     RecordModuleDefinition,
 } from '@/types';
 
@@ -109,19 +111,21 @@ function FieldItem({
 }
 
 /**
- * 詳細タブ: 項目の格子(列は左の面の幅の段階 = 帯だけで 3 列、パネルを開くと 2 列 =
- * 設計/業務データの入れ物/レコードの共通機能/詳細の画面/README.md の 1 節。複数行は全幅)と、作成・更新の日時と人。notes = 後ろのモジュールが足す、項目の欄の上の 1 行(項目のコード → 文)。
+ * 詳細タブ: 見出しのまとまりごとの項目の格子(列は左の面の幅の段階 = 帯だけで 3 列、パネルを開くと 2 列 =
+ * 設計/業務データの入れ物/レコードの共通機能/詳細の画面/README.md の 1 節。複数行は全幅。見出しの行で畳める = 見出し.md の 2 節)と、
+ * 作成・更新の日時と人。notes = 後ろのモジュールが足す、項目の欄の上の 1 行(項目のコード → 文)。
  */
 function FieldsTab({
     module,
+    headings,
     record,
     notes,
 }: {
     module: RecordModuleDefinition;
+    headings: RecordHeadingGroup[];
     record: RecordDetail;
     notes: Record<string, string>;
 }) {
-    const fields = module.fields.filter((field) => field.type !== 'details');
     const authors = [
         ['作成', record.createdAt, record.createdBy],
         ['更新', record.updatedAt, record.updatedBy],
@@ -129,16 +133,24 @@ function FieldsTab({
 
     return (
         <div className="flex flex-col gap-5">
-            <dl className="grid grid-cols-1 gap-x-6 gap-y-4 text-sm @md:grid-cols-2 @3xl:grid-cols-3">
-                {fields.map((field) => (
-                    <FieldItem
-                        key={field.code}
-                        field={field}
-                        record={record}
-                        note={ownValue(notes, field.code)}
-                    />
-                ))}
-            </dl>
+            <RecordHeadingGroups groups={headings} idPrefix="record-show">
+                {(group) => (
+                    <dl className="grid grid-cols-1 gap-x-6 gap-y-4 text-sm @md:grid-cols-2 @3xl:grid-cols-3">
+                        {module.fields
+                            .filter((field) =>
+                                group.fieldCodes.includes(field.code),
+                            )
+                            .map((field) => (
+                                <FieldItem
+                                    key={field.code}
+                                    field={field}
+                                    record={record}
+                                    note={ownValue(notes, field.code)}
+                                />
+                            ))}
+                    </dl>
+                )}
+            </RecordHeadingGroups>
             <dl className="grid grid-cols-[max-content_1fr] gap-x-4 gap-y-1 text-xs text-muted-foreground">
                 {authors.map(([label, at, by]) => [
                     <dt key={`${label}-t`}>{label}</dt>,
@@ -155,14 +167,47 @@ function FieldsTab({
 }
 
 /**
+ * 選んだタブの中身(詳細 = 見出しのまとまりごとの項目の格子、明細の札 = その明細の表)。
+ */
+function TabBody({
+    module,
+    headings,
+    record,
+    notes,
+    selectedField,
+}: {
+    module: RecordModuleDefinition;
+    headings: RecordHeadingGroup[];
+    record: RecordDetail;
+    notes: Record<string, string>;
+    selectedField: RecordFieldDefinition | undefined;
+}) {
+    return selectedField === undefined ? (
+        <FieldsTab
+            module={module}
+            headings={headings}
+            record={record}
+            notes={notes}
+        />
+    ) : (
+        <DetailsTable
+            field={selectedField}
+            rows={record.details[selectedField.code] ?? []}
+        />
+    );
+}
+
+/**
  * 左のタブ(詳細 / 明細の札)。選んだタブは URL のクエリ tab に映す(中身は props にあるので URL だけを置き換える = 詳細の画面/README.md の 3 節)。
  */
 export function RecordDetailTabs({
     module,
+    headings,
     record,
     fieldNotes = {},
 }: {
     module: RecordModuleDefinition;
+    headings: RecordHeadingGroup[];
     record: RecordDetail;
     fieldNotes?: Record<string, string>;
 }) {
@@ -194,14 +239,13 @@ export function RecordDetailTabs({
 
     return (
         <RecordShowTabs tabs={tabs} selected={selected} onSelect={select}>
-            {selectedField === undefined ? (
-                <FieldsTab module={module} record={record} notes={fieldNotes} />
-            ) : (
-                <DetailsTable
-                    field={selectedField}
-                    rows={record.details[selectedField.code] ?? []}
-                />
-            )}
+            <TabBody
+                module={module}
+                headings={headings}
+                record={record}
+                notes={fieldNotes}
+                selectedField={selectedField}
+            />
         </RecordShowTabs>
     );
 }

@@ -79,7 +79,7 @@ const PREVIEW_CLASS = cn(
 
 /**
  * 「プレビュー」の面(空なら「—」)。誤りがあり開いている間は、入力と同じ誤りの印と説明を持つ。印は送った後のフォーカスの移動
- * (RecordFields の INVALID_SELECTOR)を面へ向けるため、説明は面に来た人に誤りの文言を読ませるため。
+ * (use-focus-first-invalid の誤りの欄の判定)を面へ向けるため、説明は面に来た人に誤りの文言を読ませるため。
  */
 function PreviewPanel({
     id,

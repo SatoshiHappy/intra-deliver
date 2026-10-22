@@ -13,6 +13,7 @@ use App\Http\Controllers\Web\Menu\HomeController;
 use App\Http\Controllers\Web\Menu\SitemapController;
 use App\Http\Controllers\Web\Notice\NoticeController;
 use App\Http\Controllers\Web\Records\FieldController;
+use App\Http\Controllers\Web\Records\HeadingController;
 use App\Http\Controllers\Web\Records\ModuleCategoryController;
 use App\Http\Controllers\Web\Records\ModuleController;
 use App\Http\Controllers\Web\Records\RecordAttachmentController;
@@ -112,7 +113,7 @@ Route::get("{$recordPath}/revision-files/{upload}/preview", [RecordRevisionFileC
 
 // 業務データの入れ物の管理の画面(docs の 設計/業務データの入れ物/画面/README.md 1.1・設計/業務データの入れ物/画面/管理の画面.md 3 節)。ルートの認可だけで判定し、ポリシーを置かない(システム管理者が
 // http-services の先頭の許可を継承する = 認可とメニュー/README.md 4 節)。{module} = 業務モジュールのコード(明細のモジュールも)、{field} = 項目のコード、
-// {rule} = 規則の id。/modules/create・/modules/reorder は {module} より先に、/fields/reorder は {field} より先に置く(create・reorder はコードの予約語なので、
+// {rule} = 規則の id、{heading} = 見出しの id。/modules/create・/modules/reorder は {module} より先に、/fields/reorder は {field} より先に置く(create・reorder はコードの予約語なので、
 // 同じコードの業務モジュール・項目は無い)。/modules/reorder は「業務」の直下の並び替え、/modules/{module}/categories は業務モジュールの分類の更新
 // (分類の画面のドラッグ。どちらもモジュール分類の画面へ戻す = モジュール分類/画面と検査.md 4.3)。
 Route::get('/records/admin/modules', [ModuleController::class, 'index'])->name('records.admin.modules.index');
@@ -129,6 +130,13 @@ Route::put('/records/admin/modules/{module}/fields/reorder', [FieldController::c
 Route::get('/records/admin/modules/{module}/fields/{field}/edit', [FieldController::class, 'edit'])->name('records.admin.fields.edit')->where(['module' => '[a-z][a-z0-9_]{0,49}', 'field' => '[a-z][a-z0-9_]{0,49}']);
 Route::put('/records/admin/modules/{module}/fields/{field}', [FieldController::class, 'update'])->name('records.admin.fields.update')->where(['module' => '[a-z][a-z0-9_]{0,49}', 'field' => '[a-z][a-z0-9_]{0,49}']);
 Route::delete('/records/admin/modules/{module}/fields/{field}', [FieldController::class, 'destroy'])->name('records.admin.fields.destroy')->where(['module' => '[a-z][a-z0-9_]{0,49}', 'field' => '[a-z][a-z0-9_]{0,49}']);
+$adminHeading = ['module' => '[a-z][a-z0-9_]{0,49}', 'heading' => '[0-9]{1,18}'];
+Route::post('/records/admin/modules/{module}/headings', [HeadingController::class, 'store'])
+    ->name('records.admin.headings.store')->where($adminHeading);
+Route::put('/records/admin/modules/{module}/headings/{heading}', [HeadingController::class, 'update'])
+    ->name('records.admin.headings.update')->where($adminHeading);
+Route::delete('/records/admin/modules/{module}/headings/{heading}', [HeadingController::class, 'destroy'])
+    ->name('records.admin.headings.destroy')->where($adminHeading);
 Route::post('/records/admin/modules/{module}/rules', [RuleController::class, 'store'])->name('records.admin.rules.store')->where('module', '[a-z][a-z0-9_]{0,49}');
 Route::put('/records/admin/modules/{module}/rules/{rule}', [RuleController::class, 'update'])->name('records.admin.rules.update')->where(['module' => '[a-z][a-z0-9_]{0,49}', 'rule' => '[0-9]{1,18}']);
 Route::delete('/records/admin/modules/{module}/rules/{rule}', [RuleController::class, 'destroy'])->name('records.admin.rules.destroy')->where(['module' => '[a-z][a-z0-9_]{0,49}', 'rule' => '[0-9]{1,18}']);

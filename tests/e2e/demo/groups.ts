@@ -23,12 +23,15 @@ export const demoGroups = [
         ],
     },
     {
-        // ほかのファイルの変えた DB を前提にしないもの(authz・switch-user は DB に書かず、records-corrections は自分で作る
-        // 業務モジュールだけを使う)。時間の長い demo のファイルを上の 2 つの組から分けて、組どうしの時間をそろえる
+        // ほかのファイルの変えた DB を前提にしないもの(authz・switch-user は DB に書かず、records-corrections・records-headings-admin は
+        // 自分で作る業務モジュールだけを使い、records-headings-show は admin が作る業務モジュールを使う = 名前の順で admin が先に走る)。
+        // 時間の長い demo のファイルを上の 2 つの組から分けて、組どうしの時間をそろえる
         name: 'demo-ほか',
         files: [
             'tests/e2e/demo/authz.spec.ts',
             'tests/e2e/demo/records-corrections.spec.ts',
+            'tests/e2e/demo/records-headings-admin.spec.ts',
+            'tests/e2e/demo/records-headings-show.spec.ts',
             'tests/e2e/demo/switch-user.spec.ts',
         ],
     },

@@ -2,10 +2,12 @@ import { Head } from '@inertiajs/react';
 import { RecordForm } from '@/components/Records/RecordForm';
 import { createFormData } from '@/lib/recordForm';
 import { create, index, store } from '@/routes/records/data';
-import type { RecordModuleDefinition } from '@/types';
+import type { RecordHeadingGroup, RecordModuleDefinition } from '@/types';
 
 type Props = {
     module: RecordModuleDefinition;
+    /** 見出しのまとまり(フォームの欄を見出しごとに畳める) */
+    headings: RecordHeadingGroup[];
     /** 一覧を開けるか(登録だけを許された利用者には、キャンセルとパンくずの一覧へのリンクを出さない) */
     can: { read: boolean };
 };
@@ -27,7 +29,7 @@ function listHrefOf(module: RecordModuleDefinition, can: Props['can']) {
 /**
  * 業務の登録(docs の 設計/業務データの入れ物/画面/業務の画面.md 2.2)。
  */
-export default function Create({ module, can }: Props) {
+export default function Create({ module, headings, can }: Props) {
     const heading = headingOf(module);
 
     return (
@@ -38,6 +40,7 @@ export default function Create({ module, can }: Props) {
                 <h1 className="text-2xl font-semibold">{heading}</h1>
                 <RecordForm
                     module={module}
+                    headings={headings}
                     recordId={null}
                     initialData={createFormData(module)}
                     action={store(module.code)}

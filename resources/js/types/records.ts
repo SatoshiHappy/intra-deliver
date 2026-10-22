@@ -193,9 +193,33 @@ export type RecordAdminModuleForm = {
     isDetails: boolean;
     /** 所属するモジュール分類の ID(明細のモジュールは null、非表示は空 = モジュール分類/画面と検査.md 4.2) */
     categoryIds: string[] | null;
+    /** 添付ファイルを使用するか(明細のモジュールは null = レコードの共通機能/業務モジュールの管理.md 2 節) */
+    isAttachmentEnabled: boolean | null;
     /** 見える範囲(明細のモジュールは null = レコードの共通機能/業務モジュールの管理.md 2 節) */
     rowAccessScope: RowAccessScope | null;
 };
+
+/**
+ * 見出しのまとまり(詳細とフォーム。レコードの共通機能/詳細の画面/見出し.md の 1・2 節。サーバーの RecordHeadingGroups の @phpstan-type HeadingGroup)。
+ * 頭のまとまり(最初の見出しより前の項目)は id・name とも null。fieldCodes = そのまとまりの項目のコード(明細の項目を除く。並びの順)。
+ */
+export type RecordHeadingGroup = {
+    id: number | null;
+    name: string | null;
+    fieldCodes: string[];
+};
+
+/** 管理の項目の表の見出し(業務モジュールの管理.md の 6 節。fieldCount = 明細の項目を数えない) */
+export type RecordAdminHeading = {
+    id: number;
+    name: string;
+    fieldCount: number;
+};
+
+/** 管理の項目の表の 1 行 = 見出しと項目の 1 本の並びの要素(並び替えの items と同じ形) */
+export type RecordAdminItem =
+    | { kind: 'heading'; id: number }
+    | { kind: 'field'; code: string };
 
 /** モジュール分類の ID と名前(業務モジュールの編集の props categories。並びの順 = 画面/管理の画面.md 3.5) */
 export type ModuleCategoryChoice = { id: string; name: string };

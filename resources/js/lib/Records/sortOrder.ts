@@ -2,6 +2,7 @@ import type { Announcements, UniqueIdentifier } from '@dnd-kit/core';
 import { router } from '@inertiajs/react';
 import { toast } from 'sonner';
 import { toastErrors } from '@/lib/flashToast';
+import type { RecordAdminItem } from '@/types';
 
 /**
  * 取っ手のドラッグでの並び替えの共通の部品(docs の 設計/業務データの入れ物/画面/管理の画面.md 3.3 の項目の並び替えと、
@@ -47,7 +48,7 @@ export function sortAnnouncements(
  */
 export function putOrder(
     url: string,
-    data: Record<string, string[]>,
+    data: Record<string, string[] | RecordAdminItem[]>,
     only: string[],
     onFinish: () => void,
     networkErrorMessage: string = NETWORK_ERROR_MESSAGE,

@@ -19,6 +19,7 @@ import attachments from '@/routes/records/data/attachments';
 import type {
     RecordDetail,
     RecordDetailCan,
+    RecordHeadingGroup,
     RecordHold,
     RecordModuleDefinition,
     RecordPanelContent,
@@ -28,6 +29,8 @@ import type {
 
 type Props = RecordShowPanelProps & {
     module: RecordModuleDefinition;
+    /** 見出しのまとまり(詳細タブの項目を見出しごとに畳める) */
+    headings: RecordHeadingGroup[];
     record: RecordDetail;
     /** 権限の判定だけ(持ち主の有無は hold = 設計/業務データの入れ物/レコードの共通機能/詳細の画面/README.md の 5.1 節) */
     can: RecordDetailCan;
@@ -175,6 +178,7 @@ export default function Show(props: Props) {
                         >
                             <RecordDetailTabs
                                 module={module}
+                                headings={props.headings}
                                 record={record}
                                 fieldNotes={addons.fieldNotes}
                             />

@@ -15,11 +15,12 @@ export type ModuleFormData = {
     icon: string;
     is_visible: boolean;
     categories: string[];
+    is_attachment_enabled: boolean;
     row_access_scope: RowAccessScope;
 };
 
 /**
- * フォームの初期値(今の定義。明細のモジュールの持たない値は空・偽・全員にしておき、送らない)。
+ * フォームの初期値(今の定義。明細のモジュールの持たない値は空・偽・使用する・全員にしておき、送らない)。
  */
 export function initialModuleData(
     module: RecordAdminModuleForm,
@@ -30,12 +31,13 @@ export function initialModuleData(
         icon: module.icon ?? '',
         is_visible: module.isVisible === true,
         categories: module.categoryIds ?? [],
+        is_attachment_enabled: module.isAttachmentEnabled !== false,
         row_access_scope: module.rowAccessScope ?? 'all',
     };
 }
 
 /**
- * 業務処理の入力。明細のモジュールはアイコン・表示の状態・分類・見える範囲を持たないので名前と説明だけ(業務処理は null 以外を拒む)。
+ * 業務処理の入力。明細のモジュールはアイコン・表示の状態・分類・添付の使用・見える範囲を持たないので名前と説明だけ(業務処理は null 以外を拒む)。
  * サイドバーに出さないなら分類は [](選んだ状態は画面の中だけで保つ)。分類は一覧の並びの順で送る。
  */
 export function toModulePayload(

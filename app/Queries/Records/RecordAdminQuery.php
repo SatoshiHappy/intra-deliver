@@ -6,6 +6,7 @@ use App\Enums\Menu\MenuIcon;
 use App\Enums\Records\RecordFieldType;
 use App\Models\Records\Record;
 use App\Models\Records\RecordField;
+use App\Models\Records\RecordFieldHeading;
 use App\Models\Records\RecordModule;
 use App\Models\Records\RecordReference;
 use App\Models\Records\RecordRule;
@@ -20,7 +21,8 @@ use Illuminate\Database\Eloquent\Relations\Relation;
  * 業務モジュールの判定をせず、明細を含むすべての業務モジュールを出す(認可とメニュー/README.md 4 節。入口はルートの認可だけで絞る)。
  * 並び: 業務モジュールは {@see ordered()}、項目・選択肢・規則は {@see RecordDefinitionQuery}。
  * isVisible = サイドバーに出ているか({@see RecordModuleVisibility}。明細のモジュールは null = 認可とメニュー/メニューと初期データ.md 5.1)。
- * rowAccessScope = 見える範囲(明細のモジュールは null = レコードの共通機能/業務モジュールの管理.md 2 節)。
+ * isAttachmentEnabled = 添付ファイルを使用するか・rowAccessScope = 見える範囲(どちらも明細のモジュールは null = レコードの共通機能/業務モジュールの管理.md 2 節)。
+ * headings・items = 見出しと項目の 1 本の並び(同 3 節・6 節。{@see RecordHeadingGroups})。
  * 編集の画面のモジュール分類(所属の分類 ID と、すべての分類)は {@see ModuleCategoryQuery}(モジュール分類/画面と検査.md 4.2)。
  *
  * @phpstan-type ModuleRow array{code: string, name: string, parentCode: string|null, isVisible: bool|null}
@@ -37,6 +39,7 @@ class RecordAdminQuery
         private RecordDefinitionQuery $definitions,
         private RecordModuleVisibility $visibility,
         private ModuleCategoryQuery $categories,
+        private RecordHeadingGroups $headingGroups,
     ) {}
 
     /**
@@ -67,7 +70,7 @@ class RecordAdminQuery
     /**
      * 業務モジュールの定義の画面の props(画面/管理の画面.md 3.3)。見出しの切替の業務モジュールは一覧 {@see modules()} と同じ範囲・並び。
      *
-     * @return array{module: array<string, mixed>, fieldUsage: array<string, int>, modules: list<ModuleSummary>, textMaxLengths: TextMaxLengths}
+     * @return array{module: array<string, mixed>, fieldUsage: array<string, int>, modules: list<ModuleSummary>, textMaxLengths: TextMaxLengths, headings: list<array{id: int, name: string, fieldCount: int}>, items: list<array{kind: 'heading', id: int}|array{kind: 'field', code: string}>}
      *
      * @throws ModelNotFoundException<RecordModule> 業務モジュールが無いとき
      */
@@ -98,6 +101,7 @@ class RecordAdminQuery
                 $this->ordered(RecordModule::query()->select(['id', 'code', 'name', 'parent_record_module_id'])),
             ),
             'textMaxLengths' => DefinitionText::maxLengths(),
+            ...$this->headingGroups->adminProps($module->id),
         ];
     }
 
@@ -126,7 +130,7 @@ class RecordAdminQuery
     /**
      * 業務モジュールの編集の画面の props(画面/管理の画面.md 3.5、モジュール分類/画面と検査.md 4.2)。
      *
-     * @return array{module: array{code: string, name: string, description: string|null, icon: string|null, isVisible: bool|null, isDetails: bool, categoryIds: list<string>|null, rowAccessScope: string|null}, icons: list<IconChoice>, categories: list<CategoryChoice>, textMaxLengths: TextMaxLengths}
+     * @return array{module: array{code: string, name: string, description: string|null, icon: string|null, isVisible: bool|null, isDetails: bool, categoryIds: list<string>|null, isAttachmentEnabled: bool|null, rowAccessScope: string|null}, icons: list<IconChoice>, categories: list<CategoryChoice>, textMaxLengths: TextMaxLengths}
      *
      * @throws ModelNotFoundException<RecordModule> 業務モジュールが無いとき
      */
@@ -144,6 +148,7 @@ class RecordAdminQuery
                 'isVisible' => $this->isVisible($module),
                 'isDetails' => $isDetails,
                 'categoryIds' => $isDetails ? null : $this->categories->categoryIdsOf($module->code),
+                'isAttachmentEnabled' => $isDetails ? null : $module->is_attachment_enabled,
                 'rowAccessScope' => $this->rowAccessScope($module),
             ],
             'icons' => $this->iconChoices(),
@@ -153,13 +158,17 @@ class RecordAdminQuery
     }
 
     /**
-     * 管理の書き込みの口のルートの引数が指す行(業務モジュール(明細のモジュールを含む)・項目・規則)があるかを、入力の検証より前に確かめる
+     * 管理の書き込みの口のルートの引数が指す行(業務モジュール(明細のモジュールを含む)・項目・規則・見出し)があるかを、入力の検証より前に確かめる
      * (FormRequest の authorize から。404 → 422 の順)。業務処理もあとで同じ行を引く。
      *
-     * @throws ModelNotFoundException<RecordModule|RecordField|RecordRule> どれかが無いとき
+     * @throws ModelNotFoundException<RecordModule|RecordField|RecordRule|RecordFieldHeading> どれかが無いとき
      */
-    public function findTargets(string $moduleCode, ?string $fieldCode = null, ?int $ruleId = null): void
-    {
+    public function findTargets(
+        string $moduleCode,
+        ?string $fieldCode = null,
+        ?int $ruleId = null,
+        ?int $headingId = null,
+    ): void {
         $module = RecordModule::query()->where('code', $moduleCode)->firstOrFail(['id']);
 
         if ($fieldCode !== null) {
@@ -168,6 +177,10 @@ class RecordAdminQuery
 
         if ($ruleId !== null) {
             RecordRule::query()->where('record_module_id', $module->id)->findOrFail($ruleId, ['id']);
+        }
+
+        if ($headingId !== null) {
+            RecordFieldHeading::query()->where('record_module_id', $module->id)->findOrFail($headingId, ['id']);
         }
     }
 

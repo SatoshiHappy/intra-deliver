@@ -41,11 +41,13 @@ use App\Actions\Menu\RemoveMenu;
 use App\Actions\Menu\UpdateMenuDisplay;
 use App\Actions\Menu\UpdateMenuSortNumbers;
 use App\Actions\Records\AddRecordField;
+use App\Actions\Records\AddRecordFieldHeading;
 use App\Actions\Records\AddRecordModuleItems;
 use App\Actions\Records\AddRecordRule;
 use App\Actions\Records\CreateModuleCategory;
 use App\Actions\Records\CreateRecordModule;
 use App\Actions\Records\DeleteRecordField;
+use App\Actions\Records\DeleteRecordFieldHeading;
 use App\Actions\Records\DeleteRecordRule;
 use App\Actions\Records\ModuleCategoryFolders;
 use App\Actions\Records\ReorderModuleCategories;
@@ -53,6 +55,7 @@ use App\Actions\Records\ReorderRecordFields;
 use App\Actions\Records\ReorderRecordModuleItems;
 use App\Actions\Records\SyncRecordModuleItems;
 use App\Actions\Records\UpdateRecordField;
+use App\Actions\Records\UpdateRecordFieldHeading;
 use App\Actions\Records\UpdateRecordModule;
 use App\Actions\Records\UpdateRecordRule;
 use App\Enums\Authz\PolicyEffect;
@@ -72,8 +75,10 @@ use App\Models\Menu\Menu;
 use App\Models\Menu\MenuGroup;
 use App\Models\Menu\MenuGroupCategory;
 use App\Models\Records\RecordField;
+use App\Models\Records\RecordFieldHeading;
 use App\Models\Records\RecordModule;
 use App\Models\Records\RecordRule;
+use App\Queries\Records\RecordHeadingGroups;
 use App\Support\Period;
 use Closure;
 use FilesystemIterator;
@@ -182,18 +187,21 @@ final class CommonMasterLockTest extends TransactionalTestCase
     {
         return [
             AddRecordField::class => [fn (self $test) => app(AddRecordField::class)->execute('project', ['code' => 'memo', 'name' => 'メモ', 'type' => 'string'])],
+            AddRecordFieldHeading::class => [fn (self $test) => $test->addHeading()],
             AddRecordModuleItems::class => [fn (self $test) => app(AddRecordModuleItems::class)->execute(RecordModule::factory()->create(), ['ja' => '備品'])],
             AddRecordRule::class => [fn (self $test) => app(AddRecordRule::class)->execute('project', ['kind' => 'compare', 'target' => 'end_date', 'operator' => 'gt', 'compared' => 'start_date'])],
             CreateModuleCategory::class => [fn (self $test) => app(CreateModuleCategory::class)->execute(['name' => '営業'])],
             CreateRecordModule::class => [fn (self $test) => app(CreateRecordModule::class)->execute(['code' => 'equipment', 'name' => '備品'])],
             DeleteRecordField::class => [fn (self $test) => $test->deleteRecordField()],
+            DeleteRecordFieldHeading::class => [fn (self $test) => $test->deleteHeading()],
             DeleteRecordRule::class => [fn (self $test) => app(DeleteRecordRule::class)->execute('project', $test->projectRule()->id)],
             ModuleCategoryFolders::class => [fn (self $test) => app(ModuleCategoryFolders::class)->write($test->moduleCategory(), false, fn () => null)],
             ReorderModuleCategories::class => [fn (self $test) => app(ReorderModuleCategories::class)->execute([$test->moduleCategory()])],
-            ReorderRecordFields::class => [fn (self $test) => app(ReorderRecordFields::class)->execute('project', array_reverse($test->projectFieldCodes()))],
+            ReorderRecordFields::class => [fn (self $test) => $test->reorderFields()],
             ReorderRecordModuleItems::class => [fn (self $test) => app(ReorderRecordModuleItems::class)->execute(null, ['project', 'project_issue', 'meeting'])],
             SyncRecordModuleItems::class => [fn (self $test) => app(SyncRecordModuleItems::class)->execute(RecordModule::factory()->create(), [], ['ja' => '備品'])],
             UpdateRecordField::class => [fn (self $test) => app(UpdateRecordField::class)->execute('project', 'summary', ['name' => '要旨'])],
+            UpdateRecordFieldHeading::class => [fn (self $test) => $test->renameHeading()],
             UpdateRecordModule::class => [fn (self $test) => app(UpdateRecordModule::class)->execute('project', ['description' => '説明'])],
             UpdateRecordRule::class => [fn (self $test) => app(UpdateRecordRule::class)->execute('project', $test->projectRule()->id, ['kind' => 'compare', 'target' => 'end_date', 'operator' => 'gt', 'compared' => 'start_date'])],
         ];
@@ -282,12 +290,34 @@ final class CommonMasterLockTest extends TransactionalTestCase
         return RecordRule::query()->where('record_module_id', self::project()->id)->sole();
     }
 
-    /**
-     * @return list<string>
-     */
-    public function projectFieldCodes(): array
+    public function addHeading(): void
     {
-        return array_values(array_map(fn (mixed $code) => (string) $code, RecordField::query()->where('record_module_id', self::project()->id)->orderBy('sort_key')->pluck('code')->all()));
+        app(AddRecordFieldHeading::class)->execute('project', ['name' => '補足']);
+    }
+
+    public function renameHeading(): void
+    {
+        app(UpdateRecordFieldHeading::class)->execute('project', $this->projectHeading()->id, ['name' => '期間']);
+    }
+
+    public function deleteHeading(): void
+    {
+        app(DeleteRecordFieldHeading::class)->execute('project', $this->projectHeading()->id);
+    }
+
+    /**
+     * 「プロジェクト」の見出しと項目の 1 本の並び(見本の見出しを含む)を逆順にして並び替える。
+     */
+    public function reorderFields(): void
+    {
+        $items = app(RecordHeadingGroups::class)->adminProps(self::project()->id)['items'];
+
+        app(ReorderRecordFields::class)->execute('project', array_reverse($items));
+    }
+
+    private function projectHeading(): RecordFieldHeading
+    {
+        return RecordFieldHeading::query()->where('record_module_id', self::project()->id)->firstOrFail();
     }
 
     /**

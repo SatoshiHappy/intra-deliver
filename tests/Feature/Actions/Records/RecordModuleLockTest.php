@@ -3,19 +3,23 @@
 namespace Tests\Feature\Actions\Records;
 
 use App\Actions\Records\AddRecordField;
+use App\Actions\Records\AddRecordFieldHeading;
 use App\Actions\Records\AddRecordRule;
 use App\Actions\Records\Api\CreateRecord;
 use App\Actions\Records\Api\RecordInput;
 use App\Actions\Records\Api\UpdateRecord;
 use App\Actions\Records\DeleteRecord;
 use App\Actions\Records\DeleteRecordField;
+use App\Actions\Records\DeleteRecordFieldHeading;
 use App\Actions\Records\DeleteRecordRule;
 use App\Actions\Records\ReorderRecordFields;
 use App\Actions\Records\UpdateRecordField;
+use App\Actions\Records\UpdateRecordFieldHeading;
 use App\Actions\Records\UpdateRecordModule;
 use App\Actions\Records\UpdateRecordRule;
 use App\Enums\Records\RecordFieldType;
 use App\Models\Records\Record;
+use App\Models\Records\RecordFieldHeading;
 use App\Models\Records\RecordRule;
 use Closure;
 use Illuminate\Database\Events\QueryExecuted;
@@ -89,7 +93,12 @@ final class RecordModuleLockTest extends TransactionalTestCase
         $ruleChanged = $this->queries(fn () => app(UpdateRecordRule::class)->execute('projects', $rule->id, ['kind' => 'compare', 'target' => 'end', 'operator' => 'gt', 'compared' => 'start']));
         $ruleDeleted = $this->queries(fn () => app(DeleteRecordRule::class)->execute('projects', $rule->id));
         $fieldDeleted = $this->queries(fn () => app(DeleteRecordField::class)->execute('projects', 'memo'));
-        $reordered = $this->queries(fn () => app(ReorderRecordFields::class)->execute('projects', ['tasks', 'end', 'start']));
+        $fieldItems = array_map(fn (string $code) => ['kind' => 'field', 'code' => $code], ['tasks', 'end', 'start']);
+        $reordered = $this->queries(fn () => app(ReorderRecordFields::class)->execute('projects', $fieldItems));
+        $headingAdded = $this->queries(fn () => $this->addHeading('期間'));
+        $headingId = RecordFieldHeading::query()->where('record_module_id', $module->id)->sole()->id;
+        $headingChanged = $this->queries(fn () => $this->renameHeading($headingId, '期間と予算'));
+        $headingDeleted = $this->queries(fn () => $this->deleteHeading($headingId));
         $moduleChanged = $this->queries(fn () => app(UpdateRecordModule::class)->execute('projects', ['description' => '説明']));
         $childModuleChanged = $this->queries(fn () => app(UpdateRecordModule::class)->execute($this->childOf($tasks)->code, ['name' => '作業']));
 
@@ -101,11 +110,29 @@ final class RecordModuleLockTest extends TransactionalTestCase
         $this->assertLockedBefore(self::EXCLUSIVE, $key, 'delete from "record_rules"', $ruleDeleted);
         $this->assertLockedBefore(self::EXCLUSIVE, $key, 'from "record_fields"', $fieldDeleted);
         $this->assertLockedBefore(self::EXCLUSIVE, $key, 'from "record_fields"', $reordered);
+        $this->assertLockedBefore(self::EXCLUSIVE, $key, 'from "record_fields"', $headingAdded);
+        $this->assertLockedBefore(self::EXCLUSIVE, $key, 'update "record_field_headings"', $headingChanged);
+        $this->assertLockedBefore(self::EXCLUSIVE, $key, 'delete from "record_field_headings"', $headingDeleted);
         $this->assertLockedBefore(self::EXCLUSIVE, $key, 'update "record_modules"', $moduleChanged);
         $this->assertLockedBefore(self::EXCLUSIVE, $key, 'update "record_modules"', $childModuleChanged);
         $childKey = self::LOCK_BASE + $this->childOf($tasks)->id;
         $this->assertNull($this->indexOf($childAdded, fn (string $sql, array $bindings) => ($bindings[0] ?? null) === $childKey), '明細のモジュールが自分の id の鍵を取った');
         $this->assertNull($this->indexOf($childModuleChanged, fn (string $sql, array $bindings) => ($bindings[0] ?? null) === $childKey), '明細のモジュールの変更が自分の id の鍵を取った');
+    }
+
+    private function addHeading(string $name): void
+    {
+        app(AddRecordFieldHeading::class)->execute('projects', ['name' => $name]);
+    }
+
+    private function renameHeading(int $headingId, string $name): void
+    {
+        app(UpdateRecordFieldHeading::class)->execute('projects', $headingId, ['name' => $name]);
+    }
+
+    private function deleteHeading(int $headingId): void
+    {
+        app(DeleteRecordFieldHeading::class)->execute('projects', $headingId);
     }
 
     /**

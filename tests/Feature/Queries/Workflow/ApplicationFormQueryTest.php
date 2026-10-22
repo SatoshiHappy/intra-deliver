@@ -42,6 +42,11 @@ final class ApplicationFormQueryTest extends TransactionalTestCase
             [$form['mode'], $form['flow'], $form['case'], $form['module']['code'], $form['initial'], $form['titleField']],
         );
         $this->assertSame(['version' => 1, 'noVersionMessage' => null, 'departmentName' => '東京営業課', 'nodes' => [['name' => '承認1', 'targets' => [$this->person('u0002')], 'blockedReason' => null]], 'dependsOnContent' => false], $form['next']);
+        $this->assertSame([
+            [null, ['name', 'department', 'manager', 'status']],
+            ['期間と予算', ['start_date', 'end_date', 'budget']],
+            ['説明', ['summary']],
+        ], array_map(fn (array $group) => [$group['name'], $group['fieldCodes']], $form['headings']));
         $this->assertSame([1000, 4000], [$form['nameMaxLength'], $form['commentMaxLength']]);
         $this->assertNull($form['recordId']);
         $this->assertSame(['2026-10-13', ['min' => '2025-10-13', 'max' => '2027-10-13']], [$form['baseDate'], $form['baseDateRange']]);

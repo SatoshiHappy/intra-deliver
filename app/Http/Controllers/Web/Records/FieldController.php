@@ -17,7 +17,7 @@ use Inertia\Response;
 /**
  * 管理の項目の画面(docs の 設計/業務データの入れ物/画面/README.md 1.1・設計/業務データの入れ物/画面/管理の画面.md 3.3・3.4): 追加・編集 Records/Admin/FieldForm と、追加・更新・削除・並び替え。
  * ルートの認可だけで判定する(認可とメニュー/README.md 4 節)。成功は業務モジュールの定義の画面へ 303 と成功のトースト(並び替えはトーストなし = 画面/README.md 1.1)。
- * 検証の失敗は元の画面へ戻り、入力の名前のキーにエラーが付く(削除を規則が拒むときはキー field、並び替えの順列の誤りはキー codes = 項目と規則/規則と業務処理/失敗と定義の変更.md 11 節。
+ * 検証の失敗は元の画面へ戻り、入力の名前のキーにエラーが付く(削除を規則が拒むときはキー field、並び替えの順列の誤りはキー items = 項目と規則/規則と業務処理/失敗と定義の変更.md 11 節。
  * 定義の画面がトーストで出す)。
  */
 class FieldController extends Controller
@@ -63,7 +63,7 @@ class FieldController extends Controller
 
     public function reorder(RecordFieldOrderRequest $request, string $module): RedirectResponse
     {
-        $this->reorderFields->execute($module, $request->codes());
+        $this->reorderFields->execute($module, $request->items());
 
         return redirect()->route('records.admin.modules.show', ['module' => $module], 303);
     }

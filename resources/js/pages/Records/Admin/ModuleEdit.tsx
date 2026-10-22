@@ -1,22 +1,15 @@
 import { Head, Link, useForm } from '@inertiajs/react';
 import type { FormEvent } from 'react';
 import { CountedTextInput } from '@/components/CountedTextInput';
-import {
-    FormBlock,
-    formErrorId,
-    invalidProps,
-    UnshownErrors,
-} from '@/components/FormBlock';
+import { FormBlock, invalidProps, UnshownErrors } from '@/components/FormBlock';
 import {
     FormActions,
     FormSurface,
     TWO_SURFACES_GRID,
 } from '@/components/FormLayout';
 import { MenuIcon } from '@/components/MenuIcon';
-import { RecordRowAccessScopeField } from '@/components/Records/RecordRowAccessScopeField';
+import { ModuleAttributes } from '@/components/Records/RecordModuleAttributes';
 import { Button } from '@/components/ui/button';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Label } from '@/components/ui/label';
 import {
     Select,
     SelectContent,
@@ -28,7 +21,6 @@ import {
     initialModuleData,
     toModulePayload,
 } from '@/lib/Records/recordModuleForm';
-import { index as categoriesIndex } from '@/routes/records/admin/categories';
 import { edit, index, show, update } from '@/routes/records/admin/modules';
 import type {
     DefinitionTextMaxLengths,
@@ -40,14 +32,6 @@ import type {
 /** 画面名(見出し・パンくず・題) */
 const HEADING = '業務モジュールの編集';
 
-/** チェック「サイドバーに表示」の説明(画面/管理の画面.md 3.5) */
-const VISIBILITY_HINT =
-    'チェックを解除するとサイドバーとサイトマップに表示されなくなります。レコードと定義は保持され、URL を直接指定すると表示できます。非表示にするとモジュール分類と位置の設定は解除されます。再表示するときにモジュール分類を再選択できます。選択しなければ「業務」の直下の末尾に表示されます';
-
-/** 「モジュール分類」のチェックの一覧の説明(モジュール分類/画面と検査.md 4.2) */
-const CATEGORIES_HINT =
-    '選択したモジュール分類のフォルダに表示されます。選択しなければ「業務」の直下に表示されます';
-
 /**
  * icons = アイコンの選択肢(作成と同じ)、categories = すべてのモジュール分類(並びの順)、textMaxLengths = 名前・説明の文字数の上限
  */
@@ -57,125 +41,6 @@ type Props = {
     categories: ModuleCategoryChoice[];
     textMaxLengths: DefinitionTextMaxLengths;
 };
-
-/**
- * 枠「属性」のチェック「サイドバーに表示」(説明と、is_visible の誤り = アイテムを作る・消す段の失敗を含む)。
- */
-function VisibilityFlag({
-    checked,
-    onChange,
-    error,
-}: {
-    checked: boolean;
-    onChange: (checked: boolean) => void;
-    error: string | undefined;
-}) {
-    const id = 'module-is_visible';
-
-    return (
-        <div className="flex flex-col gap-2">
-            <div className="flex items-center gap-2">
-                <Checkbox
-                    id={id}
-                    checked={checked}
-                    onCheckedChange={(next) => onChange(next === true)}
-                    {...invalidProps(id, error)}
-                />
-                <Label htmlFor={id}>サイドバーに表示</Label>
-            </div>
-            <p className="text-xs text-muted-foreground">{VISIBILITY_HINT}</p>
-            {error !== undefined && (
-                <p id={formErrorId(id)} className="text-sm text-destructive">
-                    {error}
-                </p>
-            )}
-        </div>
-    );
-}
-
-/**
- * 枠「属性」の「モジュール分類」のチェックの一覧(docs の 設計/業務データの入れ物/モジュール分類/画面と検査.md 4.2)。
- * disabled の間も選んだ状態は呼び手が保つ(「サイドバーに表示」を付け直したときに戻せるように)。
- */
-function CategoryChecklist({
-    categories,
-    selected,
-    disabled,
-    onChange,
-    error,
-}: {
-    categories: ModuleCategoryChoice[];
-    selected: string[];
-    disabled: boolean;
-    onChange: (selected: string[]) => void;
-    error: string | undefined;
-}) {
-    const id = 'module-categories';
-
-    return (
-        <div
-            role="group"
-            aria-labelledby={`${id}-label`}
-            aria-describedby={error === undefined ? undefined : formErrorId(id)}
-            className="flex flex-col gap-2"
-        >
-            <p id={`${id}-label`} className="text-sm font-medium">
-                モジュール分類
-            </p>
-            {categories.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                    モジュール分類はありません。
-                    <Link
-                        href={categoriesIndex()}
-                        className="text-primary underline-offset-4 hover:underline"
-                    >
-                        モジュール分類の画面
-                    </Link>
-                    で作成できます
-                </p>
-            ) : (
-                <>
-                    <ul className="flex flex-col gap-2">
-                        {categories.map((category) => (
-                            <li
-                                key={category.id}
-                                className="flex items-center gap-2"
-                            >
-                                <Checkbox
-                                    id={`${id}-${category.id}`}
-                                    checked={selected.includes(category.id)}
-                                    disabled={disabled}
-                                    onCheckedChange={(next) =>
-                                        onChange(
-                                            next === true
-                                                ? [...selected, category.id]
-                                                : selected.filter(
-                                                      (selectedId) =>
-                                                          selectedId !==
-                                                          category.id,
-                                                  ),
-                                        )
-                                    }
-                                />
-                                <Label htmlFor={`${id}-${category.id}`}>
-                                    {category.name}
-                                </Label>
-                            </li>
-                        ))}
-                    </ul>
-                    <p className="text-xs text-muted-foreground">
-                        {CATEGORIES_HINT}
-                    </p>
-                </>
-            )}
-            {error !== undefined && (
-                <p id={formErrorId(id)} className="text-sm text-destructive">
-                    {error}
-                </p>
-            )}
-        </div>
-    );
-}
 
 /**
  * 管理の業務モジュールの編集(docs の 設計/業務データの入れ物/画面/管理の画面.md 3.5、モジュール分類/画面と検査.md 4.2)。
@@ -302,6 +167,7 @@ export default function ModuleEdit({
                                       'icon',
                                       'is_visible',
                                       'categories',
+                                      'is_attachment_enabled',
                                       'row_access_scope',
                                   ]
                         }
@@ -311,41 +177,12 @@ export default function ModuleEdit({
                     ) : (
                         <div className={TWO_SURFACES_GRID}>
                             {basic}
-                            <FormSurface
-                                aria-labelledby="module-attributes"
-                                inner="max-w-2xl"
-                                gap={4}
-                            >
-                                <h2
-                                    id="module-attributes"
-                                    className="text-[15px] font-semibold"
-                                >
-                                    属性
-                                </h2>
-                                <VisibilityFlag
-                                    checked={form.data.is_visible}
-                                    onChange={(checked) =>
-                                        form.setData('is_visible', checked)
-                                    }
-                                    error={form.errors.is_visible}
-                                />
-                                <CategoryChecklist
-                                    categories={categories}
-                                    selected={form.data.categories}
-                                    disabled={!form.data.is_visible}
-                                    onChange={(selected) =>
-                                        form.setData('categories', selected)
-                                    }
-                                    error={form.errors.categories}
-                                />
-                                <RecordRowAccessScopeField
-                                    value={form.data.row_access_scope}
-                                    onChange={(scope) =>
-                                        form.setData('row_access_scope', scope)
-                                    }
-                                    error={form.errors.row_access_scope}
-                                />
-                            </FormSurface>
+                            <ModuleAttributes
+                                data={form.data}
+                                errors={form.errors}
+                                categories={categories}
+                                onChange={form.setData}
+                            />
                         </div>
                     )}
                     <FormActions>

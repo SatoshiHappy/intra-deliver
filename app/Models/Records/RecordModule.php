@@ -67,6 +67,16 @@ class RecordModule extends Model
     }
 
     /**
+     * 項目の見出し(親の無い業務モジュールだけが持つ)。
+     *
+     * @return HasMany<RecordFieldHeading, $this>
+     */
+    public function recordFieldHeadings(): HasMany
+    {
+        return $this->hasMany(RecordFieldHeading::class);
+    }
+
+    /**
      * @return HasMany<RecordRule, $this>
      */
     public function recordRules(): HasMany

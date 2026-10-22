@@ -1,6 +1,6 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog';
-import { RecordFieldTable } from '@/components/Records/RecordFieldTable';
+import { RecordFieldsSection } from '@/components/Records/RecordFieldsSection';
 import { RecordRuleDialog } from '@/components/Records/RecordRuleDialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -20,12 +20,13 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { RULE_KIND_LABELS, ruleSummary } from '@/lib/Records/recordDefinitions';
-import { create as createField } from '@/routes/records/admin/fields';
 import { edit, index, show } from '@/routes/records/admin/modules';
 import { destroy as destroyRule } from '@/routes/records/admin/rules';
 import { index as recordList } from '@/routes/records/data';
 import type {
     DefinitionTextMaxLengths,
+    RecordAdminHeading,
+    RecordAdminItem,
     RecordAdminModule,
     RecordModuleSummary,
 } from '@/types';
@@ -34,6 +35,10 @@ type Props = {
     module: RecordAdminModule;
     /** 項目のコード → 値を持つレコード(明細は明細の行)の数 */
     fieldUsage: Record<string, number>;
+    /** 見出し(名前。並びは items の中の位置で決まる。明細のモジュールは空) */
+    headings: RecordAdminHeading[];
+    /** 見出しと項目の 1 本の並び(項目の表の行の順。明細のモジュールは項目だけ) */
+    items: RecordAdminItem[];
     /** 見出しの切替の業務モジュール(一覧 ModuleIndex と同じ範囲・並び = 明細のモジュールを含む) */
     modules: RecordModuleSummary[];
     /** 規則の文言の文字数の上限(name を使う) */
@@ -77,6 +82,8 @@ function ModuleSwitch({
  */
 export default function ModuleShow({
     module,
+    headings,
+    items,
     fieldUsage,
     modules,
     textMaxLengths,
@@ -145,34 +152,13 @@ export default function ModuleShow({
                     )}
                 </div>
 
-                <section
-                    aria-labelledby="module-fields"
-                    className="flex flex-col gap-4 rounded-xl border bg-card p-5 text-card-foreground"
-                >
-                    <div className="flex items-center justify-between gap-4">
-                        <h2
-                            id="module-fields"
-                            className="text-[15px] font-semibold"
-                        >
-                            項目
-                        </h2>
-                        <Button asChild size="sm">
-                            <Link href={createField(module.code)}>
-                                項目を追加
-                            </Link>
-                        </Button>
-                    </div>
-                    {module.fields.length === 0 ? (
-                        <p className="text-sm text-muted-foreground">
-                            項目はありません
-                        </p>
-                    ) : (
-                        <RecordFieldTable
-                            module={module}
-                            fieldUsage={fieldUsage}
-                        />
-                    )}
-                </section>
+                <RecordFieldsSection
+                    module={module}
+                    headings={headings}
+                    items={items}
+                    fieldUsage={fieldUsage}
+                    nameMaxLength={textMaxLengths.name}
+                />
 
                 <section
                     aria-labelledby="module-rules"

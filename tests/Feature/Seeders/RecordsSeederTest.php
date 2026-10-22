@@ -10,9 +10,11 @@ use App\Models\Notice\Notice;
 use App\Models\Records\Record;
 use App\Models\Records\RecordComment;
 use App\Models\Records\RecordField;
+use App\Models\Records\RecordFieldHeading;
 use App\Models\Records\RecordModule;
 use App\Models\Records\RecordReference;
 use App\Models\Records\RecordRule;
+use App\Queries\Records\RecordHeadingGroups;
 use Carbon\CarbonImmutable;
 use Tests\Support\TransactionalTestCase;
 
@@ -44,6 +46,29 @@ final class RecordsSeederTest extends TransactionalTestCase
             array_map(fn (RecordFieldType $type) => $type->value, RecordFieldType::cases()),
             RecordField::query()->where('is_builtin', false)->distinct()->pluck('type')->map(fn (RecordFieldType $type) => $type->value)->all(),
         );
+    }
+
+    /**
+     * 見本の見出し(認可と初期データ.md の 4 節): 「プロジェクト」の頭 [プロジェクト名・担当部署・責任者・状態]、見出し「期間と予算」[開始日・終了日・予算]、
+     * 見出し「説明」[概要]。明細(マイルストーン)は見出しに属さない。「課題」は見出しなし(頭だけ)。
+     */
+    public function test_seeds_the_sample_headings_of_the_project_and_none_for_the_issue(): void
+    {
+        $project = RecordModule::query()->where('code', 'project')->sole();
+        $issue = RecordModule::query()->where('code', 'project_issue')->sole();
+
+        $groups = app(RecordHeadingGroups::class);
+
+        $this->assertSame([
+            [null, ['name', 'department', 'manager', 'status']],
+            ['期間と予算', ['start_date', 'end_date', 'budget']],
+            ['説明', ['summary']],
+        ], array_map(fn (array $group) => [$group['name'], $group['fieldCodes']], $groups->groups($project->id)));
+        $props = $groups->adminProps($project->id);
+        $this->assertSame(['kind' => 'field', 'code' => 'milestones'], end($props['items']));
+        $this->assertSame(['期間と予算' => 3, '説明' => 1], array_column($props['headings'], 'fieldCount', 'name'));
+        $this->assertSame(0, RecordFieldHeading::query()->where('record_module_id', $issue->id)->count());
+        $this->assertCount(1, $groups->groups($issue->id));
     }
 
     public function test_no_field_name_is_duplicated_within_a_module_and_its_details_modules(): void

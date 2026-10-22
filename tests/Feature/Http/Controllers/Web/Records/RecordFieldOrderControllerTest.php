@@ -12,16 +12,20 @@ use PHPUnit\Framework\Attributes\TestWith;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * 項目の並び替えの口 records.admin.fields.reorder(docs の 設計/業務データの入れ物/画面/README.md 1.1・設計/業務データの入れ物/画面/管理の画面.md 3.3、認可とメニュー/README.md 4 節、メニューと初期データ.md 8 節の「管理」、
+ * 見出しと項目の並び替えの口 records.admin.fields.reorder(docs の 設計/業務データの入れ物/画面/README.md 1.1・設計/業務データの入れ物/画面/管理の画面.md 3.3、認可とメニュー/README.md 4 節、メニューと初期データ.md 8 節の「管理」、
  * 項目と規則/規則と業務処理/画面と検査.md 13 節の「ルート `reorder` が `{field}` に取られない」): ゲストと u0001 は 403 で並びが変わらず、
  * システム管理者(u0004)は並びが変わる。
- * 成功は定義の画面へ 303(トーストなし)、順列でない codes はキー codes のエラーで元の画面へ、業務モジュールが無ければ壊れた codes でも 404。
+ * 成功は定義の画面へ 303(トーストなし)、順列でない items はキー items のエラーで元の画面へ、業務モジュールが無ければ壊れた items でも 404。
  * 項目の編集の画面は並び順を渡さない(画面/管理の画面.md 3.4)。初期データを入れ、ルートの認可を外さずに開く。
  */
 final class RecordFieldOrderControllerTest extends TransactionalTestCase
 {
-    /** 初期データの業務モジュール project の項目の並び */
-    private const PROJECT_FIELDS = ['name', 'department', 'manager', 'status', 'start_date', 'end_date', 'budget', 'summary', 'milestones'];
+    private const REORDER = '/records/admin/modules/project/fields/reorder';
+
+    /** 初期データの業務モジュール project の項目の並び(見本の見出しの位置は項目の並びに影響しない) */
+    private const PROJECT_FIELDS = [
+        'name', 'department', 'manager', 'status', 'start_date', 'end_date', 'budget', 'summary', 'milestones',
+    ];
 
     protected function setUp(): void
     {
@@ -38,7 +42,9 @@ final class RecordFieldOrderControllerTest extends TransactionalTestCase
             $this->actingAs($this->user($userCode));
         }
 
-        $this->put('/records/admin/modules/project/fields/reorder', ['codes' => array_reverse(self::PROJECT_FIELDS)])->assertForbidden();
+        $items = array_reverse($this->fieldItems(self::PROJECT_FIELDS));
+
+        $this->put(self::REORDER, ['items' => $items])->assertForbidden();
 
         $this->assertSame(self::PROJECT_FIELDS, $this->order('project'));
     }
@@ -46,37 +52,48 @@ final class RecordFieldOrderControllerTest extends TransactionalTestCase
     public function test_the_system_administrator_reorders_the_fields_and_returns_to_the_definition_without_a_toast(): void
     {
         $this->actingAs($this->user('u0004'));
-        $codes = ['summary', ...array_diff(self::PROJECT_FIELDS, ['summary'])];
+        $items = $this->items('project');
+        $summary = ['kind' => 'field', 'code' => 'summary'];
+        $heading = array_values(array_filter($items, fn (array $item) => $item['kind'] === 'heading'))[0];
+        $moved = [$summary, $heading, ...array_values(array_filter($items, fn (array $item) => $item !== $summary && $item !== $heading))];
 
-        $this->put('/records/admin/modules/project/fields/reorder', ['codes' => $codes])
+        $this->put('/records/admin/modules/project/fields/reorder', ['items' => $moved])
             ->assertStatus(303)->assertRedirect('/records/admin/modules/project')
             ->assertInertiaFlashMissing('toast');
 
-        $this->assertSame($codes, $this->order('project'));
-        $this->get('/records/admin/modules/project')->assertInertia(fn (Assert $page) => $page->where('module.fields.0.code', 'summary'));
-        $this->put('/records/admin/modules/project_milestone/fields/reorder', ['codes' => ['is_done', 'effort', 'due_date', 'name']])->assertStatus(303);
+        $this->assertSame(['summary', ...array_diff(self::PROJECT_FIELDS, ['summary'])], $this->order('project'));
+        $this->get('/records/admin/modules/project')->assertInertia(fn (Assert $page) => $page
+            ->where('module.fields.0.code', 'summary')
+            ->where('items', $moved)
+        );
+        $milestone = $this->fieldItems(['is_done', 'effort', 'due_date', 'name']);
+        $this->put('/records/admin/modules/project_milestone/fields/reorder', ['items' => $milestone])->assertStatus(303);
         $this->assertSame(['is_done', 'effort', 'due_date', 'name'], $this->order('project_milestone'));
     }
 
-    public function test_codes_that_are_not_a_permutation_return_to_the_definition_with_the_key_codes(): void
+    public function test_items_that_are_not_a_permutation_return_to_the_definition_with_the_key_items(): void
     {
         $this->actingAs($this->user('u0004'));
 
+        $mismatch = '項目の並びが今の項目と一致しません。画面を再読み込みしてから再度操作してください';
+
         $this->from('/records/admin/modules/project')
-            ->put('/records/admin/modules/project/fields/reorder', ['codes' => ['name', 'name']])
+            ->put(self::REORDER, ['items' => $this->fieldItems(['name', 'name'])])
             ->assertRedirect('/records/admin/modules/project')
-            ->assertSessionHasErrors(['codes' => '項目の並びが今の項目と一致しません。画面を再読み込みしてから再度操作してください']);
-        $this->put('/records/admin/modules/project/fields/reorder', ['codes' => 'name'])
-            ->assertSessionHasErrors(['codes' => '項目の並びの形が正しくありません']);
+            ->assertSessionHasErrors(['items' => $mismatch]);
+        $this->put(self::REORDER, ['items' => self::PROJECT_FIELDS])
+            ->assertSessionHasErrors(['items' => $mismatch]);
+        $this->put(self::REORDER, ['items' => 'name'])
+            ->assertSessionHasErrors(['items' => '項目の並びの形が正しくありません']);
 
         $this->assertSame(self::PROJECT_FIELDS, $this->order('project'));
     }
 
-    public function test_a_missing_module_is_not_found_before_the_codes_are_checked(): void
+    public function test_a_missing_module_is_not_found_before_the_items_are_checked(): void
     {
         $this->actingAs($this->user('u0004'));
 
-        $this->put('/records/admin/modules/nothing/fields/reorder', ['codes' => 'x'])->assertNotFound();
+        $this->put('/records/admin/modules/nothing/fields/reorder', ['items' => 'x'])->assertNotFound();
     }
 
     public function test_the_reorder_route_is_not_taken_by_the_field_route(): void
@@ -92,6 +109,28 @@ final class RecordFieldOrderControllerTest extends TransactionalTestCase
             ->where('field.code', 'name')
             ->missing('field.sortKey')
         );
+    }
+
+    /**
+     * 業務モジュールの見出しと項目の 1 本の並び(並び替えの入力の形)。
+     *
+     * @return list<array{kind: 'heading', id: int}|array{kind: 'field', code: string}>
+     */
+    private function items(string $moduleCode): array
+    {
+        $response = $this->actingAs($this->user('u0004'))->get("/records/admin/modules/{$moduleCode}");
+        $props = $response->viewData('page')['props'];
+
+        return $props['items'];
+    }
+
+    /**
+     * @param  list<string>  $codes
+     * @return list<array{kind: 'field', code: string}>
+     */
+    private function fieldItems(array $codes): array
+    {
+        return array_map(fn (string $code) => ['kind' => 'field', 'code' => $code], $codes);
     }
 
     /**

@@ -5,6 +5,7 @@ namespace App\Queries\Records\Api;
 use App\Models\Records\RecordModule;
 use App\Queries\Authz\Api\Requester;
 use App\Queries\Records\RecordCommentQuery;
+use App\Queries\Records\RecordHeadingGroups;
 use App\Queries\Records\RecordHoldCatalog;
 use App\Queries\Records\RecordRevisionRows;
 use App\Queries\Records\RecordShowSectionCatalog;
@@ -24,6 +25,7 @@ use LogicException;
  * @phpstan-import-type RevisionRow from RecordRevisionRows
  * @phpstan-import-type SectionPresence from RecordShowSectionCatalog
  * @phpstan-import-type SectionContent from RecordShowSectionCatalog
+ * @phpstan-import-type HeadingGroup from RecordHeadingGroups
  *
  * @phpstan-type PanelItem array{key: string, name: string, shortName: string, count: int|null,
  *     kind: 'attachments'|'comments'|'revisions'|'section'}
@@ -57,6 +59,7 @@ class RecordShowPanelQuery
         private RecordRevisionRows $revisions,
         private RecordShowSectionCatalog $sections,
         private RecordHoldCatalog $holds,
+        private RecordHeadingGroups $headingGroups,
         private RecordValueReader $reader,
         private UploadLimits $limits,
     ) {}
@@ -96,6 +99,17 @@ class RecordShowPanelQuery
         }
 
         return ['panel' => ['items' => $items], 'sections' => $sections];
+    }
+
+    /**
+     * 詳細とフォームの見出しのまとまり(詳細の画面/README.md の 6.1・6.2 節、見出し.md の 1 節)。定義なので判定しない(入口が先に業務モジュールを開いている)。
+     * 頭のまとまりは id・name とも null。項目の無いまとまりは含まない。
+     *
+     * @return list<HeadingGroup>
+     */
+    public function headings(int $recordModuleId): array
+    {
+        return $this->headingGroups->groups($recordModuleId);
     }
 
     /**

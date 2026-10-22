@@ -24,12 +24,13 @@ use Illuminate\Database\Seeder;
 
 /**
  * 業務データの入れ物の初期データ(docs の 設計/業務データの入れ物/認可とメニュー/メニューと初期データ.md 6 節・7 節、設計/メニュー/初期データ.md 4 節):
- * 1. 接頭辞のリソースグループ http-services.records・…data・…admin(・modules・fields・rules・categories)と、業務のルートのリソースとポリシー(ゲストユーザと認証済みユーザに
+ * 1. 接頭辞のリソースグループ http-services.records・…data・…admin(・modules・fields・headings・rules・categories)と、業務のルートのリソースとポリシー(ゲストユーザと認証済みユーザに
  *    execute の許可。接頭辞には置かない)、管理のルートのリソース(ポリシーなし)
  * 2. セット record-modules と、システム管理者への 5 つのアクション(全件の参照を含む)の許可(全部を許すロール = 認可とメニュー/README.md 3 節)
  * 3. 業務モジュール「プロジェクト」「課題」(業務モジュールを作る業務処理 = リソース・初期ポリシー・「業務」のアイテム)と、明細「マイルストーン」
  * 4. 項目・選択肢・規則、5. レコード(判定の入力 = u0004 伊藤 涼子、基準日 = 流す日の Asia/Tokyo の日付、ロケール ja)。
- *    レコードの日付の項目は流す日からの相対({@see SeedingDates})。続けて見本のコメント({@see RecordCommentsSeeder})
+ *    レコードの日付の項目は流す日からの相対({@see SeedingDates})。項目の後に見本の見出し({@see RecordHeadingsSeeder})、
+ *    レコードの後に見本のコメント({@see RecordCommentsSeeder})
  *
  * AccountSeeder の後に 1 回入れる前提。すべて業務処理を通す。中身の正本はこの seeder(設計の値 = 7.2・7.3)。
  */
@@ -48,6 +49,7 @@ class RecordsSeeder extends Seeder
         'records.admin.comments' => ['コメントの管理', 'Comment administration'],
         'records.admin.modules' => ['業務モジュール', 'Record modules'],
         'records.admin.fields' => ['項目', 'Fields'],
+        'records.admin.headings' => ['見出し', 'Field headings'],
         'records.admin.rules' => ['規則', 'Rules'],
         'records.admin.categories' => ['モジュール分類', 'Module categories'],
     ];
@@ -90,6 +92,9 @@ class RecordsSeeder extends Seeder
         'records.admin.fields.update' => ['項目の更新', 'Update field'],
         'records.admin.fields.destroy' => ['項目の削除', 'Delete field'],
         'records.admin.fields.reorder' => ['項目の並び替え', 'Reorder fields'],
+        'records.admin.headings.store' => ['見出しの追加', 'Create field heading'],
+        'records.admin.headings.update' => ['見出しの更新', 'Update field heading'],
+        'records.admin.headings.destroy' => ['見出しの削除', 'Delete field heading'],
         'records.admin.rules.store' => ['規則の追加', 'Create rule'],
         'records.admin.rules.update' => ['規則の更新', 'Update rule'],
         'records.admin.rules.destroy' => ['規則の削除', 'Delete rule'],
@@ -217,6 +222,7 @@ class RecordsSeeder extends Seeder
             }
         }
 
+        $this->call(RecordHeadingsSeeder::class);
         $this->createRecords();
         $this->call(RecordCommentsSeeder::class);
     }

@@ -10,6 +10,7 @@ const module: RecordAdminModuleForm = {
     isVisible: true,
     isDetails: false,
     categoryIds: ['b'],
+    isAttachmentEnabled: false,
     rowAccessScope: 'related',
 };
 
@@ -20,6 +21,7 @@ const details: RecordAdminModuleForm = {
     isVisible: null,
     isDetails: true,
     categoryIds: null,
+    isAttachmentEnabled: null,
     rowAccessScope: null,
 };
 
@@ -33,10 +35,15 @@ describe('initialModuleData', () => {
         expect(initialModuleData(module).row_access_scope).toBe('related');
         expect(initialModuleData(details).row_access_scope).toBe('all');
     });
+
+    it('添付の使用は今の値、明細のモジュール(null)は使用するにしておく', () => {
+        expect(initialModuleData(module).is_attachment_enabled).toBe(false);
+        expect(initialModuleData(details).is_attachment_enabled).toBe(true);
+    });
 });
 
 describe('toModulePayload', () => {
-    it('見える範囲を row_access_scope で送る', () => {
+    it('添付の使用を is_attachment_enabled、見える範囲を row_access_scope で送る', () => {
         expect(
             toModulePayload(initialModuleData(module), false, categories),
         ).toEqual({
@@ -45,6 +52,7 @@ describe('toModulePayload', () => {
             icon: 'calendar',
             is_visible: true,
             categories: ['b'],
+            is_attachment_enabled: false,
             row_access_scope: 'related',
         });
     });

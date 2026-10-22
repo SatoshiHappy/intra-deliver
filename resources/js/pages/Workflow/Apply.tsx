@@ -1,12 +1,13 @@
 import { Head } from '@inertiajs/react';
-import { useEffect, useRef } from 'react';
+import { useRef } from 'react';
 import { CountedTextInput } from '@/components/CountedTextInput';
 import { FormBlock } from '@/components/FormBlock';
 import { FormSurface } from '@/components/FormLayout';
-import { INVALID_SELECTOR, RecordFields } from '@/components/RecordFields';
+import { RecordFields } from '@/components/RecordFields';
 import { ApplyActions } from '@/components/Workflow/ApplyActions';
 import { ApplyInfoSurface } from '@/components/Workflow/ApplyInfoSurface';
 import { useApplyForm } from '@/hooks/Workflow/use-apply-form';
+import { useFocusFirstInvalid } from '@/hooks/use-focus-first-invalid';
 import { clearRowErrors } from '@/lib/formErrors';
 import type { RecordFormData } from '@/lib/recordForm';
 import { targetsText } from '@/lib/Workflow/workflowLabels';
@@ -151,7 +152,7 @@ function backHrefOf(props: Props) {
  * 申請・一時保存・再申請(docs の 設計/ワークフロー/画面.md 3 節、ルートの深さ/画面.md 5 節)。業務データの欄は {@link RecordFields}(登録・編集のフォームと共通)。
  */
 export default function Apply(props: Props) {
-    const { mode, flow, case: workflowCase, module, next } = props;
+    const { mode, flow, case: workflowCase, module, headings, next } = props;
     const { form, errors, focusRequest, send, changeBaseDate } =
         useApplyForm(props);
     const formRef = useRef<HTMLFormElement>(null);
@@ -166,13 +167,7 @@ export default function Apply(props: Props) {
     const caseName =
         form.data.name.trim() === '' ? defaultName : form.data.name.trim();
 
-    useEffect(() => {
-        if (focusRequest > 0) {
-            formRef.current
-                ?.querySelector<HTMLElement>(INVALID_SELECTOR)
-                ?.focus();
-        }
-    }, [focusRequest]);
+    useFocusFirstInvalid(formRef, focusRequest);
 
     return (
         <>
@@ -230,6 +225,8 @@ export default function Apply(props: Props) {
                         </h2>
                         <RecordFields
                             module={module}
+                            headings={headings}
+                            revealRequest={focusRequest}
                             recordId={props.recordId}
                             data={form.data.record}
                             onChange={(update) =>

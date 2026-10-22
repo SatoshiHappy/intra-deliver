@@ -6,12 +6,15 @@ import { recordHeading } from '@/lib/recordValues';
 import { edit, index, show, update } from '@/routes/records/data';
 import type {
     RecordEditable,
+    RecordHeadingGroup,
     RecordHold,
     RecordModuleDefinition,
 } from '@/types';
 
 type Props = {
     module: RecordModuleDefinition;
+    /** 見出しのまとまり(フォームの欄を見出しごとに畳める) */
+    headings: RecordHeadingGroup[];
     record: RecordEditable;
     hold: RecordHold | null;
 };
@@ -26,7 +29,7 @@ function headingOf(module: RecordModuleDefinition, record: RecordEditable) {
 /**
  * 業務の編集(docs の 設計/業務データの入れ物/画面/業務の画面.md 2.2): 画面の流れ・欄の初期値・持ち主があるときの出し方の正本は同じ節。
  */
-export default function Edit({ module, record, hold }: Props) {
+export default function Edit({ module, headings, record, hold }: Props) {
     const heading = headingOf(module, record);
     const detail = show({ module: module.code, record: record.id });
 
@@ -39,6 +42,7 @@ export default function Edit({ module, record, hold }: Props) {
                 {hold !== null && <RecordHoldNotice hold={hold} />}
                 <RecordForm
                     module={module}
+                    headings={headings}
                     recordId={record.id}
                     initialData={editFormData(module, record)}
                     version={record.version}

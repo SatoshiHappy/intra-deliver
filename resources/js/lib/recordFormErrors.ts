@@ -24,6 +24,19 @@ export function isRecordFieldKey(key: string): boolean {
 }
 
 /**
+ * 誤りのキーが指す業務の欄の項目のコード(`values.<コード>` と、複数の参照の欄の `values.<コード>.<添字>`。明細の誤り `details.…` は
+ * 見出しの外の明細の表にあるので含めない = レコードの共通機能/詳細の画面/見出し.md の 3 節)。重複は 1 つにする。
+ */
+export function errorFieldCodes(errors: Errors): string[] {
+    const codes = Object.keys(errors)
+        .filter((key) => errors[key] !== undefined && key.startsWith('values.'))
+        .map((key) => key.split('.')[1] ?? '')
+        .filter((code) => code !== '');
+
+    return [...new Set(codes)];
+}
+
+/**
  * 欄のキーと、欄の値が相手の並びなら添字のキー(複数の参照の欄は添字の誤りも欄の下に出す)。
  */
 function keysOf(key: string, draft: RecordFieldDraft | undefined): string[] {

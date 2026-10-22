@@ -1,9 +1,9 @@
 import { Info } from 'lucide-react';
 import { useEffect, useRef, useState } from 'react';
 import type { MeetingFormError } from '@/components/Meeting/createMeetingForm';
-import { INVALID_SELECTOR } from '@/components/RecordFields';
 import { Button } from '@/components/ui/button';
 import { DialogClose, DialogFooter } from '@/components/ui/dialog';
+import { useFocusFirstInvalid } from '@/hooks/use-focus-first-invalid';
 import { uploadProgress } from '@/lib/recordShow';
 
 /** 録音の同意と個人情報の注意書き(docs の 設計/業務ツール/会議/公開デモと画面.md の 8.2 の 1 つ目) */
@@ -88,13 +88,7 @@ export function useFocusFirstError() {
     const formRef = useRef<HTMLFormElement>(null);
     const [request, setRequest] = useState(0);
 
-    useEffect(() => {
-        if (request > 0) {
-            formRef.current
-                ?.querySelector<HTMLElement>(INVALID_SELECTOR)
-                ?.focus();
-        }
-    }, [request]);
+    useFocusFirstInvalid(formRef, request);
 
     return {
         formRef,

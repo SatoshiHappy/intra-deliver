@@ -72,6 +72,15 @@ final class CreateRecordModuleTest extends TransactionalTestCase
         $this->assertSame([100, 100, 110, 110], Menu::query()->where('code', 'like', '%-records-project%')->orderBy('sort_number')->pluck('sort_number')->all());
     }
 
+    public function test_the_returned_module_carries_the_column_defaults_without_a_reload(): void
+    {
+        CarbonImmutable::setTestNow('2026-10-11 03:00:00 UTC');
+
+        $module = app(CreateRecordModule::class)->execute(['code' => 'equipment', 'name' => '備品']);
+
+        $this->assertSame([true, 'all'], [$module->is_attachment_enabled, $module->row_access_scope->value]);
+    }
+
     public function test_puts_the_chosen_icon_on_both_menu_items(): void
     {
         CarbonImmutable::setTestNow('2026-10-11 03:00:00 UTC');

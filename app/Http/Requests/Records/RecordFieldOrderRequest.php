@@ -6,9 +6,9 @@ use App\Queries\Records\RecordAdminQuery;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
- * 項目の並び替えの入力の封筒(docs の 設計/業務データの入れ物/画面/管理の画面.md 3.3): { codes: [<項目のコード>, …] }。
- * 入口が見るのは入れ物の形だけ(codes が list)。中身(その業務モジュールの全項目のコードの順列か)は業務処理が確かめて、キー codes の 422 で拒む
- * (項目と規則/規則と業務処理/失敗と定義の変更.md 11 節)。
+ * 見出しと項目の並び替えの入力の封筒(docs の 設計/業務データの入れ物/画面/管理の画面.md 3.3、レコードの共通機能/詳細の画面/見出し.md の 4 節):
+ * { items: [{ kind: 'heading', id } | { kind: 'field', code }, …] }。入口が見るのは入れ物の形だけ(items が list)。
+ * 中身(その業務モジュールの全見出しと全項目の順列か)は業務処理が確かめて、キー items の 422 で拒む(項目と規則/規則と業務処理/失敗と定義の変更.md 11 節)。
  */
 class RecordFieldOrderRequest extends FormRequest
 {
@@ -29,7 +29,7 @@ class RecordFieldOrderRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'codes' => ['present', 'bail', 'array', 'list'],
+            'items' => ['present', 'bail', 'array', 'list'],
         ];
     }
 
@@ -39,21 +39,21 @@ class RecordFieldOrderRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'codes.present' => '項目の並びの形が正しくありません',
-            'codes.array' => '項目の並びの形が正しくありません',
-            'codes.list' => '項目の並びの形が正しくありません',
+            'items.present' => '項目の並びの形が正しくありません',
+            'items.array' => '項目の並びの形が正しくありません',
+            'items.list' => '項目の並びの形が正しくありません',
         ];
     }
 
     /**
-     * 業務処理の入力(項目のコードの新しい順)。
+     * 業務処理の入力(見出しと項目の新しい順)。
      *
      * @return array<array-key, mixed>
      */
-    public function codes(): array
+    public function items(): array
     {
-        $codes = $this->input('codes');
+        $items = $this->input('items');
 
-        return is_array($codes) ? $codes : [];
+        return is_array($items) ? $items : [];
     }
 }

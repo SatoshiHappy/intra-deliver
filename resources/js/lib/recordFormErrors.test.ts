@@ -3,6 +3,7 @@ import type { RecordFieldDefinition, RecordModuleDefinition } from '@/types';
 import { recordField } from './recordField.testing';
 import type { RecordFormData } from './recordForm';
 import {
+    errorFieldCodes,
     fieldErrorOf,
     isRecordFieldKey,
     referenceItemErrors,
@@ -139,5 +140,21 @@ describe('referenceItemErrors', () => {
         errors.onRemoved();
 
         expect(clear).toHaveBeenCalledWith('values.members.');
+    });
+});
+
+describe('errorFieldCodes', () => {
+    it('values の誤りの項目のコード(複数の参照の添字は欄にまとめる)。明細・封筒・ほかのキーは含めない', () => {
+        expect(
+            errorFieldCodes({
+                'values.title': '入力してください',
+                'values.members.1': '選べません',
+                'values.members': '選べません',
+                'details.lines.0.values.item': '入力してください',
+                values: '封筒の誤り',
+                record: '申請中です',
+                'values.empty': undefined,
+            }),
+        ).toEqual(['title', 'members']);
     });
 });

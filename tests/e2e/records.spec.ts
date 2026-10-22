@@ -818,8 +818,8 @@ test('日付の欄はクリックでカレンダーを開き、Tab で入った�
     );
     const original = await startDate.inputValue();
 
-    // 直前の欄(状態)から Tab で入っただけでは開かない
-    await form.getByRole('combobox', { name: '状態', exact: true }).focus();
+    // 直前の止まり先(開始日の見出し「期間と予算」のボタン)から Tab で入っただけでは開かない
+    await form.getByRole('button', { name: /^期間と予算/ }).focus();
     await page.keyboard.press('Tab');
     await expect(startDate).toBeFocused();
     expect(await pickerCalls()).toBe(0);

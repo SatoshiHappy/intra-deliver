@@ -23,9 +23,6 @@ trait ValidatesDefinitionText
         'records', 'data', 'admin', 'modules', 'fields', 'rules', 'create', 'edit', 'reorder', 'candidates', 'categories', 'new',
     ];
 
-    /** 項目の並び順の間隔(追加の既定 = 最大 + この値、並び替えの振り直し) */
-    public const SORT_KEY_STEP = 10;
-
     /** 既定を持つ入力のキー(null = 未指定。{@see withoutUnspecifiedKeys}) */
     private const DEFAULTED_KEYS = ['is_required', 'is_multiline', 'is_multiple', 'is_listed', 'is_searchable', 'is_title', 'grants_row_access', 'sort_key'];
 

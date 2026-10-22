@@ -21,13 +21,16 @@ use Illuminate\Validation\ValidationException;
  * 業務モジュールを変える(docs の 設計/業務データの入れ物/項目と規則/規則と業務処理/失敗と定義の変更.md 11 節の「業務モジュールを変える」、認可とメニュー/README.md 1 節、メニューと初期データ.md 5.1、
  * モジュール分類/業務処理.md 3.7)。明細のモジュールも変えられる。
  *
- * 入力 = { name, description, icon, is_visible, categories, row_access_scope }(画面/管理の画面.md 3.5、
- * 見える範囲 = レコードの共通機能/業務モジュールの管理.md 2 節。キーはエラーのキー)。入力に無いキーは今の値のまま(項目を変えると同じ規則)。
- * 値のキー name・description の null は空(名前は 422、説明は消す)、既定を持つキー icon・is_visible・categories・row_access_scope の null は未指定
- * (今の値のまま)。明細のモジュールで icon・is_visible・categories・row_access_scope が null 以外なら 422(キーはその名前。明細のモジュールは
- * アイコンも表示の状態も分類も見える範囲も持たない)。見える範囲は all・related のどちらか(値を書くだけ。レコードは変えない)。検証は作成と同じ文言
- * (名前の空・長さ・U+0000、説明の長さ、アイコンが {@see MenuIcon::recordModuleChoices()} にあること)と、is_visible が真偽であること、categories が
- * 重ならない分類 ID の配列で、どれもロックの後に引き直した分類にあり、更新の後に非表示(is_visible が偽、または未指定で今が非表示)なら空であること。
+ * 入力 = { name, description, icon, is_visible, categories, is_attachment_enabled, row_access_scope }
+ * (画面/管理の画面.md 3.5、添付ファイルの使用と見える範囲 = レコードの共通機能/業務モジュールの管理.md 2 節。キーはエラーのキー)。
+ * 入力に無いキーは今の値のまま(項目を変えると同じ規則)。値のキー name・description の null は空(名前は 422、説明は消す)、
+ * 既定を持つキー icon・is_visible・categories・is_attachment_enabled・row_access_scope の null は未指定(今の値のまま)。
+ * 明細のモジュールでこれらが null 以外なら 422(キーはその名前。明細のモジュールはアイコンも表示の状態も分類も
+ * 添付の使用も見える範囲も持たない)。添付の使用は真偽で、値を書くだけ(付いている添付は残る)。
+ * 見える範囲は all・related のどちらか(値を書くだけ。レコードは変えない)。検証は作成と同じ文言
+ * (名前の空・長さ・U+0000、説明の長さ、アイコンが {@see MenuIcon::recordModuleChoices()} にあること)と、
+ * is_visible が真偽であること、categories が重ならない分類 ID の配列で、どれもロックの後に引き直した分類にあり、
+ * 更新の後に非表示(is_visible が偽、または未指定で今が非表示)なら空であること。
  *
  * 共通マスタと業務モジュールの排他の勧告ロック({@see LocksRecordModule})の下で、変える前の表示中の判定({@see RecordModuleVisibility})を検証と手順 1 の前に読み、
  * 同じトランザクションで:
@@ -135,8 +138,8 @@ class UpdateRecordModule
     }
 
     /**
-     * 入力にあるキーを確かめ、[変える列 → 値(icon・row_access_scope の null は未指定なので含めない), is_visible(null = 未指定),
-     * categories(null = 未指定)] を返す。
+     * 入力にあるキーを確かめ、[変える列 → 値(icon・is_attachment_enabled・row_access_scope の null は未指定なので含めない),
+     * is_visible(null = 未指定), categories(null = 未指定)] を返す。
      *
      * @param  array<array-key, mixed>  $input
      * @return array{array<array-key, mixed>, bool|null, list<string>|null}
@@ -149,6 +152,7 @@ class UpdateRecordModule
         $icon = $input['icon'] ?? null;
         $isVisible = $input['is_visible'] ?? null;
         $categories = $input['categories'] ?? null;
+        $attachment = $input['is_attachment_enabled'] ?? null;
         $scope = $input['row_access_scope'] ?? null;
         $this->throwIfAny([
             'name' => array_key_exists('name', $input) ? $this->textError($input['name'], '名前') : null,
@@ -164,12 +168,18 @@ class UpdateRecordModule
                 default => $this->flagError($isVisible),
             },
             'categories' => $this->categoriesError($categories, $isDetails, is_bool($isVisible) ? $isVisible : $wasVisible),
+            'is_attachment_enabled' => match (true) {
+                $attachment === null => null,
+                $isDetails => '明細には設定できません',
+                default => $this->flagError($attachment),
+            },
             'row_access_scope' => $this->scopeError($scope, $isDetails),
         ]);
 
         return [
             array_intersect_key($input, array_flip(['name', 'description']))
                 + ($icon === null ? [] : ['icon' => $icon])
+                + ($attachment === null ? [] : ['is_attachment_enabled' => $attachment])
                 + ($scope === null ? [] : ['row_access_scope' => $scope]),
             is_bool($isVisible) ? $isVisible : null,
             is_array($categories) ? array_values(array_map(strval(...), $categories)) : null,

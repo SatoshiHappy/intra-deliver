@@ -6,7 +6,6 @@ use App\Enums\Records\RecordFieldType;
 use App\Models\Records\RecordField;
 use App\Models\Records\RecordModule;
 use App\Queries\Records\FieldValueParser;
-use App\Support\DefinitionText;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -41,6 +40,7 @@ class FieldDefinitionValidator
         private FieldDefaultValidator $defaults,
         private FieldNameUniqueness $names,
         private FieldOptionsValidator $options,
+        private RecordSortKeys $sortKeys,
     ) {}
 
     /**
@@ -63,8 +63,9 @@ class FieldDefinitionValidator
             throw ValidationException::withMessages(array_map(fn (string $message) => [$message], array_filter(['code' => $codeError, 'type' => '型を選択してください'])));
         }
 
-        $next = is_int($max = $module->recordFields->max('sort_key')) ? $max + self::SORT_KEY_STEP : 0;
-        $errors = ['code' => $codeError, 'sort_key' => ($input['sort_key'] ?? null) !== null || $next <= DefinitionText::SORT_KEY_MAX ? null : '並び順が上限に達しています。項目の表で並び順を変更すると解消されます'];
+        // 既定の並び = 見出しと項目の最大 + 10(末尾に見出しを足した後の項目が、最後の見出しのまとまりに入る = 詳細の画面/見出し.md の 4 節)
+        $next = $this->sortKeys->next($module->id);
+        $errors = ['code' => $codeError, 'sort_key' => ($input['sort_key'] ?? null) !== null ? null : $this->sortKeys->limitError($next)];
         $input['sort_key'] ??= $next;
 
         $referencedModuleId = $this->referencedModuleId($type, $input, $errors);

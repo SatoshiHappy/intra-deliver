@@ -1,19 +1,22 @@
 import { Link, useForm } from '@inertiajs/react';
-import { useEffect, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { UnshownErrors } from '@/components/FormBlock';
 import { FormActions, FormSurface } from '@/components/FormLayout';
-import { INVALID_SELECTOR, RecordFields } from '@/components/RecordFields';
+import { RecordFields } from '@/components/RecordFields';
 import { Button } from '@/components/ui/button';
+import { useFocusFirstInvalid } from '@/hooks/use-focus-first-invalid';
 import type { RecordFormData } from '@/lib/recordForm';
 import { toPayload } from '@/lib/recordForm';
 import { isRecordFieldKey } from '@/lib/recordFormErrors';
 import { clearRowErrors } from '@/lib/formErrors';
 import type { RouteDefinition } from '@/wayfinder';
-import type { RecordModuleDefinition } from '@/types';
+import type { RecordHeadingGroup, RecordModuleDefinition } from '@/types';
 
 type Props = {
     module: RecordModuleDefinition;
+    /** 見出しのまとまり(欄を見出しごとに畳める) */
+    headings: RecordHeadingGroup[];
     /** 書くレコードの id(編集 = そのレコード、登録 = null) */
     recordId: number | null;
     /** 欄の初期値(登録 = 既定値、編集 = 今の値) */
@@ -35,6 +38,7 @@ type Props = {
  */
 export function RecordForm({
     module,
+    headings,
     recordId,
     initialData,
     version,
@@ -56,13 +60,7 @@ export function RecordForm({
     const formRef = useRef<HTMLFormElement>(null);
     const [focusRequest, setFocusRequest] = useState(0);
 
-    useEffect(() => {
-        if (focusRequest > 0) {
-            formRef.current
-                ?.querySelector<HTMLElement>(INVALID_SELECTOR)
-                ?.focus();
-        }
-    }, [focusRequest]);
+    useFocusFirstInvalid(formRef, focusRequest);
 
     const submit = (event: FormEvent) => {
         event.preventDefault();
@@ -87,6 +85,8 @@ export function RecordForm({
             <FormSurface inner="max-w-5xl">
                 <RecordFields
                     module={module}
+                    headings={headings}
+                    revealRequest={focusRequest}
                     recordId={recordId}
                     data={form.data}
                     onChange={(update) => form.setData(update)}

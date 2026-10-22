@@ -66,7 +66,8 @@ class CreateRecordModule
             [$code, $name, $description, $icon] = $this->validated($input);
             $set = AuthzResourceGroup::query()->where('code', RecordModuleAction::SET_CODE)->first()
                 ?? throw ValidationException::withMessages(['module' => ['業務モジュールのセット '.RecordModuleAction::SET_CODE.' がありません']]);
-            $module = RecordModule::query()->create(['code' => $code, 'name' => $name, 'description' => $description, 'icon' => $icon->value, 'parent_record_module_id' => null, 'sort_key' => 0]);
+            // 列の既定(添付の使用・見える範囲)を書かずに DB に任せるので、作った後に読み直して返す(戻りの属性が null にならない)
+            $module = RecordModule::query()->create(['code' => $code, 'name' => $name, 'description' => $description, 'icon' => $icon->value, 'parent_record_module_id' => null, 'sort_key' => 0])->refresh();
             $names = $this->forAllLocales($name);
             $resource = $this->createResource->execute(
                 RecordModuleAction::resourceGroupCode($code),
