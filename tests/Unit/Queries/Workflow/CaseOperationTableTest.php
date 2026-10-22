@@ -16,6 +16,8 @@ use Tests\Feature\Queries\Workflow\CaseOperationDeciderTest;
  * 期待値は 操作.md 3.2 の表から書いた(実装から作らない)。申請できる人(403)は表の外なので、「誰が」が申請できる人だけの行(一時保存の新規・申請の新規)は、
  * 表では案件が無ければ誰でも通る(403 は can と業務処理が別に見る)。役割ごとの本番の口の判定は {@see CaseOperationDeciderTest}。
  * 保留・保留解除・振替・確認の行の期待値は 設計/ワークフロー/案件の運用/案件の操作/操作.md の 8 節から書いた(確認 = 未完了で確認対象者)。
+ * 案件の管理者の行(保留解除・処理対象者の変更・再展開・ステップの移動・指定の変更・案件の削除)は 設計/ワークフロー/案件の運用/案件の操作/案件操作.md の 15.2 節から書いた
+ * (指定の変更の指定されるノードの前提は表の外なので、表は未完了で管理者なら通す)。
  */
 final class CaseOperationTableTest extends TestCase
 {
@@ -27,6 +29,38 @@ final class CaseOperationTableTest extends TestCase
 
     /** 承認のノードを処理できる状況(承認待ちの処理対象者と、保留中の保留者側 = 設計/ワークフロー/案件の運用/案件の操作/操作.md の 8 節) */
     private const HANDLES_APPROVAL = [...self::APPROVABLE, 'held' => ['holdSide']];
+
+    /** 案件の管理者の役割だけ */
+    private const MANAGER = ['caseManager'];
+
+    /** 承認待ちか保留の承認のノード(案件の管理者の処理対象者の変更・再展開) */
+    private const MANAGED_APPROVAL = [
+        'approve1Waiting' => self::MANAGER, 'approve2Waiting' => self::MANAGER, 'afterPullBack' => self::MANAGER,
+        'sentBackToApprove1' => self::MANAGER, 'held' => self::MANAGER, 'confirmOpen' => self::MANAGER,
+    ];
+
+    /** 未完了の案件(案件の管理者の指定の変更) */
+    private const MANAGED_ACTIVE = [
+        'approve1Waiting' => self::MANAGER, 'approve2Waiting' => self::MANAGER, 'reapplyAfterSendBack' => self::MANAGER,
+        'afterPullBack' => self::MANAGER, 'sentBackToApprove1' => self::MANAGER, 'held' => self::MANAGER,
+        'confirmOpen' => self::MANAGER,
+    ];
+
+    /** 未完了で現在のノードがある(案件の管理者のステップの移動。種類と状態を問わない = 案件操作.md の 15.2 節) */
+    private const MANAGED_CURRENT = [
+        'approve1Waiting' => self::MANAGER, 'approve2Waiting' => self::MANAGER, 'reapplyAfterSendBack' => self::MANAGER,
+        'afterPullBack' => self::MANAGER, 'sentBackToApprove1' => self::MANAGER, 'held' => self::MANAGER,
+        'confirmOpen' => self::MANAGER,
+    ];
+
+    /** 一時保存でない案件(案件の管理者の案件の削除) */
+    private const MANAGED_SUBMITTED = [
+        'approve1Waiting' => self::MANAGER, 'approve2Waiting' => self::MANAGER, 'reapplyAfterSendBack' => self::MANAGER,
+        'afterPullBack' => self::MANAGER, 'completedApproved' => self::MANAGER,
+        'completedApprovedEarly' => self::MANAGER, 'completedRejected' => self::MANAGER,
+        'completedWithdrawn' => self::MANAGER, 'sentBackToApprove1' => self::MANAGER,
+        'held' => self::MANAGER, 'confirmOpen' => self::MANAGER,
+    ];
 
     /**
      * 操作 => 状況 => 表が通す役割(設計/ワークフロー/案件の操作/操作.md 3.2 の表から書いた。載っていない組は拒む)。
@@ -44,9 +78,16 @@ final class CaseOperationTableTest extends TestCase
         'reapply' => ['reapplyAfterSendBack' => ['applicant']],
         'withdraw' => ['reapplyAfterSendBack' => ['applicant']],
         'hold' => self::APPROVABLE,
-        'release' => ['held' => ['holdSide']],
+        'release' => ['held' => ['holdSide', 'caseManager']],
         'transfer' => self::HANDLES_APPROVAL,
         'confirm' => ['confirmOpen' => ['confirmTarget']],
+        'retarget' => self::MANAGED_APPROVAL,
+        'reexpand' => self::MANAGED_APPROVAL,
+        'move_back' => self::MANAGED_CURRENT,
+        'move_forward' => self::MANAGED_CURRENT,
+        'move_finish' => self::MANAGED_CURRENT,
+        'reassign' => self::MANAGED_ACTIVE,
+        'delete_case' => self::MANAGED_SUBMITTED,
     ];
 
     public function test_the_table_permits_exactly_the_rows_of_the_contract(): void
@@ -73,7 +114,9 @@ final class CaseOperationTableTest extends TestCase
     {
         $none = new CaseRoles(false, false, false, false, true);
         $outsiders = ['canApplyPerson' => new CaseRoles(false, false, false, true, true), 'cannotApplyUser' => $none];
-        $others = ['referrer' => $none, 'unrelated' => $none, 'guest' => new CaseRoles(false, false, false, false, false)];
+        $manager = new CaseRoles(false, false, false, false, true, isCaseManager: true);
+        $guest = new CaseRoles(false, false, false, false, false);
+        $others = ['referrer' => $none, 'unrelated' => $none, 'guest' => $guest, 'caseManager' => $manager];
         $applicant = fn (bool $isCurrentTarget = false, bool $isPullBackActor = false) => new CaseRoles(true, $isCurrentTarget, $isPullBackActor, true, true);
         $target = new CaseRoles(false, true, false, false, true);
         $last = new CaseRoles(false, false, true, false, true);

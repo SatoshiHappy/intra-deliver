@@ -8,13 +8,18 @@ use App\Actions\Workflow\ApproveCaseEarly;
 use App\Actions\Workflow\CaseContact;
 use App\Actions\Workflow\ConfirmCase;
 use App\Actions\Workflow\CreateDraft;
+use App\Actions\Workflow\DeleteCase;
 use App\Actions\Workflow\DeleteDraft;
 use App\Actions\Workflow\DraftInput;
 use App\Actions\Workflow\HoldCase;
+use App\Actions\Workflow\MoveCaseNode;
 use App\Actions\Workflow\PullBackCase;
 use App\Actions\Workflow\ReapplyCase;
+use App\Actions\Workflow\ReassignCaseNode;
+use App\Actions\Workflow\ReexpandCaseNode;
 use App\Actions\Workflow\RejectCase;
 use App\Actions\Workflow\ReleaseCase;
+use App\Actions\Workflow\RetargetCaseNode;
 use App\Actions\Workflow\SendBackCase;
 use App\Actions\Workflow\TransferCase;
 use App\Actions\Workflow\UpdateDraft;
@@ -31,7 +36,8 @@ use Closure;
 /**
  * 状態 × 操作の表のテスト({@see ChecksCaseOperationTable})の、操作 1 つを今の改訂番号で行う部分(docs の
  * 設計/ワークフロー/ルートの深さ/案件の操作/同時実行と検査.md 14 節)。処理の操作は代理元(principal_user_id)を渡せる
- * (設計/ワークフロー/案件の運用/案件の操作/README.md の 4.3 節)。入力の形は {@see ChecksCaseOperationTable} の Inputs。
+ * (設計/ワークフロー/案件の運用/案件の操作/README.md の 4.3 節)。案件操作は自分として行う(代理で行わない = 同じ文書の 3.2 節)。
+ * 入力の形は {@see ChecksCaseOperationTable} の Inputs。
  *
  * @phpstan-import-type Inputs from ChecksCaseOperationTable
  */
@@ -92,6 +98,7 @@ trait PerformsTableOperations
 
         return [
             ...$this->onDraft($contact),
+            ...$this->byManager($inputs, $nodeOf),
             'approve' => function (AccessContext $c, int $id, int $rev) use (
                 $inputs, $nodeOf, $principal, $contact,
             ): void {
@@ -129,6 +136,56 @@ trait PerformsTableOperations
             },
             'confirm' => fn (AccessContext $c, int $id) => app(ConfirmCase::class)->execute($c, $id),
         ];
+    }
+
+    /**
+     * 案件操作(処理対象者の変更の人・指定の変更の人の既定 = 関わらない人 U。指定の変更の既定のノード = 操作するノード)。
+     *
+     * @param  Inputs|null  $inputs
+     * @param  Closure(int, int|null): int  $nodeOf
+     * @return array<string, Closure(AccessContext, int, int): mixed>
+     */
+    private function byManager(?array $inputs, Closure $nodeOf): array
+    {
+        $people = fn (string $letters) => array_map(
+            fn (string $letter) => $this->person($letter)->id ?? 0,
+            str_split($letters),
+        );
+        $retargetTo = $people($inputs['retargetTo'] ?? self::TRANSFER_TO);
+        $reassignTo = $people($inputs['reassignTo'] ?? self::TRANSFER_TO);
+
+        return [
+            'retarget' => fn (AccessContext $c, int $id, int $rev) => app(RetargetCaseNode::class)
+                ->execute($c, $id, $rev, $nodeOf($id, $c->userId), $retargetTo, null),
+            'reexpand' => fn (AccessContext $c, int $id, int $rev) => app(ReexpandCaseNode::class)
+                ->execute($c, $id, $rev, $nodeOf($id, $c->userId), null),
+            ...$this->moves($inputs, $nodeOf),
+            'reassign' => fn (AccessContext $c, int $id, int $rev) => app(ReassignCaseNode::class)
+                ->execute($c, $id, $rev, $inputs['reassign'] ?? $nodeOf($id, $c->userId), $reassignTo, null),
+            'delete_case' => fn (AccessContext $c, int $id, int $rev) => app(DeleteCase::class)->execute($c, $id, $rev),
+        ];
+    }
+
+    /**
+     * ステップの移動(戻り先 = 入力の差戻し先。無ければ申請のノード)。
+     *
+     * @param  Inputs|null  $inputs
+     * @param  Closure(int, int|null): int  $nodeOf
+     * @return array<string, Closure(AccessContext, int, int): mixed>
+     */
+    private function moves(?array $inputs, Closure $nodeOf): array
+    {
+        $move = fn (string $direction) => fn (AccessContext $c, int $id, int $rev) => app(MoveCaseNode::class)->execute(
+            $c,
+            $id,
+            $rev,
+            $nodeOf($id, $c->userId),
+            $direction,
+            $direction === 'back' ? $inputs['sendBackTo'] ?? $this->applyNodeIdOf($id) : null,
+            null,
+        );
+
+        return ['move_back' => $move('back'), 'move_forward' => $move('forward'), 'move_finish' => $move('finish')];
     }
 
     /**

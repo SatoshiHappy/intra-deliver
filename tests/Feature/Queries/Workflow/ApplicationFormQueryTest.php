@@ -106,7 +106,7 @@ final class ApplicationFormQueryTest extends TransactionalTestCase
         $draftId = app(CreateDraft::class)->execute($this->contextOf($u0001), 'wf_only_a', new DraftInput(null, null, [], []));
         $applied = $this->applyAs($u0001, 'wf_only_a');
 
-        foreach ([[$this->seededUser('u0002'), $draftId], [$this->seededUser('u0004'), $applied->id], [$u0001, 0]] as [$viewer, $caseId]) {
+        foreach ([[$this->seededUser('u0002'), $draftId], [$this->seededUser('u0008'), $applied->id], [$u0001, 0]] as [$viewer, $caseId]) {
             $this->assertThrows(fn () => $this->formQuery()->draft($this->contextOf($viewer), $caseId), ModelNotFoundException::class);
         }
 
@@ -183,7 +183,7 @@ final class ApplicationFormQueryTest extends TransactionalTestCase
         $this->sendBack($this->seededUser('u0002'), $case, 'apply');
         $draftId = app(CreateDraft::class)->execute($this->contextOf($u0001), 'wf_form', new DraftInput(null, null, [], []));
 
-        foreach ([[$this->seededUser('u0004'), $case->id], [null, $case->id], [$u0001, $draftId], [$u0001, 0]] as [$viewer, $caseId]) {
+        foreach ([[$this->seededUser('u0008'), $case->id], [null, $case->id], [$u0001, $draftId], [$u0001, 0]] as [$viewer, $caseId]) {
             $this->assertThrows(fn () => $this->formQuery()->reapply($this->contextOf($viewer), $caseId), ModelNotFoundException::class);
         }
 
@@ -217,7 +217,7 @@ final class ApplicationFormQueryTest extends TransactionalTestCase
         $case = $this->applyAs($u0001, 'wf_form');
         $this->sendBack($this->seededUser('u0002'), $case, 'apply');
 
-        $hidden = $this->recordedSql(fn () => $this->assertThrows(fn () => $this->formQuery()->reapply($this->contextOf($this->seededUser('u0004')), $case->id), ModelNotFoundException::class));
+        $hidden = $this->recordedSql(fn () => $this->assertThrows(fn () => $this->formQuery()->reapply($this->contextOf($this->seededUser('u0008')), $case->id), ModelNotFoundException::class));
         $visible = $this->recordedSql(fn () => $this->formQuery()->reapply($this->contextOf($u0001), $case->id));
 
         $this->assertSame([[], true], [preg_grep(self::RECORDS_SQL, $hidden), preg_grep(self::RECORDS_SQL, $visible) !== []]);

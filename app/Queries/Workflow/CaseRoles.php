@@ -20,6 +20,8 @@ final readonly class CaseRoles
      * @param  bool  $canUpdateRecord  コンテンツの業務モジュールの update を許される
      * @param  bool  $isHoldSide  保留中のノードの保留者側({@see ProcessorRoles})
      * @param  bool  $isConfirmTarget  開いている確認の確認対象者(自分。代理は無い = {@see CaseConfirmations})
+     * @param  bool  $isCaseManager  案件の管理者(案件のフローの operate を許され、処理者 P = 自分 = 設計/ワークフロー/案件の運用/案件の操作/README.md の 3.1 節。
+     *                               判定 = {@see FlowPermissions::canOperate()})
      */
     public function __construct(
         public bool $isApplicant,
@@ -29,5 +31,6 @@ final readonly class CaseRoles
         public bool $canUpdateRecord,
         public bool $isHoldSide = false,
         public bool $isConfirmTarget = false,
+        public bool $isCaseManager = false,
     ) {}
 }

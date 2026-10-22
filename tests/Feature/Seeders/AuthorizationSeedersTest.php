@@ -64,7 +64,7 @@ final class AuthorizationSeedersTest extends TransactionalTestCase
             ->all();
 
         $this->assertSame([], array_values(array_diff($this->everyActionOfEachSet(), $permitted)));
-        $this->assertSame(['http-services', 'im-menu-group', 'record-modules'], AuthzResourceGroup::query()->whereNull('parent_id')->orderBy('code')->pluck('code')->all());
+        $this->assertSame(['http-services', 'im-menu-group', 'record-modules', 'workflow-flows'], AuthzResourceGroup::query()->whereNull('parent_id')->orderBy('code')->pluck('code')->all());
     }
 
     public function test_seeds_the_subjects_categories_and_policies_of_the_design(): void
@@ -98,6 +98,7 @@ final class AuthorizationSeedersTest extends TransactionalTestCase
             'http-services.account.current-department service:execute permit 認証済みユーザ',
             ...$this->recordsPolicySummaries(),
             ...$this->workflowPolicySummaries(),
+            ...$this->permits('workflow-flows', ['workflow-flow:read', 'workflow-flow:operate'], ['システム管理者']),
             ...$this->everyonePolicySummaries('notice', 'index', 'read', 'read-all', 'latest'),
             ...$this->everyonePolicySummaries('meeting', 'store', 'regenerate'),
         ], $this->policySummaries());
@@ -153,16 +154,16 @@ final class AuthorizationSeedersTest extends TransactionalTestCase
 
     /**
      * 後の seeder は対象者を条件で引き直し、同じ対象者を作り足さない(FindsAuthzSubjects)。対象者 = ポリシーの 3 と、ワークフローの処理対象者と参照者の 5(用途 selection。
-     * ルート・フローの業務処理が作る = 設計/ワークフロー/初期データ.md 2 節)の計 8。ポリシー = 136(54 + メニューのワークフローのグループ 4 + ホームの主な操作のグループ 1 + ワークフローのルート
-     * 38 = ルートの深さ/初期データ.md 6 節。定義の管理のルートはポリシーなし。通知のルート 8 = 設計/ワークフロー/案件の運用/認可と一覧.md の 4 節。業務モジュールの全件の参照 1 =
-     * 設計/業務データの入れ物/認可とメニュー/README.md の 3 節。添付と外した時点のファイルのルート 6 × 2 = 12、コメントのルート 3 × 2 = 6 =
+     * ルート・フローの業務処理が作る = 設計/ワークフロー/初期データ.md 2 節)の計 8。ポリシー = 138(54 + メニューのワークフローのグループ 4 + ホームの主な操作のグループ 1 + ワークフローのルート
+     * 38 = ルートの深さ/初期データ.md 6 節。定義の管理のルートはポリシーなし。通知のルート 8・ワークフローのフローのセット 2 = 設計/ワークフロー/案件の運用/認可と一覧.md の 4 節・3 節。
+     * 業務モジュールの全件の参照 1 = 設計/業務データの入れ物/認可とメニュー/README.md の 3 節。添付と外した時点のファイルのルート 6 × 2 = 12、コメントのルート 3 × 2 = 6 =
      * 設計/業務データの入れ物/レコードの共通機能/認可と初期データ.md の 2.3 節。組み込みの会議の業務モジュール 8 = 設計/業務ツール/モジュール境界.md の「組み込みの業務モジュールの置き場」。
      * 会議のルート 2 × 2 = 4 = 設計/業務ツール/会議/処理.md の 3.2・3.7)。
      */
     public function test_the_seeders_reuse_the_subjects(): void
     {
         $this->assertEquals(['policy' => 3, 'selection' => 5], AuthzSubjectGroup::query()->groupBy('purpose')->orderBy('purpose')->selectRaw('purpose, count(*) as subject_groups')->pluck('subject_groups', 'purpose')->all());
-        $this->assertCount(136, $this->policySummaries());
+        $this->assertCount(138, $this->policySummaries());
     }
 
     public function test_a_guest_sees_the_home_and_the_sitemap(): void

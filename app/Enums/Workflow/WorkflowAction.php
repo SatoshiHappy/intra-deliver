@@ -73,12 +73,12 @@ enum WorkflowAction: string
 
     /**
      * 承認として数える種別(縦配置の合議の承認の数と、横配置の次の子へ進めるか = ルートの深さ/案件の操作/README.md 2.5。3a は承認だけ。
-     * 3b が足す種別は、承認として数えるものだけをここに足す)。
+     * 3b が足す種別は、承認として数えるものだけをここに足す)。進むは承認と同じ遷移(設計/ワークフロー/案件の運用/案件の操作/案件操作.md の 15.5 節)。
      *
      * @return list<self>
      */
     public static function countsAsApproval(): array
     {
-        return [self::Approve];
+        return [self::Approve, self::MoveForward];
     }
 }

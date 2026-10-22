@@ -80,6 +80,7 @@ class CaseOperationDecider
      *
      * @param  int|null  $nodeId  操作するノード(承認・承認終了・否認・差戻し・引戻しは入力の node_id、再申請・取止めは申請のノード。ほかは null)
      * @param  bool  $withoutOwnRow  ノードの処理対象者で P の本人の行を問わない({@see ProcessorRoles::of()})
+     * @param  bool  $canOperate  判定を求める者が案件のフローの operate を許されるか(呼び手が {@see FlowPermissions} で求める)
      */
     public function permitsIn(
         WorkflowOperation $operation,
@@ -88,10 +89,12 @@ class CaseOperationDecider
         CaseSituation $situation,
         ?int $nodeId,
         bool $withoutOwnRow = false,
+        bool $canOperate = false,
     ): bool {
         $node = $nodeId === null ? null : $situation->currentNode($nodeId);
         $isPullBackActor = $nodeId !== null && $situation->canPullBack($nodeId);
-        $roles = $this->roles->of($this->membership->effectiveUserId($requester, $date), $situation, $node, $isPullBackActor, false, false, $withoutOwnRow);
+        $userId = $this->membership->effectiveUserId($requester, $date);
+        $roles = $this->roles->of($userId, $situation, $node, $isPullBackActor, false, false, $withoutOwnRow, $canOperate);
 
         return $this->table->permits($operation, $situation->case->state, $node?->kind, $node?->state, $roles);
     }

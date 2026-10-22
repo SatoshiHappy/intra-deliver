@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vite-plus/test';
-import { actionLabel, blockedLabel, judgementTitle } from './labels';
+import {
+    actionLabel,
+    blockedLabel,
+    judgementTitle,
+    resourceTypeLabel,
+} from './labels';
 
 describe('actionLabel', () => {
     it('表にあるアクションは画面の語、無ければ ID のまま', () => {
@@ -9,6 +14,17 @@ describe('actionLabel', () => {
 
     it('業務モジュールの全件の参照は「全件の参照」', () => {
         expect(actionLabel('read-all')).toBe('全件の参照');
+    });
+
+    it('ワークフローのフローの操作は「操作」', () => {
+        expect(actionLabel('operate')).toBe('操作');
+    });
+});
+
+describe('resourceTypeLabel', () => {
+    it('ワークフローのフローは「ワークフローのフロー」、表に無ければ ID のまま', () => {
+        expect(resourceTypeLabel('workflow-flow')).toBe('ワークフローのフロー');
+        expect(resourceTypeLabel('no-such-type')).toBe('no-such-type');
     });
 });
 

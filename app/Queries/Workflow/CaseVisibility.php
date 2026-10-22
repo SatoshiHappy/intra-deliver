@@ -13,7 +13,7 @@ use DateTimeInterface;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
- * 案件の閲覧の判定(読み取りの 1 か所。docs の 設計/ワークフロー/認可と一覧.md 2 節、述語 = 設計/ワークフロー/案件の運用/認可と一覧.md の 1 節)。
+ * 案件の閲覧の判定(読み取りの 1 か所。docs の 設計/ワークフロー/認可と一覧.md 2 節、6 つの述語 = 設計/ワークフロー/案件の運用/認可と一覧.md の 1 節)。
  * 一覧・件数・詳細・関連する案件・操作の業務処理は、どれもここの絞り込みを通る(一覧に出る案件と開ける案件が食い違わない)。
  * 「自分」は {@see SubjectGroupMembership::effectiveUserId()}。鍵を取らない(操作の業務処理は案件の行に鍵を取った後に {@see self::isVisible()} を呼ぶ)。
  */
@@ -23,6 +23,8 @@ class CaseVisibility
         private SubjectGroupMembership $membership,
         private CaseTargetTerms $targetTerms,
         private WorkflowProxies $proxies,
+        private CaseConfirmations $confirmations,
+        private FlowPermissions $flowPermissions,
     ) {}
 
     /**
@@ -40,12 +42,15 @@ class CaseVisibility
         }
 
         $referencedFlowIds = $this->referencedFlowIds($requester, $date);
+        $readableFlowIds = $this->flowPermissions->readableFlowIds($requester, $date);
 
         return $query->where(fn (Builder $visible) => $visible
             ->where(fn (Builder $case) => $this->whereDraft($case, $userId, $date))
             ->orWhere(fn (Builder $case) => $this->wherePending($case, $userId, $date))
             ->orWhere(fn (Builder $case) => $this->whereProcessed($case, $userId, $date))
-            ->orWhere(fn (Builder $case) => $this->whereReferenced($case, $referencedFlowIds)));
+            ->orWhere(fn (Builder $case) => $this->whereFlowIn($case, $referencedFlowIds))
+            ->orWhere(fn (Builder $case) => $this->whereConfirmTarget($case, $userId))
+            ->orWhere(fn (Builder $case) => $this->whereFlowIn($case, $readableFlowIds)));
     }
 
     /**
@@ -102,7 +107,61 @@ class CaseVisibility
 
         $referencedFlowIds = $this->referencedFlowIds($requester, $date);
 
-        return $query->where(fn (Builder $case) => $this->whereReferenced($case, $referencedFlowIds));
+        return $query->where(fn (Builder $case) => $this->whereFlowIn($case, $referencedFlowIds));
+    }
+
+    /**
+     * 管理の述語: 一時保存でなく、案件のフローの workflow-flow の read を許される(フローの集合は案件の問い合わせの前に 1 回求める =
+     * 設計/ワークフロー/案件の運用/認可と一覧.md の 1 節)。業務モジュールの read には依らない。
+     *
+     * @param  Builder<WorkflowCase>  $query
+     * @return Builder<WorkflowCase>
+     */
+    public function managed(Builder $query, Requester $requester, DateTimeInterface $date): Builder
+    {
+        if ($this->membership->effectiveUserId($requester, $date) === null) {
+            return $this->nothing($query);
+        }
+
+        $readableFlowIds = $this->flowPermissions->readableFlowIds($requester, $date);
+
+        return $query->where(fn (Builder $case) => $this->whereFlowIn($case, $readableFlowIds));
+    }
+
+    /**
+     * 未確認のタブの絞り込み: 未完了で、自分の未確認が 1 つ以上(確認の述語の中の絞り込み = 設計/ワークフロー/案件の運用/認可と一覧.md の 2.1 節)。
+     *
+     * @param  Builder<WorkflowCase>  $query
+     * @return Builder<WorkflowCase>
+     */
+    public function unconfirmed(Builder $query, Requester $requester, DateTimeInterface $date): Builder
+    {
+        $userId = $this->membership->effectiveUserId($requester, $date);
+
+        if ($userId === null) {
+            return $this->nothing($query);
+        }
+
+        return $query->where($query->qualifyColumn('state'), WorkflowCaseState::Active)
+            ->whereExists($this->confirmations->unconfirmedRowsFor($userId, $query->qualifyColumn('id')));
+    }
+
+    /**
+     * 確認済のタブの絞り込み: 自分の確認の行が 1 つ以上(未完了・完了とも。確認の述語の中の絞り込み = 設計/ワークフロー/案件の運用/認可と一覧.md の 2.1 節)。
+     *
+     * @param  Builder<WorkflowCase>  $query
+     * @return Builder<WorkflowCase>
+     */
+    public function confirmed(Builder $query, Requester $requester, DateTimeInterface $date): Builder
+    {
+        $userId = $this->membership->effectiveUserId($requester, $date);
+
+        if ($userId === null) {
+            return $this->nothing($query);
+        }
+
+        return $query->where($query->qualifyColumn('state'), '<>', WorkflowCaseState::Draft)
+            ->whereExists($this->confirmations->confirmationRowsFor($userId, $query->qualifyColumn('id')));
     }
 
     /**
@@ -154,12 +213,26 @@ class CaseVisibility
     }
 
     /**
+     * 確認の述語(設計/ワークフロー/案件の運用/認可と一覧.md の 1 節): 確認が一度でも開いて確認対象者の行に自分がある。
+     *
      * @param  Builder<WorkflowCase>  $case
-     * @param  list<int>  $referencedFlowIds
      */
-    private function whereReferenced(Builder $case, array $referencedFlowIds): void
+    private function whereConfirmTarget(Builder $case, int $userId): void
     {
-        $case->where($case->qualifyColumn('state'), '<>', WorkflowCaseState::Draft)->whereIn($case->qualifyColumn('workflow_flow_id'), $referencedFlowIds);
+        $case->where($case->qualifyColumn('state'), '<>', WorkflowCaseState::Draft)
+            ->whereExists($this->confirmations->targetRowsFor($userId, $case->qualifyColumn('id')));
+    }
+
+    /**
+     * 参照の述語と管理の述語が共有する形(一時保存でなく、フローが渡した集合に入る)。
+     *
+     * @param  Builder<WorkflowCase>  $case
+     * @param  list<int>  $flowIds
+     */
+    private function whereFlowIn(Builder $case, array $flowIds): void
+    {
+        $case->where($case->qualifyColumn('state'), '<>', WorkflowCaseState::Draft)
+            ->whereIn($case->qualifyColumn('workflow_flow_id'), $flowIds);
     }
 
     /**

@@ -2,6 +2,7 @@
 
 namespace App\Queries\Authz;
 
+use App\Queries\Authz\Api\ResourceTypes;
 use Illuminate\Container\Attributes\Tag;
 use LogicException;
 

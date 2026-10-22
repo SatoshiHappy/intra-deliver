@@ -15,6 +15,8 @@ use Tests\Support\TransactionalTestCase;
  * 期待と記号は {@see ChecksCaseOperationTable} に足して: D = 承認 2(u0007)、E・F = B の承認の代理先(u0008・u0009)、H = 申請者 A の承認の代理先(u0011)。
  * 保留の状況はフロー = 申請 → 承認 1(B・C)→ 承認 2(D)、振替の状況は承認 1 = B だけ(B が C へ振替)。代理元として操作する役割(E・F が B として)は、
  * 申請の系統の操作(再申請・取止め)で承認の代理が合わないので 422 principal_user_id(13 節)。入力 = 承認 1・差戻し先 = 申請・振替先 = U。
+ * 案件の管理者 P は、保留中の承認 1 を解除でき(保留者側でなくてよい)、承認 1 の処理対象者の変更(U へ)・再展開(写した指定の人。振替の前の B に戻る)・
+ * ステップの移動(戻る = 申請へ・進む・終了。保留中でもよく、保留は消える)・案件の削除ができる(設計/ワークフロー/案件の運用/案件の操作/案件操作.md の 15.2 節)。
  *
  * @phpstan-import-type Result from ChecksCaseOperationTable
  * @phpstan-import-type Inputs from ChecksCaseOperationTable
@@ -24,8 +26,8 @@ final class CaseOperationTableHoldTest extends TransactionalTestCase
     use ChecksCaseOperationTable;
     use RegistersProxies;
 
-    /** 既にある案件の操作の数(一時保存(新規)を除く 14) */
-    private const OPERATIONS = 14;
+    /** 既にある案件の操作の数(一時保存(新規)を除く 21) */
+    private const OPERATIONS = 21;
 
     /** 保留者側の 3 つ(本人・代理先が本人として・ほかの代理先が本人として) */
     private const HOLD_SIDE = ['holder', 'holderProxy', 'otherProxy'];
@@ -109,9 +111,16 @@ final class CaseOperationTableHoldTest extends TransactionalTestCase
             ],
             'principals' => ['holderProxy' => 'B', 'otherProxy' => 'B'],
             'rejections' => ['holderProxy' => self::APPLY_KIND, 'otherProxy' => self::APPLY_KIND],
-            'visible' => 'ABCEFHR',
+            'visible' => 'ABCEFHPR',
             'success' => array_map(fn (array $result) => [self::HOLD_SIDE, $result], $success),
             'inputs' => $this->approval1Inputs($case),
+            'manager' => [
+                'release' => [
+                    ...$this->active(['done/apply', 'waiting:BC', 'unreached'], 'BCEF', 'ABEFHP'),
+                    'row' => ['release', 'P', null, ''],
+                ],
+                ...$this->managerOutcomes('BC', 'BCEF'),
+            ],
         ]);
     }
 
@@ -133,10 +142,44 @@ final class CaseOperationTableHoldTest extends TransactionalTestCase
                 'currentTarget' => 'C', 'transferor' => 'B', 'transferorProxy' => 'E', 'otherProxy' => 'F',
                 'applicantProxy' => 'H', 'nextTarget' => 'D',
             ],
-            'visible' => 'ABCEFHR',
+            'visible' => 'ABCEFHPR',
             'success' => array_map(fn (array $result) => ['currentTarget', $result], $success),
             'inputs' => $this->approval1Inputs($case),
+            'manager' => $this->managerOutcomes('B', 'BEF'),
         ]);
+    }
+
+    /**
+     * 案件の管理者 P の承認 1 の処理対象者の変更(U へ)・再展開(写した指定 = $copied)・ステップの移動(戻る = 申請へ・進む = 承認 2 へ・終了)・案件の削除。
+     * P の処理済に出る。
+     *
+     * @param  string  $copied  再展開の後の処理対象者
+     * @param  string  $copiedPending  再展開の後に未処理に出る人(処理対象者と、その承認の代理先)
+     * @return array<string, Result>
+     */
+    private function managerOutcomes(string $copied, string $copiedPending): array
+    {
+        $processed = 'ABEFHP';
+        $retargeted = $this->active(['done/apply', 'waiting:U', 'unreached'], 'U', $processed);
+        $reexpanded = $this->active(['done/apply', "waiting:{$copied}", 'unreached'], $copiedPending, $processed);
+
+        return [
+            'retarget' => [...$retargeted, 'row' => ['retarget', 'P', null, 'U']],
+            'reexpand' => [...$reexpanded, 'row' => ['reexpand', 'P', null, $copied]],
+            'move_back' => [
+                ...$this->active(['reapply:A', 'unreached', 'unreached'], 'A', $processed),
+                'row' => ['move_back', 'P', null, ''],
+            ],
+            'move_forward' => [
+                ...$this->active(['done/apply', 'done/move_forward', 'waiting:D'], 'D', $processed),
+                'row' => ['move_forward', 'P', null, ''],
+            ],
+            'move_finish' => [
+                ...$this->completed(['done/apply', 'done/move_finish', 'unreached'], 'approved_early', $processed),
+                'row' => ['move_finish', 'P', null, ''],
+            ],
+            'delete_case' => self::DELETED,
+        ];
     }
 
     /**

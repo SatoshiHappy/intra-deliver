@@ -94,7 +94,8 @@ trait RunsRoutePlans
     }
 
     /**
-     * 不変の条件の 5 つ(README.md 2.7)と、指定の行の履歴が「指定されたノード Y の指定するノード X の承認の行」であること(データモデル/案件の表.md 3.5)。
+     * 不変の条件の 5 つ(README.md 2.7)と、指定の行の履歴が「指定されたノード Y の指定するノード X の承認の行」か「ノードが Y の指定の変更の行」で
+     * あること(設計/ワークフロー/案件の運用/データモデル/表.md の 3.5 節)。
      */
     protected function assertRouteInvariants(WorkflowCase $case): void
     {
@@ -123,7 +124,11 @@ trait RunsRoutePlans
 
         foreach (WorkflowCaseAssignment::query()->where('workflow_case_id', $case->id)->get() as $row) {
             $history = WorkflowCaseHistory::query()->findOrFail($row->workflow_case_history_id);
-            $this->assertSame([WorkflowAction::Approve, $byId[$row->workflow_case_node_id]->designator_workflow_case_node_id], [$history->action, $history->workflow_case_node_id], "指定の行 {$row->id} の履歴が指定するノードの承認の行でない");
+            $writer = $history->action === WorkflowAction::Reassign
+                ? $row->workflow_case_node_id
+                : $byId[$row->workflow_case_node_id]->designator_workflow_case_node_id;
+            $this->assertContains($history->action, [WorkflowAction::Approve, WorkflowAction::Reassign], "指定の行 {$row->id} の履歴の種別");
+            $this->assertSame($writer, $history->workflow_case_node_id, "指定の行 {$row->id} の履歴が指定するノードの承認か指定の変更の行でない");
         }
     }
 

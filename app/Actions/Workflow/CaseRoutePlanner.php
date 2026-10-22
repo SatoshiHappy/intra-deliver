@@ -16,6 +16,7 @@ use LogicException;
  * 申請・再申請 = 申請のノードから進める。承認 = 普通の承認のノードは進める、横配置の子は次の子か親の通過、縦配置の子は合議の判定(2.5)。否認 = 縦配置の子は
  * 合議の判定、ほかは完了(否認)。承認終了・取止め = 完了。完了は片付けを含む(2.6)。承認として数える種別は {@see WorkflowAction::countsAsApproval()}。
  * 差戻し = 差戻し先と子孫を戻して差戻し先を到達させる(10.4)。引戻し = 引戻す行の node_changes を写しから戻し、操作するノードを到達させる(10.5)。
+ * ステップの移動は新しい進め方を作らず、戻る = 差戻し、進む = 承認(申請のノードは再申請)、終了 = 承認終了と同じ計画(設計/ワークフロー/案件の運用/案件の操作/案件操作.md の 15.5 節)。
  */
 class CaseRoutePlanner
 {
@@ -36,7 +37,7 @@ class CaseRoutePlanner
         $this->lookahead->check($state);
 
         match ($request->action) {
-            WorkflowAction::SendBack => $this->sendBack($state, $request),
+            WorkflowAction::SendBack, WorkflowAction::MoveBack => $this->sendBack($state, $request),
             WorkflowAction::PullBack => $this->pullBack($state, $request),
             default => $this->process($state, $request),
         };
@@ -67,6 +68,7 @@ class CaseRoutePlanner
             in_array($action, [WorkflowAction::Apply, WorkflowAction::Reapply], true) => $this->progress->advance($state, $nodeId),
             $action === WorkflowAction::Withdraw => $state->complete(WorkflowCompletionReason::Withdrawn),
             $action === WorkflowAction::ApproveEarly => $state->complete(WorkflowCompletionReason::ApprovedEarly),
+            $action === WorkflowAction::MoveFinish => $state->complete(WorkflowCompletionReason::ApprovedEarly),
             $parentId !== null && $parentKind === WorkflowNodeKind::Parallel && ($approves || $action === WorkflowAction::Reject) => $this->decideCouncil($state, $parentId),
             $parentId !== null && $approves => $this->nextInLine($state, $parentId, (int) $state->node($nodeId)->sequence),
             $approves => $this->progress->advance($state, $nodeId),
@@ -86,7 +88,7 @@ class CaseRoutePlanner
     private function sendBack(CaseRouteState $state, CasePlanRequest $request): void
     {
         $targetId = $request->sendBackNodeId ?? throw new LogicException('差戻しの計画に差戻し先が無い');
-        $state->operate($request->nodeId, WorkflowAction::SendBack);
+        $state->operate($request->nodeId, $request->action);
         $this->unreachAll($state, [$targetId, ...$state->graph->reachableFrom($targetId)]);
         $this->arrival->returnTo($state, $targetId);
     }

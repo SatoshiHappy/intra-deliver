@@ -80,6 +80,15 @@ final class CaseOperationErrors
     /** 差戻しできる先が 1 つも無いステップで差戻した(422 send_back_node_id。同 13 節) */
     public const SEND_BACK_NOT_ALLOWED = 'このステップでは差戻しできません';
 
+    /** ステップの移動の種類が無い・外の値(422 direction。設計/ワークフロー/案件の運用/案件の操作/同時実行と検査.md の 13 節) */
+    public const MOVE_DIRECTION = '移動の種類を選択してください';
+
+    /** ステップの移動の戻り先が候補に無い・候補が空(422 send_back_node_id。設計/ワークフロー/案件の運用/案件の操作/同時実行と検査.md の 13 節) */
+    public const MOVE_BACK_NODE = '戻り先を、戻せるステップから選択してください';
+
+    /** 指定するステップを進める(422 case。設計/ワークフロー/案件の運用/案件の操作/同時実行と検査.md の 13 節) */
+    public const MOVE_DESIGNATOR = '次のステップの指定が必要なため、このステップは進められません。承認の画面から処理してください。';
+
     /** 案件名(422 name) */
     public const NAME_TOO_LONG = '申請名は '.WorkflowCase::NAME_MAX.' 文字以内で入力してください';
 

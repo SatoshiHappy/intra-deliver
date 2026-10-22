@@ -1,6 +1,8 @@
 <?php
 
-namespace App\Queries\Authz;
+namespace App\Queries\Authz\Api;
+
+use App\Queries\Authz\ResourceTypeCatalog;
 
 /**
  * あるモジュールが定義する、認可のリソースタイプとそのアクションの一覧(依存の逆転 = docs の 設計/コード構成/README.md 3 節、

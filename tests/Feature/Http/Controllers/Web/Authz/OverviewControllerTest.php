@@ -45,7 +45,7 @@ final class OverviewControllerTest extends TransactionalTestCase
 
         $this->assertSame(['id' => $this->administrator->id, 'code' => 'u0004', 'name' => '伊藤 涼子'], $props['judge']['user']);
         $this->assertSame(['planning', '経営企画室'], [$props['judge']['department']['code'], $props['judge']['department']['name']]);
-        $this->assertSame(['service', 'im-menu-group', 'record-module'], $props['resourceTypes']);
+        $this->assertSame(['service', 'im-menu-group', 'record-module', 'workflow-flow'], $props['resourceTypes']);
         $this->assertSame(['service', ['execute']], [$props['grid']['resourceType'], $props['grid']['actions']]);
         // 列の束は認証が左(カテゴリの並びの表 = docs の 設計/ワークフロー/申請の周辺/認可設定の編集.md 5.2)
         $this->assertSame([

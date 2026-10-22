@@ -194,7 +194,8 @@ final class ProcessCaseTest extends TransactionalTestCase
     }
 
     /**
-     * 閲覧できる人でも処理対象者でなければ 422 case(申請者の承認、完了の後の承認)、閲覧できない人・ゲストは 404。
+     * 閲覧できる人でも処理対象者でなければ 422 case(申請者の承認、管理の述語で閲覧できるシステム管理者 u0004、完了の後の承認)、
+     * 閲覧できない人(u0006)・ゲストは 404。
      */
     public function test_a_person_who_is_not_the_current_target_cannot_process(): void
     {
@@ -203,7 +204,9 @@ final class ProcessCaseTest extends TransactionalTestCase
 
         foreach ([ApproveCase::class, ApproveCaseEarly::class, RejectCase::class] as $operation) {
             $this->assertSame(self::NOT_PERMITTED, $this->validationErrors(fn () => $this->operate($operation, $u0001, $case)));
-            $this->assertThrows(fn () => $this->operate($operation, $this->seededUser('u0004'), $case), ModelNotFoundException::class);
+            $byAdministrator = fn () => $this->operate($operation, $this->seededUser('u0004'), $case);
+            $this->assertSame(self::NOT_PERMITTED, $this->validationErrors($byAdministrator));
+            $this->assertThrows(fn () => $this->operate($operation, $this->seededUser('u0006'), $case), ModelNotFoundException::class);
             $this->assertThrows(fn () => $this->operate($operation, null, $case), ModelNotFoundException::class);
         }
 

@@ -34,21 +34,43 @@ class SendBackCandidates
     {
         $operated = WorkflowCaseNode::query()->findOrFail($nodeId);
         $originId = $operated->parent_workflow_case_node_id ?? $operated->id;
-        $routeNodes = WorkflowCaseNode::query()->where('workflow_case_id', $operated->workflow_case_id)->whereNull('parent_workflow_case_node_id')->orderBy('position')->get()->keyBy('id');
-        $edges = WorkflowCaseEdge::query()->where('workflow_case_id', $operated->workflow_case_id)->get();
-        $graph = RouteGraph::of(array_keys($routeNodes->all()), array_values($edges->map(fn (WorkflowCaseEdge $edge) => [$edge->from_workflow_case_node_id, $edge->to_workflow_case_node_id])->all()));
         $allowed = WorkflowCaseSendBack::query()->where('workflow_case_node_id', $originId)->pluck('target_workflow_case_node_id')->map(fn (mixed $id) => (int) $id)->all();
 
         if ($allowed === []) {
             return ['candidates' => [], 'isRestricted' => false];
         }
 
+        $ancestors = $this->ancestorsOf($operated);
+        $isAllowed = fn (WorkflowCaseNode $node) => in_array($node->id, $allowed, true);
+        $restricted = array_values(array_filter($ancestors, $isAllowed));
+
+        $isRestricted = $restricted !== [] && count($restricted) < count($ancestors);
+
+        return ['candidates' => $restricted === [] ? $ancestors : $restricted, 'isRestricted' => $isRestricted];
+    }
+
+    /**
+     * 祖先の候補 A の全部(差戻しできる先 L を見ない。ステップの移動の戻るの候補 = 設計/ワークフロー/案件の運用/案件の操作/案件操作.md の 15.5 節)。
+     *
+     * @param  int  $nodeId  操作するノード(同じ案件のノード。展開の行なら親で読む)
+     * @return list<WorkflowCaseNode> 候補(position の順。展開の行は入らない)
+     */
+    public function ancestorCandidatesOf(int $nodeId): array
+    {
+        return $this->ancestorsOf(WorkflowCaseNode::query()->findOrFail($nodeId));
+    }
+
+    /**
+     * @return list<WorkflowCaseNode>
+     */
+    private function ancestorsOf(WorkflowCaseNode $operated): array
+    {
+        $originId = $operated->parent_workflow_case_node_id ?? $operated->id;
+        $routeNodes = WorkflowCaseNode::query()->where('workflow_case_id', $operated->workflow_case_id)->whereNull('parent_workflow_case_node_id')->orderBy('position')->get()->keyBy('id');
+        $edges = WorkflowCaseEdge::query()->where('workflow_case_id', $operated->workflow_case_id)->get();
+        $graph = RouteGraph::of(array_keys($routeNodes->all()), array_values($edges->map(fn (WorkflowCaseEdge $edge) => [$edge->from_workflow_case_node_id, $edge->to_workflow_case_node_id])->all()));
         $ancestorIds = $graph->ancestorsOf($originId);
-        $ancestors = $routeNodes->filter(fn (WorkflowCaseNode $node) => in_array($node->id, $ancestorIds, true) && $node->kind->isIn(WorkflowNodeKind::targeted()) && in_array($node->state, WorkflowNodeState::traversed(), true));
-        $restricted = $ancestors->filter(fn (WorkflowCaseNode $node) => in_array($node->id, $allowed, true));
 
-        $isRestricted = $restricted->isNotEmpty() && $restricted->count() < $ancestors->count();
-
-        return ['candidates' => array_values(($restricted->isEmpty() ? $ancestors : $restricted)->all()), 'isRestricted' => $isRestricted];
+        return array_values($routeNodes->filter(fn (WorkflowCaseNode $node) => in_array($node->id, $ancestorIds, true) && $node->kind->isIn(WorkflowNodeKind::targeted()) && in_array($node->state, WorkflowNodeState::traversed(), true))->all());
     }
 }

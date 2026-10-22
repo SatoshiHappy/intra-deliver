@@ -71,7 +71,22 @@ final readonly class CaseActor
             return $context->selectedDepartmentId;
         }
 
-        return $this->processorUserId === $applicantUserId ? $applicantDepartmentId : null;
+        return self::selectedDepartmentFor($this->processorUserId, $applicantUserId, $applicantDepartmentId);
+    }
+
+    /**
+     * 前処理者から決める、計画に渡す選んだ組織(案件操作と、処理者が実行者でない操作。設計/ワークフロー/案件の運用/案件の操作/README.md の 3.2 節)。
+     *
+     * @param  int  $previousUserId  前処理者
+     * @param  int  $applicantUserId  案件の申請者
+     * @param  int|null  $applicantDepartmentId  案件の担当組織
+     */
+    public static function selectedDepartmentFor(
+        int $previousUserId,
+        int $applicantUserId,
+        ?int $applicantDepartmentId,
+    ): ?int {
+        return $previousUserId === $applicantUserId ? $applicantDepartmentId : null;
     }
 
     /**

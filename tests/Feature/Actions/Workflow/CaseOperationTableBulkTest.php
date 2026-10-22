@@ -44,7 +44,7 @@ final class CaseOperationTableBulkTest extends TransactionalTestCase
     {
         $case = $this->confirmingCase();
 
-        $this->assertBulkTable($case, ['approved' => 'EXYZ', 'confirmed' => 'R', 'visible' => 'ABERXYZ']);
+        $this->assertBulkTable($case, ['approved' => 'EXYZ', 'confirmed' => 'R', 'visible' => 'ABDERXYZ']);
     }
 
     /**
@@ -55,7 +55,7 @@ final class CaseOperationTableBulkTest extends TransactionalTestCase
         $case = $this->confirmingCase();
         $this->holdOn($case, 'council.1', $this->codeOf('X'));
 
-        $this->assertBulkTable($case, ['approved' => 'EXYZ', 'confirmed' => 'R', 'visible' => 'ABERXYZ']);
+        $this->assertBulkTable($case, ['approved' => 'EXYZ', 'confirmed' => 'R', 'visible' => 'ABDERXYZ']);
     }
 
     /**
@@ -66,7 +66,7 @@ final class CaseOperationTableBulkTest extends TransactionalTestCase
         $case = $this->confirmingCase();
         $this->operateOn(ApproveCaseEarly::class, $case, 'council.1', $this->codeOf('X'));
 
-        $this->assertBulkTable($case, ['approved' => '', 'confirmed' => '', 'visible' => 'ABERX']);
+        $this->assertBulkTable($case, ['approved' => '', 'confirmed' => '', 'visible' => 'ABDERX']);
     }
 
     /**

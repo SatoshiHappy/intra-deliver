@@ -25,7 +25,7 @@ use Tests\Support\TransactionalTestCase;
 /**
  * 確認(docs の 設計/ワークフロー/案件の運用/案件の操作/操作.md の 10.4 節、README.md の 1.5 節、同時実行と検査.md の 12 節と 14.2 節)。
  * ルートの見本 R1(予算 100)の課長に確認する人を付けた版で、課長(u0002)が合議 u0005・u0009・u0011 と責任者 u0007 を指定して承認すると確認が開く。
- * 確認対象者 = 経理部の u0010(フローの参照者なので閲覧できる。確認対象者だけの人の閲覧の述語はまだ無い)。
+ * 確認対象者 = 経理部の u0010(フローの参照者。確認対象者だけの人の閲覧は CaseVisibilityConfirmTest)。
  */
 final class ConfirmCaseTest extends TransactionalTestCase
 {

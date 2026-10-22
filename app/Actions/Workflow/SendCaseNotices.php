@@ -60,7 +60,7 @@ class SendCaseNotices
     }
 
     /**
-     * 処理対象者が増えたノードごとの処理依頼・担当変更(増えた人と、その人を代理元とする今日に有効でノードの種類とフローに効く代理の代理先)。
+     * 処理対象者が増えたノードごとの処理依頼・担当変更・処理担当者の変更(増えた人と、その人を代理元とする今日に有効でノードの種類とフローに効く代理の代理先)。
      *
      * @param  Params  $base
      * @param  Collection<int, WorkflowCaseNode>  $nodes
@@ -90,12 +90,13 @@ class SendCaseNotices
     }
 
     /**
-     * 処理対象者が増えたときの種類(操作の種別で分ける。処理対象者の変更・再展開の行はその操作を作るときに足す = 通知.md の 3 節)。
+     * 処理対象者が増えたときの種類(操作の種別で分ける = 通知.md の 3 節)。
      */
     private static function targetAdditionType(WorkflowAction $action): WorkflowNoticeType
     {
         return match ($action) {
             WorkflowAction::Transfer => WorkflowNoticeType::Transfer,
+            WorkflowAction::Retarget, WorkflowAction::Reexpand => WorkflowNoticeType::Retarget,
             default => WorkflowNoticeType::ProcessRequest,
         };
     }

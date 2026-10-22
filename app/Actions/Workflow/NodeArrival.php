@@ -18,7 +18,7 @@ use LogicException;
  * 指定 0 人(今の指定の行が 0 件)なら省く。0 人・指定の人に申請基準日に無効な人がいる・申請者承認防止で申請者だけ → 操作全体を拒む(422 case = 4.6・5.3)。
  * 後のノードからの到達(差戻し・引戻し = 処理対象者.md 4.5)は展開せず戻す相手で到達させ、戻す相手が申請基準日に有効でなければ同じく拒む。配置の親への差戻しは
  * 展開し、差戻しで到達させる子(縦配置は全部、横配置は子 1)だけを、差戻しの直前に処理済みならその子が指していた履歴の行の処理者にする(ほかは今の指定の
- * 同じ番号の人)。
+ * 同じ番号の人)。進むで処理済みにしたノードと子は以前に処理していないのと同じに扱う(設計/ワークフロー/案件の運用/案件の操作/案件操作.md の 15.1 節の 2)。
  */
 class NodeArrival
 {
@@ -77,10 +77,10 @@ class NodeArrival
     /**
      * 差戻し先を到達させる(処理対象者.md 4.5。以前の処理者 = 差戻しの直前にそのノードが指していた履歴の行の処理者 = {@see PreviousProcessors}): 申請・承認の
      * ノード = 以前の処理者。横配置・縦配置 = 展開し、if(差戻しで到達させる子(縦配置は全部、横配置は子 1)&& 差戻しの直前に処理済み){その子が指していた
-     * 履歴の行の処理者}else{今の指定の同じ番号の人}。
+     * 履歴の行の処理者}else{今の指定の同じ番号の人}。以前の処理者が null(進むで処理済み)なら {@see self::arriveRecorded()}。
      *
-     * @throws ValidationException 戻す相手が申請基準日に有効でない・申請者だけ(case)
-     * @throws LogicException 申請・承認のノードに以前の処理者がいない・配置の親の今の指定が 0 人のとき(差戻しの候補の不変の条件の破れ)
+     * @throws ValidationException 戻す相手が申請基準日に有効でない・申請者だけ・展開し直して 0 人(case)
+     * @throws LogicException 申請・承認のノードが処理済みでない・配置の親の今の指定が 0 人のとき(差戻しの候補の不変の条件の破れ)
      */
     public function returnTo(CaseRouteState $state, int $id): void
     {
@@ -96,7 +96,37 @@ class NodeArrival
             return;
         }
 
-        $this->reachReturned($state, $id, [$this->previousProcessors->of([$id])[$id] ?? throw new LogicException("差戻し先 {$id} を以前処理した人がいない")]);
+        $previous = $this->previousProcessors->of([$id]);
+
+        if (! array_key_exists($id, $previous)) {
+            throw new LogicException("差戻し先 {$id} が処理済みでない");
+        }
+
+        $previousUserId = $previous[$id];
+        $previousUserId === null ? $this->arriveRecorded($state, $id) : $this->reachReturned($state, $id, [$previousUserId]);
+    }
+
+    /**
+     * 進むで処理済みにしたノードへ戻す(以前に処理していないのと同じに到達させる = 設計/ワークフロー/案件の運用/案件の操作/案件操作.md の 15.1 節の 2)。
+     *
+     * @throws ValidationException
+     */
+    private function arriveRecorded(CaseRouteState $state, int $id): void
+    {
+        $node = $state->node($id);
+        $case = $state->case;
+        $userIds = match (true) {
+            $node->kind === WorkflowNodeKind::Apply => [$case->user_id],
+            $node->target_kind === WorkflowTargetKind::Designated => $state->assignmentOf($id),
+            default => $this->expansion->expand(
+                $node,
+                $case->department_id,
+                $this->expansion->recordedOriginOf($case, $node, $state->baseDate),
+                $state->baseDate,
+            ),
+        };
+        $this->requireEffective($state, $userIds, $node);
+        $state->reach($id, $this->checked($state, $node, $userIds));
     }
 
     /**

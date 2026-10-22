@@ -3,7 +3,7 @@
 namespace App\Queries\Records;
 
 use App\Enums\Records\RecordModuleAction;
-use App\Queries\Authz\ResourceTypes;
+use App\Queries\Authz\Api\ResourceTypes;
 
 /**
  * Records が定義するリソースタイプ: 業務モジュール record-module(アクションは {@see RecordModuleAction})。起動がタグ {@see ResourceTypes::TAG} で登録する

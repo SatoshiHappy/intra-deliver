@@ -10,8 +10,8 @@ use App\Support\AccessContext;
 
 /**
  * 計画の入力({@see CaseRoutePlanner::plan()}。docs の 設計/ワークフロー/ルートの深さ/案件の操作/操作.md 9 節の 1)。業務処理は {@see self::by()} で作り、
- * 前処理者と選んだ組織は {@see CaseActor} の 1 か所の口(previousUserId・previousSelectedDepartmentId)から決まる(処理対象者.md 4.3 の手順 1・01 の依頼 F13。
- * 3b の代理も口の中で決める)。公開のコンストラクタは計画の入力の型(テストが値を直に渡す)。
+ * 前処理者と選んだ組織は {@see CaseActor} の 1 か所の口(previousUserId・previousSelectedDepartmentId・selectedDepartmentFor)から決まる
+ * (処理対象者.md 4.3 の手順 1・01 の依頼 F13。3b の代理も口の中で決める)。公開のコンストラクタは計画の入力の型(テストが値を直に渡す)。
  */
 final readonly class CasePlanRequest
 {
@@ -46,5 +46,23 @@ final readonly class CasePlanRequest
         $selected = $actor->previousSelectedDepartmentId($context, $case->user_id, $case->department_id);
 
         return new self($case, $nodeId, $action, $actor->previousUserId(), $selected, $assignments, $sendBackNodeId, $revertedHistory);
+    }
+
+    /**
+     * 案件操作の計画の入力(設計/ワークフロー/案件の運用/案件の操作/案件操作.md の 15.1 節の 1・3)。管理者は前処理者にならないので、
+     * 呼び手が求めた前処理者で作る。
+     *
+     * @param  int  $previousUserId  前処理者
+     */
+    public static function byManager(
+        WorkflowCase $case,
+        int $nodeId,
+        WorkflowAction $action,
+        int $previousUserId,
+        ?int $sendBackNodeId = null,
+    ): self {
+        $selected = CaseActor::selectedDepartmentFor($previousUserId, $case->user_id, $case->department_id);
+
+        return new self($case, $nodeId, $action, $previousUserId, $selected, sendBackNodeId: $sendBackNodeId);
     }
 }

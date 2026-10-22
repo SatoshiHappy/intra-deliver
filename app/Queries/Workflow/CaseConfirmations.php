@@ -10,6 +10,7 @@ use App\Models\Workflow\WorkflowCase;
 use App\Models\Workflow\WorkflowCaseConfirmation;
 use App\Models\Workflow\WorkflowCaseConfirmTarget;
 use App\Models\Workflow\WorkflowCaseNode;
+use Illuminate\Database\Eloquent\Builder;
 use LogicException;
 
 /**
@@ -52,7 +53,58 @@ class CaseConfirmations
     }
 
     /**
-     * 案件の確認対象者ごとの確認の状態(確認対象者の行を持つノードだけ。確認が初めて開くまでは行が無い = 表.md の 3.10 節)。
+     * 外の問い合わせの案件の行に掛ける EXISTS の中身: その人の確認対象者の行(閲覧の判定の確認の述語 =
+     * 設計/ワークフロー/案件の運用/認可と一覧.md の 1 節。行は確認が初めて開いた時に作り、閉じても残る)。
+     *
+     * @param  string  $caseColumn  外の問い合わせの案件の id の列
+     * @return Builder<WorkflowCaseConfirmTarget>
+     */
+    public function targetRowsFor(int $userId, string $caseColumn): Builder
+    {
+        return WorkflowCaseConfirmTarget::query()
+            ->whereColumn('workflow_case_confirm_targets.workflow_case_id', $caseColumn)
+            ->where('workflow_case_confirm_targets.user_id', $userId);
+    }
+
+    /**
+     * EXISTS の中身: その人が未確認の、開いている確認の確認対象者の行(ノードが処理済みで確認する人を持ち、ノードの今の履歴の行を指す
+     * その人の確認の行が無い = {@see self::stateOf()} の未確認と同じ規則)。案件が未完了かは呼び手が見る。
+     *
+     * @param  string  $caseColumn  外の問い合わせの案件の id の列
+     * @return Builder<WorkflowCaseConfirmTarget>
+     */
+    public function unconfirmedRowsFor(int $userId, string $caseColumn): Builder
+    {
+        $confirmed = WorkflowCaseConfirmation::query()->from('workflow_case_confirmations as confirmed')
+            ->whereColumn('confirmed.workflow_case_node_id', 'confirm_nodes.id')
+            ->whereColumn('confirmed.workflow_case_history_id', 'confirm_nodes.workflow_case_history_id')
+            ->where('confirmed.user_id', $userId);
+        $target = 'workflow_case_confirm_targets.workflow_case_node_id';
+
+        return $this->targetRowsFor($userId, $caseColumn)
+            ->join('workflow_case_nodes as confirm_nodes', 'confirm_nodes.id', '=', $target)
+            ->where('confirm_nodes.state', WorkflowNodeState::Done->value)
+            ->whereNotNull('confirm_nodes.confirm_authz_subject_group_id')
+            ->whereNotExists($confirmed);
+    }
+
+    /**
+     * EXISTS の中身: その人の確認の行(閉じた確認・完了の後の行も含む)。確認の行は確認対象者の行を指す(複合外部キー)ので、
+     * これに合う案件は確認の述語にも合う。
+     *
+     * @param  string  $caseColumn  外の問い合わせの案件の id の列
+     * @return Builder<WorkflowCaseConfirmation>
+     */
+    public function confirmationRowsFor(int $userId, string $caseColumn): Builder
+    {
+        return WorkflowCaseConfirmation::query()
+            ->whereColumn('workflow_case_confirmations.workflow_case_id', $caseColumn)
+            ->where('workflow_case_confirmations.user_id', $userId);
+    }
+
+    /**
+     * 案件の確認対象者ごとの確認の状態(確認対象者の行を持つノードだけ。確認が初めて開くまでは行が無い =
+     * 設計/ワークフロー/案件の運用/データモデル/表.md の 3.10 節)。
      *
      * @return array<int, array<int, WorkflowConfirmationProgress>> ノードの id → 確認対象者のユーザーの id → 状態(どちらも昇順)
      *

@@ -79,7 +79,10 @@ class CaseAttachability
         return match ($operation) {
             WorkflowOperation::SaveDraft, WorkflowOperation::OverwriteDraft, WorkflowOperation::Apply,
             WorkflowOperation::Reapply, WorkflowOperation::Withdraw => true,
-            WorkflowOperation::DeleteDraft, WorkflowOperation::Confirm => false,
+            // 案件操作は添付を受けない(設計/ワークフロー/申請の周辺/添付/README.md)
+            WorkflowOperation::DeleteDraft, WorkflowOperation::Confirm, WorkflowOperation::Retarget,
+            WorkflowOperation::Reexpand, WorkflowOperation::Reassign, WorkflowOperation::DeleteCase,
+            WorkflowOperation::MoveBack, WorkflowOperation::MoveForward, WorkflowOperation::MoveFinish => false,
             WorkflowOperation::Approve, WorkflowOperation::ApproveEarly, WorkflowOperation::Reject,
             WorkflowOperation::SendBack, WorkflowOperation::PullBack, WorkflowOperation::Hold,
             WorkflowOperation::Transfer => $this->nodeAllows($operation, $node),

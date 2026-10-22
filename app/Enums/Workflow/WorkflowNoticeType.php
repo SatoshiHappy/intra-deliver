@@ -14,6 +14,9 @@ enum WorkflowNoticeType: string
     /** 担当変更(振替) */
     case Transfer = 'workflow.transfer';
 
+    /** 処理担当者の変更(処理対象者の変更・再展開) */
+    case Retarget = 'workflow.retarget';
+
     /** 処理結果 */
     case Result = 'workflow.result';
 
@@ -24,10 +27,10 @@ enum WorkflowNoticeType: string
     case Contact = 'workflow.contact';
 
     /**
-     * 文の値に操作のコメントを持つ種類か(担当変更 = 通知.md の 3 節の表)。
+     * 文の値に操作のコメントを持つ種類か(担当変更・処理担当者の変更 = 通知.md の 3 節の表)。
      */
     public function carriesComment(): bool
     {
-        return $this === self::Transfer;
+        return in_array($this, [self::Transfer, self::Retarget], true);
     }
 }

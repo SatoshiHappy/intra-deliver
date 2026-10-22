@@ -91,7 +91,7 @@ final class AssigneeCandidatesTest extends TransactionalTestCase
         $case = $this->applyOnBranch('u0001', 350);
 
         $this->getJson("/workflow/cases/{$case}/assignee-candidates?node=x&q=".str_repeat('a', 101))->assertNotFound();
-        $this->actingAsUser('u0004');
+        $this->actingAsUser('u0008');
         $this->getJson("/workflow/cases/{$case}/assignee-candidates?node=x&q=".str_repeat('a', 101))->assertNotFound();
         $this->getJson('/workflow/cases/999999999/assignee-candidates?node=1')->assertNotFound();
     }

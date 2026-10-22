@@ -52,6 +52,8 @@ use LogicException;
  * 先頭に、接頭辞のリソースグループ 6・ルートのリソース 19 と、各ルートのゲストユーザ・認証済みユーザへの execute の許可
  * (38 = 設計/ワークフロー/ルートの深さ/初期データ.md 5 節)を入れる(設計/ワークフロー/ルートの深さ/初期データ.md 1 節。
  * 接頭辞のリソースグループには許可を置かない)。メニューのグループ「ワークフロー」は MenuSeeder が入れる。
+ * 定義の前に workflow-flow のセットとシステム管理者の許可 2 を入れ、フローを作るたびにフローのリソースを足す({@see WorkflowFlowResources}。
+ * 設計/ワークフロー/案件の運用/認可と一覧.md の 3 節)。
  *
  * 日付(版の開始日・2 段目の計画の見本の申請基準日)は {@see self::DATES} の 1 か所に基準の日の値で置き、使う所で流す日からの相対にする
  * ({@see SeedingDates}。docs の 設計/ワークフロー/案件の運用/初期データ.md 1.1)。
@@ -139,6 +141,7 @@ class WorkflowSeeder extends Seeder
         private FindOrCreateSingleConditionSubjectGroup $findOrCreate,
         private CreateWorkflowContent $createContent,
         private CreateWorkflowFlow $createFlow,
+        private WorkflowFlowResources $flowResources,
         private AddRouteVersion $addVersion,
         private CreateDraft $createDraft,
         private ApplyCase $apply,
@@ -153,6 +156,7 @@ class WorkflowSeeder extends Seeder
     public function run(): void
     {
         $this->createRoutes();
+        $this->flowResources->createSet();
         $this->createDefinitions();
         $this->createCases();
         $this->createRouteCases();
@@ -196,6 +200,7 @@ class WorkflowSeeder extends Seeder
 
         foreach (self::FLOWS as $code => [$name, $description, $contentCode, $kind, $target, $ja, $en, $sortKey, $startDate, $isFirstVersionDeleted]) {
             $this->createFlow->execute($code, $name, $description, $contentCode, $route, SeedingDates::date($startDate), [$this->condition($kind, $target)], ['ja' => $ja, 'en' => $en], $sortKey, $isFirstVersionDeleted);
+            $this->flowResources->createFor($code);
             $route = $code;
         }
 

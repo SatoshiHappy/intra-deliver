@@ -2,8 +2,8 @@
 
 namespace Tests\Feature\Queries\Authz;
 
+use App\Queries\Authz\Api\ResourceTypes;
 use App\Queries\Authz\ResourceTypeCatalog;
-use App\Queries\Authz\ResourceTypes;
 use LogicException;
 use Tests\Support\TransactionalTestCase;
 

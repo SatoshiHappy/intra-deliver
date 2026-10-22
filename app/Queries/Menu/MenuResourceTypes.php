@@ -3,7 +3,7 @@
 namespace App\Queries\Menu;
 
 use App\Enums\Menu\MenuGroupAction;
-use App\Queries\Authz\ResourceTypes;
+use App\Queries\Authz\Api\ResourceTypes;
 
 /**
  * Menu が定義するリソースタイプ: メニューグループ im-menu-group(アクションは {@see MenuGroupAction})。起動がタグ {@see ResourceTypes::TAG} で登録する

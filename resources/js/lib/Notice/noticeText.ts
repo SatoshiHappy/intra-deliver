@@ -27,9 +27,32 @@ export type NoticeTemplate = {
 
 /**
  * 通知の種類ごとの文と札の雛形(1 か所。docs の 設計/ワークフロー/案件の運用/通知.md の 3 節)。
- * 種類を足すときは case を足す(会議の種類は {@link meetingTemplate})。雛形に無い種類は「通知があります。」と札「通知」で行を出す。
+ * 種類を足すときは case を足す(ワークフローの種類は {@link workflowTemplate}、会議の種類は {@link meetingTemplate})。雛形に無い種類は
+ * 「通知があります。」と札「通知」で行を出す。
  */
 export function noticeTemplate(row: NoticeRow): NoticeTemplate {
+    const workflow = workflowTemplate(row);
+
+    if (workflow !== null) {
+        return workflow;
+    }
+
+    switch (row.type) {
+        case 'records.comment':
+            return {
+                label: 'コメント',
+                tone: 'settled',
+                sentence: commentSentence(row),
+            };
+        default:
+            return meetingTemplate(row) ?? UNKNOWN_TEMPLATE;
+    }
+}
+
+/**
+ * ワークフローの通知の雛形(docs の 設計/ワークフロー/案件の運用/通知.md の 3 節)。ワークフローの種類でなければ null。
+ */
+function workflowTemplate(row: NoticeRow): NoticeTemplate | null {
     const caseName = textParam(row, 'case_name');
     const stepName = textParam(row, 'step_name');
 
@@ -45,6 +68,12 @@ export function noticeTemplate(row: NoticeRow): NoticeTemplate {
                 label: '担当変更',
                 tone: 'returned',
                 sentence: `${caseName}　${stepName}の処理担当者が変更されました。`,
+            };
+        case 'workflow.retarget':
+            return {
+                label: '処理担当者の変更',
+                tone: 'returned',
+                sentence: `${caseName}　${stepName}の処理担当者に指定されました。`,
             };
         case 'workflow.result':
             return {
@@ -64,14 +93,8 @@ export function noticeTemplate(row: NoticeRow): NoticeTemplate {
                 tone: 'settled',
                 sentence: contactSentence(row),
             };
-        case 'records.comment':
-            return {
-                label: 'コメント',
-                tone: 'settled',
-                sentence: commentSentence(row),
-            };
         default:
-            return meetingTemplate(row) ?? UNKNOWN_TEMPLATE;
+            return null;
     }
 }
 

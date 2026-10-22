@@ -18,6 +18,7 @@ use App\Queries\Workflow\CaseOperationTable;
 use App\Queries\Workflow\CaseRoles;
 use App\Queries\Workflow\CaseSituation;
 use App\Queries\Workflow\CaseVisibility;
+use App\Queries\Workflow\FlowPermissions;
 use App\Queries\Workflow\PrincipalContext;
 use App\Support\AccessContext;
 use Closure;
@@ -41,6 +42,7 @@ class CaseOperationGuard
         private CaseEntryGate $gate,
         private ApplicantApprovalGuard $applicantGuard,
         private CaseProxyChecks $proxyChecks,
+        private FlowPermissions $flowPermissions,
     ) {}
 
     /**
@@ -234,6 +236,7 @@ class CaseOperationGuard
     /**
      * 判定の順の 5(状態 × 役割の表)。P の本人の行を問わなければ許すときは 422 principal_user_id(代理元を選んだ誤りは
      * 選んだ処理担当者の誤りとして出すため = 設計/ワークフロー/案件の運用/案件の操作/同時実行と検査.md の 14.2 節の「処理者の決め方の境界」)。
+     * 案件の管理者の役割(保留解除の行 = 設計/ワークフロー/案件の運用/案件の操作/操作.md の 8 節)は案件のフローの operate で決まる。
      *
      * @throws ValidationException 表で許されないとき(case)・処理担当者の誤り(principal_user_id)
      */
@@ -241,12 +244,17 @@ class CaseOperationGuard
     {
         $requester = Requester::fromAccessContext($context);
         $date = $context->date;
+        $operates = $this->flowPermissions->canOperate($requester, $date, $situation->case->workflow_flow_id);
 
-        if ($this->decider->permitsIn($operation, $requester, $date, $situation, $nodeId)) {
+        if ($this->decider->permitsIn($operation, $requester, $date, $situation, $nodeId, canOperate: $operates)) {
             return;
         }
 
-        throw $this->decider->permitsIn($operation, $requester, $date, $situation, $nodeId, withoutOwnRow: true)
+        $withoutOwnRow = $this->decider->permitsIn(
+            $operation, $requester, $date, $situation, $nodeId, withoutOwnRow: true, canOperate: $operates,
+        );
+
+        throw $withoutOwnRow
             ? CaseOperationErrors::principal()
             : CaseOperationErrors::ofCase(CaseOperationErrors::NOT_PERMITTED);
     }

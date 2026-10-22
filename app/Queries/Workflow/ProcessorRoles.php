@@ -16,6 +16,8 @@ class ProcessorRoles
      * @param  bool  $isPullBackActor  引戻しの 1 規則に合うか(呼び手が、問うノードか、どれかのノードで決める)
      * @param  bool  $withoutOwnRow  ノードの処理対象者で P の本人の行を問わない(代理元を選んだ誤りは選んだ処理担当者の誤りとして
      *                               出すため = 設計/ワークフロー/案件の運用/案件の操作/同時実行と検査.md の 14.2 節の「処理者の決め方の境界」)
+     * @param  bool  $canOperate  判定を求める者が案件のフローの operate を許されるか(案件の管理者は自分として操作するときだけ =
+     *                            設計/ワークフロー/案件の運用/案件の操作/README.md の 3.1 節・4.3 節)
      */
     public function of(
         ?int $userId,
@@ -25,6 +27,7 @@ class ProcessorRoles
         bool $canApply,
         bool $canUpdateRecord,
         bool $withoutOwnRow = false,
+        bool $canOperate = false,
     ): CaseRoles {
         $processor = $situation->processorUserId;
 
@@ -40,6 +43,7 @@ class ProcessorRoles
             canUpdateRecord: $canUpdateRecord,
             isHoldSide: $node !== null && self::isHolder($processor, $situation, $node),
             isConfirmTarget: $situation->confirmNodeIds !== [],
+            isCaseManager: $canOperate && $processor === $userId,
         );
     }
 

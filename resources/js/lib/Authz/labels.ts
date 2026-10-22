@@ -9,6 +9,7 @@ const RESOURCE_TYPE_LABELS: Record<string, string> = {
     service: '画面・処理',
     'im-menu-group': 'メニューグループ',
     'record-module': '業務モジュール',
+    'workflow-flow': 'ワークフローのフロー',
 };
 
 const ACTION_LABELS: Record<string, string> = {
@@ -19,6 +20,7 @@ const ACTION_LABELS: Record<string, string> = {
     update: '更新',
     delete: '削除',
     'read-all': '全件の参照',
+    operate: '操作',
 };
 
 /** 判定の結果・エフェクトの画面の語 */

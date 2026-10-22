@@ -12,7 +12,8 @@ use Closure;
  * 案件の状態 × 操作の表(docs の 設計/ワークフロー/ルートの深さ/案件の操作/操作.md 8 節。元の表 = 設計/ワークフロー/案件の操作/操作.md 3.2)。
  * 「案件の状態 × 操作するノード × 役割」だけを見る純粋な関数で、DB を読まず、入口の 403 の判定を含まない。
  * 画面の can と操作の業務処理は、同じ {@see self::permits()} を引く(引く側は {@see CaseOperationDecider})。保留と代理で足した行は
- * 設計/ワークフロー/案件の運用/案件の操作/操作.md の 8 節。
+ * 設計/ワークフロー/案件の運用/案件の操作/操作.md の 8 節、案件の管理者の行は 設計/ワークフロー/案件の運用/案件の操作/案件操作.md の 15.2 節
+ * (指定の変更の指定されるノードの前提は、現在のノードでないので表の外 = 業務処理)。
  */
 class CaseOperationTable
 {
@@ -40,13 +41,41 @@ class CaseOperationTable
             WorkflowOperation::SendBack, WorkflowOperation::Transfer => $this->handlesApproval($at, $roles),
             WorkflowOperation::Hold => $roles->isCurrentTarget
                 && $at(WorkflowNodeKind::Approve, WorkflowNodeState::Waiting),
-            WorkflowOperation::Release => $roles->isHoldSide && $at(WorkflowNodeKind::Approve, WorkflowNodeState::Hold),
+            WorkflowOperation::Release => ($roles->isHoldSide || $roles->isCaseManager)
+                && $at(WorkflowNodeKind::Approve, WorkflowNodeState::Hold),
             WorkflowOperation::PullBack => $state === WorkflowCaseState::Active && $roles->isPullBackActor,
             // 再申請・取止めの「誰が」= 申請者(申請のノードの処理対象者は申請者 = 設計/ワークフロー/案件の運用/案件の操作/README.md の 4.3 節)
             WorkflowOperation::Reapply, WorkflowOperation::Withdraw => $roles->isApplicant
                 && $at(WorkflowNodeKind::Apply, WorkflowNodeState::Reapply),
             WorkflowOperation::Confirm => $state === WorkflowCaseState::Active && $roles->isConfirmTarget,
+            WorkflowOperation::Retarget, WorkflowOperation::Reexpand => $roles->isCaseManager
+                && $this->isApprovalAt($at),
+            // 3 つの移動の前提は同じ(戻り先の候補と指定するノードは表の外 = 業務処理)
+            WorkflowOperation::MoveBack, WorkflowOperation::MoveForward,
+            WorkflowOperation::MoveFinish => $this->movesAt($state, $currentKind, $roles),
+            WorkflowOperation::Reassign => $state === WorkflowCaseState::Active && $roles->isCaseManager,
+            WorkflowOperation::DeleteCase => $roles->isCaseManager
+                && in_array($state, [WorkflowCaseState::Active, WorkflowCaseState::Completed], true),
         };
+    }
+
+    /**
+     * 案件の管理者のステップの移動: 未完了で、操作するノードが現在のノード(種類と状態を問わない = 案件操作.md の 15.2 節)。
+     */
+    private function movesAt(?WorkflowCaseState $state, ?WorkflowNodeKind $currentKind, CaseRoles $roles): bool
+    {
+        return $roles->isCaseManager && $state === WorkflowCaseState::Active && $currentKind !== null;
+    }
+
+    /**
+     * 未完了で、操作するノードが承認待ちか保留の承認のノード(展開の行を含む)。
+     *
+     * @param  Closure(WorkflowNodeKind, WorkflowNodeState): bool  $at  未完了で現在のノードがその種類・状態か
+     */
+    private function isApprovalAt(Closure $at): bool
+    {
+        return $at(WorkflowNodeKind::Approve, WorkflowNodeState::Waiting)
+            || $at(WorkflowNodeKind::Approve, WorkflowNodeState::Hold);
     }
 
     /**

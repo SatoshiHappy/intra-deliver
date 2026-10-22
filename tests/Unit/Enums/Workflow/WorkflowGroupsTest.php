@@ -68,6 +68,8 @@ final class WorkflowGroupsTest extends TestCase
     public function test_pull_backable_actions_are_the_ones_that_do_not_complete_the_case(): void
     {
         $this->assertSame(['apply', 'reapply', 'approve', 'reject', 'send_back'], array_map(fn (WorkflowAction $action) => $action->value, WorkflowAction::pullBackable()));
-        $this->assertSame(['approve'], array_map(fn (WorkflowAction $action) => $action->value, WorkflowAction::countsAsApproval()));
+        // 進むは承認と同じに数える(docs の 設計/ワークフロー/案件の運用/案件の操作/案件操作.md の 15.5 節)
+        $counted = array_map(fn (WorkflowAction $action) => $action->value, WorkflowAction::countsAsApproval());
+        $this->assertSame(['approve', 'move_forward'], $counted);
     }
 }

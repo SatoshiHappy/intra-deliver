@@ -35,8 +35,23 @@ final class PreviousProcessorsTest extends TransactionalTestCase
     }
 
     /**
+     * 進むで処理済みにしたノードは、以前に処理していないのと同じ(null。docs の 設計/ワークフロー/案件の運用/案件の操作/案件操作.md の 15.1 節の 2)。
+     */
+    public function test_a_node_done_by_moving_forward_has_no_previous_processor(): void
+    {
+        [$u0002, $u0004] = $this->seededUsers('u0002', 'u0004');
+        $case = WorkflowCase::factory()->active()->createOne();
+        [, $forwarded, $approved] = $this->caseNodes($case, 3);
+        $this->process($forwarded, $u0004, WorkflowAction::MoveForward);
+        $this->process($approved, $u0002, WorkflowAction::Approve);
+
+        $expected = [$forwarded->id => null, $approved->id => $u0002->id];
+        $this->assertSame($expected, $this->processors([$forwarded, $approved]));
+    }
+
+    /**
      * @param  list<WorkflowCaseNode>  $nodes
-     * @return array<int, int>
+     * @return array<int, int|null>
      */
     private function processors(array $nodes): array
     {

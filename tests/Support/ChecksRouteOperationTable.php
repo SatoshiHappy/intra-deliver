@@ -15,7 +15,7 @@ use App\Models\Workflow\WorkflowCase;
  * 同時実行と検査.md 13 節から手で書く(実装から作らない)。
  *
  * 人の記号: A = 申請者(u0001)、P = 申請できる人(u0012)、N = 申請できない人(u0013)、U = 関わらない人(u0008)、R = 参照者(経理部の u0010。R2・R3 の final も
- * u0010)、G = ゲスト、B = u0002(R1 の課長・R2 の a1・R3 の chief)、C = u0003(R1 の部長・R2 の a2)、D = u0004(R2 の b1)、O = u0007(R1 の責任者の指定)、
+ * u0010)、G = ゲスト、B = u0002(R1 の課長・R2 の a1・R3 の chief)、C = u0003(R1 の部長・R2 の a2)、D = u0004(R2 の b1。システム管理者なので、一時保存でない案件を管理の述語で閲覧できる)、O = u0007(R1 の責任者の指定)、
  * X・Y・Z = u0005・u0009・u0011(R1 の合議・R3 の横配置の指定の順)。申請のノードだけを A・P に替える(見本の形は {@see BuildsRouteVersions} のまま)。
  *
  * 操作の入力(状況ごとに 1 つ。全員に同じ): ノード = 注目のノード、差戻し先 = 10.4 の候補の先頭(position の順)、引戻すノード = 引戻せるノード X(10.5。無ければ
@@ -31,8 +31,8 @@ trait ChecksRouteOperationTable
         'P' => 'u0012', 'N' => 'u0013', 'U' => 'u0008', 'D' => 'u0004', 'O' => 'u0007', 'X' => 'u0005', 'Y' => 'u0009', 'Z' => 'u0011',
     ];
 
-    /** 既にある案件の操作の数(一時保存(新規)を除く 14) */
-    protected const OPERATIONS = 14;
+    /** 既にある案件の操作の数(一時保存(新規)を除く 21) */
+    protected const OPERATIONS = 21;
 
     /**
      * @return array<string, string|null>
@@ -40,6 +40,14 @@ trait ChecksRouteOperationTable
     protected function tablePeople(): array
     {
         return [...self::PEOPLE, ...self::ROUTE_PEOPLE];
+    }
+
+    /**
+     * 案件の管理者の記号(システム管理者 u0004 = D)。
+     */
+    protected function tableManagers(): string
+    {
+        return 'D';
     }
 
     /**

@@ -5,7 +5,7 @@ namespace App\Providers;
 use App\Actions\Ai\Api\PromptKind;
 use App\Actions\Meeting\MeetingMinutesKind;
 use App\Models\Master\User;
-use App\Queries\Authz\ResourceTypes;
+use App\Queries\Authz\Api\ResourceTypes;
 use App\Queries\Authz\ServiceResourceTypes;
 use App\Queries\Authz\UserRoleReferences;
 use App\Queries\Master\UserReferences;
@@ -30,6 +30,7 @@ use App\Queries\Workflow\PendingCasesHomeSection;
 use App\Queries\Workflow\ProcessedThisMonthHomeSection;
 use App\Queries\Workflow\ProxyTargetTerm;
 use App\Queries\Workflow\WorkflowCountersHomeSection;
+use App\Queries\Workflow\WorkflowFlowResourceTypes;
 use App\Queries\Workflow\WorkflowLeadHomeSection;
 use App\Queries\Workflow\WorkflowNoticeTargets;
 use App\Queries\Workflow\WorkflowRecordApplyEntries;
@@ -55,7 +56,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->tag([UserRoleReferences::class], UserReferences::TAG);
 
         // 依存の逆転: 認可の業務処理が、各モジュールの定義するリソースタイプとアクションの一覧の和で検査する(docs の 設計/メニュー/認可との結び付け.md 2.1)
-        $this->app->tag([ServiceResourceTypes::class, MenuResourceTypes::class, RecordModuleResourceTypes::class], ResourceTypes::TAG);
+        $this->app->tag([ServiceResourceTypes::class, MenuResourceTypes::class, RecordModuleResourceTypes::class, WorkflowFlowResourceTypes::class], ResourceTypes::TAG);
 
         // 依存の逆転: 業務データの入れ物の書き込みが、未完了の案件が指すレコードを持ち主の規則で守る(docs の 設計/ワークフロー/業務データとの接続/README.md 4 節)
         $this->app->tag([WorkflowRecordHolds::class], RecordHolds::TAG);

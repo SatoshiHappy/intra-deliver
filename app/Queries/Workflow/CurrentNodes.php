@@ -5,6 +5,8 @@ namespace App\Queries\Workflow;
 use App\Enums\Workflow\WorkflowNodeState;
 use App\Models\Workflow\WorkflowCaseNode;
 use App\Models\Workflow\WorkflowCaseNodeTarget;
+use Carbon\CarbonImmutable;
+use LogicException;
 
 /**
  * 現在のノードの集合を返す 1 か所の口(docs の 設計/ワークフロー/ルートの深さ/案件の操作/README.md 1.3 = 保留を足すときの拡張点): 状態が現在のノードの状態の一覧
@@ -13,11 +15,15 @@ use App\Models\Workflow\WorkflowCaseNodeTarget;
  */
 class CurrentNodes
 {
+    public function __construct(private CaseDeadlines $deadlines) {}
+
     /**
      * 案件ごとの現在のノード(現在のノードの無い案件は空の並び)。
      *
      * @param  list<int>  $caseIds
      * @return array<int, list<CurrentNode>> 案件の id → 現在のノードの並び(渡した順)
+     *
+     * @throws LogicException 現在のノードが到達日時を持たないとき(検査制約が止めるので起きない)
      */
     public function of(array $caseIds): array
     {
@@ -32,6 +38,9 @@ class CurrentNodes
         $sorted = $nodes->sort(WorkflowCaseNode::compareInRoute(...));
 
         foreach ($sorted as $node) {
+            $reachedAt = $node->reached_at === null
+                ? throw new LogicException("現在のノード {$node->id} に到達日時が無い")
+                : CarbonImmutable::instance($node->reached_at);
             $result[$node->workflow_case_id][] = new CurrentNode(
                 id: $node->id,
                 name: $node->displayName(),
@@ -40,6 +49,8 @@ class CurrentNodes
                 parentName: $node->parent?->name,
                 sequence: $node->sequence,
                 targetUserIds: array_values(array_map(fn (WorkflowCaseNodeTarget $target) => (int) $target->user_id, $targets->get($node->id)?->all() ?? [])),
+                reachedAt: $reachedAt,
+                dueOn: $this->deadlines->dueOn($reachedAt, $node->deadline_days),
             );
         }
 

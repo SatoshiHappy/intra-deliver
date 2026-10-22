@@ -5,6 +5,7 @@ namespace App\Queries\Workflow;
 use App\Enums\Workflow\WorkflowRelativeBase;
 use App\Enums\Workflow\WorkflowRelativeScope;
 use App\Enums\Workflow\WorkflowTargetKind;
+use App\Models\Workflow\WorkflowCase;
 use App\Models\Workflow\WorkflowCaseNode;
 use App\Models\Workflow\WorkflowRouteNode;
 use App\Queries\Authz\Api\SubjectGroupMembership;
@@ -81,6 +82,21 @@ class NodeTargetExpansion
     public function originDepartmentOn(int $userId, ?int $selectedDepartmentId, DateTimeInterface $date): ?int
     {
         return $this->currentDepartment->departmentIdOn($userId, $selectedDepartmentId, $date);
+    }
+
+    /**
+     * ノードに記録した前処理者と起点の組織から求める起点の組織(設計/ワークフロー/案件の運用/案件の操作/案件操作.md の 15.1 節の 1・2)。
+     */
+    public function recordedOriginOf(WorkflowCase $case, WorkflowCaseNode $node, DateTimeInterface $date): ?int
+    {
+        $previousUserId = $node->previous_user_id;
+
+        return match (true) {
+            $previousUserId === null => $case->department_id,
+            $node->previous_department_id !== null => $node->previous_department_id,
+            $previousUserId === $case->user_id => $case->department_id,
+            default => $this->originDepartmentOn($previousUserId, null, $date),
+        };
     }
 
     /**

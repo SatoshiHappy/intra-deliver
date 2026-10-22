@@ -12,13 +12,14 @@ use Tests\Support\TransactionalTestCase;
 /**
  * 状態 × 操作の表(docs の 設計/ワークフロー/案件の操作/操作.md 3.2、同時実行と検査.md 7 節)のうち、完了の 4 つの状況(承認・承認終了・否認・取止め)の全組。
  * 完了の案件はどの操作もできない(閲覧できる人は 422 case。申請の系統は申請できない人なら 403 が先、閲覧できない人は 404)。期待と記号は {@see ChecksCaseOperationTable}。
+ * ただし案件の管理者 P は案件を削除できる(一時保存でない案件 = 設計/ワークフロー/案件の運用/案件の操作/案件操作.md の 15.2 節)。
  */
 final class CaseOperationTableCompletedTest extends TransactionalTestCase
 {
     use ChecksCaseOperationTable;
 
-    /** 完了の案件の操作の数(一時保存(新規)を除く 14) */
-    private const OPERATIONS = 14;
+    /** 完了の案件の操作の数(一時保存(新規)を除く 21) */
+    private const OPERATIONS = 21;
 
     protected function setUp(): void
     {
@@ -35,7 +36,7 @@ final class CaseOperationTableCompletedTest extends TransactionalTestCase
         $this->operate(ApproveCase::class, $this->person('B'), $case);
         $this->operate(ApproveCase::class, $this->person('C'), $case);
 
-        $checked = $this->assertOperationTable($case, ['roles' => ['currentTarget' => null, 'lastActor' => 'C', 'previousActor' => 'B'], 'visible' => 'ABCR', 'success' => []]);
+        $checked = $this->assertOperationTable($case, ['roles' => ['currentTarget' => null, 'lastActor' => 'C', 'previousActor' => 'B'], 'visible' => 'ABCPR', 'success' => [], 'manager' => ['delete_case' => self::DELETED]]);
 
         $this->assertSame(8 * self::OPERATIONS, $checked);
     }
@@ -49,7 +50,7 @@ final class CaseOperationTableCompletedTest extends TransactionalTestCase
             $case = $this->applyAs($this->seededUser('u0001'));
             $this->operate($operation, $this->person('B'), $case);
 
-            $checked = $this->assertOperationTable($case, ['roles' => ['currentTarget' => null, 'lastActor' => 'B', 'previousActor' => null], 'visible' => 'ABR', 'success' => []]);
+            $checked = $this->assertOperationTable($case, ['roles' => ['currentTarget' => null, 'lastActor' => 'B', 'previousActor' => null], 'visible' => 'ABPR', 'success' => [], 'manager' => ['delete_case' => self::DELETED]]);
 
             $this->assertSame(7 * self::OPERATIONS, $checked);
         }
@@ -65,7 +66,7 @@ final class CaseOperationTableCompletedTest extends TransactionalTestCase
         $this->sendBack($this->person('C'), $case, 'apply');
         $this->operate(WithdrawCase::class, $this->person('A'), $case);
 
-        $checked = $this->assertOperationTable($case, ['roles' => ['currentTarget' => null, 'lastActor' => null, 'previousActor' => 'B'], 'visible' => 'ABCR', 'success' => []]);
+        $checked = $this->assertOperationTable($case, ['roles' => ['currentTarget' => null, 'lastActor' => null, 'previousActor' => 'B'], 'visible' => 'ABCPR', 'success' => [], 'manager' => ['delete_case' => self::DELETED]]);
 
         $this->assertSame(7 * self::OPERATIONS, $checked);
     }

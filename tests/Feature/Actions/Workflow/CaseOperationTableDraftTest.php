@@ -59,7 +59,7 @@ final class CaseOperationTableDraftTest extends TransactionalTestCase
             ],
         ]);
 
-        $this->assertSame(6 * 14, $checked);
+        $this->assertSame(6 * 21, $checked);
     }
 
     /**

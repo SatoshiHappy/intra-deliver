@@ -38,6 +38,7 @@ use App\Queries\Workflow\PullBackableNodes;
 use App\Support\AccessContext;
 use Carbon\CarbonImmutable;
 use Closure;
+use Database\Seeders\WorkflowFlowResources;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Facades\DB;
 use LogicException;
@@ -81,6 +82,7 @@ trait RunsWorkflowOperations
 
     /**
      * 業務データの入れ物の業務モジュール project のフロー(版 1 = {@see self::FLOW_START_DATE} から上限なし。ルートはフローごとに作る)。
+     * 初期データのフローと同じく workflow-flow のリソースも作る(初期データのポリシーでシステム管理者が read・operate を許される)。
      *
      * @param  list<list<SelectionCondition>>|null  $approvals  承認のノードごとの処理対象者の条件(null = 承認 1 = u0002、承認 2 = u0003)
      * @param  list<SelectionCondition>|null  $applicants  申請のノードの条件(null = 一般利用者のロール)
@@ -99,7 +101,10 @@ trait RunsWorkflowOperations
             $nodes[] = new WorkflowRouteNodeInput("approval{$position}", "承認{$position}", WorkflowNodeKind::Approve, $conditions, ['ja' => "承認{$position}"]);
         }
 
-        return app(CreateWorkflowFlow::class)->execute($code, $name, null, self::CONTENT_CODE, $nodes, CarbonImmutable::parse(self::FLOW_START_DATE), [new SelectionCondition(SelectionConditionKind::Department, $this->departmentIdOf('accounting'))], ['ja' => '参照者'], 10);
+        $flowId = app(CreateWorkflowFlow::class)->execute($code, $name, null, self::CONTENT_CODE, $nodes, CarbonImmutable::parse(self::FLOW_START_DATE), [new SelectionCondition(SelectionConditionKind::Department, $this->departmentIdOf('accounting'))], ['ja' => '参照者'], 10);
+        app(WorkflowFlowResources::class)->createFor($code);
+
+        return $flowId;
     }
 
     /**

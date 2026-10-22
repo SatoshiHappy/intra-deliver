@@ -4,6 +4,7 @@ namespace Tests\Feature\Actions\Workflow;
 
 use App\Actions\Workflow\HoldCase;
 use App\Models\Workflow\WorkflowCase;
+use Tests\Support\ChecksCaseOperationTable;
 use Tests\Support\ChecksRouteOperationTable;
 use Tests\Support\RegistersProxies;
 use Tests\Support\TransactionalTestCase;
@@ -13,6 +14,10 @@ use Tests\Support\TransactionalTestCase;
  * 合議の子の 1 つが保留(R1)と、同期の片方の枝が保留(R2)の可否の全組。期待・記号・入力は {@see ChecksRouteOperationTable} に足して:
  * E・F = 保留した人の承認の代理先(u0016・u0017)。保留した人の本人として保留し、保留者側 = 本人と E・F(本人として)。
  * 代理元として操作する役割の再申請・取止めは承認の代理が合わないので 422 principal_user_id(13 節)。成功の組は不変の条件だけ。
+ * 案件の管理者 D(システム管理者)は保留中のノードを解除し、処理対象者の変更・再展開・ステップの移動(戻る = 申請へ・進む・終了)・案件の削除ができる
+ * (設計/ワークフロー/案件の運用/案件の操作/案件操作.md の 15.2 節。保留者側である必要が無い)。
+ *
+ * @phpstan-import-type Result from ChecksCaseOperationTable
  */
 final class CaseOperationTableHoldOnRoutesTest extends TransactionalTestCase
 {
@@ -21,6 +26,9 @@ final class CaseOperationTableHoldOnRoutesTest extends TransactionalTestCase
 
     /** 保留中に保留者側ができる操作 */
     private const HOLD_SIDE_OPERATIONS = ['approve', 'approve_early', 'reject', 'send_back', 'transfer', 'release'];
+
+    /** 案件の管理者が保留中の注目のノードでできる操作(案件の削除を除く) */
+    private const MANAGER_ON_HELD = ['release', 'retarget', 'reexpand', 'move_back', 'move_forward', 'move_finish'];
 
     /** 申請の系統の操作を代理元(承認の代理)として送ると 422 principal_user_id */
     private const APPLY_KIND = ['reapply' => '422:principal_user_id', 'withdraw' => '422:principal_user_id'];
@@ -41,6 +49,7 @@ final class CaseOperationTableHoldOnRoutesTest extends TransactionalTestCase
 
     /**
      * R1 の合議の子 1(X)を X が保留(注目 = 子 1。ほかの子 = Y・Z は承認待ち)。B = 合議を展開した課長の承認(保留の行が子孫を変えたので引戻せない)。
+     * 案件の管理者 D の指定の変更は、注目の子 1 が指定されるノードでないので 422。
      */
     public function test_one_council_child_held(): void
     {
@@ -52,14 +61,15 @@ final class CaseOperationTableHoldOnRoutesTest extends TransactionalTestCase
         $checked = $this->assertOperationTable($case, [
             'roles' => [
                 'holder' => 'X', 'holderProxy' => 'E', 'otherProxy' => 'F', 'proxySelf' => 'E',
-                'otherChild' => 'Y', 'previousActor' => 'B',
+                'otherChild' => 'Y', 'previousActor' => 'B', 'caseManager' => 'D',
             ],
             ...$this->holdSideSpec('X'),
-            'visible' => 'ABEFRXYZ',
+            'visible' => 'ABDEFRXYZ',
             'inputs' => $this->tableInputs($case, 'council.1', 'apply', 'council.1'),
+            'manager' => $this->managerOnHeld(),
         ]);
 
-        $this->assertSame(12 * self::OPERATIONS, $checked);
+        $this->assertSame(13 * self::OPERATIONS, $checked);
     }
 
     /**
@@ -78,6 +88,8 @@ final class CaseOperationTableHoldOnRoutesTest extends TransactionalTestCase
             ...$this->holdSideSpec('B'),
             'visible' => 'ABDEFR',
             'inputs' => $this->tableInputs($case, 'a1', 'apply', 'a1'),
+            // 枝 B の D はシステム管理者 = 案件の管理者
+            'manager' => $this->managerOnHeld(),
         ]);
 
         $this->assertSame(11 * self::OPERATIONS, $checked);
@@ -101,6 +113,16 @@ final class CaseOperationTableHoldOnRoutesTest extends TransactionalTestCase
             'principals' => ['holderProxy' => $holder, 'otherProxy' => $holder],
             'rejections' => ['holderProxy' => self::APPLY_KIND, 'otherProxy' => self::APPLY_KIND],
         ];
+    }
+
+    /**
+     * 案件の管理者 D の成功(保留中の注目のノードの操作は不変の条件だけ、案件の削除は行が消える)。
+     *
+     * @return array<string, self::ONLY_INVARIANTS|Result>
+     */
+    private function managerOnHeld(): array
+    {
+        return [...array_fill_keys(self::MANAGER_ON_HELD, self::ONLY_INVARIANTS), 'delete_case' => self::DELETED];
     }
 
     /**
