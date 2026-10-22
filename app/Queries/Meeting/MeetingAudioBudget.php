@@ -24,8 +24,8 @@ class MeetingAudioBudget
     /** 作成の先の止め方の文の後ろ */
     private const CANNOT_CHOOSE = '音声は選べません。';
 
-    /** 作成で文字起こしの区分だけが受けられないときに添える文 */
-    private const TEXT_STILL_WORKS = 'テキストの取り込みは使用できます。';
+    /** 作成で文字起こしの区分が受けられないときに添える文(先の止め方と、文字起こしの依頼が上限で断られたときの文が使う) */
+    public const TEXT_STILL_WORKS = 'テキストの取り込みは使用できます。';
 
     /** 再作成の先の止め方と議事録の区分の確かめの文の後ろ */
     private const CANNOT_REGENERATE = '音声から作り直せません。';

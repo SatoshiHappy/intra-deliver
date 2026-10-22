@@ -9,13 +9,11 @@ import {
 
 describe('numberProp', () => {
     it('数の値を返し、無い・数でない値は約束の誤りとして投げる', () => {
-        expect(numberProp({ textMaxBytes: 1_048_576 }, 'textMaxBytes')).toBe(
-            1_048_576,
-        );
-        expect(() => numberProp({}, 'textMaxBytes')).toThrow('textMaxBytes');
-        expect(() => numberProp({ textMaxBytes: '1' }, 'textMaxBytes')).toThrow(
-            'textMaxBytes',
-        );
+        const key = 'audioMaxBytes';
+
+        expect(numberProp({ [key]: 99_614_720 }, key)).toBe(99_614_720);
+        expect(() => numberProp({}, key)).toThrow(key);
+        expect(() => numberProp({ [key]: '1' }, key)).toThrow(key);
     });
 });
 

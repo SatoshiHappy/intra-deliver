@@ -25,10 +25,8 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use LogicException;
 
 /**
- * 会議の文字起こしの種類(docs の 設計/業務ツール/会議/処理.md の 3.3・3.6、文字起こしと議事録.md の 4 節)。完了の受け手は会議ごとに直列にしてから、
- * 書き起こしと発言の行を書き、依頼者の判定の入力で会議の欄を読んで議事録を依頼し、会議と実行の対応(段 = 議事録)を書く。業務データのレコードは書かない
- * (書くのは会議の表だけ)。議事録の依頼が断られた 422 だけを受け止め、断られた対応と議事録の失敗の通知を書く(書き起こしは残す)。
- * 起動がタグ {@see TranscriptionKind::TAG} で登録する。
+ * 会議の文字起こしの種類(docs の 設計/業務ツール/会議/処理.md の 3.3・3.6、文字起こしと議事録.md の 4 節)。議事録の依頼が断られた 422 だけを
+ * 受け止めるのは、費用をかけた書き起こしを巻き戻さないため。起動がタグ {@see TranscriptionKind::TAG} で登録する。
  */
 class MeetingTranscriptionKind implements TranscriptionKind
 {
@@ -37,11 +35,11 @@ class MeetingTranscriptionKind implements TranscriptionKind
     /** 区間が 0 か、すべての区間の発言が空 */
     public const TRANSCRIPT_EMPTY = 'transcript_empty';
 
-    /** 書き起こしの元の音声が会議の添付から外されて名前が分からないときのファイルの名前(音声の書き起こしは名前を要する) */
-    public const UNKNOWN_FILE_NAME = '音声';
-
     /** 話者のラベルの最大の文字数(transcript_segments.speaker_label の varchar(100)) */
     private const SPEAKER_MAX_LENGTH = 100;
+
+    /** 区間の秒の最大(transcript_segments の started_at_sec・ended_at_sec の decimal(10,3)) */
+    private const SECONDS_MAX = 9999999.999;
 
     public function __construct(
         private MeetingLock $lock,
@@ -140,6 +138,7 @@ class MeetingTranscriptionKind implements TranscriptionKind
 
     /**
      * 区間を発言の行にする(発言が空の区間は飛ばす。話者のラベルは空なら無し、長ければ列の長さで切る。秒は小数 3 桁)。
+     * 接続先の秒は確かめられていないので、列の検査制約に当たらない形に整える(終わりが始まりより前なら終わりを始まりにそろえ、発言は残す)。
      *
      * @param  list<TranscribedSegment>  $segments
      * @return list<TranscriptLine>
@@ -158,11 +157,13 @@ class MeetingTranscriptionKind implements TranscriptionKind
             }
 
             $label = mb_substr(TextLines::trim($segment->speakerLabel), 0, self::SPEAKER_MAX_LENGTH);
+            $start = self::seconds($segment->startSeconds);
+            $end = max($start, self::seconds($segment->endSeconds));
             $lines[] = new TranscriptLine(
                 $text,
                 $label === '' ? null : $label,
-                self::seconds($segment->startSeconds),
-                self::seconds($segment->endSeconds),
+                number_format($start, 3, '.', ''),
+                number_format($end, 3, '.', ''),
             );
         }
 
@@ -171,20 +172,23 @@ class MeetingTranscriptionKind implements TranscriptionKind
             : $lines;
     }
 
-    private static function seconds(float $seconds): string
+    /**
+     * 秒を小数 3 桁に丸め、0 から列の最大までに収める(丸めた後に収めるので、丸めで列の桁を超えない)。
+     */
+    private static function seconds(float $seconds): float
     {
-        return number_format(max(0.0, $seconds), 3, '.', '');
+        return min(round(max(0.0, $seconds), 3), self::SECONDS_MAX);
     }
 
     /**
-     * 書き起こしのファイルの名前 = 実行の入力の音声を付けた会議の今の添付の名前(外されていれば {@see self::UNKNOWN_FILE_NAME})。
+     * 書き起こしのファイルの名前 = 実行の入力の音声を付けた会議の今の添付の名前(外されていれば {@see MeetingAudioQuery::UNKNOWN_FILE_NAME})。
      */
     private function fileNameOf(int $recordId, int $runId): string
     {
         $uploadId = $this->audio->inputUploadOf($runId);
         $name = $uploadId === null ? null : $this->audio->nameOf($recordId, $uploadId);
 
-        return $name ?? self::UNKNOWN_FILE_NAME;
+        return $name ?? MeetingAudioQuery::UNKNOWN_FILE_NAME;
     }
 
     /**

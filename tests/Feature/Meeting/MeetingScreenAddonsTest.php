@@ -9,6 +9,7 @@ use App\Enums\Records\RecordModuleAction;
 use App\Models\Master\User;
 use App\Models\Meeting\MeetingRun;
 use App\Queries\Meeting\MeetingLimits;
+use App\Queries\Meeting\MeetingRegenerableQuery;
 use App\Queries\Meeting\MeetingScreenAddons;
 use Inertia\Testing\AssertableInertia as Assert;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -124,13 +125,39 @@ final class MeetingScreenAddonsTest extends TransactionalTestCase
         );
     }
 
-    public function test_a_meeting_with_a_run_but_no_transcript_passes_has_transcript_false(): void
+    public function test_a_meeting_with_an_audio_but_no_transcript_passes_has_transcript_false(): void
+    {
+        $recordId = $this->audioMeeting($this->creator);
+        $this->assertSame(AiRunStatus::Failed, $this->completeTranscription($this->lastRunIdOf($recordId), [])->status);
+
+        $this->assertSame(
+            ['actions' => [self::regenerate(false, null)], 'badges' => [self::FAILED], 'fieldNotes' => self::NOTES],
+            $this->addons()->show($this->contextOf($this->creator), $recordId),
+        );
+    }
+
+    public function test_without_a_transcript_or_an_accepted_audio_regenerate_is_disabled_with_the_entry_reason(): void
     {
         $recordId = $this->manualMeeting();
         MeetingRun::factory()->declined()->create(['record_id' => $recordId]);
 
+        $action = self::regenerate(false, MeetingRegenerableQuery::NO_TRANSCRIPT);
+
         $this->assertSame(
-            ['actions' => [self::regenerate(false, null)], 'badges' => [self::FAILED], 'fieldNotes' => self::NOTES],
+            ['actions' => [$action], 'badges' => [self::FAILED], 'fieldNotes' => self::NOTES],
+            $this->addons()->show($this->contextOf($this->creator), $recordId),
+        );
+    }
+
+    public function test_processing_is_the_reason_before_the_missing_transcript_and_audio(): void
+    {
+        $recordId = $this->manualMeeting();
+        MeetingRun::factory()->create(['record_id' => $recordId]);
+
+        $action = self::regenerate(false, MeetingScreenAddons::PROCESSING_REASON);
+
+        $this->assertSame(
+            ['actions' => [$action], 'badges' => [self::PROCESSING], 'fieldNotes' => self::NOTES],
             $this->addons()->show($this->contextOf($this->creator), $recordId),
         );
     }
@@ -192,7 +219,6 @@ final class MeetingScreenAddonsTest extends TransactionalTestCase
         return [
             'code' => 'create', 'label' => '音声から作成', 'dialog' => 'meeting.create',
             'props' => [
-                'textMaxBytes' => MeetingLimits::TEXT_MAX_BYTES,
                 'audioMaxBytes' => 99_614_720,
                 'audioBlockedMessage' => $audioBlockedMessage,
             ],

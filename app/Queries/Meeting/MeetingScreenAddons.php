@@ -5,13 +5,10 @@ namespace App\Queries\Meeting;
 use App\Enums\Builtin\Meeting;
 use App\Enums\Meeting\MeetingProcessingState;
 use App\Enums\Meeting\MeetingRunOrigin;
-use App\Models\Meeting\MeetingRun;
-use App\Models\Meeting\Transcript;
 use App\Queries\Records\Api\RecordScreenAddons;
 use App\Queries\Upload\Api\UploadLimits;
 use App\Support\AccessContext;
 use Carbon\CarbonImmutable;
-use Illuminate\Support\Facades\DB;
 
 /**
  * 会議の一覧と詳細に足す操作・札・注(docs の 設計/業務ツール/会議/公開デモと画面.md の 9.1・9.3。押せる人・押せる会議・押せる時 =
@@ -35,6 +32,7 @@ class MeetingScreenAddons implements RecordScreenAddons
         private MeetingProcessingQuery $states,
         private MeetingAudioBudget $budget,
         private MeetingAudioQuery $audio,
+        private MeetingRegenerableQuery $regenerables,
         private UploadLimits $limits,
     ) {}
 
@@ -44,7 +42,7 @@ class MeetingScreenAddons implements RecordScreenAddons
     }
 
     /**
-     * 「音声から作成」は作成の入口と同じ判定を通る見る人にだけ出す。部品には取り込むテキストの上限、音声 1 本の上限(添付の土台の値)、
+     * 「音声から作成」は作成の入口と同じ判定を通る見る人にだけ出す。部品には音声 1 本の上限(添付の土台の値)、
      * 音声の取り込みの先の止め方の文(受けられれば null = 公開デモと画面.md の 9.2)を渡す。
      *
      * @return RecordIndexAddons
@@ -58,7 +56,6 @@ class MeetingScreenAddons implements RecordScreenAddons
             'label' => '音声から作成',
             'dialog' => 'meeting.create',
             'props' => [
-                'textMaxBytes' => MeetingLimits::TEXT_MAX_BYTES,
                 'audioMaxBytes' => $this->limits->maxFileBytes(),
                 'audioBlockedMessage' => $blocked,
             ],
@@ -76,18 +73,15 @@ class MeetingScreenAddons implements RecordScreenAddons
     }
 
     /**
-     * 再作成と注は、書き起こしか会議と実行の対応のある会議にだけ出す(手で作った会議には出さない)。注は見る人の権限によらない。
+     * 再作成と注は、押せる会議({@see MeetingRegenerableQuery})にだけ出す(手で作った会議には出さない)。注は見る人の権限によらない。
      *
      * @return RecordShowAddons
      */
     public function show(AccessContext $context, int $recordId): array
     {
-        $found = DB::query()
-            ->selectSub(Transcript::query()->select('id')->where('record_id', $recordId)->limit(1), 'transcript_id')
-            ->selectSub(MeetingRun::query()->select('id')->where('record_id', $recordId)->limit(1), 'run_id')
-            ->first();
-        $hasTranscript = $found?->transcript_id !== null;
-        $regenerable = $hasTranscript || $found?->run_id !== null;
+        $found = $this->regenerables->of($recordId);
+        $hasTranscript = $found['transcriptId'] !== null;
+        $regenerable = $found['regenerable'];
         $state = $this->states->statesOf([$recordId])[$recordId] ?? null;
         $canRegenerate = $regenerable && $this->permissions->canRegenerate($context);
 
@@ -100,13 +94,15 @@ class MeetingScreenAddons implements RecordScreenAddons
 
     /**
      * 部品には書き起こしの有無(送り先を分ける = 処理.md の 3.7)と、追加の指示の上限と、音声から作り直すときの先の止め方の文
-     * (書き起こしが無く受ける音声があるときだけ。ほかは null = 公開デモと画面.md の 9.3)を渡す。
+     * (書き起こしが無く受ける音声があるときだけ。ほかは null = 公開デモと画面.md の 9.3)を渡す。書き起こしも受ける音声も無いときは
+     * 押せない形にする(理由 = 再作成の入口の 422 と同じ文)。
      *
      * @return RecordAddonAction
      */
     private function regenerateAction(int $recordId, bool $hasTranscript, ?MeetingProcessingState $state): array
     {
-        $fromAudio = ! $hasTranscript && $this->audio->latestAudioOf($recordId) !== null;
+        $hasAudio = $this->audio->latestAudioOf($recordId) !== null;
+        $fromAudio = ! $hasTranscript && $hasAudio;
         $blocked = $fromAudio
             ? $this->budget->blockedMessage(MeetingRunOrigin::Regenerate, CarbonImmutable::now())
             : null;
@@ -120,9 +116,21 @@ class MeetingScreenAddons implements RecordScreenAddons
                 'instructionsMaxLength' => MeetingLimits::INSTRUCTIONS_MAX_LENGTH,
                 'audioBlockedMessage' => $blocked,
             ],
-            'disabledReason' => $state === MeetingProcessingState::Processing ? self::PROCESSING_REASON : null,
+            'disabledReason' => $this->disabledReason($state, $hasTranscript || $hasAudio),
             'changesValues' => true,
         ];
+    }
+
+    /**
+     * 再作成の押せない理由(処理中を先に。書き起こしも受ける音声も無ければ、入口の 422 と同じ文。押せるなら null)。
+     */
+    private function disabledReason(?MeetingProcessingState $state, bool $hasMaterial): ?string
+    {
+        if ($state === MeetingProcessingState::Processing) {
+            return self::PROCESSING_REASON;
+        }
+
+        return $hasMaterial ? null : MeetingRegenerableQuery::NO_TRANSCRIPT;
     }
 
     /**

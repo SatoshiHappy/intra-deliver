@@ -22,8 +22,7 @@ final class MeetingFailureReasons
     ];
 
     /**
-     * 出力が切れた = 議事録は「切れた」、文字起こしは音声から書き起こせない。文字起こしは、区間が空・音声の変換の失敗(実体が無いを含む)も
-     * 音声から書き起こせない。会議に書けない・読めない理由は種類によらない。ほかは「ほか」。
+     * 段は、同じ失敗(出力が切れた)でも文字起こしと議事録で理由が分かれるため受け取る(分け方の正本 = 6.4)。
      */
     public static function of(FailedRun $run, MeetingRunStage $stage): MeetingNoticeReason
     {

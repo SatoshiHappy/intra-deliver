@@ -2,14 +2,13 @@ import { FormBlock, invalidProps } from '@/components/FormBlock';
 import type { MeetingImportSource } from '@/components/Meeting/createMeetingForm';
 import {
     acceptedFiles,
+    IMPORT_FILE_ID,
     importFileGuide,
 } from '@/components/Meeting/createMeetingForm';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
-
-const FILE_ID = 'meeting-import-file';
 
 const TEXT_ID = 'meeting-import-text';
 
@@ -46,18 +45,18 @@ function ImportFile({
 }) {
     return (
         <FormBlock
-            id={FILE_ID}
+            id={IMPORT_FILE_ID}
             label="ファイル"
             labelAddon={required}
             hint={importFileGuide(maxBytes)}
             error={error}
         >
             <Input
-                id={FILE_ID}
+                id={IMPORT_FILE_ID}
                 type="file"
                 accept={acceptedFiles(audioBlocked)}
                 aria-required
-                {...invalidProps(FILE_ID, error)}
+                {...invalidProps(IMPORT_FILE_ID, error)}
                 onChange={(event) => onChange(event.target.files?.[0] ?? null)}
             />
         </FormBlock>

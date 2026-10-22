@@ -27,11 +27,8 @@ use LogicException;
  */
 class MeetingAudioRequest
 {
-    /** 作成で文字起こしの区分の上限に断られたときに添える文 */
-    public const TEXT_STILL_WORKS = ' テキストの取り込みは使用できます。';
-
     /** 作成で音声を読み取れなかったときに添える文 */
-    public const SUPPORTED_FORMATS = ' 対応する形式は mp3、m4a(AAC・ALAC)、wav(PCM・A-law・μ-law・ADPCM)です。'
+    public const SUPPORTED_FORMATS = '対応する形式は mp3、m4a(AAC・ALAC)、wav(PCM・A-law・μ-law・ADPCM)です。'
         .'別の形式の場合は mp3 に変換してから上げ直してください。';
 
     public function __construct(
@@ -68,18 +65,18 @@ class MeetingAudioRequest
             throw new LogicException("音声 {$uploadId} は会議 {$recordId} の今の添付でない");
         }
 
-        $declined = $this->budget->minutesDeclineMessage($origin, CarbonImmutable::now());
+        $declineMessage = $this->budget->minutesDeclineMessage($origin, CarbonImmutable::now());
 
-        if ($declined !== null) {
-            throw new RunRequestDeclined(RunRequestDeclined::BUDGET, $declined);
+        if ($declineMessage !== null) {
+            throw new RunRequestDeclined(RunRequestDeclined::BUDGET, $declineMessage);
         }
 
         $request = new TranscriptionRequest(MeetingAiKind::Transcription->value, $recordId, $uploadId);
 
         try {
             $runId = $this->requestTranscription->execute($context, $request);
-        } catch (RunRequestDeclined $refused) {
-            throw $origin === MeetingRunOrigin::Create ? self::withGuide($refused) : $refused;
+        } catch (RunRequestDeclined $declined) {
+            throw $origin === MeetingRunOrigin::Create ? self::withGuide($declined) : $declined;
         }
 
         MeetingRun::query()->create([
@@ -95,17 +92,23 @@ class MeetingAudioRequest
 
     /**
      * 作成の画面に添える文(公開デモと画面.md の 9.2): 上限 = テキストは取り込める、読み取れない = 対応する形式。ほかの理由は添えない。
+     * 元の文と空白なしでつなぐ(元の文が句点で終わらなければ句点を足す)。
      */
     private static function withGuide(RunRequestDeclined $declined): RunRequestDeclined
     {
         $guide = match ($declined->reason) {
-            RunRequestDeclined::BUDGET => self::TEXT_STILL_WORKS,
+            RunRequestDeclined::BUDGET => MeetingAudioBudget::TEXT_STILL_WORKS,
             RunRequestDeclined::UNREADABLE => self::SUPPORTED_FORMATS,
             default => null,
         };
 
-        $message = $declined->validator->errors()->first();
+        if ($guide === null) {
+            return $declined;
+        }
 
-        return $guide === null ? $declined : new RunRequestDeclined($declined->reason, $message.$guide);
+        $message = $declined->validator->errors()->first();
+        $sentence = str_ends_with($message, '。') ? $message : $message.'。';
+
+        return new RunRequestDeclined($declined->reason, $sentence.$guide);
     }
 }

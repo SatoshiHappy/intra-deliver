@@ -5,7 +5,8 @@ import type { Artisan } from './test';
 
 /**
  * 会議の最後の対応の実行のジョブだけを、AI の応答の差し替え(fake = その PHP の文)で動かして消し、実行が expected の状態に
- * なったことを確かめる。失敗を流すときは、実行を失敗に書いた後に投げ直す例外を受け止め、状態が違えばその例外を添えて投げる。
+ * なったことを確かめる。失敗を流す(expected = failed)ときだけ、実行を失敗に書いた後に投げ直す例外を受け止め、状態が違えばその例外を添えて投げる。
+ * 成功を流すときは handle の例外を受け止めずに投げる。
  */
 function runLastJob(
     artisan: Artisan,
@@ -26,8 +27,12 @@ function runLastJob(
         '$found = [$row->id, $command]; break; } }',
         'if ($found === null) { throw new RuntimeException("実行 {$runId} の待ちのジョブが無い"); }',
         '$error = null;',
-        'try { app()->call([$found[1], "handle"]); } catch (Throwable $thrown) { $error = $thrown; }',
-        'DB::table("jobs")->where("id", $found[0])->delete();',
+        // 実行を失敗に流すときだけ、実行を失敗に書いた後に投げ直される例外を受け止める(成功を流すときの例外は握りつぶさず投げる)
+        'try { app()->call([$found[1], "handle"]); }',
+        expected === 'failed'
+            ? ' catch (Throwable $thrown) { $error = $thrown; }'
+            : '',
+        ' finally { DB::table("jobs")->where("id", $found[0])->delete(); }',
         '$status = App\\Models\\Ai\\AiRun::query()->findOrFail($runId)->status->value;',
         `if ($status !== ${JSON.stringify(expected)}) {`,
         `throw new RuntimeException("実行 {$runId} が ${expected} でなく {$status}", 0, $error); }`,
@@ -82,7 +87,7 @@ export function transcribeLastRun(
 
 /**
  * 議事録の区分(default)に、日の上限と同じ額の終わった実行を 1 件足し、次の依頼を受けられない形にする。足した実行の id を返す
- * (筋の最後に {@link refundMinutesBudget} で消す。組の DB のほかの筋が AI に依頼できなくならないように)。
+ * (test の fixture の片付けで {@link refundMinutesBudget} で消す。組の DB のほかの筋が AI に依頼できなくならないように)。
  */
 export function spendMinutesBudget(artisan: Artisan): number {
     const code = [

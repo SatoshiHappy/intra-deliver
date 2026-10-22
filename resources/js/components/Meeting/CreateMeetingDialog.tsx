@@ -7,6 +7,7 @@ import type { CreateMeetingData } from '@/components/Meeting/createMeetingForm';
 import {
     blockedFileError,
     createMeetingPayload,
+    IMPORT_FILE_ID,
     initialCreateMeetingData,
     namedErrors,
     shownErrorKeys,
@@ -133,13 +134,13 @@ type FormProps = {
 
 /**
  * ダイアログの中のフォーム(開くたびに作り直し、欄を既定値に戻す)。成功したら閉じる(入口が会議の一覧へ戻し、トーストを出す)。
- * 送っている間かを親へ知らせる(親が送る間の「閉じる」を捨てる)。先に止めている音声を選んでいれば送らず、その欄へフォーカスを移す。
+ * 送っている間かを親へ知らせる(親が送る間の「閉じる」を捨てる)。先に止めている音声を選んでいれば送らず、ファイルの欄の入力へフォーカスを移す。
  */
 function CreateMeetingForm(props: FormProps) {
     const { module, audio, onSendingChange, onDone } = props;
     const [initial] = useState(() => initialCreateMeetingData(module));
     const form = useForm<CreateMeetingData>(initial);
-    const { formRef, focusFirstError } = useFocusFirstError();
+    const { formRef, focusFirstError, focusField } = useFocusFirstError();
 
     useReportSending(form.processing, onSendingChange);
 
@@ -147,7 +148,7 @@ function CreateMeetingForm(props: FormProps) {
         event.preventDefault();
 
         if (blockedFileError(form.data, audio.blockedMessage) !== null) {
-            focusFirstError();
+            focusField(IMPORT_FILE_ID);
 
             return;
         }

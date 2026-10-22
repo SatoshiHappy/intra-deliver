@@ -25,6 +25,9 @@ export type CreateMeetingPayload =
     | { file: File; envelope: string }
     | { text?: string; values: Record<string, RecordPayloadValue> };
 
+/** ファイルの欄の入力の id(先に止めている音声を選んで送ったとき、フォーカスを移す先) */
+export const IMPORT_FILE_ID = 'meeting-import-file';
+
 /** 選べる音声の拡張子(案内の文の並び) */
 const AUDIO_EXTENSIONS = ['m4a', 'mp3', 'wav'];
 

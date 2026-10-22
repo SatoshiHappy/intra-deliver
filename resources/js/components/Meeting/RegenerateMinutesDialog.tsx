@@ -20,6 +20,7 @@ import {
 import {
     FROM_AUDIO_NOTE,
     regeneratePayload,
+    regenerateView,
 } from '@/components/Meeting/regenerateMinutesForm';
 import {
     Dialog,
@@ -135,6 +136,7 @@ type FormProps = {
 function RegenerateMinutesForm(props: FormProps) {
     const { module, recordId, values, onSendingChange, onDone } = props;
     const { hasTranscript } = values;
+    const view = regenerateView(hasTranscript, values.audioBlockedMessage);
     const form = useForm({ instructions: '' });
     const errors = form.errors as Record<string, string | undefined>;
     const { formRef, focusFirstError } = useFocusFirstError();
@@ -161,7 +163,7 @@ function RegenerateMinutesForm(props: FormProps) {
             </DialogHeader>
             <UnshownErrors
                 errors={namedErrors(module, errors)}
-                shownKeys={hasTranscript ? ['instructions'] : []}
+                shownKeys={view.shownErrorKeys}
             />
             <RegenerateInputs
                 values={values}
@@ -175,7 +177,7 @@ function RegenerateMinutesForm(props: FormProps) {
             <MeetingDialogFooter
                 processing={form.processing}
                 submitLabel="再作成"
-                submitDisabled={values.audioBlockedMessage !== null}
+                submitDisabled={view.submitDisabled}
             />
         </form>
     );

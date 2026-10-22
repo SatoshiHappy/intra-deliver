@@ -11,7 +11,6 @@ use App\Enums\Records\RecordModuleAction;
 use App\Http\Controllers\Web\Meeting\MeetingController;
 use App\Models\Ai\AiRun;
 use App\Models\Meeting\Transcript;
-use App\Models\Meeting\TranscriptSegment;
 use App\Models\Records\RecordAttachment;
 use App\Models\Upload\Upload;
 use App\Queries\Records\Api\RecordFormQuery;
@@ -268,17 +267,5 @@ final class CreateMeetingTest extends TransactionalTestCase
         $kinds = (array) config('ai_runs.kinds');
         $kinds[MeetingMinutesKind::CODE] = [...(array) $kinds[MeetingMinutesKind::CODE], 'max_input_chars' => $max];
         config(['ai_runs.kinds' => $kinds]);
-    }
-
-    /**
-     * @return list<Segment>
-     */
-    private function segmentsOf(int $transcriptId): array
-    {
-        return array_values(TranscriptSegment::query()->where('transcript_id', $transcriptId)->orderBy('seq')->get()
-            ->map(fn (TranscriptSegment $segment) => [
-                $segment->speaker_label, $segment->started_at_sec, $segment->ended_at_sec, $segment->text,
-            ])
-            ->all());
     }
 }

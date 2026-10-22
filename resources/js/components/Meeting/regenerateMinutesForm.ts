@@ -18,3 +18,23 @@ export function regeneratePayload(
 ): RegeneratePayload {
     return hasTranscript ? { instructions } : {};
 }
+
+/** 送るボタンの形と、欄の上に出す誤りから除くキー */
+export type RegenerateView = {
+    submitDisabled: boolean;
+    shownErrorKeys: string[];
+};
+
+/**
+ * 送るボタンを押せないか(音声の取り込みを先に止めているとき)と、欄の下に出すので欄の上からは除く誤りのキー
+ * (書き起こしがあれば追加の指示の欄がある。無ければ欄が無いので、すべて欄の上に出す)。
+ */
+export function regenerateView(
+    hasTranscript: boolean,
+    audioBlockedMessage: string | null,
+): RegenerateView {
+    return {
+        submitDisabled: audioBlockedMessage !== null,
+        shownErrorKeys: hasTranscript ? ['instructions'] : [],
+    };
+}

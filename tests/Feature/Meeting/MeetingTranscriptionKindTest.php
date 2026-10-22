@@ -21,9 +21,9 @@ use App\Models\Ai\AiRun;
 use App\Models\Master\User;
 use App\Models\Meeting\MeetingRun;
 use App\Models\Meeting\Transcript;
-use App\Models\Meeting\TranscriptSegment;
 use App\Models\Records\Record;
 use App\Models\Records\RecordAttachment;
+use App\Queries\Meeting\MeetingAudioQuery;
 use App\Queries\Meeting\MeetingProcessingQuery;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Support\TransactionalTestCase;
@@ -115,6 +115,59 @@ final class MeetingTranscriptionKindTest extends TransactionalTestCase
         $transcript = Transcript::query()->where('record_id', $recordId)->sole();
         $this->assertSame(3, $transcript->chunk_count);
         $this->assertSame([['2-A', '1500.250', '1501.000', '発言']], $this->segmentsOf($transcript->id));
+    }
+
+    /**
+     * 終わりが始まりより前の区間は、終わりを始まりにそろえて発言を残す(途中に置く。最後の区間は見本の音声の終わりまで届く)。
+     */
+    public function test_a_segment_ending_before_its_start_is_kept_with_the_end_at_the_start(): void
+    {
+        $recordId = $this->audioMeeting($this->creator);
+        $segments = [['はじめます', 'A', 0.5, 1.0], ['逆の区間', 'A', 2.0, 1.5], ['了解です', 'B', 1.25, 2.0]];
+
+        $run = $this->completeTranscription($this->lastRunIdOf($recordId), $segments);
+
+        $this->assertSame(AiRunStatus::Succeeded, $run->status);
+        $transcript = Transcript::query()->where('record_id', $recordId)->sole();
+        $this->assertSame(
+            [['A', '0.500', '1.000', 'はじめます'], ['A', '2.000', '2.000', '逆の区間'], ['B', '1.250', '2.000', '了解です']],
+            $this->segmentsOf($transcript->id),
+        );
+    }
+
+    /**
+     * 秒は 0 から列の最大(decimal(10,3))までに収める(完了の受け手を直に呼ぶ)。
+     */
+    public function test_seconds_are_kept_between_zero_and_the_column_maximum(): void
+    {
+        $recordId = $this->audioMeeting($this->creator);
+        $segments = [
+            new TranscribedSegment('負の始まり', 'A', -1.5, 0.5),
+            new TranscribedSegment('大きすぎる終わり', 'A', 1.0, 12345678.9),
+            new TranscribedSegment('丸めると桁を超える', 'A', 9999999.9996, 99999999.0),
+        ];
+        $completed = new CompletedTranscription(
+            $this->lastRunIdOf($recordId),
+            MeetingTranscriptionKind::CODE,
+            $recordId,
+            $this->creator->id,
+            $segments,
+            1,
+            2.0,
+            $this->contextOf($this->creator),
+        );
+
+        app(MeetingTranscriptionKind::class)->complete($completed);
+
+        $transcript = Transcript::query()->where('record_id', $recordId)->sole();
+        $this->assertSame(
+            [
+                ['A', '0.000', '0.500', '負の始まり'],
+                ['A', '1.000', '9999999.999', '大きすぎる終わり'],
+                ['A', '9999999.999', '9999999.999', '丸めると桁を超える'],
+            ],
+            $this->segmentsOf($transcript->id),
+        );
     }
 
     /**
@@ -268,20 +321,8 @@ final class MeetingTranscriptionKindTest extends TransactionalTestCase
         $this->completeTranscription($this->lastRunIdOf($recordId), self::SEGMENTS);
 
         $this->assertSame(
-            MeetingTranscriptionKind::UNKNOWN_FILE_NAME,
+            MeetingAudioQuery::UNKNOWN_FILE_NAME,
             Transcript::query()->where('record_id', $recordId)->value('file_name'),
         );
-    }
-
-    /**
-     * @return list<array{string|null, string|null, string|null, string}>
-     */
-    private function segmentsOf(int $transcriptId): array
-    {
-        return array_values(TranscriptSegment::query()->where('transcript_id', $transcriptId)->orderBy('seq')->get()
-            ->map(fn (TranscriptSegment $segment) => [
-                $segment->speaker_label, $segment->started_at_sec, $segment->ended_at_sec, $segment->text,
-            ])
-            ->all());
     }
 }

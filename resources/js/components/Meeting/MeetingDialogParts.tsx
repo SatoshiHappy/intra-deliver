@@ -56,7 +56,7 @@ export function MeetingAudioBlockedNotice({ message }: { message: string }) {
 
 /**
  * 送った後に、最初の誤り(欄の上の誤りか、誤りのある欄)へフォーカスを移す(業務の登録・編集のフォームと同じ)。
- * formRef をフォームに付け、送った結果が誤りのときに focusFirstError を呼ぶ。
+ * formRef をフォームに付け、送った結果が誤りのときに focusFirstError を呼ぶ(focusField = 指した欄の入力へ直に移す)。
  */
 export function useFocusFirstError() {
     const formRef = useRef<HTMLFormElement>(null);
@@ -67,6 +67,9 @@ export function useFocusFirstError() {
     return {
         formRef,
         focusFirstError: () => setRequest((count) => count + 1),
+        // 残った誤りに先に当たらないよう、欄の入力を id で直に指す
+        focusField: (id: string) =>
+            formRef.current?.querySelector<HTMLElement>(`#${id}`)?.focus(),
     };
 }
 

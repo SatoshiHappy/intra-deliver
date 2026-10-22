@@ -16,6 +16,9 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
  */
 class MeetingAudioQuery
 {
+    /** 書き起こしの元の音声が会議の添付から外されて名前が分からないときのファイルの名前(音声の書き起こしは名前を要する) */
+    public const UNKNOWN_FILE_NAME = '音声';
+
     /** 添付を読む 1 回の数 */
     private const PAGE_SIZE = 100;
 

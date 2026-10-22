@@ -3,8 +3,6 @@
 namespace Tests\Feature\Meeting;
 
 use App\Actions\Ai\Api\RequestPrompt;
-use App\Actions\Ai\Api\RequestTranscription;
-use App\Actions\Meeting\MeetingAudioRequest;
 use App\Actions\Meeting\TextImportReader;
 use App\Enums\Meeting\MeetingRunOrigin;
 use App\Enums\Meeting\MeetingRunStage;
@@ -116,7 +114,7 @@ final class CreateMeetingFromAudioTest extends TransactionalTestCase
         $this->assertRolledBack(
             ['file' => $this->audioFile('定例.mp3')],
             'ai',
-            '今日の音声の取り込みの上限に達しました。'.MeetingAudioRequest::TEXT_STILL_WORKS,
+            '今日の音声の取り込みの上限に達しました。テキストの取り込みは使用できます。',
         );
     }
 
@@ -124,7 +122,8 @@ final class CreateMeetingFromAudioTest extends TransactionalTestCase
     {
         $file = UploadedFile::fake()->createWithContent('定例.mp3', $this->sampleContent('mp3'));
 
-        $message = RequestTranscription::UNREADABLE.MeetingAudioRequest::SUPPORTED_FORMATS;
+        $message = '音声を読み取れませんでした。対応する形式は mp3、m4a(AAC・ALAC)、wav(PCM・A-law・μ-law・ADPCM)です。'
+            .'別の形式の場合は mp3 に変換してから上げ直してください。';
 
         $this->assertRolledBack(['file' => $file], 'ai', $message);
     }

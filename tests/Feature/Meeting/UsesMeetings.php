@@ -286,6 +286,20 @@ trait UsesMeetings
     }
 
     /**
+     * 書き起こしの発言の行(話者・開始の秒・終了の秒・発言。順の昇順)。
+     *
+     * @return list<array{string|null, string|null, string|null, string}>
+     */
+    protected function segmentsOf(int $transcriptId): array
+    {
+        return array_values(TranscriptSegment::query()->where('transcript_id', $transcriptId)->orderBy('seq')->get()
+            ->map(fn (TranscriptSegment $segment) => [
+                $segment->speaker_label, $segment->started_at_sec, $segment->ended_at_sec, $segment->text,
+            ])
+            ->all());
+    }
+
+    /**
      * 会議・書き起こし・発言の行・対応・実行・添付・実体の件数。
      *
      * @return list<int>

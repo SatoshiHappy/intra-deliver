@@ -23,12 +23,24 @@ import {
     transcribeLastRun,
 } from '../support/meeting-runs';
 import { submitAndExpectUrl } from '../support/submit';
-import { expect, test } from '../support/test';
+import { expect, test as base } from '../support/test';
 
 // 会議(docs の 設計/業務ツール/会議/公開デモと画面.md の 9 節): 利用者を選び、会議の一覧の「音声から作成」で貼り付けから作る → 札「処理中」→
 // 議事録の実行を AI を呼ばずに終える → 鈴の通知から詳細へ → 議事録の欄・注・書き起こしの節 → 「再作成」で処理中になる。加えて見本の会議の詳細と、
 // 音声から作る筋(文字起こしの成功・失敗)と、音声の取り込みの先の止め方。
 // 利用者の切替を使うので demo の持ち物。作る会議は件名に時刻を入れて区別し、件数に依る確かめを置かない。画面は PC の幅だけを前提にする。
+// 議事録の区分の費用を日の上限まで足す fixture(これを引いた筋だけ。片付けは時間切れでも走る = 組の DB のほかの筋が AI に依頼できなくならないように)
+const test = base.extend<{ minutesBudgetSpent: number }>({
+    minutesBudgetSpent: async ({ artisan }, use) => {
+        const runId = spendMinutesBudget(artisan);
+        try {
+            await use(runId);
+        } finally {
+            refundMinutesBudget(artisan, runId);
+        }
+    },
+});
+
 test.use({ viewport: { width: 1280, height: 800 } });
 
 const APPLICANT = '佐々木 陽太（東京営業課）';
@@ -236,36 +248,31 @@ test('文字起こしが失敗した書き起こしの無い会議の「再作�
 
 test('議事録の区分が受けられないと、作成のダイアログに先の止め方の文が出て、音声を選ぶと誤りになり送れない', async ({
     page,
-    artisan,
+    minutesBudgetSpent,
 }) => {
+    expect(minutesBudgetSpent).toBeGreaterThan(0);
     await switchToApplicant(page);
-    const runId = spendMinutesBudget(artisan);
-    try {
-        await page.goto('/records/data/meeting');
-        const dialog = await openCreateDialog(
-            page,
-            `E2E の止め方 ${Date.now()}`,
-        );
-        // 超えた期間(日・月・累計)で頭の語が変わるので、変わらない部分で確かめる
-        const blocked = 'AI の利用の上限に近いため、音声は選べません。';
-        await expect(dialog).toContainText(blocked);
-        const input = fileField(dialog).locator('input[type="file"]');
-        await expect(input).toHaveAttribute('accept', '.txt,.vtt,.md');
+    await page.goto('/records/data/meeting');
+    const dialog = await openCreateDialog(page, `E2E の止め方 ${Date.now()}`);
+    // 日の上限と同じ額を足すので、必ず日で超える
+    const blocked = '今日の AI の利用の上限に近いため、音声は選べません。';
+    await expect(dialog.getByText(blocked, { exact: true })).toHaveCount(1);
+    const input = fileField(dialog).locator('input[type="file"]');
+    await expect(input).toHaveAttribute('accept', '.txt,.vtt,.md');
 
-        await input.setInputFiles(AUDIO_SAMPLE);
-        await expect(input).toHaveAttribute('aria-invalid', 'true');
-        await expect(fileField(dialog)).toContainText(blocked);
-        const sent: string[] = [];
-        page.on('request', (request) => {
-            if (request.method() !== 'GET') {
-                sent.push(request.url());
-            }
-        });
-        await dialog.getByRole('button', { name: '作成', exact: true }).click();
-        await expect(input).toBeFocused();
-        expect(sent).toEqual([]);
-        await expect(dialog).toBeVisible();
-    } finally {
-        refundMinutesBudget(artisan, runId);
-    }
+    await input.setInputFiles(AUDIO_SAMPLE);
+    await expect(input).toHaveAttribute('aria-invalid', 'true');
+    await expect(
+        fileField(dialog).getByText(blocked, { exact: true }),
+    ).toBeVisible();
+    const sent: string[] = [];
+    page.on('request', (request) => {
+        if (request.method() !== 'GET') {
+            sent.push(request.url());
+        }
+    });
+    await dialog.getByRole('button', { name: '作成', exact: true }).click();
+    await expect(input).toBeFocused();
+    expect(sent).toEqual([]);
+    await expect(dialog).toBeVisible();
 });
