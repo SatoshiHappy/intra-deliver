@@ -28,6 +28,38 @@ export function numberProp(
 }
 
 /**
+ * 操作の props の真偽の値(詳細の口が渡す書き起こしの有無)。無い・真偽でないのは約束の誤りなので投げる。
+ */
+export function booleanProp(
+    values: RecordAddonAction['props'],
+    key: string,
+): boolean {
+    const value = values[key];
+
+    if (typeof value !== 'boolean') {
+        throw new Error(`会議のダイアログの値 ${key} が真偽でない`);
+    }
+
+    return value;
+}
+
+/**
+ * 操作の props の文か null の値(口が渡す先の止め方の文。受けられれば null)。無い・文でも null でもないのは約束の誤りなので投げる。
+ */
+export function nullableStringProp(
+    values: RecordAddonAction['props'],
+    key: string,
+): string | null {
+    const value = values[key];
+
+    if (value !== null && typeof value !== 'string') {
+        throw new Error(`会議のダイアログの値 ${key} が文でも null でもない`);
+    }
+
+    return value;
+}
+
+/**
  * 上限のバイト数の表示(割り切れる最大の単位。例 1,048,576 → 1MB)。
  */
 export function limitSizeText(bytes: number): string {

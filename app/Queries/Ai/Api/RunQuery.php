@@ -39,6 +39,30 @@ class RunQuery
     }
 
     /**
+     * 実行の入力の音声(文字起こしの実行の、今の音声の添付の台帳の id)の一覧(実行の id → upload の id)。主体の判定をしない({@see self::statusesOf()} と
+     * 同じ扱い)。無い実行・音声の無い実行(文章の実行・音声の台帳の行が消された実行)は結果に入らない。空の一覧は問い合わせない。
+     *
+     * @param  list<int>  $runIds
+     * @return array<int, int>
+     */
+    public function inputUploadIdsOf(array $runIds): array
+    {
+        if ($runIds === []) {
+            return [];
+        }
+
+        $uploadIds = [];
+
+        $runs = AiRun::query()->whereIn('id', $runIds)->whereNotNull('input_upload_id')->get(['id', 'input_upload_id']);
+
+        foreach ($runs as $run) {
+            $uploadIds[$run->id] = (int) $run->input_upload_id;
+        }
+
+        return $uploadIds;
+    }
+
+    /**
      * 実行の表示。見られない・無ければ null(入口が 404 にする)。
      *
      * @param  DateTimeInterface  $date  基準日(業務モジュールの read の判定と依頼者の表示名に使う)

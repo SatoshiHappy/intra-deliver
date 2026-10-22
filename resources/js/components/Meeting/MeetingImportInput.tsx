@@ -1,28 +1,22 @@
 import { FormBlock, invalidProps } from '@/components/FormBlock';
 import type { MeetingImportSource } from '@/components/Meeting/createMeetingForm';
-import { limitSizeText } from '@/components/Meeting/meetingDialog';
+import {
+    acceptedFiles,
+    IMPORT_FILE_ID,
+    importFileGuide,
+} from '@/components/Meeting/createMeetingForm';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 
-/**
- * ファイルの案内(テキストの取り込み。音声は後で足す)。maxBytes = 入口の上限(一覧の口が渡す)。
- */
-function fileGuide(maxBytes: number): string {
-    return `テキスト(.txt・.vtt・.md)を 1 つ選択できます。1 ファイル ${limitSizeText(maxBytes)} までです。`;
-}
-
-/** 選べるファイルの拡張子 */
-const ACCEPTED_FILES = '.txt,.vtt,.md';
-
-const FILE_ID = 'meeting-import-file';
-
 const TEXT_ID = 'meeting-import-text';
 
 type Props = {
-    /** 取り込むテキストの上限(バイト) */
+    /** 音声 1 本の上限(バイト。案内に出す) */
     maxBytes: number;
+    /** 音声の取り込みを先に止めている(ファイルの欄はテキストだけを受ける) */
+    audioBlocked: boolean;
     source: MeetingImportSource;
     onSourceChange: (source: MeetingImportSource) => void;
     text: string;
@@ -40,27 +34,29 @@ const required = <Badge variant="secondary">必須</Badge>;
  */
 function ImportFile({
     maxBytes,
+    audioBlocked,
     error,
     onChange,
 }: {
     maxBytes: number;
+    audioBlocked: boolean;
     error: string | undefined;
     onChange: (file: File | null) => void;
 }) {
     return (
         <FormBlock
-            id={FILE_ID}
+            id={IMPORT_FILE_ID}
             label="ファイル"
             labelAddon={required}
-            hint={fileGuide(maxBytes)}
+            hint={importFileGuide(maxBytes)}
             error={error}
         >
             <Input
-                id={FILE_ID}
+                id={IMPORT_FILE_ID}
                 type="file"
-                accept={ACCEPTED_FILES}
+                accept={acceptedFiles(audioBlocked)}
                 aria-required
-                {...invalidProps(FILE_ID, error)}
+                {...invalidProps(IMPORT_FILE_ID, error)}
                 onChange={(event) => onChange(event.target.files?.[0] ?? null)}
             />
         </FormBlock>
@@ -119,6 +115,7 @@ export function MeetingImportInput(props: Props) {
             <TabsContent value="file" forceMount hidden={source !== 'file'}>
                 <ImportFile
                     maxBytes={props.maxBytes}
+                    audioBlocked={props.audioBlocked}
                     error={errors.file}
                     onChange={props.onFileChange}
                 />

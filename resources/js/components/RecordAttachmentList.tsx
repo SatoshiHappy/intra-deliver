@@ -2,13 +2,10 @@ import { Download, FileText, Plus } from 'lucide-react';
 import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog';
 import { RecordAttachmentPreview } from '@/components/RecordAttachmentPreview';
 import { RecordPanelMore } from '@/components/RecordPanelMore';
+import { SendingProgress } from '@/components/SendingProgress';
 import { Button } from '@/components/ui/button';
 import { useAttachmentUpload } from '@/hooks/use-attachment-upload';
-import {
-    fileSizeText,
-    personText,
-    type UploadProgress,
-} from '@/lib/recordShow';
+import { fileSizeText, personText } from '@/lib/recordShow';
 import { formatDate, formatDatetime } from '@/lib/recordValues';
 import type { RecordAttachmentRow } from '@/types';
 import type { RouteDefinition } from '@/wayfinder';
@@ -110,21 +107,6 @@ function AttachmentItem(props: ItemProps) {
             </span>
             <AttachmentActions {...props} />
         </li>
-    );
-}
-
-/** 送っている間の進み具合(割合が分からない間は動く表示) */
-function SendingProgress({ progress }: { progress: UploadProgress }) {
-    return (
-        <div className="grid gap-1 text-xs">
-            <progress
-                className="h-1.5 w-full"
-                max={100}
-                value={progress.value ?? undefined}
-                aria-label="送信の進み具合"
-            />
-            <span className="text-muted-foreground">{progress.text}</span>
-        </div>
     );
 }
 

@@ -111,12 +111,12 @@ final class RegenerateMinutesTest extends TransactionalTestCase
         $this->regenerate($recordId, [])->assertSessionHasErrors(['meeting' => RegenerateMinutes::HELD]);
     }
 
-    public function test_a_meeting_without_a_transcript_cannot_be_regenerated(): void
+    public function test_a_manual_meeting_cannot_be_regenerated(): void
     {
         $input = new RecordInput(['title' => '手で作った']);
         $recordId = app(CreateRecord::class)->execute($this->contextOf($this->creator), 'meeting', $input);
 
-        $this->regenerate($recordId, [])->assertSessionHasErrors(['meeting' => RegenerateMinutes::NO_TRANSCRIPT]);
+        $this->regenerate($recordId, [])->assertSessionHasErrors(['meeting' => RegenerateMinutes::NOT_FROM_AUDIO]);
     }
 
     public function test_a_missing_meeting_an_unrelated_user_and_a_record_of_another_module_are_not_found(): void

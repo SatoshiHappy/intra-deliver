@@ -1,6 +1,6 @@
 import type { RecordFieldDraft, RecordFormData } from '@/lib/recordForm';
 import { drawnDetailsFields, valueFields } from '@/lib/recordForm';
-import type { RecordModuleDefinition } from '@/types';
+import type { RecordFieldDefinition, RecordModuleDefinition } from '@/types';
 
 /**
  * 業務の登録・編集のフォームの誤りのキー(docs の 設計/業務データの入れ物/画面/業務の画面.md 2.2 の「エラー」)。欄の下に出すキーと、
@@ -48,14 +48,25 @@ function keysOf(key: string, draft: RecordFieldDraft | undefined): string[] {
     ];
 }
 
+/**
+ * 業務の欄(`values.<コード>`)の下に出すキー(欄の並びの順。複数の参照の欄は今の相手の数ぶんの添字のキーも)。業務の登録・編集の
+ * フォームと、入れ物のフォームの欄を並べるダイアログ(会議の作成)が使う。
+ */
+export function shownValueKeys(
+    fields: RecordFieldDefinition[],
+    values: Record<string, RecordFieldDraft>,
+): string[] {
+    return fields.flatMap((field) =>
+        keysOf(`values.${field.code}`, values[field.code]),
+    );
+}
+
 /** 今の定義と行の数・相手の数で欄の下に出すキー。業務の欄の誤りのうちこれ以外は、RecordFields の先頭に回す */
 export function shownRecordKeys(
     module: RecordModuleDefinition,
     data: RecordFormData,
 ): string[] {
-    const keys = valueFields(module).flatMap((field) =>
-        keysOf(`values.${field.code}`, data.values[field.code]),
-    );
+    const keys = shownValueKeys(valueFields(module), data.values);
 
     for (const field of drawnDetailsFields(module)) {
         const columns = valueFields(field.childModule);

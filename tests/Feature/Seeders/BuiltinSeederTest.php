@@ -70,6 +70,16 @@ final class BuiltinSeederTest extends TransactionalTestCase
         $this->assertSame('打ち合わせ', $this->meeting()->name);
     }
 
+    /** 添付ファイルを使用は入れるときに有効にし(音声を会議の添付に残す)、管理者が外した値は戻さない */
+    public function test_a_second_run_keeps_the_attachment_setting_the_administrator_turned_off(): void
+    {
+        app(UpdateRecordModule::class)->execute(Meeting::CODE, ['is_attachment_enabled' => false]);
+
+        $this->seedBuiltins();
+
+        $this->assertFalse($this->meeting()->is_attachment_enabled);
+    }
+
     public function test_recreates_only_a_missing_builtin_field_at_the_end(): void
     {
         $others = $this->meetingFields()->reject(fn (RecordField $field) => $field->code === Meeting::Summary->value)

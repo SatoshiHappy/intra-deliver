@@ -4,12 +4,17 @@ namespace Tests\Feature\Meeting;
 
 use App\Actions\Records\Api\CreateRecord;
 use App\Actions\Records\Api\RecordInput;
+use App\Actions\Records\Api\UpdateRecord;
 use App\Enums\Ai\AiRunStatus;
 use App\Enums\Records\RecordModuleAction;
 use App\Models\Master\User;
 use App\Models\Meeting\MeetingRun;
+use App\Models\Records\RecordAttachment;
+use App\Models\Upload\Upload;
 use App\Queries\Meeting\MeetingLimits;
+use App\Queries\Meeting\MeetingRegenerableQuery;
 use App\Queries\Meeting\MeetingScreenAddons;
+use Illuminate\Http\UploadedFile;
 use Inertia\Testing\AssertableInertia as Assert;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Support\TransactionalTestCase;
@@ -21,12 +26,6 @@ use Tests\Support\TransactionalTestCase;
 final class MeetingScreenAddonsTest extends TransactionalTestCase
 {
     use UsesMeetings;
-
-    private const CREATE = [
-        'code' => 'create', 'label' => '音声から作成', 'dialog' => 'meeting.create',
-        'props' => ['textMaxBytes' => MeetingLimits::TEXT_MAX_BYTES],
-        'disabledReason' => null, 'changesValues' => false,
-    ];
 
     private const PROCESSING = ['label' => '処理中', 'tone' => 'pending'];
 
@@ -53,7 +52,7 @@ final class MeetingScreenAddonsTest extends TransactionalTestCase
         $this->actingAs($this->creator)->get('/records/data/meeting')->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Records/Index')
-                ->where('addons.actions', [self::CREATE])
+                ->where('addons.actions', [self::create()])
                 ->where('addonBadges', [$processing => [self::PROCESSING], $failed => [self::FAILED]])
             );
     }
@@ -130,13 +129,68 @@ final class MeetingScreenAddonsTest extends TransactionalTestCase
         );
     }
 
-    public function test_a_meeting_with_a_run_but_no_transcript_passes_has_transcript_false(): void
+    public function test_a_meeting_with_an_audio_but_no_transcript_passes_has_transcript_false(): void
     {
-        $recordId = $this->manualMeeting();
-        MeetingRun::factory()->declined()->create(['record_id' => $recordId]);
+        $recordId = $this->audioMeeting($this->creator);
+        $this->assertSame(AiRunStatus::Failed, $this->completeTranscription($this->lastRunIdOf($recordId), [])->status);
 
         $this->assertSame(
             ['actions' => [self::regenerate(false, null)], 'badges' => [self::FAILED], 'fieldNotes' => self::NOTES],
+            $this->addons()->show($this->contextOf($this->creator), $recordId),
+        );
+    }
+
+    /**
+     * @return array<string, array{string}>
+     */
+    public static function withoutAcceptedAudio(): array
+    {
+        return [
+            '添付が無い' => ['removed'],
+            '受けない形式だけ' => ['video'],
+            '期限で消えた音声だけ' => ['purged'],
+        ];
+    }
+
+    #[DataProvider('withoutAcceptedAudio')]
+    public function test_without_a_transcript_or_an_accepted_audio_regenerate_is_disabled_with_the_entry_reason(
+        string $case,
+    ): void {
+        $recordId = $this->audioMeeting($this->creator);
+        $this->assertSame(AiRunStatus::Failed, $this->completeTranscription($this->lastRunIdOf($recordId), [])->status);
+        $attachments = RecordAttachment::query()->where('record_id', $recordId);
+
+        if ($case === 'purged') {
+            Upload::query()->whereIn('id', $attachments->pluck('upload_id'))
+                ->update(['purged_at' => now(), 'purge_due_on' => '2026-01-01']);
+        } else {
+            $attachments->delete();
+        }
+
+        if ($case === 'video') {
+            $input = new RecordInput(attachFiles: [
+                UploadedFile::fake()->createWithContent('録画.mp4', $this->sampleContent('mp4')),
+            ]);
+            app(UpdateRecord::class)->execute($this->contextOf($this->creator), 'meeting', $recordId, $input, null);
+        }
+
+        $action = self::regenerate(false, MeetingRegenerableQuery::NO_MATERIAL);
+
+        $this->assertSame(
+            ['actions' => [$action], 'badges' => [self::FAILED], 'fieldNotes' => self::NOTES],
+            $this->addons()->show($this->contextOf($this->creator), $recordId),
+        );
+    }
+
+    public function test_processing_is_the_reason_before_the_missing_transcript_and_audio(): void
+    {
+        $recordId = $this->manualMeeting();
+        MeetingRun::factory()->create(['record_id' => $recordId]);
+
+        $action = self::regenerate(false, MeetingScreenAddons::PROCESSING_REASON);
+
+        $this->assertSame(
+            ['actions' => [$action], 'badges' => [self::PROCESSING], 'fieldNotes' => self::NOTES],
             $this->addons()->show($this->contextOf($this->creator), $recordId),
         );
     }
@@ -193,13 +247,32 @@ final class MeetingScreenAddonsTest extends TransactionalTestCase
     /**
      * @return array<string, mixed>
      */
-    private static function regenerate(bool $hasTranscript, ?string $disabledReason): array
+    private static function create(?string $audioBlockedMessage = null): array
     {
+        return [
+            'code' => 'create', 'label' => '音声から作成', 'dialog' => 'meeting.create',
+            'props' => [
+                'audioMaxBytes' => 99_614_720,
+                'audioBlockedMessage' => $audioBlockedMessage,
+            ],
+            'disabledReason' => null, 'changesValues' => false,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private static function regenerate(
+        bool $hasTranscript,
+        ?string $disabledReason,
+        ?string $audioBlockedMessage = null,
+    ): array {
         return [
             'code' => 'regenerate', 'label' => '再作成', 'dialog' => 'meeting.regenerate',
             'props' => [
                 'hasTranscript' => $hasTranscript,
                 'instructionsMaxLength' => MeetingLimits::INSTRUCTIONS_MAX_LENGTH,
+                'audioBlockedMessage' => $audioBlockedMessage,
             ],
             'disabledReason' => $disabledReason,
             'changesValues' => true,

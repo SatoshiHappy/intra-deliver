@@ -1,15 +1,47 @@
 import { describe, expect, it } from 'vite-plus/test';
-import { acceptsOpenChange, limitSizeText, numberProp } from './meetingDialog';
+import {
+    acceptsOpenChange,
+    booleanProp,
+    limitSizeText,
+    nullableStringProp,
+    numberProp,
+} from './meetingDialog';
 
 describe('numberProp', () => {
     it('数の値を返し、無い・数でない値は約束の誤りとして投げる', () => {
-        expect(numberProp({ textMaxBytes: 1_048_576 }, 'textMaxBytes')).toBe(
-            1_048_576,
+        const key = 'audioMaxBytes';
+
+        expect(numberProp({ [key]: 99_614_720 }, key)).toBe(99_614_720);
+        expect(() => numberProp({}, key)).toThrow(key);
+        expect(() => numberProp({ [key]: '1' }, key)).toThrow(key);
+    });
+});
+
+describe('booleanProp', () => {
+    it('真偽の値を返し、無い・真偽でない値は約束の誤りとして投げる', () => {
+        expect(booleanProp({ hasTranscript: false }, 'hasTranscript')).toBe(
+            false,
         );
-        expect(() => numberProp({}, 'textMaxBytes')).toThrow('textMaxBytes');
-        expect(() => numberProp({ textMaxBytes: '1' }, 'textMaxBytes')).toThrow(
-            'textMaxBytes',
+        expect(booleanProp({ hasTranscript: true }, 'hasTranscript')).toBe(
+            true,
         );
+        expect(() => booleanProp({}, 'hasTranscript')).toThrow('hasTranscript');
+        expect(() =>
+            booleanProp({ hasTranscript: 1 }, 'hasTranscript'),
+        ).toThrow('hasTranscript');
+    });
+});
+
+describe('nullableStringProp', () => {
+    it('文と null を返し、無い・どちらでもない値は約束の誤りとして投げる', () => {
+        const key = 'audioBlockedMessage';
+
+        expect(nullableStringProp({ [key]: '音声は選べません。' }, key)).toBe(
+            '音声は選べません。',
+        );
+        expect(nullableStringProp({ [key]: null }, key)).toBeNull();
+        expect(() => nullableStringProp({}, key)).toThrow(key);
+        expect(() => nullableStringProp({ [key]: false }, key)).toThrow(key);
     });
 });
 

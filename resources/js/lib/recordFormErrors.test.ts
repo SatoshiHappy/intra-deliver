@@ -8,6 +8,7 @@ import {
     isRecordFieldKey,
     referenceItemErrors,
     shownRecordKeys,
+    shownValueKeys,
 } from './recordFormErrors';
 
 function moduleOf(
@@ -82,6 +83,35 @@ describe('shownRecordKeys', () => {
             'details.lines',
             'details.lines.0.id',
             'details.lines.0.values.members',
+        ]);
+    });
+});
+
+describe('shownValueKeys', () => {
+    const title = recordField('title', 'string');
+    const picked = [
+        { id: 1, label: 'a' },
+        { id: 2, label: 'b' },
+    ];
+
+    it('業務のフォーム: 定義の欄の並びで、複数の参照の欄は相手の数ぶんの添字のキーも出す', () => {
+        expect(
+            shownValueKeys([title, members], {
+                title: '件名',
+                members: picked,
+            }),
+        ).toEqual([
+            'values.title',
+            'values.members',
+            'values.members.0',
+            'values.members.1',
+        ]);
+    });
+
+    it('欄を選んで並べるダイアログ: 渡した欄だけを渡した順に出し、値の無い欄は欄のキーだけ', () => {
+        expect(shownValueKeys([members, title], {})).toEqual([
+            'values.members',
+            'values.title',
         ]);
     });
 });
