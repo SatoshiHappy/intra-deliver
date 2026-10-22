@@ -61,9 +61,13 @@ final class PromptKindsTest extends TransactionalTestCase
         $this->assertSame(['予算の区分 custom に超えたときの文が無い(RunBudget)'], app(PromptKinds::class)->problems());
     }
 
+    /** 文字起こしの種類のジョブの時間はもっと長いので外し、文章の種類の時間だけを見る */
     public function test_detects_a_job_time_that_is_not_below_the_retry_after_of_the_queue(): void
     {
         $this->configureKinds(['test.slow' => [...$this->kindSettings(), 'timeout_seconds' => 301]]);
+        $kinds = (array) config('ai_runs.kinds');
+        unset($kinds['meeting.transcription']);
+        config(['ai_runs.kinds' => $kinds]);
         $problem = '種類 test.slow のジョブの時間 622 秒がキューの retry_after 622 秒以上(config/queue.php)';
 
         config(['queue.connections.database.retry_after' => 623]);
@@ -120,6 +124,7 @@ final class PromptKindsTest extends TransactionalTestCase
     private function kindSettings(string $model = 'claude-haiku-5-5'): array
     {
         return [
+            'type' => 'prompt',
             'provider' => 'anthropic',
             'model' => $model,
             'budget' => 'default',

@@ -3,11 +3,13 @@
 namespace App\Console\Commands\Ai;
 
 use App\Actions\Ai\PruneRunTexts as PruneRunTextsAction;
+use App\Actions\Ai\PruneTranscriptionFiles;
 use App\Queries\Ai\AiSettings;
 use Illuminate\Console\Command;
 
 /**
- * 保存期間を過ぎた AI の原文・例外の文を消すコマンド(docs の 設計/AI/データと失敗と検査.md 6 節)。スケジューラの定義(routes/console.php)が毎日動かす。
+ * 保存期間を過ぎた AI の原文・例外の文と、worker が落ちて残った文字起こしの一時ファイルを消すコマンド(docs の 設計/AI/データと失敗と検査.md 6 節)。
+ * スケジューラの定義(routes/console.php)が毎日動かす。
  * 配線のファイルは業務処理を名指せないので、このコマンドが業務処理を呼ぶ。
  */
 final class PruneRunTexts extends Command
@@ -25,10 +27,12 @@ final class PruneRunTexts extends Command
         return app(AiSettings::class)->retentionDays() * 24;
     }
 
-    public function handle(PruneRunTextsAction $pruneRunTexts): int
+    public function handle(PruneRunTextsAction $pruneRunTexts, PruneTranscriptionFiles $pruneTranscriptionFiles): int
     {
         $pruned = $pruneRunTexts->execute();
         $this->info("AI の原文を {$pruned['texts']} 件消し、例外の文を {$pruned['errorMessages']} 件空にした");
+        $directories = $pruneTranscriptionFiles->execute();
+        $this->info("残った文字起こしの一時ファイルのディレクトリを {$directories} 件消した");
 
         return self::SUCCESS;
     }

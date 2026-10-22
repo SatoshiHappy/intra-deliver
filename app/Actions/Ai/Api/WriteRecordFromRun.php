@@ -5,6 +5,7 @@ namespace App\Actions\Ai\Api;
 use App\Actions\Ai\CompletingRun;
 use App\Actions\Ai\PromptKinds;
 use App\Actions\Ai\RunRequesterContext;
+use App\Actions\Ai\TranscriptionKinds;
 use App\Actions\Records\Api\RecordInput;
 use App\Actions\Records\Api\RecordRevisionOrigin;
 use App\Actions\Records\Api\UpdateRecord;
@@ -30,6 +31,7 @@ class WriteRecordFromRun
     public function __construct(
         private CompletingRun $completing,
         private PromptKinds $kinds,
+        private TranscriptionKinds $transcriptionKinds,
         private RecordDisplayQuery $records,
         private RunRequesterContext $requesters,
         private UpdateRecord $updateRecord,
@@ -84,7 +86,8 @@ class WriteRecordFromRun
             throw new LogicException("AI の実行 {$runId} は処理中でない({$run->status->value})");
         }
 
-        $writesTo = $this->kinds->of($run->kind)->writesTo();
+        $kind = $this->kinds->find($run->kind) ?? $this->transcriptionKinds->of($run->kind);
+        $writesTo = $kind->writesTo();
 
         if ($writesTo === null || $writesTo !== $run->record_module_code) {
             throw new LogicException("AI の実行の種類 {$run->kind} は実行の対象の業務モジュール {$run->record_module_code} に書けない");

@@ -21,10 +21,14 @@ use Throwable;
  */
 class FailRun
 {
-    public function __construct(private MarkRunFailed $markRunFailed, private PromptKinds $kinds) {}
+    public function __construct(
+        private MarkRunFailed $markRunFailed,
+        private PromptKinds $kinds,
+        private TranscriptionKinds $transcriptionKinds,
+    ) {}
 
     /**
-     * @param  LlmResult|null  $result  応答(使用量が分かったとき)
+     * @param  RunResult|null  $result  分かった分の使用量・費用・原文(不完全のときは細かい理由も)
      *
      * @throws Throwable 失敗の書き込みに失敗したとき({@see MarkRunFailed})
      */
@@ -32,14 +36,14 @@ class FailRun
         int $runId,
         AiRunErrorCode $errorCode,
         ?Throwable $exception,
-        ?LlmResult $result = null,
+        ?RunResult $result = null,
     ): void {
         if (! $this->markRunFailed->execute($runId, $errorCode, $exception, $result)) {
             return;
         }
 
         $run = AiRun::query()->findOrFail($runId);
-        $kind = $this->kinds->find($run->kind);
+        $kind = $this->kinds->find($run->kind) ?? $this->transcriptionKinds->find($run->kind);
 
         if ($kind === null) {
             return;
@@ -60,20 +64,11 @@ class FailRun
     /**
      * 細かい理由(会議の通知の文を選ぶ値)。完了の処理の失敗は例外の型だけで決め、例外の連なり(previous)は辿らない。
      */
-    private static function reasonOf(AiRunErrorCode $errorCode, ?Throwable $exception, ?LlmResult $result): ?string
+    private static function reasonOf(AiRunErrorCode $errorCode, ?Throwable $exception, ?RunResult $result): ?string
     {
         return match ($errorCode) {
-            AiRunErrorCode::Incomplete => self::incompleteReason($result),
+            AiRunErrorCode::Incomplete => $result?->incompleteReason,
             AiRunErrorCode::Completion => self::completionReason($exception),
-            default => null,
-        };
-    }
-
-    private static function incompleteReason(?LlmResult $result): ?string
-    {
-        return match (true) {
-            $result?->isTruncated() === true => FailedRun::OUTPUT_TRUNCATED,
-            $result?->isRefused() === true => FailedRun::CONTENT_REFUSED,
             default => null,
         };
     }

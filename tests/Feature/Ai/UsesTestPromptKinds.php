@@ -29,6 +29,7 @@ trait UsesTestPromptKinds
         $this->app->tag([RecordingPromptKind::class, ThrowingPromptKind::class], PromptKind::TAG);
 
         $settings = [
+            'type' => 'prompt',
             'provider' => 'anthropic',
             'model' => 'claude-haiku-5-5',
             'budget' => 'default',

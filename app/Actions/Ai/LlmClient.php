@@ -3,11 +3,10 @@
 namespace App\Actions\Ai;
 
 use App\Actions\Ai\Api\PromptKind;
-use App\Enums\Ai\AiRunErrorCode;
 use App\Models\Ai\AiRun;
 use App\Models\Ai\AiRunText;
 use App\Queries\Ai\AiSettings;
-use Illuminate\Http\Client\ConnectionException;
+use App\Queries\Ai\KindSettings;
 use LogicException;
 use Throwable;
 
@@ -17,23 +16,21 @@ use Throwable;
  */
 class LlmClient
 {
-    /** Guzzle の curl の時間切れの誤り(CURLE_OPERATION_TIMEDOUT)の文の頭。laravel/ai は Laravel の HTTP クライアントで接続先を呼ぶ */
-    private const CURL_TIMEOUT = 'cURL error 28';
-
-    public function __construct(private AiSettings $settings) {}
+    public function __construct(private AiSettings $settings, private KindSettings $kinds) {}
 
     /**
      * @throws LlmCallFailed 呼び出しに失敗したとき(時間の上限 = timeout、ほか = provider)
-     * @throws LogicException 種類が設定に無いとき
+     * @throws LogicException 種類が文章の種類の設定に無い・実行に出力の上限が無いとき
      */
     public function call(AiRun $run, AiRunText $text, PromptKind $kind): LlmResult
     {
-        $settings = $this->settings->kind($run->kind)
-            ?? throw new LogicException("AI の実行の種類 {$run->kind} が設定(config/ai_runs.php の kinds)に無い");
+        $settings = $this->kinds->prompt($run->kind)
+            ?? throw new LogicException("AI の実行の種類 {$run->kind} が文章の種類の設定(config/ai_runs.php の kinds)に無い");
+        $maxOutputTokens = $run->max_output_tokens ?? throw new LogicException("AI の実行 {$run->id} に出力の上限が無い");
         $agent = new PromptAgent(
             $text->system_text,
             $kind,
-            $run->max_output_tokens,
+            $maxOutputTokens,
             $settings['timeout_seconds'],
             $this->settings->providerDriver($run->provider),
             $settings['provider_options'],
@@ -42,21 +39,7 @@ class LlmClient
         try {
             return LlmResult::fromResponse($agent->prompt($text->user_text, provider: $run->provider, model: $run->model));
         } catch (Throwable $exception) {
-            throw new LlmCallFailed(self::isTimeout($exception) ? AiRunErrorCode::Timeout : AiRunErrorCode::Provider, $exception);
+            throw LlmCallFailed::from($exception);
         }
-    }
-
-    /**
-     * 時間の上限で切れたか(laravel/ai は接続の誤りを包むので、元の例外まで辿る)。
-     */
-    private static function isTimeout(Throwable $exception): bool
-    {
-        for ($current = $exception; $current !== null; $current = $current->getPrevious()) {
-            if ($current instanceof ConnectionException && str_starts_with($current->getMessage(), self::CURL_TIMEOUT)) {
-                return true;
-            }
-        }
-
-        return false;
     }
 }

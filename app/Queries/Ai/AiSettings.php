@@ -5,57 +5,16 @@ namespace App\Queries\Ai;
 use LogicException;
 
 /**
- * モジュール Ai の設定 config/ai_runs.php を読む 1 か所(docs の 設計/AI/実行と費用.md 5 節)。形が合わない設定は作りの誤り(LogicException)。
- * 種類のコードは . を含むので、config() の . の区切りを通さず kinds の配列から引く。
+ * モジュール Ai の設定 config/ai_runs.php を読む(docs の 設計/AI/実行と費用.md 5 節)。形が合わない設定は作りの誤り(LogicException)。
+ * 種類の設定 kinds は {@see KindSettings}、種類によらない文字起こしの値 transcription は {@see TranscriptionSettings} が読み、ほかをここで読む。
  *
- * @phpstan-type KindSettings array{provider: string, model: string, budget: string, timeout_seconds: int, max_output_tokens: int, max_input_chars: int, provider_options: array<string, mixed>}
  * @phpstan-type PriceTier array{up_to_input_tokens: int|null, input: float, output: float, cache_read: float, cache_write: float}
+ * @phpstan-type AudioMinutePrice array{input: float, output: float}
  */
 class AiSettings
 {
     /** 送り直しの待ちの上限(ライブラリは 10 秒以内の待ちの指示にだけ従う) */
     private const RETRY_WAIT_SECONDS = 10;
-
-    /**
-     * 設定にある種類のコード。
-     *
-     * @return list<string>
-     */
-    public function kindCodes(): array
-    {
-        return array_map('strval', array_keys($this->table('kinds')));
-    }
-
-    /**
-     * 種類の設定。設定に無いコードなら null。
-     *
-     * @return KindSettings|null
-     */
-    public function kind(string $code): ?array
-    {
-        $kind = $this->table('kinds')[$code] ?? null;
-
-        if ($kind === null) {
-            return null;
-        }
-
-        if (! is_array($kind) || ! is_string($kind['provider'] ?? null) || ! is_string($kind['model'] ?? null)
-            || ! is_string($kind['budget'] ?? null)
-            || ! is_int($kind['timeout_seconds'] ?? null) || $kind['timeout_seconds'] <= 0
-            || ! is_int($kind['max_output_tokens'] ?? null) || ! is_int($kind['max_input_chars'] ?? null) || ! is_array($kind['provider_options'] ?? [])) {
-            throw new LogicException("config/ai_runs.php の kinds.{$code} の形が合わない");
-        }
-
-        return [
-            'provider' => $kind['provider'],
-            'model' => $kind['model'],
-            'budget' => $kind['budget'],
-            'timeout_seconds' => $kind['timeout_seconds'],
-            'max_output_tokens' => $kind['max_output_tokens'],
-            'max_input_chars' => $kind['max_input_chars'],
-            'provider_options' => self::stringKeyed($kind['provider_options'] ?? [], "kinds.{$code}.provider_options"),
-        ];
-    }
 
     /**
      * 接続先(config/ai.php の providers の名前)の driver。無ければ null。
@@ -74,10 +33,30 @@ class AiSettings
      */
     public function priceTiers(string $provider, string $model): array
     {
-        $byProvider = $this->table('pricing')[$provider] ?? [];
-        $tiers = is_array($byProvider) ? ($byProvider[$model] ?? []) : [];
+        $tiers = $this->price($provider, $model);
 
-        return array_values(array_map(fn (mixed $tier): array => $this->priceTier($tier, "{$provider}.{$model}"), is_array($tiers) ? $tiers : []));
+        if (! is_array($tiers) || array_key_exists('per_audio_minute', $tiers)) {
+            return [];
+        }
+
+        return array_values(array_map(fn (mixed $tier): array => $this->priceTier($tier, "{$provider}.{$model}"), $tiers));
+    }
+
+    /**
+     * 接続先・モデルの音声の分単価(1 分あたりの米ドル)。分単価でなければ null。
+     *
+     * @return AudioMinutePrice|null
+     */
+    public function audioMinutePrice(string $provider, string $model): ?array
+    {
+        $price = $this->price($provider, $model);
+        $perMinute = is_array($price) ? ($price['per_audio_minute'] ?? null) : null;
+        $label = "pricing.{$provider}.{$model}.per_audio_minute";
+
+        return is_array($perMinute) ? [
+            'input' => $this->number($perMinute['input'] ?? null, "{$label}.input"),
+            'output' => $this->number($perMinute['output'] ?? null, "{$label}.output"),
+        ] : null;
     }
 
     /**
@@ -161,6 +140,14 @@ class AiSettings
         return is_int($days) && $days > 0 ? $days : throw new LogicException('config/ai_runs.php の retention_days が正の整数でない');
     }
 
+    /** 接続先・モデルの単価の設定の値(段の一覧か分単価。無ければ null) */
+    private function price(string $provider, string $model): mixed
+    {
+        $byProvider = $this->table('pricing')[$provider] ?? null;
+
+        return is_array($byProvider) ? ($byProvider[$model] ?? null) : null;
+    }
+
     /**
      * @return PriceTier
      */
@@ -177,21 +164,6 @@ class AiSettings
             'cache_read' => $this->number($tier['cache_read'] ?? null, "pricing.{$label}.cache_read"),
             'cache_write' => $this->number($tier['cache_write'] ?? null, "pricing.{$label}.cache_write"),
         ];
-    }
-
-    /**
-     * @param  array<array-key, mixed>  $values
-     * @return array<string, mixed>
-     */
-    private static function stringKeyed(array $values, string $label): array
-    {
-        $keyed = [];
-
-        foreach ($values as $key => $value) {
-            $keyed[is_string($key) ? $key : throw new LogicException("config/ai_runs.php の {$label} の鍵が文字列でない")] = $value;
-        }
-
-        return $keyed;
     }
 
     private function number(mixed $value, string $label): float

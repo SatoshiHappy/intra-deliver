@@ -20,8 +20,9 @@ final class AddBudgetAndSelectedDepartmentMigrationTest extends TransactionalTes
 
     private const MIGRATION = '2026_10_19_400002_add_budget_and_selected_department_to_ai_runs_table.php';
 
-    /** このマイグレーションが触らない索引(名前の順で、足す・戻す索引の前後に並ぶ) */
+    /** このマイグレーションが触らない索引(後のマイグレーションが足した音声の索引を含む。名前の順で、足す・戻す索引の前後に並ぶ) */
     private const KEPT_INDEXES = [
+        'ai_runs_input_upload_id_index',
         'ai_runs_pkey',
         'ai_runs_record_id_index',
         'ai_runs_requester_user_id_created_at_index',

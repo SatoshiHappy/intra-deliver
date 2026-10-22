@@ -41,7 +41,7 @@ return [
             'table' => env('DB_QUEUE_TABLE', 'jobs'),
             'queue' => env('DB_QUEUE', 'default'),
             // AI のジョブの時間より長く(二重に配られて費用が 2 回かからないため。docs の 設計/AI/実行と費用.md 4.1。照合 = tests/Feature/Ai/PromptKindsTest)
-            'retry_after' => (int) env('DB_QUEUE_RETRY_AFTER', 700),
+            'retry_after' => (int) env('DB_QUEUE_RETRY_AFTER', 3600),
             'after_commit' => false,
         ],
 

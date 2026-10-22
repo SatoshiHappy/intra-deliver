@@ -9,6 +9,7 @@ use App\Jobs\Ai\RunPromptJob;
 use App\Models\Ai\AiRun;
 use App\Models\Ai\AiRunText;
 use App\Queries\Ai\AiSettings;
+use App\Queries\Ai\KindSettings;
 use App\Queries\Ai\RunEstimates;
 use App\Queries\Records\Api\RecordDisplayQuery;
 use App\Support\AccessContext;
@@ -31,7 +32,7 @@ class RequestPrompt
 
     public function __construct(
         private PromptKinds $kinds,
-        private AiSettings $settings,
+        private KindSettings $settings,
         private RunEstimates $estimates,
         private RunBudget $budget,
         private RecordDisplayQuery $records,
@@ -48,7 +49,7 @@ class RequestPrompt
     {
         $requesterUserId = $context->userId ?? throw new AuthorizationException(self::GUEST);
         $this->kinds->of($request->kindCode);
-        $kind = $this->settings->kind($request->kindCode) ?? throw new LogicException("AI の実行の種類 {$request->kindCode} が設定(config/ai_runs.php の kinds)に無い");
+        $kind = $this->settings->prompt($request->kindCode) ?? throw new LogicException("AI の実行の種類 {$request->kindCode} が設定(config/ai_runs.php の kinds)に無い");
         $chars = mb_strlen($request->systemText) + mb_strlen($request->userText);
 
         if ($chars > $kind['max_input_chars']) {

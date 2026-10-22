@@ -109,6 +109,10 @@ jobs:
                   npm ci
                   npx playwright install --with-deps chromium
 
+            # 音声の変換のテストは ffmpeg・ffprobe を実際に通す(docs の 設計/AI/実行と費用.md 4.2)。ランナーに無ければ入れる
+            - name: ffmpeg
+              run: command -v ffprobe > /dev/null || (sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg)
+
             # laravel-vite-plugin は環境変数 CI があると Vite のサーバーを拒む。単体テスト(vitest)はそのサーバーで走るので、確かめを外す
             # (本番ビルドはもともと確かめの対象外)
             - name: composer ci:check

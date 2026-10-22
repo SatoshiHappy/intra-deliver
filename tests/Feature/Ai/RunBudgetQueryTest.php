@@ -10,9 +10,10 @@ use LogicException;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * 予算の区分の状態(docs の 設計/AI/公開の口.md 3 節の「予算の区分の状態」、実行と費用.md 5.2): 期間ごとに「使った額 + その区分の文章の種類の見積もりの上限の最大」が
+ * 予算の区分の状態(docs の 設計/AI/公開の口.md 3 節の「予算の区分の状態」、実行と費用.md 5.2): 期間ごとに「使った額 + その区分の種類の見積もりの上限の最大」が
  * 上限を超える期間を返す(複数なら長い方。ちょうど上限は超えない)。日と月は Asia/Tokyo の暦で切る。設定に無い区分は作りの誤り。
- * 文章の種類の無い区分は使った額だけで見る。見積もりの上限は種類の入力の上限の文字数と出力の上限で見積もった額(下の種類では default = 0.000900)。
+ * 種類の無い区分は使った額だけで見る。見積もりの上限は文章の種類の入力の上限の文字数と出力の上限で見積もった額(下の種類では default = 0.000900)と、
+ * 文字起こしの種類の 1 本の長さの上限で見積もった額の最大。
  */
 final class RunBudgetQueryTest extends TransactionalTestCase
 {
@@ -23,6 +24,7 @@ final class RunBudgetQueryTest extends TransactionalTestCase
     {
         parent::setUp();
         $kind = [
+            'type' => 'prompt',
             'provider' => 'anthropic',
             'model' => 'claude-haiku-5-5',
             'budget' => 'default',
@@ -127,6 +129,31 @@ final class RunBudgetQueryTest extends TransactionalTestCase
 
         $this->setLimit('daily_usd', 0.999999, 'unused');
         $this->assertSame(RunBudgetQuery::DAY, $this->exceededPeriod('unused'));
+    }
+
+    /**
+     * 文字起こしの種類も区分の見積もりの上限に入る(1 時間 × 1 分あたり 0.005 ドル = 0.30 ドル。区分の文章の種類 test.other の
+     * ((1,000 × 2 + 2,000)× 0.10 + 100,000 × 0.50)/ 100 万 = 0.0504 ドルより大きい)。
+     */
+    public function test_the_ceiling_of_a_budget_includes_its_transcription_kinds(): void
+    {
+        config(['ai_runs.kinds' => [...(array) config('ai_runs.kinds'), 'test.audio' => [
+            'type' => 'transcription',
+            'provider' => 'gemini',
+            'model' => 'gemini-3.5-transcribe',
+            'budget' => 'transcription',
+            'timeout_seconds' => 180,
+            'language' => 'ja',
+            'max_audio_seconds' => 3600,
+            'chunk_seconds' => 1500,
+        ]]]);
+        $this->spend('1.000000', null, 'transcription');
+
+        $this->setLimit('total_usd', 1.3, 'transcription');
+        $this->assertNull($this->exceededPeriod('transcription'));
+
+        $this->setLimit('total_usd', 1.299999, 'transcription');
+        $this->assertSame(RunBudgetQuery::TOTAL, $this->exceededPeriod('transcription'));
     }
 
     public function test_a_budget_without_limits_is_none(): void

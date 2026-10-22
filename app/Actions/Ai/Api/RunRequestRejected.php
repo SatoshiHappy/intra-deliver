@@ -15,8 +15,14 @@ final class RunRequestRejected extends ValidationException
     /** 予算の区分の上限を超える */
     public const BUDGET = 'budget';
 
-    /** 送る文が入力の上限の文字数を超える */
+    /** 送る文が入力の上限の文字数を超える・音声が 1 本の長さの上限を超える */
     public const TOO_LONG = 'too_long';
+
+    /** 音声の長さを測れない(壊れた音声・音声の流れが無い) */
+    public const UNREADABLE = 'unreadable';
+
+    /** 音声の実体が無い(呼び手が選んだ後に消された・期限で消された) */
+    public const MISSING = 'missing';
 
     /**
      * @param  string  $reason  理由のコード(このクラスの定数)

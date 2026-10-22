@@ -36,6 +36,7 @@ final class Modules
      * 添付の台帳の行を指すので Upload にも依存する = 設計/業務データの入れ物/レコードの共通機能/README.md の「コードのモジュール」。
      * コメントの宛先に通知を送り、レコードの移り先を答えるので Notice にも依存する = 設計/業務データの入れ物/レコードの共通機能/コメント.md の 3 節)。
      * Ai = LLM の呼び出し口・AI の実行の記録・費用の上限・AI の書き込みの口(依頼者の表示名と有効の確かめに Master、閲覧と書き込みの判定に Authz・Records を使う。
+     * 文字起こしの音声の実体を読むので Upload にも依存する = 設計/AI/データと失敗と検査.md 8 節。
      * ワークフローからも AI を使えるよう Workflow より前、使う基盤の Records の後に置く = docs の 設計/業務ツール/モジュール境界.md の「一覧の並び」・設計/AI/README.md)。
      * Workflow = ワークフロー(名前・対象者の判定・ホームの節・申請フォームのレコードを使うので Master・Authz・Menu・Records に依存し、使う基盤の後に置く = docs の 設計/ワークフロー/README.md の「コードのモジュール」。
      * 申請の一時保存の添付が台帳の行を指すので Upload にも依存する = 設計/業務データの入れ物/レコードの共通機能/README.md の「コードのモジュール」。
@@ -58,7 +59,7 @@ final class Modules
         'Notice' => ['Master'],
         'Upload' => ['Master'],
         'Records' => ['Master', 'Authz', 'Menu', 'Notice', 'Upload'],
-        'Ai' => ['Master', 'Authz', 'Records'],
+        'Ai' => ['Master', 'Authz', 'Upload', 'Records'],
         'Workflow' => ['Master', 'Authz', 'Menu', 'Notice', 'Records', 'Upload'],
         'Builtin' => [],
         'Meeting' => ['Master', 'Authz', 'Notice', 'Records', 'Ai', 'Builtin'],
