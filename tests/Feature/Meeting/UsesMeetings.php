@@ -3,6 +3,7 @@
 namespace Tests\Feature\Meeting;
 
 use App\Actions\Ai\ExecutePrompt;
+use App\Actions\Ai\ExecuteTranscription;
 use App\Actions\Ai\PromptAgent;
 use App\Actions\Meeting\CreateMeeting;
 use App\Enums\Builtin\Meeting;
@@ -28,20 +29,30 @@ use App\Models\Records\RecordModule;
 use App\Models\Upload\Upload;
 use App\Support\AccessContext;
 use Carbon\CarbonImmutable;
+use Illuminate\Filesystem\Filesystem;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Testing\TestResponse;
+use Laravel\Ai\Responses\Data\Meta;
+use Laravel\Ai\Responses\Data\TranscriptionSegment;
+use Laravel\Ai\Responses\Data\TranscriptionUsage;
+use Laravel\Ai\Responses\TranscriptionResponse;
+use Laravel\Ai\Transcription;
 use Symfony\Component\HttpFoundation\Response;
 use Tests\Support\BuildsCommonMaster;
+use Tests\Support\BuildsUploads;
 use Throwable;
 
 /**
- * 会議のテストの手助け(初期データの組み込みの会議を使う。ジョブは出さず、AI は PromptAgent::fake で応答を作る)。
- * 予算の区分は上限なしにする(上限のテストが値を置く)。
+ * 会議のテストの手助け(初期データの組み込みの会議を使う。ジョブは出さず、AI は PromptAgent::fake・Transcription::fake で応答を作る)。
+ * 議事録の予算の区分は上限なしにする(上限のテストが値を置く)。音声は Ai の見本(docker/app/ffmpeg-check/samples)を使い、添付の実体の置き場と
+ * 文字起こしの一時ファイルの置き場はテストごとの置き場にする。
  */
 trait UsesMeetings
 {
     use BuildsCommonMaster;
+    use BuildsUploads;
 
     /** 議事録の出力(形に合う値) */
     protected const OUTPUT = [
@@ -57,7 +68,73 @@ trait UsesMeetings
     {
         Queue::fake();
         $this->withoutVite();
-        config(['ai_runs.budget.default' => ['daily_usd' => null, 'monthly_usd' => null, 'total_usd' => null]]);
+        $this->fakeUploadDisk();
+        $temp = sys_get_temp_dir().'/meeting-transcription-test-'.bin2hex(random_bytes(6));
+        $this->beforeApplicationDestroyed(fn () => (new Filesystem)->deleteDirectory($temp));
+        config([
+            'ai_runs.budget.default' => ['daily_usd' => null, 'monthly_usd' => null, 'total_usd' => null],
+            'ai_runs.transcription.temp_directory' => $temp,
+        ]);
+    }
+
+    /**
+     * 送られた音声(中身は Ai の見本。名前は送られたまま)。
+     */
+    protected function audioFile(string $name, string $sample = 'mp3float.mp3'): UploadedFile
+    {
+        $content = (string) file_get_contents(base_path("docker/app/ffmpeg-check/samples/{$sample}"));
+
+        return UploadedFile::fake()->createWithContent($name, $content);
+    }
+
+    /**
+     * 業務処理で音声の会議を作る(入口の判定を通さない)。
+     *
+     * @param  array<string, mixed>  $values
+     */
+    protected function audioMeeting(User $user, string $name = '定例.mp3', array $values = []): int
+    {
+        $file = $this->audioFile($name, self::sampleOf($name));
+
+        return app(CreateMeeting::class)->execute($this->contextOf($user), $file, null, $values);
+    }
+
+    /**
+     * 文字起こしの実行を、渡した区間(文・話者・開始の秒・終了の秒)で動かす(失敗しても投げ直された例外を受け止め、実行を返す)。
+     *
+     * @param  list<array{string, string, float|int, float|int}>  $segments
+     */
+    protected function completeTranscription(int $runId, array $segments): AiRun
+    {
+        Transcription::fake([new TranscriptionResponse(
+            implode(' ', array_column($segments, 0)),
+            new Collection(array_map(fn (array $segment) => new TranscriptionSegment(
+                $segment[0],
+                $segment[1],
+                (float) $segment[2],
+                (float) $segment[3],
+            ), $segments)),
+            new TranscriptionUsage(10, 5),
+            new Meta('gemini', 'gemini-3.5-transcribe'),
+        )]);
+
+        try {
+            app(ExecuteTranscription::class)->execute($runId);
+        } catch (Throwable) {
+            // 失敗は実行の状態で確かめる(投げ直しは Ai のテストが確かめる)
+        }
+
+        return AiRun::query()->findOrFail($runId);
+    }
+
+    /** 名前の拡張子に合う見本 */
+    private static function sampleOf(string $name): string
+    {
+        return match (strtolower(pathinfo($name, PATHINFO_EXTENSION))) {
+            'm4a' => 'aac.m4a',
+            'wav' => 'pcm_s16le.wav',
+            default => 'mp3float.mp3',
+        };
     }
 
     /** 名前(ja)の付いた有効なユーザー */

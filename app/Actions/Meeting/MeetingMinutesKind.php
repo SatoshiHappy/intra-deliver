@@ -8,11 +8,11 @@ use App\Actions\Ai\Api\PromptKind;
 use App\Actions\Ai\Api\RunCompletionFailed;
 use App\Actions\Ai\Api\WriteRecordFromRun;
 use App\Actions\Records\Api\RecordInput;
-use App\Enums\Ai\AiRunErrorCode;
 use App\Enums\Builtin\Meeting;
-use App\Enums\Meeting\MeetingNoticeReason;
+use App\Enums\Meeting\MeetingAiKind;
 use App\Enums\Meeting\MeetingNoticeType;
 use App\Enums\Meeting\MeetingRunOrigin;
+use App\Enums\Meeting\MeetingRunStage;
 use App\Models\Meeting\MeetingRun;
 use App\Queries\Records\Api\RecordDisplayQuery;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
@@ -25,7 +25,7 @@ use LogicException;
  */
 class MeetingMinutesKind implements PromptKind
 {
-    public const CODE = 'meeting.minutes';
+    public const CODE = MeetingAiKind::Minutes->value;
 
     /** 出力の形が外れた(項目が無い・文字列でない・空・件名に改行) */
     public const MALFORMED = 'minutes_malformed';
@@ -64,14 +64,6 @@ class MeetingMinutesKind implements PromptKind
         'decisions' => Meeting::Decisions,
         'open_issues' => Meeting::OpenIssues,
         'next_actions' => Meeting::NextActions,
-    ];
-
-    /** 書き込みの口が断った・依頼者が会議を読めない細かい理由 */
-    private const RECORD_REASONS = [
-        FailedRun::RECORD_FORBIDDEN,
-        FailedRun::RECORD_NOT_FOUND,
-        FailedRun::RECORD_REJECTED,
-        FailedRun::REQUESTER_INACTIVE,
     ];
 
     public function __construct(
@@ -137,7 +129,7 @@ class MeetingMinutesKind implements PromptKind
             return;
         }
 
-        $reason = self::reasonOf($run);
+        $reason = MeetingFailureReasons::of($run, MeetingRunStage::Minutes);
         $this->notices->send(MeetingNoticeType::MinutesFailed, $run->recordId, $run->requesterUserId, $reason);
     }
 
@@ -207,21 +199,6 @@ class MeetingMinutesKind implements PromptKind
         return match ($origin) {
             MeetingRunOrigin::Create => 'AI(議事録の作成)',
             MeetingRunOrigin::Regenerate => 'AI(議事録の再作成)',
-        };
-    }
-
-    /**
-     * 議事録の実行の失敗を、通知の理由の文の分け方に写す(通知と削除予定日.md の 6.4)。
-     */
-    private static function reasonOf(FailedRun $run): MeetingNoticeReason
-    {
-        $truncated = $run->errorCode === AiRunErrorCode::Incomplete->value
-            && $run->reason === FailedRun::OUTPUT_TRUNCATED;
-
-        return match (true) {
-            $truncated => MeetingNoticeReason::Truncated,
-            in_array($run->reason, self::RECORD_REASONS, true) => MeetingNoticeReason::RecordUnavailable,
-            default => MeetingNoticeReason::Other,
         };
     }
 }

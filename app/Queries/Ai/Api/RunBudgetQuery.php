@@ -2,6 +2,7 @@
 
 namespace App\Queries\Ai\Api;
 
+use App\Queries\Ai\KindSettings;
 use App\Queries\Ai\RunEstimates;
 use App\Queries\Ai\RunSpending;
 use DateTimeInterface;
@@ -20,7 +21,11 @@ class RunBudgetQuery
 
     public const TOTAL = 'total';
 
-    public function __construct(private RunSpending $spending, private RunEstimates $estimates) {}
+    public function __construct(
+        private RunSpending $spending,
+        private RunEstimates $estimates,
+        private KindSettings $kinds,
+    ) {}
 
     /**
      * 区分の「使った額 + その区分に属する種類(文章・文字起こし)の見積もりの上限の最大」が上限を超える期間。複数なら長い方。無ければ null。
@@ -34,5 +39,21 @@ class RunBudgetQuery
     public function exceededPeriod(string $budget, DateTimeInterface $at): ?string
     {
         return $this->spending->exceededPeriod($budget, $at, $this->estimates->ceilingOf($budget));
+    }
+
+    /**
+     * 種類の区分の状態(区分は種類の設定から引く。呼び手は区分の名前を持たない)。返すもの・判定は {@see self::exceededPeriod()} と同じ。
+     *
+     * @param  string  $kindCode  種類のコード(文章・文字起こし)
+     * @return self::DAY|self::MONTH|self::TOTAL|null
+     *
+     * @throws LogicException 設定に無い種類・設定の形が合わないとき
+     */
+    public function exceededPeriodOfKind(string $kindCode, DateTimeInterface $at): ?string
+    {
+        $kind = $this->kinds->prompt($kindCode) ?? $this->kinds->transcription($kindCode)
+            ?? throw new LogicException("AI の種類 {$kindCode} が設定(config/ai_runs.php の kinds)に無い");
+
+        return $this->exceededPeriod($kind['budget'], $at);
     }
 }

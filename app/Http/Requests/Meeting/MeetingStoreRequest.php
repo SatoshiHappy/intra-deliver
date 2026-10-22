@@ -4,6 +4,8 @@ namespace App\Http\Requests\Meeting;
 
 use App\Actions\Meeting\MeetingRequestGate;
 use App\Actions\Meeting\TextImportReader;
+use App\Queries\Ai\Api\TranscriptionFormats;
+use App\Queries\Upload\Api\UploadLimits;
 use App\Support\AccessContext;
 use App\Support\ReadsJsonEnvelope;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -11,8 +13,9 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Http\UploadedFile;
 
 /**
- * テキストからの会議の作成の入力(ファイル 1 つ file か貼り付けの文 text と、欄の値 values。docs の 設計/業務ツール/会議/処理.md の 3.2)。
- * ここは形だけを見て、形式・大きさ・文字コード・行は業務処理が確かめる。PHP の上限で落ちた送信は、大きさの誤りと同じ文にそろえる。
+ * 会議の作成の入力(音声かテキストのファイル 1 つ file か貼り付けの文 text と、欄の値 values。docs の 設計/業務ツール/会議/処理.md の 3.2)。
+ * ここは形だけを見て、形式・大きさ・文字コード・行は業務処理が確かめる。PHP の上限で落ちた送信は、大きさの誤りと同じ文にそろえる
+ * (送ったファイルの名前の拡張子で選ぶ: 音声 = 添付の土台の文、ほか = テキストの文)。
  * ファイルを送る multipart の要求は、ファイルの外の入力(values)を JSON の封筒 envelope で受ける(参照の id を数のまま受けるため)。
  */
 class MeetingStoreRequest extends FormRequest
@@ -60,10 +63,13 @@ class MeetingStoreRequest extends FormRequest
         $file = $this->file(TextImportReader::FILE);
         $tooLarge = $file instanceof UploadedFile
             && in_array($file->getError(), [UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE], true);
+        $audio = $file instanceof UploadedFile
+            && app(TranscriptionFormats::class)->isAudioName($file->getClientOriginalName());
+        $tooLargeMessage = $audio ? app(UploadLimits::class)->fileTooLargeMessage() : TextImportReader::FILE_TOO_LARGE;
 
         return [
             'file.file' => self::NOT_RECEIVED,
-            'file.uploaded' => $tooLarge ? TextImportReader::FILE_TOO_LARGE : self::NOT_RECEIVED,
+            'file.uploaded' => $tooLarge ? $tooLargeMessage : self::NOT_RECEIVED,
             'text.string' => self::TEXT_MALFORMED,
             'values.array' => self::VALUES_MALFORMED,
         ];

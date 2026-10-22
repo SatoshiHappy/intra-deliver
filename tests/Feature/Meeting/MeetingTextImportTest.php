@@ -35,7 +35,7 @@ final class MeetingTextImportTest extends TransactionalTestCase
         return [
             '両方' => [['file' => ['a.txt', '発言'], 'text' => '発言'], 'file', CreateMeeting::FILE_OR_TEXT],
             'どちらも無い' => [[], 'file', CreateMeeting::FILE_OR_TEXT],
-            '形式' => [['file' => ['会議.mp3', '発言']], 'file', TextImportReader::UNSUPPORTED],
+            '形式' => [['file' => ['会議.mp4', '発言']], 'file', TextImportReader::UNSUPPORTED],
             '拡張子が無い' => [['file' => ['会議', '発言']], 'file', TextImportReader::UNSUPPORTED],
             'ファイルが 1MB を超える' => [['file' => ['a.txt', $tooLarge]], 'file', TextImportReader::FILE_TOO_LARGE],
             '貼り付けが 1MB を超える' => [['text' => $tooLarge], 'text', TextImportReader::PASTE_TOO_LARGE],

@@ -4,10 +4,13 @@ namespace App\Queries\Meeting;
 
 use App\Enums\Builtin\Meeting;
 use App\Enums\Meeting\MeetingProcessingState;
+use App\Enums\Meeting\MeetingRunOrigin;
 use App\Models\Meeting\MeetingRun;
 use App\Models\Meeting\Transcript;
 use App\Queries\Records\Api\RecordScreenAddons;
+use App\Queries\Upload\Api\UploadLimits;
 use App\Support\AccessContext;
+use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -27,7 +30,13 @@ class MeetingScreenAddons implements RecordScreenAddons
     /** 要約の欄の上の注(再作成のできる会議だけ) */
     public const MINUTES_NOTE = '議事録の 5 欄は、再作成で上書きされます。前の値は更新履歴で確認できます。';
 
-    public function __construct(private MeetingPermissions $permissions, private MeetingProcessingQuery $states) {}
+    public function __construct(
+        private MeetingPermissions $permissions,
+        private MeetingProcessingQuery $states,
+        private MeetingAudioBudget $budget,
+        private MeetingAudioQuery $audio,
+        private UploadLimits $limits,
+    ) {}
 
     public function moduleCode(): string
     {
@@ -35,17 +44,24 @@ class MeetingScreenAddons implements RecordScreenAddons
     }
 
     /**
-     * 「音声から作成」は作成の入口と同じ判定を通る見る人にだけ出す。部品には取り込むテキストの上限を渡す。
+     * 「音声から作成」は作成の入口と同じ判定を通る見る人にだけ出す。部品には取り込むテキストの上限、音声 1 本の上限(添付の土台の値)、
+     * 音声の取り込みの先の止め方の文(受けられれば null = 公開デモと画面.md の 9.2)を渡す。
      *
      * @return RecordIndexAddons
      */
     public function index(AccessContext $context): array
     {
+        $blocked = $this->budget->blockedMessage(MeetingRunOrigin::Create, CarbonImmutable::now());
+
         return ['actions' => $this->permissions->canCreate($context) ? [[
             'code' => 'create',
             'label' => '音声から作成',
             'dialog' => 'meeting.create',
-            'props' => ['textMaxBytes' => MeetingLimits::TEXT_MAX_BYTES],
+            'props' => [
+                'textMaxBytes' => MeetingLimits::TEXT_MAX_BYTES,
+                'audioMaxBytes' => $this->limits->maxFileBytes(),
+                'audioBlockedMessage' => $blocked,
+            ],
             'disabledReason' => null,
             'changesValues' => false,
         ]] : []];
@@ -76,19 +92,25 @@ class MeetingScreenAddons implements RecordScreenAddons
         $canRegenerate = $regenerable && $this->permissions->canRegenerate($context);
 
         return [
-            'actions' => $canRegenerate ? [self::regenerateAction($hasTranscript, $state)] : [],
+            'actions' => $canRegenerate ? [$this->regenerateAction($recordId, $hasTranscript, $state)] : [],
             'badges' => $state === null ? [] : [self::badgeOf($state)],
             'fieldNotes' => $regenerable ? [Meeting::Summary->value => self::MINUTES_NOTE] : [],
         ];
     }
 
     /**
-     * 部品には書き起こしの有無(送り先を分ける = 処理.md の 3.7)と、追加の指示の上限を渡す。
+     * 部品には書き起こしの有無(送り先を分ける = 処理.md の 3.7)と、追加の指示の上限と、音声から作り直すときの先の止め方の文
+     * (書き起こしが無く受ける音声があるときだけ。ほかは null = 公開デモと画面.md の 9.3)を渡す。
      *
      * @return RecordAddonAction
      */
-    private static function regenerateAction(bool $hasTranscript, ?MeetingProcessingState $state): array
+    private function regenerateAction(int $recordId, bool $hasTranscript, ?MeetingProcessingState $state): array
     {
+        $fromAudio = ! $hasTranscript && $this->audio->latestAudioOf($recordId) !== null;
+        $blocked = $fromAudio
+            ? $this->budget->blockedMessage(MeetingRunOrigin::Regenerate, CarbonImmutable::now())
+            : null;
+
         return [
             'code' => 'regenerate',
             'label' => '再作成',
@@ -96,6 +118,7 @@ class MeetingScreenAddons implements RecordScreenAddons
             'props' => [
                 'hasTranscript' => $hasTranscript,
                 'instructionsMaxLength' => MeetingLimits::INSTRUCTIONS_MAX_LENGTH,
+                'audioBlockedMessage' => $blocked,
             ],
             'disabledReason' => $state === MeetingProcessingState::Processing ? self::PROCESSING_REASON : null,
             'changesValues' => true,

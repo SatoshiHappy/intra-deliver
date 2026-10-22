@@ -22,12 +22,6 @@ final class MeetingScreenAddonsTest extends TransactionalTestCase
 {
     use UsesMeetings;
 
-    private const CREATE = [
-        'code' => 'create', 'label' => '音声から作成', 'dialog' => 'meeting.create',
-        'props' => ['textMaxBytes' => MeetingLimits::TEXT_MAX_BYTES],
-        'disabledReason' => null, 'changesValues' => false,
-    ];
-
     private const PROCESSING = ['label' => '処理中', 'tone' => 'pending'];
 
     private const FAILED = ['label' => '失敗', 'tone' => 'rejected'];
@@ -53,7 +47,7 @@ final class MeetingScreenAddonsTest extends TransactionalTestCase
         $this->actingAs($this->creator)->get('/records/data/meeting')->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('Records/Index')
-                ->where('addons.actions', [self::CREATE])
+                ->where('addons.actions', [self::create()])
                 ->where('addonBadges', [$processing => [self::PROCESSING], $failed => [self::FAILED]])
             );
     }
@@ -193,13 +187,33 @@ final class MeetingScreenAddonsTest extends TransactionalTestCase
     /**
      * @return array<string, mixed>
      */
-    private static function regenerate(bool $hasTranscript, ?string $disabledReason): array
+    private static function create(?string $audioBlockedMessage = null): array
     {
+        return [
+            'code' => 'create', 'label' => '音声から作成', 'dialog' => 'meeting.create',
+            'props' => [
+                'textMaxBytes' => MeetingLimits::TEXT_MAX_BYTES,
+                'audioMaxBytes' => 99_614_720,
+                'audioBlockedMessage' => $audioBlockedMessage,
+            ],
+            'disabledReason' => null, 'changesValues' => false,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private static function regenerate(
+        bool $hasTranscript,
+        ?string $disabledReason,
+        ?string $audioBlockedMessage = null,
+    ): array {
         return [
             'code' => 'regenerate', 'label' => '再作成', 'dialog' => 'meeting.regenerate',
             'props' => [
                 'hasTranscript' => $hasTranscript,
                 'instructionsMaxLength' => MeetingLimits::INSTRUCTIONS_MAX_LENGTH,
+                'audioBlockedMessage' => $audioBlockedMessage,
             ],
             'disabledReason' => $disabledReason,
             'changesValues' => true,

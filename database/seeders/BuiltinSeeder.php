@@ -57,7 +57,7 @@ class BuiltinSeeder extends Seeder
     }
 
     /**
-     * 会議の業務モジュール(無ければ作り、見える範囲を関係する人だけにして旗を立てる)。
+     * 会議の業務モジュール(無ければ作り、見える範囲を関係する人だけにし、添付ファイルを使用にして旗を立てる。音声を添付に残す = 会議 README の 1.2)。
      *
      * @throws LogicException 同じコードの組み込みでない業務モジュール(明細のモジュールを含む)があるとき
      */
@@ -72,7 +72,10 @@ class BuiltinSeeder extends Seeder
         }
 
         $module = $this->createModule->execute(self::MEETING_MODULE);
-        $this->updateModule->execute(Meeting::CODE, ['row_access_scope' => RowAccessScope::Related->value]);
+        $this->updateModule->execute(Meeting::CODE, [
+            'row_access_scope' => RowAccessScope::Related->value,
+            'is_attachment_enabled' => true,
+        ]);
         RecordModule::query()->whereKey($module->id)->update(['is_builtin' => true]);
 
         return $module;
