@@ -10,7 +10,8 @@ use DateTimeInterface;
 /**
  * 認可設定の画面の格子(docs の 設計/共通マスタ/ロールと認可/認可の確認/認可設定の画面.md 2 節): 1 格子 = 1 リソースタイプ。
  * 行 = {@see OverviewTree}、列 = {@see OverviewSubjects} × タイプのアクション(ResourceTypeCatalog の並び)、セル = {@see OverviewSettings}。
- * 判定 = タイプのリソースを持つ行について、アクションごとに判定の口 {@see AuthorizationQuery::explain()} を呼んだ結果(リソースを持たない行は null)。
+ * 判定 = タイプのリソースを持つ行について、アクションごとの判定の口 {@see AuthorizationQuery::explain()} の結果(リソースを持たない行は null)。
+ * 行 × アクションの判定は {@see AuthorizationQuery::explainEach()} でまとめて求める(問い合わせの数を行の数に比例させない)。
  * 閉塞の値は読み直さない(判定の結果だけ)。返す形の画面の型は resources/js/types/authz.ts の AuthzGrid。
  *
  * @phpstan-import-type GridSubject from OverviewSubjects
@@ -61,6 +62,11 @@ class OverviewQuery
         $subjectGroupIds = array_column($subjects, 'id');
         $nodes = $this->tree->nodesOf($resourceType, $localeCode);
         $settings = $this->settings->settingsOf($resourceType, $nodes, $subjectGroupIds, $actions);
+        $judgedIds = array_map(fn (OverviewTreeNode $node) => $node->resourceGroupId, array_values(array_filter(
+            $nodes,
+            fn (OverviewTreeNode $node) => $node->holdsResource,
+        )));
+        $explanations = $this->authorization->explainEach($requester, $judgedIds, $actions, $date);
 
         return [
             'resourceType' => $resourceType,
@@ -73,7 +79,9 @@ class OverviewQuery
                 'code' => $node->code,
                 'name' => $node->name,
                 'settings' => $settings[$node->resourceGroupId] ?? [],
-                'judgements' => $node->holdsResource ? $this->judgements($requester, $node->resourceGroupId, $actions, $subjectGroupIds, $date) : null,
+                'judgements' => $node->holdsResource
+                    ? $this->judgements($actions, $explanations[$node->resourceGroupId], $subjectGroupIds)
+                    : null,
             ], $nodes),
         ];
     }
@@ -82,13 +90,14 @@ class OverviewQuery
      * 行のアクションごとの判定。効いた対象者は列の並び(列に無い対象者は捨てず、列の後に id の順)。
      *
      * @param  list<string>  $actions
+     * @param  array<string, AuthorizationExplanation>  $explanations  アクション → 判定
      * @param  list<int>  $subjectGroupIds  列の対象者(列の並び)
      * @return list<GridJudgement>
      */
-    private function judgements(Requester $requester, int $resourceGroupId, array $actions, array $subjectGroupIds, DateTimeInterface $date): array
+    private function judgements(array $actions, array $explanations, array $subjectGroupIds): array
     {
-        return array_map(function (string $action) use ($requester, $resourceGroupId, $subjectGroupIds, $date) {
-            $explanation = $this->authorization->explain($requester, $resourceGroupId, $action, $date);
+        return array_map(function (string $action) use ($explanations, $subjectGroupIds) {
+            $explanation = $explanations[$action];
             $deciding = array_map(fn (EffectivePolicy $policy) => $policy->subjectGroupId, $explanation->decidingPolicies());
             $outside = array_diff($deciding, $subjectGroupIds);
             sort($outside);

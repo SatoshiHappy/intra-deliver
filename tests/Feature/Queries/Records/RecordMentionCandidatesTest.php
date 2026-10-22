@@ -21,6 +21,7 @@ final class RecordMentionCandidatesTest extends TransactionalTestCase
 
     /**
      * 閲覧できる人 B01〜B25 は sort_key が名前と逆の順(B25 が先)で、閲覧できない人 A01〜A25 より後ろ。返す順は sort_key の順(名前の順でない)。
+     * 絞る語に名前の日本語を含めるのは、候補がユーザーコードも部分一致で見るので、英数字だけの語がほかの人のコードに当たりうるため。
      */
     public function test_lists_only_viewers_in_the_master_order_even_when_non_viewers_come_first(): void
     {
@@ -42,8 +43,8 @@ final class RecordMentionCandidatesTest extends TransactionalTestCase
         $expected = array_map(fn (int $number) => sprintf('検索 B%02d', $number), range(25, 6));
         $this->assertSame($expected, array_column($rows, 'name'));
         $this->assertSame(['id', 'name', 'department'], array_keys($rows[0]));
-        $this->assertSame(['検索 B25'], array_column($this->candidates($recordId, 'B25'), 'name'));
-        $this->assertSame([], $this->candidates($recordId, 'A01'));
+        $this->assertSame(['検索 B25'], array_column($this->candidates($recordId, '検索 B25'), 'name'));
+        $this->assertSame([], $this->candidates($recordId, '検索 A01'));
     }
 
     public function test_a_person_who_can_view_only_in_a_concurrent_department_is_listed(): void
