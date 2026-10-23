@@ -12,10 +12,16 @@ use LogicException;
  */
 class TranscriptionSettings
 {
-    /** 変換と長さの測りの時間の上限(秒。外部のプロセスすべてを合わせた長さ) */
+    /** 実行の中の変換と区切りの時間の上限(秒。外部のプロセスすべてを合わせた長さ) */
     public function conversionTimeoutSeconds(): int
     {
         return $this->positiveInt('conversion_timeout_seconds');
+    }
+
+    /** 依頼の時点の長さの測りと先頭の復号の確かめの時間の上限(秒。外部のプロセスを合わせた長さ。変換と分ける理由 = 設計/AI/実行と費用.md 4.2) */
+    public function measureTimeoutSeconds(): int
+    {
+        return $this->positiveInt('measure_timeout_seconds');
     }
 
     /** 依頼の時点に長さを測るとき、復号できるかを確かめる先頭の長さ(秒) */

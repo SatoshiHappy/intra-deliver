@@ -224,20 +224,31 @@ final class AudioConverterTest extends TransactionalTestCase
         }
     }
 
-    /** 書き手の無い名前つきパイプは開いたまま終わらないので、測りも区切りも時間の上限(1 秒)で変換の失敗になる */
+    /**
+     * 書き手の無い名前つきパイプは開いたまま終わらないので、測りは測りの時間の上限で、区切りは変換の時間の上限で変換の失敗になる
+     * (もう一方の上限を長くしても、自分の上限(1 秒)で終わる)。
+     */
     public function test_a_process_over_the_time_limit_is_a_conversion_failure(): void
     {
-        config(['ai_runs.transcription.conversion_timeout_seconds' => 1]);
         $pipe = "{$this->directory}/pipe.wav";
         $this->assertTrue(posix_mkfifo($pipe, 0600));
+        $measure = fn () => app(AudioConverter::class)->measure($pipe);
+        $split = fn () => $this->split($pipe, 10);
+        $cases = [
+            'measure' => [['measure_timeout_seconds' => 1, 'conversion_timeout_seconds' => 3], $measure],
+            'split' => [['measure_timeout_seconds' => 3, 'conversion_timeout_seconds' => 1], $split],
+        ];
 
-        foreach ([fn () => app(AudioConverter::class)->measure($pipe), fn () => $this->split($pipe, 10)] as $call) {
+        foreach ($cases as $name => [$limits, $call]) {
+            config(['ai_runs.transcription' => [...(array) config('ai_runs.transcription'), ...$limits]]);
+
             try {
                 $call();
-                $this->fail('時間の上限を超えたのに変換の失敗にならなかった');
+                $this->fail("{$name}: 時間の上限を超えたのに変換の失敗にならなかった");
             } catch (AudioConversionFailed $exception) {
-                $this->assertNotInstanceOf(AudioUnreadable::class, $exception);
-                $this->assertStringContainsString('時間の上限', $exception->getMessage());
+                $this->assertNotInstanceOf(AudioUnreadable::class, $exception, $name);
+                $this->assertStringContainsString('時間の上限', $exception->getMessage(), $name);
+                $this->assertStringContainsString('timeout of 1 seconds', $exception->getMessage(), $name);
             }
         }
     }

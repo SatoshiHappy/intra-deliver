@@ -5,6 +5,8 @@ namespace Tests\Feature\Ai;
 use App\Actions\Ai\Api\RequestTranscription;
 use App\Actions\Ai\Api\RunRequestDeclined;
 use App\Actions\Ai\Api\TranscriptionRequest;
+use App\Actions\Ai\AudioConversionFailed;
+use App\Actions\Ai\AudioConverter;
 use App\Actions\Ai\RunBudget;
 use App\Enums\Ai\AiRunStatus;
 use App\Jobs\Ai\RunTranscriptionJob;
@@ -33,7 +35,7 @@ use Tests\Support\TransactionalTestCase;
 
 /**
  * 文字起こしの依頼(docs の 設計/AI/公開の口.md 3 節の文字起こしの依頼の行、実行と費用.md 4.2・5.2): ゲストは 403、登録の無い種類と音声の形式でない添付は
- * 作りの誤り、実体が無い・読み取れない・長すぎるは理由のコードつきの 422、区分の上限は文字起こしの文の 422(見積もり = 長さ ÷ 60 × 0.005 ドルで数え、
+ * 作りの誤り、実体が無い・読み取れない・長すぎるは理由のコードつきの 422(測りの時間切れは 422 にしない)、区分の上限は文字起こしの文の 422(見積もり = 長さ ÷ 60 × 0.005 ドルで数え、
  * 終わる前の実行は見積もりで数え、区分をまたいで数えない)、実行(queued)と空の送る文を書き、ジョブはコミットの後に出る。長さは勧告ロックの外で測る。
  */
 final class RequestTranscriptionTest extends TransactionalTestCase
@@ -105,6 +107,28 @@ final class RequestTranscriptionTest extends TransactionalTestCase
         $uploadId = Upload::factory()->create(['mime' => 'audio/mpeg', 'path' => 'ai-test/broken.mp3'])->id;
 
         $this->assertDeclined($uploadId, RunRequestDeclined::UNREADABLE, '音声を読み取れませんでした');
+    }
+
+    /** 測りの時間切れは音声のせいと限らないので、読めない音声の断り(422)にせず、変換の失敗のまま出す */
+    public function test_a_measure_over_the_time_limit_is_a_failure_not_a_decline(): void
+    {
+        $uploadId = $this->sine();
+        $this->app->instance(AudioConverter::class, new class(app(TranscriptionSettings::class)) extends AudioConverter
+        {
+            public function measure(string $path): float
+            {
+                throw new AudioConversionFailed('測りの時間切れ');
+            }
+        });
+
+        try {
+            $this->execute($this->request($uploadId));
+            $this->fail('測りの時間切れが変換の失敗として出なかった');
+        } catch (AudioConversionFailed $exception) {
+            $this->assertSame('測りの時間切れ', $exception->getMessage());
+        }
+
+        $this->assertSame(0, AiRun::query()->count());
     }
 
     /** 1 本の長さの上限 1 時間を 1 秒超える(8kHz・8 ビットの wav で作る) */

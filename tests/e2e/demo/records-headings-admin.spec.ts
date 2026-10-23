@@ -62,7 +62,7 @@ function tableRows(page: Page) {
  * 「見出しを追加」の Dialog で名前を入れて追加する。
  */
 async function addHeading(page: Page, name: string) {
-    // 前に足した見出しの通知(4 秒で消える)が残っていると、新しい通知と同じ文で 2 つに当たるので、消えてから足す
+    // 前に足した見出しのトースト(時間で消える)が残っていると、新しいトーストと同じ文で 2 つに当たるので、消えてから足す
     const added = page.getByText('見出しを追加しました', { exact: true });
     await expect(added).toHaveCount(0, { timeout: 10_000 });
     await page

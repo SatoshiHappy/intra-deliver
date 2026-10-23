@@ -85,9 +85,11 @@ return [
     'retention_days' => 90,
 
     // 種類によらない文字起こしの値(見えない値。設計/AI/実行と費用.md 4.2。本物の接続の確かめで直す)。
-    // 一時ファイルは置き場の下に実行の id で分けたディレクトリに置く(設計/AI/データと失敗と検査.md 6 節)
+    // 一時ファイルは置き場の下に実行の id で分けたディレクトリに置く(設計/AI/データと失敗と検査.md 6 節)。
+    // 測りの上限を変換の上限と分ける理由 = 設計/AI/実行と費用.md 4.2
     'transcription' => [
         'conversion_timeout_seconds' => 300,
+        'measure_timeout_seconds' => 20,
         'decode_check_seconds' => 10,
         'silence_window_seconds' => 60,
         'silence_noise_db' => -35,
