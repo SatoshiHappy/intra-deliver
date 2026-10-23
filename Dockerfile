@@ -1,4 +1,4 @@
-# 公開用の app のイメージ(docs の 設計/公開の配備/構成.md 3.3.1)。build の文脈は配備専用の作業木(git が追跡するファイルだけ)。
+# 公開用の app のイメージ(docs の 設計/公開の配備/構成/イメージ.md 3.3.1)。build の文脈は配備専用の作業木(git が追跡するファイルだけ)。
 # BuildKit 専用の構文(syntax の指示・RUN --mount・ヒアドキュメント・COPY --link)を使わない(legacy builder でも通す)。
 # 段: ffmpeg = 公式の版の source から LGPL の最小の構成で ffmpeg・ffprobe を作る / base = 公式の FrankenPHP(Debian 系・PHP 8.4)に
 # PHP の拡張と ffmpeg を足した共通の土台 / build = 依存と資産を作る / app = 最終(非 root・Node 無し)。

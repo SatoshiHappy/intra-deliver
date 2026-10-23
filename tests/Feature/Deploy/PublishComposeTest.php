@@ -6,7 +6,7 @@ use Symfony\Component\Yaml\Yaml;
 use Tests\TestCase;
 
 /**
- * 公開用の compose.publish.yml の守り(docs の 設計/公開の配備/構成.md の 3.1・3.2.2・3.4・3.5 節): 強化と再起動・ports: を書かない・
+ * 公開用の compose.publish.yml の守り(docs の 設計/公開の配備/構成/README.md の 3.1・3.2.2 節、構成/設定.md の 3.4・3.5 節): 強化と再起動・ports: を書かない・
  * 外へ出られるのは tunnel と queue だけ・AI の接続先の鍵は queue だけ・queue と scheduler は app のイメージ・queue の止め方の待ち。
  * 本物の docker は呼ばない(起こして確かめるのは実機の検証)。
  */

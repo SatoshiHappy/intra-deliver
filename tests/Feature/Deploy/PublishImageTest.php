@@ -6,7 +6,7 @@ use App\Actions\Ai\AudioConverter;
 use Tests\TestCase;
 
 /**
- * 公開用の app のイメージ(Dockerfile)と起動のスクリプト(docker/app/entrypoint)の守り(docs の 設計/公開の配備/構成.md の 3.3.1 節)を、
+ * 公開用の app のイメージ(Dockerfile)と起動のスクリプト(docker/app/entrypoint)の守り(docs の 設計/公開の配備/構成/イメージ.md の 3.3.1 節)を、
  * 文で確かめる。イメージの中で見るもの(拡張の有無・ffmpeg の構成の行・起動)は build と実機の検証で見る。
  */
 final class PublishImageTest extends TestCase

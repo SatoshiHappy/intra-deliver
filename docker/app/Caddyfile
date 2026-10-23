@@ -1,4 +1,4 @@
-# 公開用の app の Caddyfile(docs の 設計/公開の配備/構成.md 3.3.1・3.2.4・3.6、入口/README.md 5.4)。Dockerfile が /etc/frankenphp/Caddyfile に置く。
+# 公開用の app の Caddyfile(docs の 設計/公開の配備/構成/イメージ.md 3.3.1、構成/README.md 3.2.4、構成/設定.md 3.6、入口/README.md 5.4)。Dockerfile が /etc/frankenphp/Caddyfile に置く。
 # classic モード(worker を書かない)。待ち受けは環境変数 SERVER_NAME(Dockerfile で :8080。ホスト名が無いので自動の HTTPS は掛からない)。
 {
 	# PHP のスレッドの数を固定する(既定は CPU の数の 2 倍)。memory_limit(docker/app/php.ini)× max_threads + 常駐分 ≤ app のメモリの上限
@@ -10,7 +10,7 @@
 	# Caddy が client_ip の判定に使う範囲(公式文書 caddyserver.com/docs/caddyfile/options#trusted-proxies)。private_ranges = 192.168.0.0/16・
 	# 172.16.0.0/12・10.0.0.0/8・127.0.0.1/8・fd00::/8・::1。範囲外の相手の X-Forwarded-* を消すものではない(入口/README.md 5.4 (a) の
 	# 「書かないと無視される」も Caddy 側の判定の話)。PHP 側でどのヘッダーを信じるかは bootstrap/app.php の trustProxies('*') が決め、
-	# app に直接届く経路を作らないこと(ホストにポートを公開しない = 構成.md 3.1)で守る
+	# app に直接届く経路を作らないこと(ホストにポートを公開しない = 構成/README.md 3.1)で守る
 	servers {
 		trusted_proxies static private_ranges
 	}
@@ -20,7 +20,7 @@
 	root * public/
 
 	# compose のヘルスチェックが間隔ごとに叩く /up はアクセスログに出さない(ほかの要求は
-	# 構成.md 3.2.4 の「FrankenPHP(Caddy)のアクセスログ(JSON)を標準エラーに出す」のまま。log_skip は Caddy の公式文書
+	# 構成/README.md 3.2.4 の「FrankenPHP(Caddy)のアクセスログ(JSON)を標準エラーに出す」のまま。log_skip は Caddy の公式文書
 	# caddyserver.com/docs/caddyfile/directives/log_skip。skip_log は旧名)
 	@health path /up
 	log_skip @health

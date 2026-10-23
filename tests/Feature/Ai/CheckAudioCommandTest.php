@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Process;
 use Tests\TestCase;
 
 /**
- * 音声の確かめのコマンド ai:check-audio(公開用のイメージの build が見本の音声に流す = docs の 設計/公開の配備/構成.md の 3.3.1 節)を、
+ * 音声の確かめのコマンド ai:check-audio(公開用のイメージの build が見本の音声に流す = docs の 設計/公開の配備/構成/イメージ.md の 3.3.1 節)を、
  * 手元の ffmpeg・ffprobe で見本の音声(受ける decoder ごとに 1 つ)に流す。見本は通り、音声でないファイルは終了コード 1 と理由。DB を使わない基底クラス。
  */
 final class CheckAudioCommandTest extends TestCase

@@ -7,7 +7,7 @@ use Tests\TestCase;
 
 /**
  * 公開用の設定ファイルの雛形 .env.publish.example(docs の 設計/公開の配備/DBと秘密.md の 4.4 節)の AI の節: 接続先の鍵は queue だけが受ける
- * ai.env に置いて値を空にし、app.env に置かない(docs の 設計/公開の配備/構成.md の 3.4 節)。
+ * ai.env に置いて値を空にし、app.env に置かない(docs の 設計/公開の配備/構成/設定.md の 3.4 節)。
  */
 final class PublishSettingsTemplateTest extends TestCase
 {
