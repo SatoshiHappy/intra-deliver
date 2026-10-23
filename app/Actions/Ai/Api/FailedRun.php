@@ -23,7 +23,7 @@ final readonly class FailedRun
     /** completion: 完了の処理の中でレコードの更新が断られた(422。持ち主の鍵と入れ物の検証を分けない) */
     public const RECORD_REJECTED = 'record_rejected';
 
-    /** completion: 依頼者が書く時の当日に有効でない(書き込みの口が更新の前に止めた) */
+    /** completion: 依頼者が書く時の当日に有効でない(完了の受け手を呼ぶ前か、書き込みの口が更新の前に止めた) */
     public const REQUESTER_INACTIVE = 'requester_inactive';
 
     /**

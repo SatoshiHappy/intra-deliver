@@ -57,6 +57,25 @@ final class RequestPromptBudgetTest extends TransactionalTestCase
         $this->assertSame(4, AiRun::query()->count());
     }
 
+    /**
+     * 費用の分かる失敗(費用 0 を含む)は、見積もりが大きくても費用で数える。使用量が分からない失敗は見積もりで数える。
+     */
+    #[DataProvider('periods')]
+    public function test_a_failure_with_a_known_cost_is_counted_by_the_cost(string $period, string $message): void
+    {
+        $usage = ['input_tokens' => 1, 'output_tokens' => 1, 'pricing' => ['input' => 0.1]];
+        AiRun::factory()->failed()->create([...$usage, 'cost_usd' => '0.100000', 'reserved_cost_usd' => '2.000000']);
+        AiRun::factory()->failed()->create([...$usage, 'cost_usd' => '0.000000', 'reserved_cost_usd' => '3.000000']);
+        AiRun::factory()->failed()->create(['reserved_cost_usd' => '0.250000']);
+
+        $this->setBudget($period, 0.35 + self::RESERVED - 0.000001);
+        $this->assertRejectedWith($message);
+
+        $this->setBudget($period, 0.35 + self::RESERVED);
+        app(RequestPrompt::class)->execute($this->requesterContext(), $this->promptRequest());
+        $this->assertSame(4, AiRun::query()->count());
+    }
+
     public function test_the_runs_of_another_budget_are_not_counted(): void
     {
         AiRun::factory()->succeeded('9.000000')->create(['budget' => 'transcription']);
