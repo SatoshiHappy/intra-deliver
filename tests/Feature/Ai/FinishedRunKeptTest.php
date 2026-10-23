@@ -23,9 +23,8 @@ use RuntimeException;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * 終わった実行は、あとから来る経路で変えない(docs の 設計/AI/実行と費用.md 4 節)。
- * ほかの経路(worker が落ちた扱い = ジョブの failed())が先に終わらせた後に接続・完了の例外が来ても、状態と失敗の記録は先の経路のまま・
- * 失敗の受け手は先の 1 回だけ。成功した実行に failed() が来ても成功・結果・通知は変わらない。最後の確かめで処理中でなければ受け手を余分に呼ばない。
+ * 終わった実行は、あとから来る経路で変えない(docs の 設計/AI/実行と費用.md 4 節)。ほかの経路は、1 つの接続で真似るため、ジョブの failed() を
+ * 呼んで終わらせる。
  */
 final class FinishedRunKeptTest extends TransactionalTestCase
 {
@@ -34,6 +33,9 @@ final class FinishedRunKeptTest extends TransactionalTestCase
     private const MESSAGES_URL = 'https://api.anthropic.com/v1/messages';
 
     private const LOST = 'worker が落ちた';
+
+    /** 完了の受け手が書いた(巻き戻る)文 */
+    private const RECEIVER_WROTE = '受け手の書き込み';
 
     protected function setUp(): void
     {
@@ -138,7 +140,7 @@ final class FinishedRunKeptTest extends TransactionalTestCase
 
     /**
      * 最後の確かめ(実行の行の鍵を取った後)で処理中でなかったとき、失敗の受け手を呼ばず、使用量・費用・原文を書いて作りの誤りとして報告する。
-     * (処理中のままなのは、1 つの接続で真似るため、ほかの経路の書き込みが完了の受け手の書き込みと一緒に巻き戻るから。状態は確かめない。)
+     * 同じ接続で先の経路を真似るため、先の経路の書き込みは受け手の書き込みと一緒に巻き戻り、状態は処理中のままになる(巻き戻ったことを確かめる)。
      */
     public function test_a_run_that_is_not_running_at_the_last_check_does_not_call_the_receiver_of_failure(): void
     {
@@ -152,12 +154,18 @@ final class FinishedRunKeptTest extends TransactionalTestCase
                 'error_message' => self::LOST,
                 'finished_at' => now(),
             ]);
+            AiRunText::query()->whereKey($runId)->update(['system_text' => self::RECEIVER_WROTE]);
         };
 
         app(ExecutePrompt::class)->execute($runId);
 
         $run = AiRun::query()->findOrFail($runId);
         $this->assertSame([], $this->recordingKind->failed);
+        $this->assertSame(
+            [AiRunStatus::Running, null, null, null],
+            [$run->status, $run->error_code, $run->error_message, $run->finished_at],
+        );
+        $this->assertSame(str_repeat('S', 10), AiRunText::query()->findOrFail($runId)->system_text);
         $this->assertNotNull($run->input_tokens);
         $this->assertNotNull($run->cost_usd);
         $output = (string) AiRunText::query()->findOrFail($runId)->output_text;

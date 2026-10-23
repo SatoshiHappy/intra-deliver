@@ -2,6 +2,7 @@
 
 namespace App\Actions\Ai\Api;
 
+use App\Actions\Ai\AudioConversionFailed;
 use App\Actions\Ai\AudioConverter;
 use App\Actions\Ai\AudioUnreadable;
 use App\Actions\Ai\RunBudget;
@@ -58,6 +59,7 @@ class RequestTranscription
      * @throws AuthorizationException ゲストのとき(403)
      * @throws LogicException 未登録・設定に無い種類、音声の形式でない添付、無い対象のレコードのとき(呼び手の誤り)
      * @throws RunRequestDeclined 音声の実体が無い・読み取れない・長すぎる・上限を超えるとき(422。キー ai)
+     * @throws AudioConversionFailed 測りの時間切れ・外部のプロセスの起動の失敗のとき(500。呼び手は受け止めない = 設計/AI/実行と費用.md 4.2)
      */
     public function execute(AccessContext $context, TranscriptionRequest $request): int
     {

@@ -15,7 +15,7 @@ use Tests\Support\TransactionalTestCase;
  * 音声の長さの測りと変換と区切り(docs の 設計/AI/実行と費用.md 4.2)。テストの音声は ffmpeg の lavfi(正弦波と無音)でテストの中で作る。
  * 区切りの長さ C = 10 秒・無音を探す幅 W = 2 秒(C > 3W)で、区切りの数を先に決めて等しく割った目標の前の幅の中の無音の中ほどに境が寄る・
  * 無音が無ければ目標で切れる・どの区切りも C 以下・区切りの長さの和が音声の長さ・終わりの無音の長さ、変換の形(モノラル・16kHz・16kbps)、
- * 測れない音声と時間切れを見る(式の正本 = 設計/AI/実行と費用.md 4.2)。
+ * 測れない音声を見る(式の正本 = 設計/AI/実行と費用.md 4.2。時間の上限は AudioConverterTimeLimitTest)。
  */
 final class AudioConverterTest extends TransactionalTestCase
 {
@@ -220,35 +220,6 @@ final class AudioConverterTest extends TransactionalTestCase
                     $this->assertNotInstanceOf(AudioUnreadable::class, $exception);
                     $this->assertStringContainsString("終了コード {$exitCode}", $exception->getMessage());
                 }
-            }
-        }
-    }
-
-    /**
-     * 書き手の無い名前つきパイプは開いたまま終わらないので、測りは測りの時間の上限で、区切りは変換の時間の上限で変換の失敗になる
-     * (もう一方の上限を長くしても、自分の上限(1 秒)で終わる)。
-     */
-    public function test_a_process_over_the_time_limit_is_a_conversion_failure(): void
-    {
-        $pipe = "{$this->directory}/pipe.wav";
-        $this->assertTrue(posix_mkfifo($pipe, 0600));
-        $measure = fn () => app(AudioConverter::class)->measure($pipe);
-        $split = fn () => $this->split($pipe, 10);
-        $cases = [
-            'measure' => [['measure_timeout_seconds' => 1, 'conversion_timeout_seconds' => 3], $measure],
-            'split' => [['measure_timeout_seconds' => 3, 'conversion_timeout_seconds' => 1], $split],
-        ];
-
-        foreach ($cases as $name => [$limits, $call]) {
-            config(['ai_runs.transcription' => [...(array) config('ai_runs.transcription'), ...$limits]]);
-
-            try {
-                $call();
-                $this->fail("{$name}: 時間の上限を超えたのに変換の失敗にならなかった");
-            } catch (AudioConversionFailed $exception) {
-                $this->assertNotInstanceOf(AudioUnreadable::class, $exception, $name);
-                $this->assertStringContainsString('時間の上限', $exception->getMessage(), $name);
-                $this->assertStringContainsString('timeout of 1 seconds', $exception->getMessage(), $name);
             }
         }
     }

@@ -132,15 +132,19 @@ trait UsesTestTranscriptionKinds
      */
     protected function executeTranscriptionFailing(int $runId, string $expected = Throwable::class): AiRun
     {
+        $thrown = null;
+
         try {
             app(ExecuteTranscription::class)->execute($runId);
-            $this->fail('失敗が投げ直されなかった');
         } catch (Throwable $exception) {
-            $this->assertInstanceOf($expected, $exception);
+            $thrown = $exception;
+        }
 
-            if ($expected === Throwable::class) {
-                $this->assertNotInstanceOf(LogicException::class, $exception);
-            }
+        $this->assertNotNull($thrown, '失敗が投げ直されなかった');
+        $this->assertInstanceOf($expected, $thrown);
+
+        if ($expected === Throwable::class) {
+            $this->assertNotInstanceOf(LogicException::class, $thrown);
         }
 
         return AiRun::query()->findOrFail($runId);

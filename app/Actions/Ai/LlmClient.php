@@ -46,7 +46,8 @@ class LlmClient
     }
 
     /**
-     * 実行ごとに接続先の要求に足す訪問者の ID(送る条件 = docs の 設計/AI/実行と費用.md 4.4)。
+     * 実行ごとに接続先の要求に足す訪問者の ID。anthropic だけに送るのは、ほかの driver の接続先は識別子の欄を確かめていないため
+     * (送る条件 = docs の 設計/AI/実行と費用.md 4.4)。
      *
      * @return array<string, mixed>
      */

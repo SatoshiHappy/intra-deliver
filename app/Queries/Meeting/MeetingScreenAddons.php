@@ -84,7 +84,7 @@ class MeetingScreenAddons implements RecordScreenAddons
         $canRegenerate = $regenerable && $this->permissions->canRegenerate($context);
 
         return [
-            'actions' => $canRegenerate ? [$this->regenerateAction($recordId, $found, $state)] : [],
+            'actions' => $canRegenerate ? [$this->regenerateAction($recordId, $found['transcriptId'], $state)] : [],
             'badges' => $state === null ? [] : [self::badgeOf($state)],
             'fieldNotes' => $regenerable ? [Meeting::Summary->value => self::MINUTES_NOTE] : [],
         ];
@@ -92,17 +92,17 @@ class MeetingScreenAddons implements RecordScreenAddons
 
     /**
      * 部品には書き起こしの有無(送り先を分ける = 処理.md の 3.7)と、追加の指示の上限と、音声から作り直すときの先の止め方の文
-     * (書き起こしが無く受ける音声があるときだけ。ほかは null = 公開デモと画面.md の 9.3)を渡す。作り直す材料の有無は
-     * {@see MeetingRegenerableQuery} の値を読む(入口と同じ定義)。
+     * (書き起こしが無く受ける音声があるときだけ。ほかは null = 公開デモと画面.md の 9.3)を渡す。作り直す材料は
+     * {@see MeetingRegenerableQuery::materialOf()} で引く(入口と同じ定義。添付を読むので、再作成を出す見る人にだけ)。
      *
-     * @param  array{regenerable: bool, transcriptId: int|null, audioUploadId: int|null}  $found
      * @return RecordAddonAction
      */
-    private function regenerateAction(int $recordId, array $found, ?MeetingProcessingState $state): array
+    private function regenerateAction(int $recordId, ?int $transcriptId, ?MeetingProcessingState $state): array
     {
-        $hasTranscript = $found['transcriptId'] !== null;
-        $hasAudio = $found['audioUploadId'] !== null;
-        $blocked = $hasAudio
+        $material = $this->regenerables->materialOf($recordId, $transcriptId);
+        $hasTranscript = $material['transcriptId'] !== null;
+        $fromAudio = $material['audioUploadId'] !== null;
+        $blocked = $fromAudio
             ? $this->budget->blockedMessage(MeetingRunOrigin::Regenerate, CarbonImmutable::now())
             : null;
 
@@ -115,7 +115,7 @@ class MeetingScreenAddons implements RecordScreenAddons
                 'instructionsMaxLength' => MeetingLimits::INSTRUCTIONS_MAX_LENGTH,
                 'audioBlockedMessage' => $blocked,
             ],
-            'disabledReason' => $this->disabledReason($state, $hasTranscript || $hasAudio),
+            'disabledReason' => $this->disabledReason($state, $hasTranscript || $fromAudio),
             'changesValues' => true,
         ];
     }

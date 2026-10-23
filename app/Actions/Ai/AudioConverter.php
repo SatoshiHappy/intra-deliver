@@ -10,7 +10,7 @@ use Symfony\Component\Process\Exception\ExceptionInterface as ProcessException;
 
 /**
  * 音声の長さを測り、変換して区切る(内部。外部のプロセス ffprobe・ffmpeg を呼ぶ Ai の中の 1 か所 = docs の 設計/AI/実行と費用.md 4.2)。
- * 境は無音へ寄せる(発言の途中で切らないため)。外部のプロセスを合わせた時間を、区切りは変換の、測りは測りの時間の上限に収める(4.1・4.2)。
+ * 境は無音へ寄せる(発言の途中で切らないため)。外部のプロセスを合わせた時間の上限は、区切りはジョブの時間に含めた値(4.1)、測りは 4.2 の値。
  */
 class AudioConverter
 {

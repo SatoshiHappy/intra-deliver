@@ -1,6 +1,5 @@
 /**
- * 「再作成」のダイアログの送る形と文(docs の 設計/業務ツール/会議/公開デモと画面.md の 9.3)。書き起こしの有無で送り先の処理が分かれ
- * (処理.md の 3.7)、書き起こしが無い会議は音声から作り直すので追加の指示を送らない。
+ * 「再作成」のダイアログの送る形と描き分け(docs の 設計/業務ツール/会議/公開デモと画面.md の 9.3)。判定はこの 1 か所に置き、部品は結果を読む。
  */
 
 /** 書き起こしが無く、追加の指示の欄の代わりに出す文 */
@@ -10,25 +9,25 @@ export const FROM_AUDIO_NOTE = '書き起こしが無いため、音声から作
 export type RegeneratePayload = { instructions?: string };
 
 /**
- * 送る形(書き起こしがあれば追加の指示、無ければ空 = 入口は追加の指示のある音声からの作り直しを断る)。
+ * 送る形(追加の指示の欄を出すときだけ追加の指示を送る。無いときに送ると入口が音声からの作り直しを断る)。
  */
 export function regeneratePayload(
-    hasTranscript: boolean,
+    showInstructions: boolean,
     instructions: string,
 ): RegeneratePayload {
-    return hasTranscript ? { instructions } : {};
+    return showInstructions ? { instructions } : {};
 }
 
-/** 再作成のダイアログの描き分け(追加の指示の欄を出すか・送るボタンを押せないか・欄の下に出すので欄の上からは除く誤りのキー) */
+/** 再作成のダイアログの描き分け(先の止め方の文・追加の指示の欄を出すか・送るボタンを押せないか・欄の下に出すので欄の上からは除く誤りのキー) */
 export type RegenerateView = {
+    blockedMessage: string | null;
     showInstructions: boolean;
     submitDisabled: boolean;
     shownErrorKeys: string[];
 };
 
 /**
- * 再作成のダイアログの描き分け。追加の指示の欄があるのは書き起こしがあるときだけ(無ければ音声から作り直す)。送るボタンを押せないのは、
- * 音声から作り直すときに音声の取り込みを先に止めているときだけ(書き起こしから作るなら音声の止め方に関わらない = 公開デモと画面.md の 9.3)。
+ * 再作成のダイアログの描き分け。音声の取り込みの止め方は、音声から作り直す(書き起こしが無い)ときだけ効く。
  */
 export function regenerateView({
     hasTranscript,
@@ -37,9 +36,12 @@ export function regenerateView({
     hasTranscript: boolean;
     audioBlockedMessage: string | null;
 }): RegenerateView {
+    const blockedMessage = hasTranscript ? null : audioBlockedMessage;
+
     return {
+        blockedMessage,
         showInstructions: hasTranscript,
-        submitDisabled: !hasTranscript && audioBlockedMessage !== null,
+        submitDisabled: blockedMessage !== null,
         shownErrorKeys: hasTranscript ? ['instructions'] : [],
     };
 }

@@ -17,9 +17,13 @@ use Throwable;
 /**
  * Ai のテストの種類を登録する手助け(種類の実装はテストの中だけに置く)。test.summary・test.throwing を Haiku 5.5(公開デモの単価)・
  * 予算の区分 default・呼び出しの時間の上限 100 秒・出力の上限 100・入力の上限 1,000 文字・思考の量 low で設定に足し、上限は既定で無しにする(上限のテストが値を置く)。
+ * 実装の登録が無い種類 {@see self::UNREGISTERED_KIND} も設定に足す(本物の種類のコードは、登録が変わると意味が変わるので使わない)。
  */
 trait UsesTestPromptKinds
 {
+    /** 設定にあり、実装の登録が無いテストだけの種類 */
+    protected const UNREGISTERED_KIND = 'test.unregistered';
+
     protected RecordingPromptKind $recordingKind;
 
     protected function registerTestPromptKinds(): void
@@ -40,7 +44,12 @@ trait UsesTestPromptKinds
         ];
         $unlimited = ['daily_usd' => null, 'monthly_usd' => null, 'total_usd' => null];
         config([
-            'ai_runs.kinds' => [...(array) config('ai_runs.kinds'), RecordingPromptKind::CODE => $settings, ThrowingPromptKind::CODE => $settings],
+            'ai_runs.kinds' => [
+                ...(array) config('ai_runs.kinds'),
+                RecordingPromptKind::CODE => $settings,
+                ThrowingPromptKind::CODE => $settings,
+                self::UNREGISTERED_KIND => $settings,
+            ],
             'ai_runs.budget' => ['default' => $unlimited, 'transcription' => $unlimited],
         ]);
     }
@@ -86,15 +95,19 @@ trait UsesTestPromptKinds
      */
     protected function executeFailing(int $runId, ?string $expected = null): AiRun
     {
+        $thrown = null;
+
         try {
             app(ExecutePrompt::class)->execute($runId);
-            $this->fail('失敗が投げ直されなかった');
         } catch (Throwable $exception) {
-            $this->assertInstanceOf($expected ?? Throwable::class, $exception);
+            $thrown = $exception;
+        }
 
-            if ($expected === null) {
-                $this->assertNotInstanceOf(LogicException::class, $exception);
-            }
+        $this->assertNotNull($thrown, '失敗が投げ直されなかった');
+        $this->assertInstanceOf($expected ?? Throwable::class, $thrown);
+
+        if ($expected === null) {
+            $this->assertNotInstanceOf(LogicException::class, $thrown);
         }
 
         return AiRun::query()->findOrFail($runId);

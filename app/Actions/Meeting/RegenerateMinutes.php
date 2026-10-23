@@ -70,7 +70,7 @@ class RegenerateMinutes
      * @throws ValidationException 追加の指示の誤り・書き起こしが無く音声から作り直すのに追加の指示があるとき(キー instructions)・
      *                             押せる会議でない・申請中・処理中・書き起こしと音声が無いとき(キー meeting)
      * @throws RunRequestDeclined 依頼が上限を超える・長すぎる・音声を読み取れない・音声が削除されたとき(キー ai)
-     * @throws ModelNotFoundException 依頼者が会議を閲覧できないとき
+     * @throws ModelNotFoundException 依頼者が会議を閲覧できない・会議が無いとき
      */
     public function execute(AccessContext $context, int $recordId, ?string $instructions): int
     {
@@ -79,11 +79,12 @@ class RegenerateMinutes
 
         return DB::transaction(function () use ($context, $recordId, $instructions): int {
             $this->lock->lock($recordId);
-            $found = $this->regenerableMaterial($recordId);
-            $transcriptId = $found['transcriptId'];
+            $transcriptId = $this->ensureRegenerable($recordId);
+
+            $material = $this->regenerables->materialOf($recordId, $transcriptId);
 
             if ($transcriptId === null) {
-                return $this->fromAudio($context, $recordId, $found['audioUploadId'], $instructions);
+                return $this->fromAudio($context, $recordId, $material['audioUploadId'], $instructions);
             }
 
             $requester = Requester::fromAccessContext($context);
@@ -139,13 +140,11 @@ class RegenerateMinutes
     }
 
     /**
-     * 押せる会議と押せる時(申請中でない・処理中でない)を確かめ、書き起こしの id と受ける音声の実体の id を返す(無ければ null)。
-     *
-     * @return array{regenerable: bool, transcriptId: int|null, audioUploadId: int|null}
+     * 押せる会議と押せる時(申請中でない・処理中でない)を確かめ、書き起こしの id を返す(無ければ null)。
      *
      * @throws ValidationException
      */
-    private function regenerableMaterial(int $recordId): array
+    private function ensureRegenerable(int $recordId): ?int
     {
         $found = $this->regenerables->of($recordId);
 
@@ -161,7 +160,7 @@ class RegenerateMinutes
             throw self::notRegenerable(self::PROCESSING);
         }
 
-        return $found;
+        return $found['transcriptId'];
     }
 
     private static function notRegenerable(string $message): ValidationException

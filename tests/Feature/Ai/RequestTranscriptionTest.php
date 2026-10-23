@@ -109,10 +109,11 @@ final class RequestTranscriptionTest extends TransactionalTestCase
         $this->assertDeclined($uploadId, RunRequestDeclined::UNREADABLE, '音声を読み取れませんでした');
     }
 
-    /** 測りの時間切れは音声のせいと限らないので、読めない音声の断り(422)にせず、変換の失敗のまま出す */
+    /** 測りの時間切れは音声のせいと限らないので、読めない音声の断り(422)にせず、依頼の失敗(500)のまま出す */
     public function test_a_measure_over_the_time_limit_is_a_failure_not_a_decline(): void
     {
-        $uploadId = $this->sine();
+        Storage::disk('local')->put('ai-test/empty.mp3', '');
+        $uploadId = Upload::factory()->create(['mime' => 'audio/mpeg', 'path' => 'ai-test/empty.mp3'])->id;
         $this->app->instance(AudioConverter::class, new class(app(TranscriptionSettings::class)) extends AudioConverter
         {
             public function measure(string $path): float

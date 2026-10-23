@@ -15,7 +15,7 @@ use App\Models\Ai\AiRun;
 use App\Models\Master\User;
 use App\Models\Meeting\MeetingRun;
 use App\Models\Records\RecordAttachment;
-use App\Models\Upload\Upload;
+use App\Queries\Meeting\MeetingAudioQuery;
 use App\Queries\Meeting\MeetingRegenerableQuery;
 use App\Queries\Meeting\MeetingTitleQuery;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -25,6 +25,7 @@ use Illuminate\Testing\TestResponse;
 use LogicException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Component\HttpFoundation\Response;
+use Tests\Support\RegistersRecordHolds;
 use Tests\Support\TransactionalTestCase;
 
 /**
@@ -35,6 +36,8 @@ use Tests\Support\TransactionalTestCase;
  */
 final class RegenerateFromAudioTest extends TransactionalTestCase
 {
+    use RegistersRecordHolds;
+    use RemovesMeetingAudio;
     use UsesMeetings;
 
     private User $creator;
@@ -76,30 +79,11 @@ final class RegenerateFromAudioTest extends TransactionalTestCase
         $this->assertSame($runs, MeetingRun::query()->count());
     }
 
-    /**
-     * @return array<string, array{string}>
-     */
-    public static function withoutAcceptedAudio(): array
-    {
-        return ['期限で消えた' => ['purged'], '外した' => ['removed'], 'ほかの形式だけ' => ['video']];
-    }
-
     #[DataProvider('withoutAcceptedAudio')]
     public function test_without_an_accepted_audio_there_is_nothing_to_regenerate_from(string $case): void
     {
         $recordId = $this->failedAudioMeeting();
-        $attachments = RecordAttachment::query()->where('record_id', $recordId);
-
-        if ($case === 'purged') {
-            Upload::query()->whereIn('id', $attachments->pluck('upload_id'))
-                ->update(['purged_at' => now(), 'purge_due_on' => '2026-01-01']);
-        } else {
-            $attachments->delete();
-        }
-
-        if ($case === 'video') {
-            $this->attach($recordId, UploadedFile::fake()->createWithContent('録画.mp4', $this->sampleContent('mp4')));
-        }
+        $this->removeAcceptedAudio($this->creator, $recordId, $case);
 
         $this->regenerate($recordId, [])->assertSessionHasErrors(['meeting' => MeetingRegenerableQuery::NO_MATERIAL]);
     }
@@ -172,6 +156,41 @@ final class RegenerateFromAudioTest extends TransactionalTestCase
         $recordId = $this->audioMeeting($this->creator);
 
         $this->regenerate($recordId, [])->assertSessionHasErrors(['meeting' => RegenerateMinutes::PROCESSING]);
+    }
+
+    /**
+     * @return array<string, array{string}>
+     */
+    public static function refusalsBeforeTheAudio(): array
+    {
+        return ['処理中' => ['processing'], '申請中' => ['held'], '手で作った会議' => ['manual']];
+    }
+
+    /**
+     * 押せる時に合わず断る入口は、添付(音声)を読まない(読むのは作り直す材料を使うときだけ)。
+     */
+    #[DataProvider('refusalsBeforeTheAudio')]
+    public function test_the_entry_does_not_read_the_attachments_when_it_refuses_before_the_audio(string $case): void
+    {
+        $recordId = match ($case) {
+            'processing' => $this->audioMeeting($this->creator),
+            'held' => $this->failedAudioMeeting(),
+            default => app(CreateRecord::class)->execute(
+                $this->contextOf($this->creator),
+                'meeting',
+                new RecordInput(['title' => '手で作った']),
+            ),
+        };
+
+        if ($case === 'held') {
+            $this->registerRecordHolds([$recordId => 'workflow-case:1']);
+        }
+
+        $audio = $this->spy(MeetingAudioQuery::class);
+
+        $this->regenerate($recordId, [])->assertSessionHasErrors('meeting');
+
+        $audio->shouldNotHaveReceived('latestAudioOf');
     }
 
     /**

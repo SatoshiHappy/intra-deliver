@@ -4,17 +4,14 @@ namespace Tests\Feature\Meeting;
 
 use App\Actions\Records\Api\CreateRecord;
 use App\Actions\Records\Api\RecordInput;
-use App\Actions\Records\Api\UpdateRecord;
 use App\Enums\Ai\AiRunStatus;
 use App\Enums\Records\RecordModuleAction;
 use App\Models\Master\User;
 use App\Models\Meeting\MeetingRun;
-use App\Models\Records\RecordAttachment;
-use App\Models\Upload\Upload;
+use App\Queries\Meeting\MeetingAudioQuery;
 use App\Queries\Meeting\MeetingLimits;
 use App\Queries\Meeting\MeetingRegenerableQuery;
 use App\Queries\Meeting\MeetingScreenAddons;
-use Illuminate\Http\UploadedFile;
 use Inertia\Testing\AssertableInertia as Assert;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Support\TransactionalTestCase;
@@ -25,6 +22,7 @@ use Tests\Support\TransactionalTestCase;
  */
 final class MeetingScreenAddonsTest extends TransactionalTestCase
 {
+    use RemovesMeetingAudio;
     use UsesMeetings;
 
     private const PROCESSING = ['label' => '処理中', 'tone' => 'pending'];
@@ -140,39 +138,13 @@ final class MeetingScreenAddonsTest extends TransactionalTestCase
         );
     }
 
-    /**
-     * @return array<string, array{string}>
-     */
-    public static function withoutAcceptedAudio(): array
-    {
-        return [
-            '添付が無い' => ['removed'],
-            '受けない形式だけ' => ['video'],
-            '期限で消えた音声だけ' => ['purged'],
-        ];
-    }
-
     #[DataProvider('withoutAcceptedAudio')]
     public function test_without_a_transcript_or_an_accepted_audio_regenerate_is_disabled_with_the_entry_reason(
         string $case,
     ): void {
         $recordId = $this->audioMeeting($this->creator);
         $this->assertSame(AiRunStatus::Failed, $this->completeTranscription($this->lastRunIdOf($recordId), [])->status);
-        $attachments = RecordAttachment::query()->where('record_id', $recordId);
-
-        if ($case === 'purged') {
-            Upload::query()->whereIn('id', $attachments->pluck('upload_id'))
-                ->update(['purged_at' => now(), 'purge_due_on' => '2026-01-01']);
-        } else {
-            $attachments->delete();
-        }
-
-        if ($case === 'video') {
-            $input = new RecordInput(attachFiles: [
-                UploadedFile::fake()->createWithContent('録画.mp4', $this->sampleContent('mp4')),
-            ]);
-            app(UpdateRecord::class)->execute($this->contextOf($this->creator), 'meeting', $recordId, $input, null);
-        }
+        $this->removeAcceptedAudio($this->creator, $recordId, $case);
 
         $action = self::regenerate(false, MeetingRegenerableQuery::NO_MATERIAL);
 
@@ -180,6 +152,26 @@ final class MeetingScreenAddonsTest extends TransactionalTestCase
             ['actions' => [$action], 'badges' => [self::FAILED], 'fieldNotes' => self::NOTES],
             $this->addons()->show($this->contextOf($this->creator), $recordId),
         );
+    }
+
+    /**
+     * 受ける音声は、再作成を出す見る人の、書き起こしの無い会議でだけ探す(添付を読むため)。
+     */
+    public function test_the_attachments_are_read_only_to_show_regenerate_for_a_meeting_without_a_transcript(): void
+    {
+        $audioOnly = $this->audioMeeting($this->creator);
+        $transcription = $this->completeTranscription($this->lastRunIdOf($audioOnly), []);
+        $this->assertSame(AiRunStatus::Failed, $transcription->status);
+        $transcribed = $this->completedMeeting();
+        $guest = $this->contextOf(null);
+        $audio = $this->spy(MeetingAudioQuery::class);
+
+        $this->addons()->show($guest, $audioOnly);
+        $this->addons()->show($this->contextOf($this->creator), $transcribed);
+        $audio->shouldNotHaveReceived('latestAudioOf');
+
+        $this->addons()->show($this->contextOf($this->creator), $audioOnly);
+        $audio->shouldHaveReceived('latestAudioOf')->with($audioOnly)->once();
     }
 
     public function test_processing_is_the_reason_before_the_missing_transcript_and_audio(): void

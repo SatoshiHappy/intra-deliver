@@ -154,7 +154,7 @@ final class FailedRunReceiverTest extends TransactionalTestCase
     public function test_a_kind_without_an_implementation_cannot_be_called(): void
     {
         $runId = $this->queuedRun();
-        AiRun::query()->whereKey($runId)->update(['kind' => 'meeting.extraction']);
+        AiRun::query()->whereKey($runId)->update(['kind' => self::UNREGISTERED_KIND]);
 
         $this->executeFailing($runId, LogicException::class);
 

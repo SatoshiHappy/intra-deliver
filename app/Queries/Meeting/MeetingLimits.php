@@ -8,7 +8,7 @@ namespace App\Queries\Meeting;
  */
 final class MeetingLimits
 {
-    /** 取り込むテキスト(ファイル・貼り付け)の大きさの上限(MB。画面と 422 の文に出す数) */
+    /** 取り込むテキスト(ファイル・貼り付け)の大きさの上限(MB。取り込みの断りの文に出す数) */
     public const TEXT_MAX_MEGABYTES = 1;
 
     /** 取り込むテキストの大きさの上限(バイト。読む前に断る) */

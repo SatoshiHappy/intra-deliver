@@ -22,16 +22,18 @@ const viewCases = [
         hasTranscript: true,
         message: null,
         expected: {
+            blockedMessage: null,
             showInstructions: true,
             submitDisabled: false,
             shownErrorKeys: ['instructions'],
         },
     },
     {
-        case: '書き起こしがあれば、止めていても書き起こしから作れる',
+        case: '書き起こしがあれば、止めていても書き起こしから作れる(文も出さない)',
         hasTranscript: true,
         message: blocked,
         expected: {
+            blockedMessage: null,
             showInstructions: true,
             submitDisabled: false,
             shownErrorKeys: ['instructions'],
@@ -42,6 +44,7 @@ const viewCases = [
         hasTranscript: false,
         message: null,
         expected: {
+            blockedMessage: null,
             showInstructions: false,
             submitDisabled: false,
             shownErrorKeys: [],
@@ -52,6 +55,7 @@ const viewCases = [
         hasTranscript: false,
         message: blocked,
         expected: {
+            blockedMessage: blocked,
             showInstructions: false,
             submitDisabled: true,
             shownErrorKeys: [],

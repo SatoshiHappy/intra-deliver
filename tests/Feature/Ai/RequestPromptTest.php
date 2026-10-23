@@ -53,7 +53,7 @@ final class RequestPromptTest extends TransactionalTestCase
     {
         $this->expectException(LogicException::class);
 
-        app(RequestPrompt::class)->execute($this->requesterContext(), $this->promptRequest('meeting.extraction'));
+        app(RequestPrompt::class)->execute($this->requesterContext(), $this->promptRequest(self::UNREGISTERED_KIND));
     }
 
     public function test_a_too_long_input_is_rejected_and_the_limit_itself_passes(): void

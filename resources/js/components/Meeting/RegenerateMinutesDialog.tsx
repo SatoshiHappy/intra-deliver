@@ -22,6 +22,7 @@ import {
     regeneratePayload,
     regenerateView,
 } from '@/components/Meeting/regenerateMinutesForm';
+import type { RegenerateView } from '@/components/Meeting/regenerateMinutesForm';
 import {
     Dialog,
     DialogContent,
@@ -85,32 +86,30 @@ type RegenerateValues = {
 };
 
 /**
- * 先の止め方の文と、追加の指示の欄(書き起こしが無ければ欄の代わりに音声から作り直す文)。
+ * 先の止め方の文と、追加の指示の欄(書き起こしが無ければ欄の代わりに音声から作り直す文)。出し分けは view の結果を読む。
  */
 function RegenerateInputs({
-    values,
-    showInstructions,
+    view,
+    maxLength,
     instructions,
     error,
     onInstructionsChange,
 }: {
-    values: RegenerateValues;
-    showInstructions: boolean;
+    view: RegenerateView;
+    maxLength: number;
     instructions: string;
     error: string | undefined;
     onInstructionsChange: (value: string) => void;
 }) {
-    const { audioBlockedMessage } = values;
-
     return (
         <>
-            {audioBlockedMessage !== null && (
-                <MeetingAudioBlockedNotice message={audioBlockedMessage} />
+            {view.blockedMessage !== null && (
+                <MeetingAudioBlockedNotice message={view.blockedMessage} />
             )}
-            {showInstructions ? (
+            {view.showInstructions ? (
                 <InstructionsField
                     value={instructions}
-                    max={values.instructionsMaxLength}
+                    max={maxLength}
                     error={error}
                     onChange={onInstructionsChange}
                 />
@@ -132,8 +131,7 @@ type FormProps = {
 
 /**
  * ダイアログの中のフォーム(開くたびに作り直す)。成功したら閉じる(入口が会議の詳細へ戻し、トーストを出す)。
- * 送っている間かを親へ知らせる(親が送る間の「閉じる」を捨てる)。書き起こしが無ければ追加の指示の欄を出さず送らない(音声から作り直す)。
- * 先の止め方の文があれば出し、音声から作り直すときは送るボタンを押せない形にする。
+ * 送っている間かを親へ知らせる(親が送る間の「閉じる」を捨てる)。欄・文・送るボタンの出し分けは regenerateView の結果に従う。
  */
 function RegenerateMinutesForm(props: FormProps) {
     const { module, recordId, values, onSendingChange, onDone } = props;
@@ -167,8 +165,8 @@ function RegenerateMinutesForm(props: FormProps) {
                 shownKeys={view.shownErrorKeys}
             />
             <RegenerateInputs
-                values={values}
-                showInstructions={view.showInstructions}
+                view={view}
+                maxLength={values.instructionsMaxLength}
                 instructions={form.data.instructions}
                 error={errors.instructions}
                 onInstructionsChange={(value) =>

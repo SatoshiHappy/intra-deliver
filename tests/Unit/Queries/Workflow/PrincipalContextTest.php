@@ -8,8 +8,8 @@ use Carbon\CarbonImmutable;
 use PHPUnit\Framework\TestCase;
 
 /**
- * 代理元の判定の入力(docs の 設計/ワークフロー/案件の運用/案件の操作/README.md の 4.5 節): 代理元が別の人なら選んだ組織を外し、
- * 判定に使わない訪問者の ID は同じ要求の値のまま写す。
+ * 代理元の要求ごとの文脈(代理元が別の人なら選んだ組織を外す = docs の 設計/ワークフロー/案件の運用/案件の操作/README.md の 4.5 節)。
+ * 訪問者の ID は同じ要求の値なので、作り直しで落とさない(読み方 = 設計/メニュー/判定の入力.md 5 節)。
  */
 final class PrincipalContextTest extends TestCase
 {

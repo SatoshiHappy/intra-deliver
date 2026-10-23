@@ -8,8 +8,9 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
 
 /**
- * 再作成の押せる会議か、作り直す材料(書き起こしか、受ける音声)があるか(docs の 設計/業務ツール/会議/処理.md の 3.7)を決める 1 か所。
- * 画面の操作の出し方と再作成の入口が同じ判定を使う(定義が 2 つに分かれて食い違わないように)。
+ * 再作成の押せる会議か({@see self::of()})と、作り直す材料(書き起こしか、受ける音声 = {@see self::materialOf()})を決める 1 か所
+ * (docs の 設計/業務ツール/会議/処理.md の 3.7)。画面の操作の出し方と再作成の入口が同じ判定を使う(定義が 2 つに分かれて食い違わないように)。
+ * 材料は添付を読むので、押せる会議か・押せる時の確かめの後に、要るときだけ引く。
  * 主体の判定をしない(呼び手が会議の閲覧を判定した後に呼ぶ)。
  */
 class MeetingRegenerableQuery
@@ -20,12 +21,9 @@ class MeetingRegenerableQuery
     public function __construct(private MeetingAudioQuery $audio) {}
 
     /**
-     * 押せる会議(書き起こしか、会議と実行の対応がある会議)か、書き起こしの id(無ければ null)、書き起こしが無い押せる会議の受ける音声の
-     * 実体の id(書き起こしがあれば音声は探さず null。書き起こしがあれば書き起こしから作るため)。
+     * 押せる会議(書き起こしか、会議と実行の対応がある会議)か、書き起こしの id(無ければ null)。添付は読まない。
      *
-     * @return array{regenerable: bool, transcriptId: int|null, audioUploadId: int|null}
-     *
-     * @throws ModelNotFoundException 書き起こしが無い押せる会議で、会議が無いとき
+     * @return array{regenerable: bool, transcriptId: int|null}
      */
     public function of(int $recordId): array
     {
@@ -35,12 +33,25 @@ class MeetingRegenerableQuery
             ->first();
         $transcriptId = self::idOf($found?->transcript_id);
 
-        $regenerable = $transcriptId !== null || self::idOf($found?->run_id) !== null;
-
         return [
-            'regenerable' => $regenerable,
+            'regenerable' => $transcriptId !== null || self::idOf($found?->run_id) !== null,
             'transcriptId' => $transcriptId,
-            'audioUploadId' => $regenerable && $transcriptId === null ? $this->audio->latestAudioOf($recordId) : null,
+        ];
+    }
+
+    /**
+     * 作り直す材料。書き起こしがあればそれ(音声は探さない)、無ければ受ける音声の実体の id、どちらも無ければ両方 null(材料なし)。
+     *
+     * @param  int|null  $transcriptId  {@see self::of()} が返した書き起こしの id
+     * @return array{transcriptId: int|null, audioUploadId: int|null}
+     *
+     * @throws ModelNotFoundException 書き起こしが無く、会議が無いとき
+     */
+    public function materialOf(int $recordId, ?int $transcriptId): array
+    {
+        return [
+            'transcriptId' => $transcriptId,
+            'audioUploadId' => $transcriptId === null ? $this->audio->latestAudioOf($recordId) : null,
         ];
     }
 

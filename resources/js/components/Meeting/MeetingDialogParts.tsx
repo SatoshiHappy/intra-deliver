@@ -69,7 +69,9 @@ export function useFocusFirstError() {
         focusFirstError: () => setRequest((count) => count + 1),
         // 残った誤りに先に当たらないよう、フォームの入力を id で直に指す(セレクタに埋めない)
         focusField: (id: string) => {
-            const field = formRef.current?.elements.namedItem(id);
+            const found = formRef.current?.elements.namedItem(id);
+            // 同じ id・name が複数あると RadioNodeList が返るので、先頭の入力へ移す
+            const field = found instanceof RadioNodeList ? found[0] : found;
 
             if (field instanceof HTMLElement) {
                 field.focus();

@@ -27,7 +27,6 @@ function runLastJob(
         '$found = [$row->id, $command]; break; } }',
         'if ($found === null) { throw new RuntimeException("実行 {$runId} の待ちのジョブが無い"); }',
         '$error = null;',
-        // 失敗の筋の handle は、実行を失敗に書いた後に例外を投げ直すので、その筋だけ受け止める
         'try { app()->call([$found[1], "handle"]); }',
         expected === 'failed'
             ? ' catch (Throwable $thrown) { $error = $thrown; }'
