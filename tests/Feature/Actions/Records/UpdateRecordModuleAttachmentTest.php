@@ -13,9 +13,9 @@ use Tests\Support\CatchesValidationErrors;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * 業務モジュールの「添付ファイルを使用」(docs の 設計/業務データの入れ物/レコードの共通機能/業務モジュールの管理.md の 2 節・
- * 7 節の「添付ファイルの使用」): 値を書くだけ。外すと添付の使用の判定が偽になり、付いている添付は残る。
- * 明細のモジュールに送ると 422 で、真偽でない値も 422。送らなければ今の値のまま。
+ * 業務モジュールの「添付ファイルの追加・削除を許可」(docs の 設計/業務データの入れ物/レコードの共通機能/業務モジュールの管理.md の 2 節・
+ * 7 節の「添付ファイルの追加・削除の許可」): 値を書くだけ。外すと添付の許可の判定が偽になり、付いている添付は残る。
+ * 明細のモジュールに null 以外を送ると 422 で、真偽でない値も 422。送らない・null なら今の値のまま(明細のモジュールも)。
  */
 final class UpdateRecordModuleAttachmentTest extends TransactionalTestCase
 {
@@ -54,6 +54,18 @@ final class UpdateRecordModuleAttachmentTest extends TransactionalTestCase
         $this->update('projects', ['is_attachment_enabled' => null]);
 
         $this->assertFalse($module->refresh()->is_attachment_enabled);
+    }
+
+    public function test_a_details_module_accepts_null_and_keeps_its_value(): void
+    {
+        $child = $this->childOf($this->detailsField($this->recordModule('projects'), 'tasks'));
+
+        $this->update($child->code, ['name' => '作業', 'is_attachment_enabled' => null]);
+        $this->update($child->code, ['description' => '説明']);
+
+        $child = RecordModule::query()->findOrFail($child->id);
+        $this->assertFalse($child->is_attachment_enabled);
+        $this->assertSame('説明', $child->description);
     }
 
     public function test_a_details_module_cannot_be_given_it_and_nothing_is_written(): void

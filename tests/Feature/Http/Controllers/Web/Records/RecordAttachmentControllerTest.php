@@ -129,6 +129,7 @@ final class RecordAttachmentControllerTest extends TransactionalTestCase
         $recordId = $this->projectRecord();
         $pdf = $this->attach($recordId, '見積書.pdf');
         $text = $this->attach($recordId, 'memo.txt', 'txt');
+        $docx = $this->attach($recordId, '議事録.docx', 'docx');
         $url = "/records/data/projects/{$recordId}/attachments";
         $size = strlen($this->sampleContent('pdf'));
         $disposition = "attachment; filename=.pdf; filename*=utf-8''".rawurlencode('見積書.pdf');
@@ -141,7 +142,10 @@ final class RecordAttachmentControllerTest extends TransactionalTestCase
             ->assertStatus(206)->assertHeader('Content-Range', "bytes 0-9/{$size}");
         $this->get("{$url}/{$pdf}", ['Range' => 'bytes=1000-2000'])->assertStatus(416);
         $this->get("{$url}/{$pdf}/preview")->assertOk()->assertHeader('Content-Disposition', 'inline');
-        $this->get("{$url}/{$text}/preview")->assertNotFound();
+        $this->get("{$url}/{$text}/preview")->assertOk()
+            ->assertHeader('Content-Type', 'text/plain; charset=UTF-8')
+            ->assertHeader('Content-Disposition', 'inline');
+        $this->get("{$url}/{$docx}/preview")->assertNotFound();
         $this->get("{$url}/{$text}")->assertOk()->assertHeader('X-Content-Type-Options', 'nosniff');
     }
 

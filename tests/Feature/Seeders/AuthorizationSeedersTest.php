@@ -153,17 +153,17 @@ final class AuthorizationSeedersTest extends TransactionalTestCase
     }
 
     /**
-     * 後の seeder は対象者を条件で引き直し、同じ対象者を作り足さない(FindsAuthzSubjects)。対象者 = ポリシーの 3 と、ワークフローの処理対象者と参照者の 5(用途 selection。
-     * ルート・フローの業務処理が作る = 設計/ワークフロー/初期データ.md 2 節)の計 8。ポリシー = 138(54 + メニューのワークフローのグループ 4 + ホームの主な操作のグループ 1 + ワークフローのルート
-     * 38 = ルートの深さ/初期データ.md 6 節。定義の管理のルートはポリシーなし。通知のルート 8・ワークフローのフローのセット 2 = 設計/ワークフロー/案件の運用/認可と一覧.md の 4 節・3 節。
+     * 後の seeder は対象者を条件で引き直し、同じ対象者を作り足さない(FindsAuthzSubjects)。対象者 = ポリシーの 3 と、ワークフローの処理対象者・参照者・確認する人の 6(用途 selection。
+     * ルート・フローの業務処理が作る = 設計/ワークフロー/初期データ.md 2 節)の計 9。ポリシー = 144(54 + メニューのワークフローのグループ 4 + ホームの主な操作のグループ 1 + ワークフローのルート
+     * 44 = ルートの深さ/初期データ.md 6 節と一括・候補の 6。定義の管理はポリシーなし。通知のルート 8・ワークフローのフローのセット 2 = 設計/ワークフロー/案件の運用/認可と一覧.md の 4 節・3 節。
      * 業務モジュールの全件の参照 1 = 設計/業務データの入れ物/認可とメニュー/README.md の 3 節。添付と外した時点のファイルのルート 6 × 2 = 12、コメントのルート 3 × 2 = 6 =
      * 設計/業務データの入れ物/レコードの共通機能/認可と初期データ.md の 2.3 節。組み込みの会議の業務モジュール 8 = 設計/業務ツール/モジュール境界.md の「組み込みの業務モジュールの置き場」。
      * 会議のルート 2 × 2 = 4 = 設計/業務ツール/会議/処理.md の 3.2・3.7)。
      */
     public function test_the_seeders_reuse_the_subjects(): void
     {
-        $this->assertEquals(['policy' => 3, 'selection' => 5], AuthzSubjectGroup::query()->groupBy('purpose')->orderBy('purpose')->selectRaw('purpose, count(*) as subject_groups')->pluck('subject_groups', 'purpose')->all());
-        $this->assertCount(138, $this->policySummaries());
+        $this->assertEquals(['policy' => 3, 'selection' => 6], AuthzSubjectGroup::query()->groupBy('purpose')->orderBy('purpose')->selectRaw('purpose, count(*) as subject_groups')->pluck('subject_groups', 'purpose')->all());
+        $this->assertCount(144, $this->policySummaries());
     }
 
     public function test_a_guest_sees_the_home_and_the_sitemap(): void
@@ -224,8 +224,8 @@ final class AuthorizationSeedersTest extends TransactionalTestCase
     {
         $routes = [
             'flows.index', 'applications.create', 'applications.store', 'drafts.store', 'drafts.edit', 'drafts.update', 'drafts.apply', 'drafts.destroy',
-            'cases.index', 'cases.show', 'cases.approve', 'cases.approve-early', 'cases.reject', 'cases.send-back', 'cases.pull-back', 'cases.withdraw',
-            'reapplications.create', 'reapplications.store', 'cases.assignee-candidates',
+            'cases.index', 'cases.show', 'cases.approve', 'cases.approve-early', 'cases.reject', 'cases.send-back', 'cases.pull-back', 'cases.withdraw', 'cases.bulk-approve', 'cases.bulk-confirm',
+            'reapplications.create', 'reapplications.store', 'cases.assignee-candidates', 'user-candidates',
         ];
 
         return $this->everyonePolicySummaries('workflow', ...$routes);

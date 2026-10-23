@@ -70,6 +70,31 @@ class CaseDeadlines
     }
 
     /**
+     * 未処理の集まり(現在のノードのうち、判定を求める者が処理対象者に当たるもの = 1.4 節の対象のノードの集まり)。一覧の未処理の行と
+     * ホームの未処理の表・件数カードの期限超過が同じ集まりを使う。
+     *
+     * @param  list<CurrentNode>  $nodes  1 つの案件の現在のノード
+     * @param  list<int>  $targetNodeIds  判定を求める者が処理対象者に当たるノードの id
+     * @return list<CurrentNode>
+     */
+    public function pendingNodesOf(array $nodes, array $targetNodeIds): array
+    {
+        return array_values(array_filter($nodes, fn (CurrentNode $node) => in_array($node->id, $targetNodeIds, true)));
+    }
+
+    /**
+     * ノードの集まりで最も早い到達した日(Y-m-d。空なら null)。
+     *
+     * @param  list<CurrentNode>  $nodes
+     */
+    public function earliestReachedOn(array $nodes): ?string
+    {
+        $days = array_map(fn (CurrentNode $node) => $this->reachedOn($node->reachedAt), $nodes);
+
+        return $days === [] ? null : min($days);
+    }
+
+    /**
      * 暦日の比べ方をタイムゾーンに依らせないため、日付を UTC の 0 時として作る。
      *
      * @throws LogicException 暦日として読めないとき(この class が作った値だけを渡すので起きない)

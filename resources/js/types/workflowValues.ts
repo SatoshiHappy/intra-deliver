@@ -44,3 +44,8 @@ export type WorkflowAction =
     | 'move_forward'
     | 'move_finish'
     | 'reassign';
+export type WorkflowBulkOutcome =
+    | 'approved'
+    | 'confirmed'
+    | 'processed'
+    | 'pending';

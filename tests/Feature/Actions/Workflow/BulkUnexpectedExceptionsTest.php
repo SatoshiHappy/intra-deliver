@@ -23,7 +23,7 @@ use Throwable;
 /**
  * 一括承認・一括確認の中の想定外の例外(docs の 設計/ワークフロー/案件の運用/案件の操作/操作.md の 10.7 節)。止めるのは案件の 404 と
  * 判定の 422 だけで、ほかは一括ごと投げる(案件でないモデルの 404 は LogicException に包む)。前の案件は確定し、例外の出た案件は何も書かない。
- * フロー = 申請(u0001)→ first(u0002。確認する人 = 経理部の u0010)→ second(u0003)。
+ * フロー = 申請(u0001)→ first(u0002。確認する人 = 経理部の u0010)→ second(u0007)。
  */
 final class BulkUnexpectedExceptionsTest extends TransactionalTestCase
 {
@@ -54,7 +54,7 @@ final class BulkUnexpectedExceptionsTest extends TransactionalTestCase
             [$confirmStep, $second] = [['step_name' => 'first'], ['step_name' => 'second', 'step_kind' => 'approve']];
             $this->assertSame(self::sortedLines([
                 $this->caseNotice(WorkflowNoticeType::ConfirmRequest, 'u0010', 'u0002', $first, $confirmStep),
-                $this->caseNotice(WorkflowNoticeType::ProcessRequest, 'u0003', 'u0002', $first, $second),
+                $this->caseNotice(WorkflowNoticeType::ProcessRequest, 'u0007', 'u0002', $first, $second),
             ]), $this->noticesSince($lastNotice), $label);
         }
     }

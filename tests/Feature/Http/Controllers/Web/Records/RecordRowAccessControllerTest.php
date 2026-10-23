@@ -159,7 +159,7 @@ final class RecordRowAccessControllerTest extends TransactionalTestCase
 
     /**
      * 全件の参照はセット record-modules の先頭の許可(全部を許すロール)なので、セットの下にある初期データの業務モジュール project で確かめる。
-     * 初期データの project のレコードは、u0004 が作った 3 件と、ワークフローの初期データの申請者が作った 9 件。
+     * 初期データの project のレコードは、u0004 が作った 3 件と、ワークフローの初期データの申請者が作った 11 件(案件の運用の見本の 2 件を含む)。
      */
     public function test_the_system_administrator_reads_every_record(): void
     {
@@ -171,7 +171,7 @@ final class RecordRowAccessControllerTest extends TransactionalTestCase
             ->firstOrFail();
         $this->actingAs($u0004);
 
-        $this->assertTotal('/records/data/project', 12);
+        $this->assertTotal('/records/data/project', 14);
         $this->get("/records/data/project/{$applied->id}")->assertOk();
 
         AuthzPolicy::query()->where('action', RecordModuleAction::ReadAll->value)->delete();

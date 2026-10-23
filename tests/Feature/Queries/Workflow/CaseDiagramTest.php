@@ -28,6 +28,7 @@ final class CaseDiagramTest extends TransactionalTestCase
     private const STATE_LABELS = [
         'done' => ['done', '処理済み'], 'passed' => ['done', '処理済み'], 'waiting' => ['current', '承認待ち'], 'running' => ['current', '承認待ち'],
         'reapply' => ['returned', '再申請待ち'], 'unreached' => ['upcoming', '到達していない'], 'skipped' => ['skipped', '省略'],
+        'hold' => ['current', '保留中'],
     ];
 
     /**
@@ -121,7 +122,7 @@ final class CaseDiagramTest extends TransactionalTestCase
     }
 
     /**
-     * 図の札・表の状態の語は写しの表(認可と一覧.md 2 節)のとおり: 13 件の見本のすべてのノードで、状態ごとに同じ語。
+     * 図の札・表の状態の語は写しの表(認可と一覧.md 2 節。保留中 = 設計/ワークフロー/案件の運用/認可と一覧.md の 2.4 節)のとおり: 16 件の見本のすべてのノードで、状態ごとに同じ語。
      */
     public function test_every_node_state_reads_the_one_label_table(): void
     {
@@ -134,7 +135,7 @@ final class CaseDiagramTest extends TransactionalTestCase
             }
         }
 
-        $this->assertEqualsCanonicalizing(['done', 'passed', 'waiting', 'running', 'reapply', 'unreached', 'skipped'], array_keys($seen));
+        $this->assertEqualsCanonicalizing(['done', 'passed', 'waiting', 'running', 'reapply', 'unreached', 'skipped', 'hold'], array_keys($seen));
     }
 
     /**

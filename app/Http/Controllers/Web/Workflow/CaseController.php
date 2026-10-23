@@ -11,8 +11,8 @@ use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * 案件一覧 Workflow/CaseIndex(docs の 設計/ワークフロー/画面.md 4 節。クエリ tab・scope・page は読み取りが解釈し、解釈できない値は既定にする)と、
- * 案件の詳細 Workflow/CaseShow(5 節。閲覧できない・一時保存の案件は 404)。
+ * 案件一覧 Workflow/CaseIndex(docs の 設計/ワークフロー/案件の運用/画面/案件の画面.md の 2 節。クエリ tab・scope・page・q は読み取りが解釈し、
+ * 解釈できない値は既定にする)と、案件の詳細 Workflow/CaseShow(設計/ワークフロー/画面.md 5 節。閲覧できない・一時保存の案件は 404)。
  */
 class CaseController extends Controller
 {
@@ -23,7 +23,10 @@ class CaseController extends Controller
 
     public function index(Request $request): Response
     {
-        return Inertia::render('Workflow/CaseIndex', $this->list->list(AccessContext::of($request), $request->query('tab'), $request->query('scope'), $request->query('page')));
+        [$tab, $scope, $page, $q] = array_map(fn (string $key) => $request->query($key), ['tab', 'scope', 'page', 'q']);
+        $list = $this->list->list(AccessContext::of($request), $tab, $scope, $page, $q);
+
+        return Inertia::render('Workflow/CaseIndex', $list);
     }
 
     public function show(Request $request, string $case): Response

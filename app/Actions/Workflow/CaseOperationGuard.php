@@ -29,7 +29,7 @@ use Illuminate\Validation\ValidationException;
 /**
  * 案件の操作の判定の順(docs の 設計/ワークフロー/ルートの深さ/案件の操作/操作.md 7 節の 2、設計/ワークフロー/案件の運用/案件の操作/操作.md の
  * 7 節)。既にある案件の操作は {@see self::lockAndPermit()} を通る。確認は改訂番号を見ないので {@see self::lockForConfirm()}、一括承認は
- * 今の状態で組を出し直すので {@see self::lockForBulkApprove()} を通る。呼び手は結果を導き直さない(判定と操作が食い違わないため)。
+ * 今の状態で組を出し直すので {@see self::lockAndPermitBulkApproval()} を通る。呼び手は結果を導き直さない(判定と操作が食い違わないため)。
  * 判定そのものは読み取りの 1 か所を呼び、ここでは二重に書かない。呼び手は 1 つのトランザクションの中で呼ぶ(鍵はトランザクションの終わりまで持つ)。
  */
 class CaseOperationGuard
@@ -122,13 +122,38 @@ class CaseOperationGuard
      */
     public function lockForBulkApprove(AccessContext $context, int $caseId): array
     {
-        $case = $this->lockVisible(WorkflowOperation::Approve, $context, $caseId);
-        $requester = Requester::fromAccessContext($context);
-        $situations = $this->decider->situationsOf($requester, $context->date, [$case]);
+        [$situation, $approval] = $this->lockBulkApproval($context, $caseId);
 
-        $approvals = $this->decider->bulkApprovalsOf($requester, $context->date, array_values($situations));
+        return [$situation->case, $approval];
+    }
 
-        return [$case, $approvals[$case->id]];
+    /**
+     * 一括承認の 1 件の判定(設計/ワークフロー/案件の運用/案件の操作/操作.md の 10.7 節): 組の判定は画面が示した組を今の状態で選べるかを見る。
+     * その後に、単独の承認と同じ処理担当者の確かめと表の判定を通す(組の判定と単独の判定が食い違っても、単独で拒まれる組を書き込まない)。
+     * 状況は読み直さず、代理元として承認するときは処理者を替えた状況({@see CaseSituation::withProcessor()})を使う。
+     *
+     * @return CaseOperationPermit|null 判定の結果(改訂番号か組が違う・組が選べないときは null)
+     *
+     * @throws ModelNotFoundException<WorkflowCase> 無い・閲覧できないとき
+     * @throws ValidationException 処理担当者の確かめか表の判定に外れたとき(principal_user_id・case)
+     */
+    public function lockAndPermitBulkApproval(AccessContext $context, BulkApprovalInput $row): ?CaseOperationPermit
+    {
+        [$situation, $approval] = $this->lockBulkApproval($context, $row->caseId);
+
+        if ($approval === null || ! $row->isCurrent($situation->case->revision, $approval)) {
+            return null;
+        }
+
+        [$case, $principal] = [$situation->case, $approval->principalUserId];
+        $node = $this->nodeOf($case, $approval->nodeId);
+        $processor = $this->proxyChecks->processorOf(
+            WorkflowOperation::Approve, $context, $case, $node->kind, $principal,
+        );
+        $processed = $principal === null ? $situation : $situation->withProcessor($processor);
+        $this->requirePermitted(WorkflowOperation::Approve, $context, $processed, $node->id);
+
+        return new CaseOperationPermit($processed, $node, null);
     }
 
     /**
@@ -210,6 +235,22 @@ class CaseOperationGuard
         }
 
         return $case;
+    }
+
+    /**
+     * 一括承認の 1 件の鍵・閲覧と、自分を処理者として読んだ状況と今の組(選べなければ null)。
+     *
+     * @return array{CaseSituation, BulkApproval|null}
+     *
+     * @throws ModelNotFoundException<WorkflowCase> 無い・閲覧できないとき
+     */
+    private function lockBulkApproval(AccessContext $context, int $caseId): array
+    {
+        $case = $this->lockVisible(WorkflowOperation::Approve, $context, $caseId);
+        $requester = Requester::fromAccessContext($context);
+        $situation = $this->decider->situationsOf($requester, $context->date, [$case])[$case->id];
+
+        return [$situation, $this->decider->bulkApprovalsOf($requester, $context->date, [$situation])[$case->id]];
     }
 
     /**

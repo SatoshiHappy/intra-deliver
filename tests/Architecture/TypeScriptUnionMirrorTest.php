@@ -7,6 +7,7 @@ use App\Enums\Records\RecordConditionOperator;
 use App\Enums\Records\RecordFieldType;
 use App\Enums\Records\RecordRuleKind;
 use App\Enums\Workflow\WorkflowAction;
+use App\Enums\Workflow\WorkflowBulkOutcome;
 use App\Enums\Workflow\WorkflowCaseState;
 use App\Enums\Workflow\WorkflowCompletionReason;
 use App\Enums\Workflow\WorkflowNodeKind;
@@ -47,6 +48,7 @@ TS;
             'WorkflowNodeState' => ['WorkflowNodeState', self::WORKFLOW_VALUES, WorkflowNodeState::class],
             'WorkflowNodeKind' => ['WorkflowNodeKind', self::WORKFLOW_VALUES, WorkflowNodeKind::class],
             'WorkflowAction' => ['WorkflowAction', self::WORKFLOW_VALUES, WorkflowAction::class],
+            'WorkflowBulkOutcome' => ['WorkflowBulkOutcome', self::WORKFLOW_VALUES, WorkflowBulkOutcome::class],
             'RecordFieldType' => ['RecordFieldType', 'resources/js/types/records.ts', RecordFieldType::class],
             'RecordConditionOperator' => ['RecordConditionOperator', 'resources/js/types/records.ts', RecordConditionOperator::class],
             'RecordRuleKind' => ['RecordRuleKind', 'resources/js/types/records.ts', RecordRuleKind::class],

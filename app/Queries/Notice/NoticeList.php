@@ -4,6 +4,7 @@ namespace App\Queries\Notice;
 
 use App\Models\Notice\Notice;
 use App\Support\AccessContext;
+use App\Support\PageNumbers;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -66,7 +67,9 @@ class NoticeList
             $query->whereNull('read_at');
         }
 
-        $paginator = $this->ordered($query)->paginate(perPage: self::PER_PAGE, page: $this->pageOf($page));
+        $total = $query->toBase()->getCountForPagination();
+        $pageNumber = PageNumbers::of($page, $total, self::PER_PAGE);
+        $paginator = $this->ordered($query)->paginate(perPage: self::PER_PAGE, page: $pageNumber, total: $total);
 
         return [
             'query' => ['filter' => $filter],
@@ -119,13 +122,5 @@ class NoticeList
     private function ordered(Builder $query): Builder
     {
         return $query->orderByDesc('created_at')->orderByDesc('id');
-    }
-
-    /**
-     * クエリの page(1 から始まる 10 進の整数の文字列だけを読む。案件一覧と同じ規則)。
-     */
-    private function pageOf(mixed $page): int
-    {
-        return is_string($page) && preg_match('/^[1-9][0-9]{0,8}$/D', $page) === 1 ? (int) $page : 1;
     }
 }

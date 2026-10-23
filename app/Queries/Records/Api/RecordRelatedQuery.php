@@ -16,6 +16,7 @@ use App\Queries\Records\RecordRelatedColumns;
 use App\Queries\Records\RecordRelatedEntries;
 use App\Queries\Records\RecordRowAccess;
 use App\Queries\Records\RecordValueReader;
+use App\Support\PageNumbers;
 use DateTimeInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -98,7 +99,7 @@ class RecordRelatedQuery
     }
 
     /**
-     * 入口の表の 1 ページ(更新日時の降順、次に id の降順)。列 = 選んだ列か未選択の列(更新日は画面が足す)、値は画面の値の形。
+     * 入口の表の 1 ページ(更新日時の降順、次に id の降順。最後のページを超える $page は最後のページに詰める)。列 = 選んだ列か未選択の列(更新日は画面が足す)、値は画面の値の形。
      *
      * @return RelatedRows
      *
@@ -117,9 +118,14 @@ class RecordRelatedQuery
             ?? throw (new ModelNotFoundException)->setModel(RecordField::class);
         $module = $this->definitions->load($entry['module']);
         $columns = $this->columns->shown($entry['field'], $module);
-        $paginator = $this->referencing($requester, $entry, $record->id, $date)
-            ->orderByRaw('records.updated_at DESC NULLS LAST')->orderByDesc('records.id')
-            ->paginate(perPage: self::PER_PAGE, page: max(1, $page));
+        $query = $this->referencing($requester, $entry, $record->id, $date)
+            ->orderByRaw('records.updated_at DESC NULLS LAST')->orderByDesc('records.id');
+        $total = $query->toBase()->getCountForPagination();
+        $paginator = $query->paginate(
+            perPage: self::PER_PAGE,
+            page: PageNumbers::clamp($page, $total, self::PER_PAGE),
+            total: $total,
+        );
         $items = new Collection($paginator->items());
         $values = $this->reader->values($items, $columns, $requester, $date, $localeCode);
 

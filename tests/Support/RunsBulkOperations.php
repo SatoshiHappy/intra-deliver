@@ -118,7 +118,7 @@ trait RunsBulkOperations
     }
 
     /**
-     * 申請 → first(u0002。確認する人 = u0010 = 経理部の参照者)→ second(u0003。申請へ差戻せる)。
+     * 申請 → first(u0002。確認する人 = u0010 = 経理部の参照者)→ second(u0007。申請へ差戻せる)。
      *
      * @return array{list<RouteNodeInput>, list<RouteEdgeInput>}
      */
@@ -134,7 +134,7 @@ trait RunsBulkOperations
             sendBackCodes: ['apply'],
             confirmSubjectGroupId: $this->confirmGroup('u0010'),
         );
-        $second = $this->approveNode('second', 'u0003', ['apply']);
+        $second = $this->approveNode('second', 'u0007', ['apply']);
 
         return [[$this->applyNode(), $first, $second], $this->chain(['apply', 'first'], ['first', 'second'])];
     }

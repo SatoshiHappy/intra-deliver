@@ -35,12 +35,13 @@ final class RecordControllerTest extends TransactionalTestCase
             ->where('module.code', 'project')
             ->where('module.name', 'プロジェクト')
             ->has('module.fields', 9)
-            // 業務データの入れ物の初期データ 3 件と、ワークフローの初期データの申請が作った 9 件(段 2 の見本 5・版 3 の見本 4。id の降順。経費精算の電子化 = 入れ物の 3 件目)
-            ->where('records.total', 12)
+            // 業務データの入れ物の初期データ 3 件と、ワークフローの初期データの申請が作った 11 件(2 段目の見本 5・版 3 の見本 4・案件の運用の見本 2 =
+            // WF-000013・14。id の降順。経費精算の電子化 = 入れ物の 3 件目)
+            ->where('records.total', 14)
             ->where('records.currentPage', 1)
-            ->where('records.data.9.values.name', '経費精算の電子化')
-            ->where('records.data.9.values.department.label', '経理部')
-            ->where('records.data.9.values.status', ['code' => 'done', 'name' => '完了'])
+            ->where('records.data.11.values.name', '経費精算の電子化')
+            ->where('records.data.11.values.department.label', '経理部')
+            ->where('records.data.11.values.status', ['code' => 'done', 'name' => '完了'])
             ->where('query', ['filters' => [], 'sort' => '-id'])
             ->where('can', ['create' => true])
         );

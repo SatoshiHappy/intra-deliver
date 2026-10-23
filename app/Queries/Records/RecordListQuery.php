@@ -7,6 +7,7 @@ use App\Models\Records\Record;
 use App\Models\Records\RecordField;
 use App\Models\Records\RecordModule;
 use App\Queries\Authz\Api\Requester;
+use App\Support\PageNumbers;
 use DateTimeInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -43,7 +44,9 @@ class RecordListQuery
         $this->rows->constrain($query, $requester, $module, $date);
         $appliedFilters = $this->filters->apply($query, $module->recordFields->where('is_searchable', true), $filters);
         $appliedSort = $this->sort($query, $module, $sort);
-        $paginator = $query->paginate(perPage: self::PER_PAGE, page: $this->pageOf($page));
+        $total = $query->toBase()->getCountForPagination();
+        $pageNumber = PageNumbers::of($page, $total, self::PER_PAGE);
+        $paginator = $query->paginate(perPage: self::PER_PAGE, page: $pageNumber, total: $total);
         $listed = $module->recordFields->where('is_listed', true)->values();
         $records = new Collection($paginator->items());
         $values = $this->reader->values($records, $listed, $requester, $date, $localeCode);
@@ -112,10 +115,5 @@ class RecordListQuery
             default => '(records.field_values ->> ?)',
         };
         $query->orderByRaw("{$expression} {$direction} NULLS LAST", [$key]);
-    }
-
-    private function pageOf(mixed $page): int
-    {
-        return is_string($page) && preg_match('/^[1-9][0-9]{0,8}$/D', $page) === 1 ? (int) $page : 1;
     }
 }

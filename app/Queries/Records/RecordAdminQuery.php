@@ -21,7 +21,7 @@ use Illuminate\Database\Eloquent\Relations\Relation;
  * 業務モジュールの判定をせず、明細を含むすべての業務モジュールを出す(認可とメニュー/README.md 4 節。入口はルートの認可だけで絞る)。
  * 並び: 業務モジュールは {@see ordered()}、項目・選択肢・規則は {@see RecordDefinitionQuery}。
  * isVisible = サイドバーに出ているか({@see RecordModuleVisibility}。明細のモジュールは null = 認可とメニュー/メニューと初期データ.md 5.1)。
- * isAttachmentEnabled = 添付ファイルを使用するか・rowAccessScope = 見える範囲(どちらも明細のモジュールは null = レコードの共通機能/業務モジュールの管理.md 2 節)。
+ * isAttachmentEnabled = 添付ファイルの追加・削除を許可するか・rowAccessScope = 見える範囲(どちらも明細のモジュールは null = レコードの共通機能/業務モジュールの管理.md 2 節)。
  * headings・items = 見出しと項目の 1 本の並び(同 3 節・6 節。{@see RecordHeadingGroups})。
  * 編集の画面のモジュール分類(所属の分類 ID と、すべての分類)は {@see ModuleCategoryQuery}(モジュール分類/画面と検査.md 4.2)。
  *

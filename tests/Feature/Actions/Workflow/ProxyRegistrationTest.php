@@ -34,6 +34,8 @@ final class ProxyRegistrationTest extends TransactionalTestCase
         $this->createFlow();
         [$principal, $proxy] = [$this->seededUser('u0002'), $this->seededUser('u0008')];
         $missing = (int) User::query()->max('id') + 1000;
+        // 初期データの代理(設計/ワークフロー/案件の運用/初期データ.md 4.1)の数から増えないこと
+        $seeded = WorkflowProxy::query()->count();
         $input = fn (array $values = []) => $this->input([...['proxy' => $proxy->id], ...$values]);
         $register = fn (?int $principalId, ProxyInput $value) => $this->outcome(
             fn () => $this->register($this->seededUser('u0004'), $principalId, $value),
@@ -66,7 +68,7 @@ final class ProxyRegistrationTest extends TransactionalTestCase
             $register($principal->id, $input(['end' => '2026-11-31'])),
             $register($this->seededUser('u0014')->id, $input()),
         ]);
-        $this->assertSame(0, WorkflowProxy::query()->count());
+        $this->assertSame($seeded, WorkflowProxy::query()->count());
         $this->assertThrows(
             fn () => app(RegisterProxy::class)->execute($this->contextOf(null), $principal->id, $input()),
             AuthorizationException::class,
@@ -181,6 +183,7 @@ final class ProxyRegistrationTest extends TransactionalTestCase
     public function test_deleting_own_rows_and_any_row(): void
     {
         [$principal, $other] = [$this->seededUser('u0002'), $this->seededUser('u0003')];
+        $seeded = WorkflowProxy::query()->count();
         $own = $this->register($principal, $principal->id, $this->input(['proxy' => $this->seededUser('u0008')->id]));
         $others = $this->register($other, $other->id, $this->input(['proxy' => $this->seededUser('u0008')->id]));
         $missing = (int) WorkflowProxy::query()->max('id') + 1000;
@@ -196,7 +199,7 @@ final class ProxyRegistrationTest extends TransactionalTestCase
         ]);
         app(DeleteProxy::class)->executeOwn($this->contextOf($principal), $own);
         app(DeleteProxy::class)->execute($others);
-        $this->assertSame(0, WorkflowProxy::query()->count());
+        $this->assertSame($seeded, WorkflowProxy::query()->count());
         $this->assertThrows(fn () => app(DeleteProxy::class)->execute($missing), ModelNotFoundException::class);
     }
 

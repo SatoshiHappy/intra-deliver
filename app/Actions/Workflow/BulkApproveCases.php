@@ -2,6 +2,7 @@
 
 namespace App\Actions\Workflow;
 
+use App\Enums\Workflow\WorkflowBulkAttempt;
 use App\Models\Workflow\WorkflowCase;
 use App\Support\AccessContext;
 use Illuminate\Database\Eloquent\Model;
@@ -37,10 +38,10 @@ class BulkApproveCases
         [$stoppedId, $isStale] = [null, false];
 
         foreach ($rows as $row) {
-            $stop = $this->approveOne($context, $row, $comment);
+            $attempt = $this->approveOne($context, $row, $comment);
 
-            if ($stop !== null) {
-                [$stoppedId, $isStale] = [$row->caseId, $stop];
+            if ($attempt !== WorkflowBulkAttempt::Approved) {
+                [$stoppedId, $isStale] = [$row->caseId, $attempt === WorkflowBulkAttempt::StoppedStale];
                 break;
             }
 
@@ -54,31 +55,30 @@ class BulkApproveCases
     }
 
     /**
-     * 1 件を承認する。止まったら、その理由が画面の古さ(改訂番号か組の違い)かを返す(承認できたら null)。
-     * 止まった案件のトランザクションは巻き戻る(組の違いは何も書いていない)。
+     * 1 件を承認する。止まった案件のトランザクションは巻き戻る(組の違いは何も書いていない)。
      *
      * @throws LogicException 案件でないモデルが見つからないとき(内部の誤り)
      */
-    private function approveOne(AccessContext $context, BulkApprovalInput $row, ?string $comment): ?bool
+    private function approveOne(AccessContext $context, BulkApprovalInput $row, ?string $comment): WorkflowBulkAttempt
     {
         try {
-            return DB::transaction(function () use ($context, $row, $comment): ?bool {
-                [$case, $approval] = $this->guard->lockForBulkApprove($context, $row->caseId);
+            return DB::transaction(function () use ($context, $row, $comment): WorkflowBulkAttempt {
+                // 組の出し直しと単独の承認の判定を通った結果で承認する
+                $permit = $this->guard->lockAndPermitBulkApproval($context, $row);
 
-                if ($approval === null || ! $row->isCurrent($case->revision, $approval)) {
-                    return true;
+                if ($permit === null) {
+                    return WorkflowBulkAttempt::StoppedStale;
                 }
 
-                [$nodeId, $principal] = [$approval->nodeId, $approval->principalUserId];
-                $this->approve->execute($context, $case->id, $row->revision, $nodeId, $comment, [], $principal);
+                $this->approve->approvePermitted($context, $permit, $comment);
 
-                return null;
+                return WorkflowBulkAttempt::Approved;
             });
         } catch (ModelNotFoundException|ValidationException $exception) {
             // 閲覧できない・無い案件と、単独の承認が拒んだ案件で止める(結果の分け方は今の状態から作る)
             self::throwIfInternal($exception);
 
-            return false;
+            return WorkflowBulkAttempt::StoppedRefused;
         }
     }
 

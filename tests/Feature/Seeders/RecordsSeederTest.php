@@ -117,12 +117,12 @@ final class RecordsSeederTest extends TransactionalTestCase
             ->groupBy('record_modules.code')->selectRaw('record_modules.code, count(*) as records')->pluck('records', 'code')->all();
 
         // 業務データの入れ物の分 + ワークフローの案件の見本の分(段 2 の見本 = プロジェクト 5・マイルストーン 3・課題 3、版 3 の見本 = プロジェクト 4・マイルストーン 2
-        // = ルートの深さ/初期データ.md 4 節)
-        $this->assertEquals(['project' => 3 + 5 + 4, 'project_milestone' => 7 + 3 + 2, 'project_issue' => 5 + 3], $counts);
-        // 参照の値 = プロジェクトの担当部署と責任者 12 × 2、課題のプロジェクト 8 と担当者 7(業務データの入れ物の 1 件は担当者なし)
+        // = ルートの深さ/初期データ.md 4 節、案件の運用の見本 = プロジェクト 2・課題 2 = 設計/ワークフロー/案件の運用/初期データ.md 4.3)
+        $this->assertEquals(['project' => 3 + 5 + 4 + 2, 'project_milestone' => 7 + 3 + 2, 'project_issue' => 5 + 3 + 2], $counts);
+        // 参照の値 = プロジェクトの担当部署と責任者 14 × 2、課題のプロジェクト 10 と担当者 9(業務データの入れ物の 1 件は担当者なし)
         $builtinModuleIds = RecordModule::query()->where('is_builtin', true)->select('id');
         $references = RecordReference::query()->whereNotIn('record_module_id', $builtinModuleIds)->count();
-        $this->assertSame(12 * 2 + 8 + 7, $references);
+        $this->assertSame(14 * 2 + 10 + 9, $references);
     }
 
     /**

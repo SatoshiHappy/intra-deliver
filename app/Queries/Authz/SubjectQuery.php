@@ -3,7 +3,6 @@
 namespace App\Queries\Authz;
 
 use App\Models\Authz\AuthzSubjectGroup;
-use App\Models\Authz\Role;
 use App\Models\Master\CompanyPost;
 use App\Models\Master\Department;
 use App\Models\Master\DepartmentMembership;
@@ -12,20 +11,16 @@ use App\Queries\Authz\Api\Requester;
 use App\Queries\Master\DepartmentTreeQuery;
 use App\Queries\Master\MembershipQuery;
 use DateTimeInterface;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Relations\Relation;
+use LogicException;
 
 /**
- * 認可の対象者に、判定を求める者が d に合うか(docs の 設計/共通マスタ/ロールと認可/対象者.md)。
+ * 認可の対象者に、判定を求める者が d に合うか(docs の 設計/共通マスタ/ロールと認可/対象者.md。条件の相手ごとの合い方もそこ)。
  *
- * 条件の相手に合うかは判定を求める者と d で決める: ユーザー = その人、組織 = カレント組織の所属がその組織(と比較で決まる上位・下位の組織)にある、
- * 役職 = カレント組織の所属の、d に成り立つ所属役職の役職、ロール = d に持つロール、IPv4 アドレス = 接続元がパターンに合う、認証状態 = d に有効なユーザーの有無、
- * 期間 = d が [開始日, 終了日) の中。判定を求める者のユーザーが d に有効でない・存在しないときは、ユーザーなしとして扱う。
- * 組織と役職(所属から来る事実)はカレント組織の所属 1 つだけから作り、カレント組織が無ければどれも合わない
- * (カレント組織の決まり方 = {@see MembershipQuery::currentMembershipOn()}。docs の 設計/デモユーザー切替/今の利用者.md 5.5)。
- * 条件が指すマスタ(ユーザー・組織・役職)が d に有効でなければ、その条件はどの判定を求める者にも合わない。
- * 子の対象者 = その子の対象者の式に合う。除外と式の組み方・「対象者に合う」は {@see SubjectGroupMatcher}。
+ * 組織と役職(所属から来る事実)はカレント組織の所属 1 つだけから作る(カレント組織の決まり方 = docs の 設計/デモユーザー切替/今の利用者.md 5.5)。
+ * 事実の組み立ては 1 人の判定と対象者の展開で 1 か所({@see self::requesterFactsFor()})。
+ * 子の対象者・除外と式の組み方・「対象者に合う」は {@see SubjectGroupMatcher}。
  */
 class SubjectQuery
 {
@@ -35,7 +30,7 @@ class SubjectQuery
      *
      * @var array<string, Subject>
      */
-    private array $subjects = [];
+    private array $requesterFacts = [];
 
     public function __construct(
         private MembershipQuery $memberships,
@@ -92,42 +87,152 @@ class SubjectQuery
     {
         $key = implode('|', [$requester->userId ?? '', $requester->selectedDepartmentId ?? '', $requester->ipv4Address ?? '', $date->format('Y-m-d')]);
 
-        return $this->subjects[$key] ??= $this->buildSubjectOn($requester, $date);
+        return $this->requesterFacts[$key] ??= $this->buildSubjectOn($requester, $date);
     }
 
     /**
-     * 判定を求める者の d の事実を組み立てる({@see self::subjectOn()} の中身)。
+     * 渡したユーザーのうち、対象者に「対象者に合う」者の id(昇順。重ねない。意味は docs の 設計/共通マスタ/ロールと認可/対象者.md の「展開」)。
+     * 事実をまとめて組み立てるので、問い合わせの数はユーザーの数によらない({@see self::subjectOn()} の覚えは使わない)。
+     * d に有効でないユーザーは先に除く(判定ではユーザーなしになり、ゲストの条件に合ってしまうため)。
+     *
+     * @param  list<int>  $userIds
+     * @return list<int>
+     */
+    public function matchingUserIdsAmong(int $subjectGroupId, array $userIds, DateTimeInterface $date): array
+    {
+        $subjectGroups = $this->reachableSubjectGroups([$subjectGroupId], $date);
+        $subjectGroup = $subjectGroups->get($subjectGroupId);
+
+        if ($subjectGroup === null) {
+            return [];
+        }
+
+        $candidates = $this->candidatesOfEffectiveUsers($userIds, $date);
+        $matching = [];
+
+        $requesters = $this->candidateRequesters($candidates);
+
+        foreach ($this->requesterFactsFor($requesters, $candidates, $date) as $requesterFacts) {
+            $matcher = new SubjectGroupMatcher($requesterFacts, $subjectGroups);
+
+            if ($matcher->matches($subjectGroup)) {
+                $matching[] = $requesterFacts->userId ?? throw new LogicException('展開の判定を求める者はユーザーなしにならない');
+            }
+        }
+
+        sort($matching);
+        $unique = array_unique($matching);
+
+        return array_values($unique);
+    }
+
+    /**
+     * {@see self::subjectOn()} の中身。1 人で {@see self::requesterFactsFor()} を呼ぶ。
      */
     private function buildSubjectOn(Requester $requester, DateTimeInterface $date): Subject
     {
-        $userId = $requester->userId;
+        $candidates = $this->candidatesOfEffectiveUsers($requester->userId === null ? [] : [$requester->userId], $date);
 
-        if ($userId === null || ! User::query()->whereKey($userId)->effectiveOn($date)->exists()) {
-            return new Subject(
-                userId: null,
-                ipv4Address: $requester->ipv4Address,
-                date: $date,
-                departmentIds: [],
-                upperDepartmentIds: [],
-                lowerDepartmentIds: [],
-                companyPosts: new Collection,
-                roleIds: [],
-            );
-        }
+        return $this->requesterFactsFor([$requester], $candidates, $date)[0];
+    }
 
-        $currentMembership = $this->memberships->currentMembershipOn($userId, $requester->selectedDepartmentId, $date);
-        $departmentId = $currentMembership?->department_id;
+    /**
+     * 判定を求める者それぞれの d の事実(渡した順)。ユーザーが候補の表に無い(d に有効でない・存在しない)者はユーザーなし(事実は空)。
+     * 上位と下位の組織・ロールは、全員の分をまとめて読む(問い合わせを人数で増やさない)。
+     *
+     * @param  list<Requester>  $requesters
+     * @param  array<int, Collection<int, DepartmentMembership>>  $candidates  d に有効なユーザー → カレント組織の候補
+     * @return list<Subject>
+     */
+    private function requesterFactsFor(array $requesters, array $candidates, DateTimeInterface $date): array
+    {
+        $userIds = array_map(
+            fn (Requester $requester) => $this->effectiveUserIdOf($requester, $candidates),
+            $requesters,
+        );
+        $memberships = array_map(
+            fn (Requester $requester, ?int $userId) => $userId === null
+                ? null
+                : $this->memberships->currentMembershipAmong($candidates[$userId], $requester->selectedDepartmentId),
+            $requesters,
+            $userIds,
+        );
+        $currentMemberships = array_filter($memberships);
+        $currentDepartmentIds = array_map(
+            fn (DepartmentMembership $membership) => $membership->department_id,
+            $currentMemberships,
+        );
+        $departmentIds = array_values(array_unique($currentDepartmentIds));
+        $upper = $this->departmentTree->ancestorsOfEach($departmentIds, $date);
+        $lower = $this->departmentTree->descendantsOfEach($departmentIds, $date);
+        $roleIds = $this->roles->roleIdsOfEach(array_keys($candidates), $date);
 
-        return new Subject(
+        return array_map(fn (Requester $requester, ?int $userId, ?DepartmentMembership $membership) => new Subject(
             userId: $userId,
             ipv4Address: $requester->ipv4Address,
             date: $date,
-            departmentIds: $departmentId === null ? [] : [$departmentId],
-            upperDepartmentIds: $departmentId === null ? [] : $this->departmentIdsOf($this->departmentTree->ancestors($departmentId, $date)),
-            lowerDepartmentIds: $departmentId === null ? [] : $this->departmentIdsOf($this->departmentTree->descendants($departmentId, $date)),
-            companyPosts: $this->companyPostsOn($currentMembership, $date),
-            roleIds: $this->roles->rolesOn($userId, $date)->map(fn (Role $role) => $role->id)->all(),
-        );
+            departmentIds: $membership === null ? [] : [$membership->department_id],
+            upperDepartmentIds: $this->reachedDepartmentIds($upper, $membership),
+            lowerDepartmentIds: $this->reachedDepartmentIds($lower, $membership),
+            companyPosts: $this->companyPostsOf($membership),
+            roleIds: $userId === null ? [] : $roleIds[$userId],
+        ), $requesters, $userIds, $memberships);
+    }
+
+    /**
+     * 展開で判定する者(docs の 設計/共通マスタ/ロールと認可/対象者.md の「展開」)。
+     *
+     * @param  array<int, Collection<int, DepartmentMembership>>  $candidates  d に有効なユーザー → カレント組織の候補
+     * @return list<Requester>
+     */
+    private function candidateRequesters(array $candidates): array
+    {
+        $requesters = [];
+
+        foreach ($candidates as $userId => $memberships) {
+            $selectable = $memberships->map(fn (DepartmentMembership $candidate) => $candidate->department_id)->all();
+
+            foreach ($selectable === [] ? [null] : $selectable as $departmentId) {
+                $requesters[] = new Requester($userId, null, $departmentId);
+            }
+        }
+
+        return $requesters;
+    }
+
+    /**
+     * 候補の表のキーは d に有効なユーザーだけなので、有効かどうかはここで決まる(無ければ null = ユーザーなし)。
+     *
+     * @param  array<int, Collection<int, DepartmentMembership>>  $candidates
+     */
+    private function effectiveUserIdOf(Requester $requester, array $candidates): ?int
+    {
+        return $requester->userId !== null && array_key_exists($requester->userId, $candidates)
+            ? $requester->userId
+            : null;
+    }
+
+    /**
+     * 渡したユーザーのうち d に有効なものがキー(候補が無ければ空)。d に有効でないユーザーは判定でユーザーなしなので、候補を読まずに外す。
+     *
+     * @param  list<int>  $userIds
+     * @return array<int, Collection<int, DepartmentMembership>>
+     */
+    private function candidatesOfEffectiveUsers(array $userIds, DateTimeInterface $date): array
+    {
+        if ($userIds === []) {
+            return [];
+        }
+
+        $effectiveUserIds = User::query()
+            ->whereRaw('users.id = ANY (?::bigint[])', ['{'.implode(',', $userIds).'}'])
+            ->effectiveOn($date)
+            ->orderBy('id')
+            ->pluck('id')
+            ->map(fn (mixed $id) => intval($id))
+            ->all();
+
+        return $this->memberships->currentDepartmentCandidatesAmongOn(array_values($effectiveUserIds), $date);
     }
 
     /**
@@ -160,30 +265,38 @@ class SubjectQuery
     }
 
     /**
-     * カレント組織の所属の、d に成り立つ所属役職の役職(所属役職と役職の「成り立つ」は DepartmentMembershipPost の holdsOn。同じ役職を重ねない)。
-     * カレント組織が無ければ空。
+     * カレント組織の所属の、読み込み済みの所属役職(候補を引くときに d で絞り済み)の役職。同じ役職を重ねない。カレント組織が無ければ空。
      *
      * @return Collection<int, CompanyPost>
      */
-    private function companyPostsOn(?DepartmentMembership $currentMembership, DateTimeInterface $date): Collection
+    private function companyPostsOf(?DepartmentMembership $currentMembership): Collection
     {
         if ($currentMembership === null) {
             return new Collection;
         }
 
-        return CompanyPost::query()
-            ->whereHas('departmentMembershipPosts', fn (Builder $membershipPosts) => $membershipPosts
-                ->holdsOn($date)
-                ->where('department_membership_id', $currentMembership->id))
-            ->get();
+        $companyPosts = [];
+
+        foreach ($currentMembership->departmentMembershipPosts as $membershipPost) {
+            $companyPosts[$membershipPost->company_post_id] = $membershipPost->companyPost
+                ?? throw new LogicException("所属役職 {$membershipPost->id} の役職を読み込んでいない");
+        }
+
+        return new Collection(array_values($companyPosts));
     }
 
     /**
-     * @param  Collection<int, Department>  $departments
+     * まとめて読んだ組織から、カレント組織の分の id を引く。カレント組織が無ければ空。
+     *
+     * @param  array<int, Collection<int, Department>>  $reached
      * @return array<int, int>
      */
-    private function departmentIdsOf(Collection $departments): array
+    private function reachedDepartmentIds(array $reached, ?DepartmentMembership $currentMembership): array
     {
-        return $departments->map(fn (Department $department) => $department->id)->all();
+        if ($currentMembership === null) {
+            return [];
+        }
+
+        return $reached[$currentMembership->department_id]->map(fn (Department $department) => $department->id)->all();
     }
 }

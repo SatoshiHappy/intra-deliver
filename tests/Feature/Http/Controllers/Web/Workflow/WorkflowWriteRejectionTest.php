@@ -50,7 +50,8 @@ final class WorkflowWriteRejectionTest extends TransactionalTestCase
             'delete a draft by a guest' => [null, 'delete', '/workflow/drafts/%d', 'draft', 'revision', null, 404],
             'approve by the applicant' => ['u0001', 'post', '/workflow/cases/%d/approve', 2, 'action', null, 422],
             'approve by a referrer' => ['u0003', 'post', '/workflow/cases/%d/approve', 2, 'action', null, 422],
-            'approve by an unrelated user' => ['u0009', 'post', '/workflow/cases/%d/approve', 3, 'action', null, 404],
+            // u0009 は初期データの代理で u0003 の代理先(設計/ワークフロー/案件の運用/初期データ.md 4.1)なので、案件にも代理にも関わらない u0005
+            'approve by an unrelated user' => ['u0005', 'post', '/workflow/cases/%d/approve', 3, 'action', null, 404],
             'approve a completed case by its last processor' => ['u0003', 'post', '/workflow/cases/%d/approve', 1, 'action', null, 422],
             'approve early by the previous processor' => ['u0002', 'post', '/workflow/cases/%d/approve-early', 3, 'action', null, 422],
             'reject by the applicant' => ['u0001', 'post', '/workflow/cases/%d/reject', 5, 'action', null, 422],

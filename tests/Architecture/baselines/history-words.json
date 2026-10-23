@@ -39,7 +39,6 @@
     "tests/Feature/Actions/Workflow/CaseSendBackToPlacementTest.php": 4,
     "tests/Feature/Actions/Workflow/CreateWorkflowDefinitionsTest.php": 2,
     "tests/Feature/Actions/Workflow/SendBackPullBackTest.php": 1,
-    "tests/Feature/Http/Controllers/Web/Records/RecordControllerTest.php": 1,
     "tests/Feature/Http/Controllers/Web/Workflow/AssigneeCandidatesTest.php": 1,
     "tests/Feature/Http/Controllers/Web/Workflow/WorkflowRouteDepthEnvelopeTest.php": 1,
     "tests/Feature/Http/Controllers/Web/Workflow/WorkflowRouteDialogsTest.php": 2,

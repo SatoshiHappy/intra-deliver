@@ -34,6 +34,17 @@ export function seededDate(written: string): string {
 }
 
 /**
+ * 流す日の n 日前(初期データの見本の処理の時刻「D − n」= docs の 設計/ワークフロー/案件の運用/初期データ.md 4 節)が、流す日と同じ月か。
+ * ホームの今月の処理済みに入る見本の処理は、流す日の日付で変わるので、期待をこれで数える。
+ */
+export function isInSeedingMonth(daysBefore: number): boolean {
+    const day = seedingDay();
+    const before = new Date(Date.parse(day) - daysBefore * 86_400_000);
+
+    return before.toISOString().slice(0, 7) === day.slice(0, 7);
+}
+
+/**
  * seededDate の画面の表示の形(YYYY/MM/DD。docs の 設計/業務データの入れ物/画面/README.md 1.3)。
  */
 export function shownDate(written: string): string {

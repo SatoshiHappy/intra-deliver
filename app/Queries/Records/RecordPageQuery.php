@@ -116,7 +116,7 @@ class RecordPageQuery
 
     /**
      * レコードの詳細の can(詳細の画面/README.md の 6.1 節)。copy = 業務モジュールの create(複製.md の 1 節)、attach = 業務モジュールの update かつ
-     * 添付ファイルを使用する、apply = 申請の入口({@see self::applyEntries()} の結果)が空でない。
+     * 添付ファイルの追加・削除を許可する、apply = 申請の入口({@see self::applyEntries()} の結果)が空でない。
      *
      * @param  list<ApplyEntry>  $applyEntries
      * @return array{update: bool, delete: bool, copy: bool, attach: bool, apply: bool}

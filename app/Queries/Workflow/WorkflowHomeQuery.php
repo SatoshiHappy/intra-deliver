@@ -32,6 +32,8 @@ class WorkflowHomeQuery
         private SubjectGroupMembership $membership,
         private CaseVisibility $visibility,
         private CurrentNodes $currentNodes,
+        private CaseTargetTerms $targetTerms,
+        private CaseDeadlines $deadlines,
     ) {}
 
     /**
@@ -75,7 +77,7 @@ class WorkflowHomeQuery
     }
 
     /**
-     * 今月の処理済みの履歴の行(並びの順)。自分がいなければどの行にも合わない。
+     * 今月の処理済みの履歴の行(並び = 処理日時の降順、同じ秒は id の降順 = docs の 設計/ワークフロー/画面.md 7 節)。自分がいなければどの行にも合わない。
      *
      * @return Builder<WorkflowCaseHistory>
      */
@@ -90,6 +92,7 @@ class WorkflowHomeQuery
             ->where('created_at', '>=', $monthStart->utc())
             ->where('created_at', '<', $monthStart->addMonth()->utc())
             ->whereHas('workflowCase', fn (Builder $case) => $this->visibility->processed($case, $requester, $context->date))
+            ->orderByDesc('created_at')
             ->orderByDesc('id');
     }
 
@@ -113,6 +116,34 @@ class WorkflowHomeQuery
         }
 
         return $counts;
+    }
+
+    /**
+     * 未処理の案件のうち、未処理の集まりが期限超過のものの数(件数カードの「期限超過 N」= 設計/ワークフロー/案件の運用/認可と一覧.md の
+     * 2.4 節)。期限は一覧の未処理の行と同じ計算({@see CaseDeadlines})。自分がいなければ 0。
+     *
+     * @param  Builder<WorkflowCase>  $cases  未処理の案件
+     */
+    public function overdueCount(AccessContext $context, Builder $cases): int
+    {
+        $userId = $this->userIdOf($context);
+
+        if ($userId === null) {
+            return 0;
+        }
+
+        $caseIds = array_values(array_map(intval(...), $cases->clone()->reorder()->pluck('id')->all()));
+        $nodesByCase = $this->currentNodes->of($caseIds);
+        $nodeIds = array_map(fn (CurrentNode $node) => $node->id, array_merge([], ...array_values($nodesByCase)));
+        $targetIds = $this->targetTerms->targetNodeIds($nodeIds, $userId, $context->date);
+        $overdue = 0;
+
+        foreach ($nodesByCase as $nodes) {
+            $pendingNodes = $this->deadlines->pendingNodesOf($nodes, $targetIds);
+            $overdue += $this->deadlines->summaryOf($pendingNodes, $context->date)->isOverdue ? 1 : 0;
+        }
+
+        return $overdue;
     }
 
     /**

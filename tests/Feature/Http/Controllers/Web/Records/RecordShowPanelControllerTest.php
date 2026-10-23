@@ -179,12 +179,12 @@ final class RecordShowPanelControllerTest extends TransactionalTestCase
         $this->fakeUploadDisk();
         $this->limitUploads();
         // 1 回目は前の版の無い版(変化を出さない)なので、2 回に分けて足す
-        foreach ([['a.png', 'png'], ['b.txt', 'txt']] as [$name, $kind]) {
+        foreach ([['a.png', 'png'], ['b.docx', 'docx']] as [$name, $kind]) {
             $files = ['attachments' => [$this->uploadedFile($name, $kind)]];
             $this->post("{$this->url()}/attachments", $files)->assertStatus(303);
         }
 
-        [$png, $txt] = RecordAttachment::query()->where('record_id', $this->record->id)->orderBy('id')->get()->all();
+        [$png, $docx] = RecordAttachment::query()->where('record_id', $this->record->id)->orderBy('id')->get()->all();
         $purged = RecordAttachment::factory()->create([
             'record_module_id' => $this->module->id, 'record_id' => $this->record->id,
             'upload_id' => Upload::factory()->purged(),
@@ -195,7 +195,7 @@ final class RecordShowPanelControllerTest extends TransactionalTestCase
 
         $this->assertSame([
             [null, null],
-            ["{$base}/attachments/{$txt->id}", null],
+            ["{$base}/attachments/{$docx->id}", null],
             ["{$base}/attachments/{$png->id}", "{$base}/attachments/{$png->id}/preview"],
         ], array_map(fn (array $row) => [$row['downloadUrl'], $row['previewUrl']], $rows));
         $purged->delete();

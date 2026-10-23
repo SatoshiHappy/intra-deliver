@@ -1,11 +1,15 @@
+import { Pause } from 'lucide-react';
 import { StatusBadge } from '@/components/StatusBadge';
 import { cn } from '@/lib/utils';
+import { BULK_OUTCOMES } from '@/lib/Workflow/bulkActions';
 import { ACTION_LABELS } from '@/lib/Workflow/workflowLabels';
 import type {
     StatusTone,
     WorkflowAction,
+    WorkflowBulkOutcome,
     WorkflowCaseState,
     WorkflowCompletionReason,
+    WorkflowCurrentSummary,
     WorkflowStepState,
 } from '@/types';
 
@@ -32,7 +36,35 @@ const HISTORY_ACTIONS: Partial<
 };
 
 /**
- * 案件の状態の札: 一時保存・承認待ち・再申請待ち・完了(理由)(設計/ワークフロー/認可と一覧.md 3.2 の行の状態)。
+ * 保留中の札(差戻しの色と一時停止の印 = docs の 設計/ワークフロー/案件の運用/画面/README.md の 8.1 節)。案件の状態と、現在のステップの名前の後に出す。
+ */
+export function HoldBadge() {
+    return (
+        <StatusBadge
+            label="保留中"
+            tone="returned"
+            mark={<Pause className="size-3" aria-hidden="true" />}
+        />
+    );
+}
+
+/** 期限超過の札(否認・期限切れの色 = 同じ 8.1 節) */
+export function OverdueBadge() {
+    return <StatusBadge label="期限超過" tone="rejected" />;
+}
+
+/** 一括の結果の札(語・色・印 = {@link BULK_OUTCOMES}) */
+export function BulkOutcomeBadge({
+    outcome,
+}: {
+    outcome: WorkflowBulkOutcome;
+}) {
+    return <StatusBadge {...BULK_OUTCOMES[outcome]} />;
+}
+
+/**
+ * 案件の状態の札: 一時保存・承認待ち・再申請待ち・保留中・完了(理由)(札の規則 = 設計/ワークフロー/案件の運用/認可と一覧.md の 2.4 節。
+ * 未完了の札の状態はサーバーの 1 か所が決めた currentSummary.state)。
  */
 export function CaseStateBadge({
     state,
@@ -41,7 +73,7 @@ export function CaseStateBadge({
 }: {
     state: WorkflowCaseState;
     completionReason: WorkflowCompletionReason | null;
-    currentNodeState: 'waiting' | 'reapply' | null;
+    currentNodeState: WorkflowCurrentSummary['state'] | null;
 }) {
     if (state === 'draft') {
         return <StatusBadge label="一時保存" tone="settled" />;
@@ -49,6 +81,10 @@ export function CaseStateBadge({
 
     if (state === 'completed' && completionReason !== null) {
         return <StatusBadge {...COMPLETED[completionReason]} />;
+    }
+
+    if (currentNodeState === 'hold') {
+        return <HoldBadge />;
     }
 
     return currentNodeState === 'reapply' ? (

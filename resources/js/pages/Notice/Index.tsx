@@ -1,7 +1,7 @@
 import { Head, router } from '@inertiajs/react';
 import { NoticeFilterTabs } from '@/components/Notice/NoticeFilterTabs';
-import { NoticePagination } from '@/components/Notice/NoticePagination';
 import { NoticeRowView } from '@/components/Notice/NoticeRowView';
+import { Pagination } from '@/components/Pagination';
 import { Button } from '@/components/ui/button';
 import {
     Table,
@@ -129,10 +129,8 @@ export default function Index({ query, counts, notices }: NoticeIndexProps) {
                         rows={notices.data}
                         emptyText={EMPTY_TEXTS[query.filter]}
                     />
-                    <NoticePagination
-                        currentPage={notices.currentPage}
-                        lastPage={notices.lastPage}
-                        total={notices.total}
+                    <Pagination
+                        list={notices}
                         onPage={(page) =>
                             router.get(
                                 listUrl(query.filter, page),

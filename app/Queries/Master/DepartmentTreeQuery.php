@@ -28,7 +28,18 @@ class DepartmentTreeQuery
      */
     public function ancestors(int $departmentId, DateTimeInterface $date): Collection
     {
-        return $this->reachable($departmentId, $date, upward: true);
+        return $this->ancestorsOfEach([$departmentId], $date)[$departmentId];
+    }
+
+    /**
+     * 組織それぞれの上位の組織すべて({@see self::ancestors()} と同じ結果)。
+     *
+     * @param  list<int>  $departmentIds
+     * @return array<int, Collection<int, Department>> キー = 渡した組織すべて
+     */
+    public function ancestorsOfEach(array $departmentIds, DateTimeInterface $date): array
+    {
+        return $this->reachableVia(DepartmentInclusion::query()->holdsOn($date), $departmentIds, upward: true);
     }
 
     /**
@@ -61,7 +72,18 @@ class DepartmentTreeQuery
      */
     public function descendants(int $departmentId, DateTimeInterface $date): Collection
     {
-        return $this->reachable($departmentId, $date, upward: false);
+        return $this->descendantsOfEach([$departmentId], $date)[$departmentId];
+    }
+
+    /**
+     * 組織それぞれの下位の組織すべて({@see self::descendants()} と同じ結果)。
+     *
+     * @param  list<int>  $departmentIds
+     * @return array<int, Collection<int, Department>> キー = 渡した組織すべて
+     */
+    public function descendantsOfEach(array $departmentIds, DateTimeInterface $date): array
+    {
+        return $this->reachableVia(DepartmentInclusion::query()->holdsOn($date), $departmentIds, upward: false);
     }
 
     /**
@@ -72,9 +94,13 @@ class DepartmentTreeQuery
      */
     public function descendantIdsOverEffectiveRows(int $departmentId, DateTimeInterface $date): array
     {
-        return array_values($this->reachableVia(DepartmentInclusion::query()->effectiveOn($date), $departmentId, upward: false)
+        $inclusions = DepartmentInclusion::query()->effectiveOn($date);
+        $reached = $this->reachableVia($inclusions, [$departmentId], upward: false);
+        $ids = $reached[$departmentId]
             ->map(fn (Department $department) => $department->id)
-            ->all());
+            ->all();
+
+        return array_values($ids);
     }
 
     /**
@@ -108,38 +134,46 @@ class DepartmentTreeQuery
     }
 
     /**
-     * 組織から、d に成り立つ内包を 1 つの向きにたどって届く組織。
-     *
-     * @return Collection<int, Department>
-     */
-    private function reachable(int $departmentId, DateTimeInterface $date, bool $upward): Collection
-    {
-        return $this->reachableVia(DepartmentInclusion::query()->holdsOn($date), $departmentId, $upward);
-    }
-
-    /**
-     * 組織から、渡した内包の集まりを 1 つの向きにたどって届く組織。
+     * 組織それぞれから、渡した内包の集まりを 1 つの向きにたどって届く組織。自分を除く規則は起点ごとに掛ける。
+     * 起点の列は返す組織の属性に残さない(起点 1 つの口が返す組織の属性を、起点を持たずにたどっていたときと変えないため)。
      *
      * @param  Builder<DepartmentInclusion>  $inclusions
-     * @return Collection<int, Department>
+     * @param  list<int>  $departmentIds
+     * @return array<int, Collection<int, Department>> キー = 渡した組織すべて(届かなければ空)
      */
-    private function reachableVia(Builder $inclusions, int $departmentId, bool $upward): Collection
+    private function reachableVia(Builder $inclusions, array $departmentIds, bool $upward): array
     {
+        $reached = array_fill_keys($departmentIds, []);
+
+        if ($reached === []) {
+            return [];
+        }
+
         $holding = $inclusions->select(['parent_department_id', 'department_id']);
         [$from, $to] = $upward ? ['department_id', 'parent_department_id'] : ['parent_department_id', 'department_id'];
 
         $sql = sprintf(<<<'SQL'
             WITH RECURSIVE holding AS (%1$s),
-            reached (id) AS (
-                SELECT holding.%3$s FROM holding WHERE holding.%2$s = ?
+            reached (origin_id, id) AS (
+                SELECT holding.%2$s, holding.%3$s FROM holding WHERE holding.%2$s = ANY (?::bigint[])
                 UNION
-                SELECT holding.%3$s FROM holding JOIN reached ON holding.%2$s = reached.id
+                SELECT reached.origin_id, holding.%3$s FROM holding JOIN reached ON holding.%2$s = reached.id
             )
-            SELECT departments.* FROM departments JOIN reached ON reached.id = departments.id
-            WHERE departments.id <> ?
+            SELECT reached.origin_id AS reached_from_id, departments.* FROM departments
+            JOIN reached ON reached.id = departments.id
+            WHERE departments.id <> reached.origin_id
             ORDER BY departments.sort_key, departments.code, departments.id
             SQL, $holding->toSql(), $from, $to);
 
-        return Department::fromQuery($sql, [...$holding->getBindings(), $departmentId, $departmentId]);
+        $connection = Department::query()->getConnection();
+        $bindings = [...$holding->getBindings(), '{'.implode(',', array_keys($reached)).'}'];
+
+        foreach ($connection->select($sql, $bindings) as $row) {
+            $attributes = (array) $row;
+            $originId = intval($attributes['reached_from_id']);
+            $reached[$originId][] = array_diff_key($attributes, ['reached_from_id' => true]);
+        }
+
+        return array_map(fn (array $departments) => Department::query()->hydrate($departments), $reached);
     }
 }

@@ -24,12 +24,14 @@ use Tests\Support\TransactionalTestCase;
 use Tests\Support\UsesSeededRecords;
 
 /**
- * 案件一覧の 4 タブ(docs の 設計/ワークフロー/認可と一覧.md 3.2・7 節の「一覧」、形は 画面.md 1.2・4 節): タブの述語・件数(一時保存と未処理だけ)・
+ * 案件一覧のタブ(docs の 設計/ワークフロー/認可と一覧.md 3.2・7 節の「一覧」、形は 画面.md 1.2・4 節。足した 2 タブと行の項目 =
+ * 設計/ワークフロー/案件の運用/認可と一覧.md の 2.1 節・2.2 節の CaseListTabsTest・CaseListRowExtrasTest): タブの述語・件数(一時保存・未処理・未確認)・
  * 処理済と参照の未完了・完了の切替・並び(更新の新しい順)・20 件のページ・解釈できないクエリ・行の項目と can。問い合わせの回数は行の数に依らない。
  * 案件はテストで作る。人は初期データにワークフローの案件を持たず、初期データのフローの参照者でもない利用者(自分が作った行だけが見える)。
  * A = u0004(フローの申請のノードの指定 = A)、B = u0005、C = u0006。
  *
  * @phpstan-import-type CaseRow from CaseRows
+ * @phpstan-import-type CaseList from CaseListQuery
  */
 final class CaseListQueryTest extends TransactionalTestCase
 {
@@ -77,8 +79,9 @@ final class CaseListQueryTest extends TransactionalTestCase
         $this->assertSame([$referencedActive->id], $this->idsOf($this->listFor($this->a, 'referenced')));
         $this->assertSame([$referencedCompleted->id], $this->idsOf($this->listFor($this->a, 'referenced', 'completed')));
 
-        foreach (['draft', 'pending', 'processed', 'referenced'] as $tab) {
-            $this->assertSame(['draft' => 2, 'pending' => 2], $this->listFor($this->a, $tab)['counts']);
+        foreach (['draft', 'pending', 'unconfirmed', 'processed', 'confirmed', 'referenced'] as $tab) {
+            $counts = $this->listFor($this->a, $tab)['counts'];
+            $this->assertSame(['draft' => 2, 'pending' => 2, 'unconfirmed' => 0], $counts);
         }
     }
 
@@ -91,13 +94,15 @@ final class CaseListQueryTest extends TransactionalTestCase
         $pending = $this->applied($flow, $this->b, targets: [$this->a]);
         $this->applied($flow, $this->a, completed: true);
 
-        $this->assertSame(['tab' => 'draft', 'scope' => 'active'], $this->listFor($this->a, 'draft', 'completed')['query']);
+        $draftQuery = $this->listFor($this->a, 'draft', 'completed')['query'];
+        $this->assertSame(['tab' => 'draft', 'scope' => 'active', 'q' => ''], $draftQuery);
         $this->assertSame(4000, $this->listFor($this->a, 'draft')['commentMaxLength']);
-        $this->assertSame(['tab' => 'processed', 'scope' => 'completed'], $this->listFor($this->a, 'processed', 'completed')['query']);
+        $processedQuery = $this->listFor($this->a, 'processed', 'completed')['query'];
+        $this->assertSame(['tab' => 'processed', 'scope' => 'completed', 'q' => ''], $processedQuery);
 
         foreach ([['x', 'y', '0'], [null, null, null], [['pending'], 'completed', 'abc'], ['PENDING', 'Completed', '-1']] as [$tab, $scope, $page]) {
             $list = $this->listFor($this->a, $tab, $scope, $page);
-            $this->assertSame(['tab' => 'pending', 'scope' => 'active'], $list['query']);
+            $this->assertSame(['tab' => 'pending', 'scope' => 'active', 'q' => ''], $list['query']);
             $this->assertSame([$pending->id], $this->idsOf($list));
             $this->assertSame(1, $list['cases']['currentPage']);
         }
@@ -139,10 +144,16 @@ final class CaseListQueryTest extends TransactionalTestCase
         $this->assertSame([null, '下書きの名前', 'wf_rows の名前', null, null, 'draft'], [$draftRows[$draft->id]['number'], $draftRows[$draft->id]['name'], $draftRows[$draft->id]['flowName'], $draftRows[$draft->id]['appliedAt'], $draftRows[$draft->id]['currentSummary'], $draftRows[$draft->id]['state']]);
         $this->assertSame('wf_rows の名前', $draftRows[$unnamedDraft->id]['name']);
         $this->assertSame(['id' => $this->a->id, 'code' => 'u0004', 'name' => '伊藤 涼子'], $draftRows[$draft->id]['applicant']);
+        $current = $this->nodesOf($active)[1];
         $this->assertSame([
             'id' => $active->id, 'number' => 'WF-1234567', 'name' => '案件の名前', 'flowName' => 'wf_rows の名前',
             'applicant' => ['id' => $nameless->id, 'code' => $nameless->code, 'name' => null], 'appliedAt' => $active->applied_at?->toIso8601String(),
-            'currentSummary' => ['state' => 'waiting', 'name' => $this->nodesOf($active)[1]->name], 'state' => 'active', 'completionReason' => null, 'revision' => 0, 'pullBackNodes' => [], 'canAttachOnWithdraw' => false,
+            'currentSummary' => ['state' => 'waiting', 'name' => $current->name],
+            'currentNodes' => [['id' => $current->id, 'name' => $current->name, 'state' => 'waiting']],
+            'state' => 'active', 'completionReason' => null, 'revision' => 0, 'pullBackNodes' => [], 'canAttachOnWithdraw' => false,
+            'deadline' => ['reachedOn' => self::DATE, 'elapsedDays' => 0, 'dueOn' => null, 'overdue' => false],
+            'principals' => [], 'confirmation' => null,
+            'bulkApproval' => ['nodeId' => $current->id, 'nodeName' => $current->name, 'principal' => null],
         ], array_diff_key($activeRow, ['can' => true]));
         $this->assertSame(['WF-000001', 'WF-1234567'], [CaseNumbers::format(1), CaseNumbers::format(1_234_567)]);
         $this->assertSame([CaseNumbers::format((int) $completed->case_number), null, 'completed', 'rejected'], [$completedRow['number'], $completedRow['currentSummary'], $completedRow['state'], $completedRow['completionReason']]);
@@ -174,7 +185,9 @@ final class CaseListQueryTest extends TransactionalTestCase
 
         foreach (['draft', 'pending', 'processed'] as $tab) {
             foreach ($this->listFor($this->a, $tab)['cases']['data'] as $row) {
-                $this->assertSame($expected[$row['id']] ?? null, $row['can'], "{$tab} の案件 {$row['id']}");
+                // 一括の 2 つ(bulkApprove・confirm)はタブごとに求める項目なので CaseListRowExtrasTest が確かめる
+                $can = array_diff_key($row['can'], ['bulkApprove' => true, 'confirm' => true]);
+                $this->assertSame($expected[$row['id']] ?? null, $can, "{$tab} の案件 {$row['id']}");
                 $seen[$row['id']] = true;
             }
         }
@@ -213,7 +226,7 @@ final class CaseListQueryTest extends TransactionalTestCase
     }
 
     /**
-     * @return array{query: array{tab: string, scope: string}, counts: array{draft: int, pending: int}, cases: array{data: list<CaseRow>, currentPage: int, lastPage: int, total: int}, commentMaxLength: int}
+     * @return CaseList
      */
     private function listFor(User $user, mixed $tab, mixed $scope = null, mixed $page = null): array
     {

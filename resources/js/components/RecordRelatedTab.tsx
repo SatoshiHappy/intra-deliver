@@ -1,5 +1,6 @@
 import { Link } from '@inertiajs/react';
 import { Check, Plus } from 'lucide-react';
+import { Pagination } from '@/components/Pagination';
 import { RecordValue } from '@/components/RecordValue';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -153,50 +154,6 @@ function RelatedTable({
     );
 }
 
-/**
- * 表の下のページ送り(前へ・次へ・今のページ。1 ページだけなら出さない)。
- */
-function RelatedPager({
-    rows,
-    disabled,
-    onPage,
-}: {
-    rows: RecordRelatedRows;
-    disabled: boolean;
-    onPage: (page: number) => void;
-}) {
-    if (rows.lastPage <= 1) {
-        return null;
-    }
-
-    return (
-        <nav
-            aria-label="関連レコードのページ"
-            className="flex items-center gap-2"
-        >
-            <Button
-                variant="outline"
-                size="sm"
-                disabled={disabled || rows.currentPage <= 1}
-                onClick={() => onPage(rows.currentPage - 1)}
-            >
-                前へ
-            </Button>
-            <span className="font-num text-sm text-muted-foreground tabular-nums">
-                {rows.currentPage} / {rows.lastPage} ページ
-            </span>
-            <Button
-                variant="outline"
-                size="sm"
-                disabled={disabled || rows.currentPage >= rows.lastPage}
-                onClick={() => onPage(rows.currentPage + 1)}
-            >
-                次へ
-            </Button>
-        </nav>
-    );
-}
-
 /** 表の上の行(入口の名前・件数・「新規」= 4.1 節の条件のとき) */
 function RelatedHead({
     entry,
@@ -276,7 +233,7 @@ export function RecordRelatedTab({
                 <RelatedTable rows={rows} rowHref={rowHref} />
             )}
             {rows !== null && (
-                <RelatedPager rows={rows} disabled={loading} onPage={onPage} />
+                <Pagination list={rows} onPage={onPage} disabled={loading} />
             )}
         </div>
     );

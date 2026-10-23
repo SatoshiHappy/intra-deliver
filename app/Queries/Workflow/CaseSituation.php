@@ -34,6 +34,7 @@ final readonly class CaseSituation
 
     /**
      * 処理者を P に替えた状況(一括承認の組を、処理者の候補ごとに同じ表で引くため = {@see BulkApprovals})。引戻せるノードは処理者で読むので持たない。
+     * 承認の表が引戻しの役割を読まない前提で、一括承認の代理元の組の判定に使う(承認の行が引戻しの役割を読むようにするときは、代理元の組の状況を読み直す)。
      */
     public function withProcessor(int $processorUserId): self
     {
@@ -87,7 +88,7 @@ final readonly class CaseSituation
     }
 
     /**
-     * 案件の札の状態(認可と一覧.md 2 節 = H1: 現在のノードに再申請待ちがあれば再申請待ち、無ければ承認待ち。現在のノードが無ければ null)。
+     * 案件の札の状態({@see CurrentNodes::labelStateOf()}。現在のノードが無ければ null)。
      */
     public function labelState(): ?WorkflowNodeState
     {

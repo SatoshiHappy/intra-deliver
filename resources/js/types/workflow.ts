@@ -10,54 +10,19 @@ import type {
     WorkflowAttachmentLimits,
 } from './workflowAttachments';
 import type {
+    WorkflowCaseRow,
+    WorkflowCurrentSummary,
+    WorkflowPerson,
+    WorkflowPullBackNode,
+} from './workflowRows';
+import type {
     WorkflowAction,
-    WorkflowCaseState,
     WorkflowCompletionReason,
     WorkflowNodeKind,
     WorkflowNodeState,
 } from './workflowValues';
 
 /** ワークフローの画面の型(設計/ワークフロー/画面.md 1.2・2〜5 節。App\Queries\Workflow の形。日時は時差つき。人の名前が無ければコード) */
-
-/** 人(名前が無ければ画面はコードを出す) */
-export type WorkflowPerson = { id: number; code: string; name: string | null };
-
-/** 現在のステップの要約(札の状態 = 再申請待ちがあれば再申請待ち、名前 = 表示名を「、」で並べたもの。サーバーの 1 か所が作る = 設計/ワークフロー/ルートの深さ/認可と一覧.md 2 節) */
-type WorkflowCurrentSummary = {
-    state: 'waiting' | 'reapply';
-    name: string;
-};
-
-/** 自分が引戻せるステップ 1 つ(blockedReason = 申請者承認防止で引戻せないときの文言。ダイアログが「決定」を押せなくする) */
-export type WorkflowPullBackNode = {
-    id: number;
-    name: string;
-    blockedReason: string | null;
-    canAttach: boolean; // 引戻しで添付を追加できる(処理のダイアログが添付の欄を出す)
-};
-
-/** 一覧の行・関連する案件の行 */
-export type WorkflowCaseRow = {
-    id: number;
-    number: string | null; // 'WF-000001'。一時保存は null
-    name: string; // 一時保存は入力の案件名、無ければフロー名
-    flowName: string;
-    applicant: WorkflowPerson;
-    appliedAt: string | null;
-    currentSummary: WorkflowCurrentSummary | null; // 札の状態と現在のステップの名前(現在のステップが無ければ null)
-    state: WorkflowCaseState;
-    completionReason: WorkflowCompletionReason | null;
-    revision: number;
-    can: {
-        pullBack: boolean;
-        reapply: boolean;
-        withdraw: boolean;
-        editDraft: boolean;
-        deleteDraft: boolean;
-    };
-    pullBackNodes: WorkflowPullBackNode[]; // 自分が引戻せるステップ(写した並び。未完了だけ)
-    canAttachOnWithdraw: boolean; // 取止めで添付を追加できる(関連する案件の行は偽)
-};
 
 /** 申請の画面の明細の行(id が無い = 新しい行。一時保存の行はいつも id を持たない)。業務データの入れ物の RecordDetailRow(id が必ずある)は変えない */
 type WorkflowDetailRowInput = {
@@ -106,24 +71,6 @@ export type WorkflowApplyProps = {
     attachment: WorkflowApplyAttachment;
     recordVersion: string | null; // 既存のデータからの申請だけ: 開いたときのレコードの版(申請で record_version に送る)
     recordTitle: string | null; // 既存のデータからの申請だけ: 見出しの表示の項目の値(無ければ null)
-};
-
-/** 案件一覧のタブと切替(読み取りが解釈した値) */
-export type WorkflowCaseTab = 'draft' | 'pending' | 'processed' | 'referenced';
-export type WorkflowCaseScope = 'active' | 'completed';
-
-/** 案件一覧のページ Workflow/CaseIndex の props(設計/ワークフロー/画面.md 4 節) */
-export type WorkflowCaseIndexProps = {
-    query: { tab: WorkflowCaseTab; scope: WorkflowCaseScope };
-    counts: { draft: number; pending: number };
-    cases: {
-        data: WorkflowCaseRow[];
-        currentPage: number;
-        lastPage: number;
-        total: number;
-    };
-    commentMaxLength: number; // コメントの文字数の上限(行の処理のダイアログ)
-    attachmentLimits: WorkflowAttachmentLimits | null; // どの行の入口も添付を受けなければ null
 };
 
 /** 再申請の差分(再申請の行だけ。設計/ワークフロー/画面.md 5 節) */

@@ -197,23 +197,29 @@ final class WorkflowPagesTest extends TransactionalTestCase
 
         $this->get('/workflow/cases')->assertOk()->assertInertia(fn (Assert $page) => $page
             ->component('Workflow/CaseIndex')
-            ->where('query', ['tab' => 'pending', 'scope' => 'active'])
-            ->where('counts', ['draft' => 1, 'pending' => 1])
+            ->where('query', ['tab' => 'pending', 'scope' => 'active', 'q' => ''])
+            ->where('counts', ['draft' => 1, 'pending' => 1, 'unconfirmed' => 0])
             ->where('cases.total', 1)
             ->where('commentMaxLength', 4000)
             ->where('cases.data.0.number', 'WF-000004')
             ->where('cases.data.0.currentSummary', ['state' => 'reapply', 'name' => '申請'])
-            ->where('cases.data.0.can', ['pullBack' => false, 'reapply' => true, 'withdraw' => true, 'editDraft' => false, 'deleteDraft' => false])
+            ->where('cases.data.0.can', ['pullBack' => false, 'reapply' => true, 'withdraw' => true, 'editDraft' => false, 'deleteDraft' => false, 'bulkApprove' => false, 'confirm' => false])
         );
+        $this->get('/workflow/cases?tab=pending&q=wf-000004')->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->where('query', ['tab' => 'pending', 'scope' => 'active', 'q' => 'wf-000004'])
+            ->where('cases.data.0.number', 'WF-000004')
+        );
+        $this->get('/workflow/cases?tab=pending&q=%FF')->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->where('query.q', '')->where('cases.total', 1));
         $this->get('/workflow/cases?tab=draft&scope=completed&page=x')->assertOk()->assertInertia(fn (Assert $page) => $page
-            ->where('query', ['tab' => 'draft', 'scope' => 'active'])
+            ->where('query', ['tab' => 'draft', 'scope' => 'active', 'q' => ''])
             ->where('cases.data.0.number', null)
             ->where('cases.data.0.state', 'draft')
             ->where('cases.data.0.can.editDraft', true)
             ->where('cases.data.0.can.deleteDraft', true)
         );
         $this->get('/workflow/cases?tab=unknown')->assertOk()->assertInertia(fn (Assert $page) => $page
-            ->where('query', ['tab' => 'pending', 'scope' => 'active'])
+            ->where('query', ['tab' => 'pending', 'scope' => 'active', 'q' => ''])
             ->reloadOnly(['query', 'counts', 'cases'], fn (Assert $reload) => $reload->has('query')->has('counts')->has('cases'))
         );
     }
@@ -221,7 +227,7 @@ final class WorkflowPagesTest extends TransactionalTestCase
     public function test_a_guest_sees_empty_tabs_with_zero_counts(): void
     {
         $this->get('/workflow/cases')->assertOk()->assertInertia(fn (Assert $page) => $page
-            ->where('counts', ['draft' => 0, 'pending' => 0])
+            ->where('counts', ['draft' => 0, 'pending' => 0, 'unconfirmed' => 0])
             ->where('cases.total', 0)
         );
     }

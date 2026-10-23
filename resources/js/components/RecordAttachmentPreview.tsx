@@ -59,7 +59,7 @@ function Player({ kind, url }: { kind: 'audio' | 'video'; url: string }) {
 }
 
 /**
- * プレビュー(画像・音声・動画 = Dialog の中、PDF など = 新しいタブ。添付ファイル/README.md の 4 節)。
+ * プレビュー(画像(GIF を含む)・音声・動画 = Dialog の中、PDF・テキスト・Markdown・CSV = 新しいタブ。添付ファイル/README.md の 4 節)。
  */
 export function RecordAttachmentPreview({ row, url }: Props) {
     const kind = previewKind(row.mime);

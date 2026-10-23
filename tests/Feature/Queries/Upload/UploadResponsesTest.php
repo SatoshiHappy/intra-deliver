@@ -51,7 +51,8 @@ final class UploadResponsesTest extends TransactionalTestCase
     public static function previewable(): array
     {
         return [
-            'png' => ['a.png', 'png'], 'jpeg' => ['a.jpg', 'jpeg'], 'pdf' => ['a.pdf', 'pdf'],
+            'png' => ['a.png', 'png'], 'jpeg' => ['a.jpg', 'jpeg'], 'gif' => ['a.gif', 'gif'],
+            'pdf' => ['a.pdf', 'pdf'],
             'mp3' => ['a.mp3', 'mp3'], 'wav' => ['a.wav', 'wav'], 'm4a' => ['a.m4a', 'm4a'],
             'm4a as audio/mp4' => ['a.m4a', 'm4a-mp4'], 'mp4' => ['a.mp4', 'mp4'], 'webm' => ['a.webm', 'webm'],
         ];
@@ -66,9 +67,31 @@ final class UploadResponsesTest extends TransactionalTestCase
         $this->assertSame('nosniff', $response->headers->get('X-Content-Type-Options'));
     }
 
+    public function test_the_previewable_types_are_the_images_pdf_media_and_the_three_text_types(): void
+    {
+        $responses = app(UploadResponses::class);
+
+        foreach (['image/gif', 'text/plain', 'text/markdown', 'text/csv', 'application/pdf', 'audio/mpeg'] as $mime) {
+            $this->assertTrue($responses->isPreviewable($mime), $mime);
+        }
+
+        foreach (['application/zip', 'application/octet-stream', 'text/html', 'image/svg+xml'] as $mime) {
+            $this->assertFalse($responses->isPreviewable($mime), $mime);
+        }
+    }
+
+    public function test_a_gif_preview_is_inline_with_the_saved_type(): void
+    {
+        $response = $this->prepared(app(UploadResponses::class)->preview($this->upload('a.gif', 'gif')));
+
+        $this->assertSame(200, $response->getStatusCode());
+        $this->assertSame('image/gif', $response->headers->get('Content-Type'));
+        $this->assertSame('inline', $response->headers->get('Content-Disposition'));
+    }
+
     public function test_a_preview_of_other_types_is_not_found(): void
     {
-        $id = $this->upload('a.txt', 'txt');
+        $id = $this->upload('a.docx', 'docx');
 
         $this->expectException(ModelNotFoundException::class);
 

@@ -42,4 +42,29 @@ final readonly class BulkOperationResult
 
         return count(array_filter($this->rows, fn (BulkCaseResult $row) => in_array($row->outcome, $done, true)));
     }
+
+    /**
+     * 画面の bulkResult の値(設計/ワークフロー/案件の運用/画面/README.md の 1.1 節の「一括の結果の値」)。
+     *
+     * @return array{action: string, total: int, succeeded: int, rows: list<array{
+     *     caseId: int, name: string|null, number: string|null, flowName: string|null, result: string,
+     *     guidance: string|null,
+     * }>}
+     */
+    public function toScreen(): array
+    {
+        return [
+            'action' => $this->action,
+            'total' => $this->total(),
+            'succeeded' => $this->succeeded(),
+            'rows' => array_map(fn (BulkCaseResult $row) => [
+                'caseId' => $row->caseId,
+                'name' => $row->name,
+                'number' => $row->number,
+                'flowName' => $row->flowName,
+                'result' => $row->outcome->value,
+                'guidance' => $row->guidance,
+            ], $this->rows),
+        ];
+    }
 }

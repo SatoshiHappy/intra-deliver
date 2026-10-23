@@ -19,7 +19,7 @@ use Tests\Support\TransactionalTestCase;
  * 初期データの日付の規則(docs の 設計/ワークフロー/案件の運用/初期データ.md 1.1・6 節): 流す日からの相対。
  * Feature テストの流す日は基準の日(phpunit.xml)で、別の流す日は TX の中で全部の表を空にして流し直して確かめる
  * (終わりの巻き戻しで元の初期データに戻る)。
- * 処理の日時(timestamptz の列)は比べない(今の見本は流した時の時計で入る。時計を合わせる規則は同じ文書の 1.2)。
+ * 処理の日時は、見本が操作ごとに合わせた時計で書く列(SAMPLE_TIME_COLUMNS。時計を合わせる規則は同じ文書の 1.2)を比べる。
  */
 final class SeedingDatesTest extends TransactionalTestCase
 {
@@ -31,7 +31,18 @@ final class SeedingDatesTest extends TransactionalTestCase
     /** 日付を持つ表のうち、初期データが日付の値を入れるもの(比べる値が空にならないことの確かめ) */
     private const SEEDED_DATE_TABLES = [
         'company_post_terms', 'department_inclusions', 'department_memberships', 'department_terms', 'records',
-        'user_roles', 'user_terms', 'workflow_cases', 'workflow_flow_versions',
+        'user_roles', 'user_terms', 'workflow_cases', 'workflow_flow_versions', 'workflow_proxies',
+    ];
+
+    /** 見本の処理の日時(申請日・処理日時・完了日・到達日時・確認日時・代理の登録の日時・通知の日時 = 同じ文書の 1.2): 表 => 列 */
+    private const SAMPLE_TIME_COLUMNS = [
+        'workflow_cases' => ['applied_at', 'completed_at', 'updated_at'],
+        'workflow_case_histories' => ['created_at'],
+        'workflow_case_nodes' => ['reached_at'],
+        'workflow_case_confirm_targets' => ['created_at'],
+        'workflow_case_confirmations' => ['created_at'],
+        'workflow_proxies' => ['created_at'],
+        'notices' => ['created_at'],
     ];
 
     public function test_the_feature_tests_seed_on_the_base_day_so_the_written_dates_are_kept(): void
@@ -45,13 +56,20 @@ final class SeedingDatesTest extends TransactionalTestCase
     }
 
     /**
-     * 別の流す日で流し直すと、止まらず(固定の日付だった申請基準日が今日の前後 1 年を外れない)、どの日付も同じ日数だけずれ、
-     * 前後関係が保たれる。流し直しは重いので 1 回にまとめる。
+     * 別の流す日で流し直すと、止まらず(固定の日付だった申請基準日が今日の前後 1 年を外れない)、どの日付と見本の処理の日時も同じ日数だけずれ、
+     * 前後関係が保たれ、流した後の時計は合わせる前に戻っている。流し直しは重いので 1 回にまとめる。
      */
     public function test_on_another_seeding_day_every_date_moves_by_the_same_days_and_keeps_the_order(): void
     {
         $onBase = $this->seededDates();
+        $timesOnBase = $this->sampleTimes();
         $this->reseedOn(self::LATER_DAY);
+
+        $this->assertFalse(CarbonImmutable::hasTestNow());
+        $this->assertNotContains(null, $timesOnBase['workflow_case_histories'] ?? [null]);
+        $moved = fn (?string $value) => $value === null ? null : $this->moved($value);
+        $movedTimes = array_map(fn (array $values) => array_map($moved, $values), $timesOnBase);
+        $this->assertSame($movedTimes, $this->sampleTimes());
 
         $this->assertSame(self::SEEDED_DATE_TABLES, array_values(array_unique(array_map(
             fn (string $key) => explode('.', $key)[0],
@@ -190,6 +208,43 @@ final class SeedingDatesTest extends TransactionalTestCase
         ksort($dates);
 
         return $dates;
+    }
+
+    /**
+     * 見本の処理の日時(表 => 列.id => UTC の Y-m-d H:i:s)。
+     *
+     * @return array<string, array<string, string|null>>
+     */
+    private function sampleTimes(): array
+    {
+        $times = [];
+
+        foreach (self::SAMPLE_TIME_COLUMNS as $table => $columns) {
+            $times[$table] = $this->timesOf($table, $columns);
+        }
+
+        return $times;
+    }
+
+    /**
+     * 表の日時の列の値(列.id => UTC の Y-m-d H:i:s)。
+     *
+     * @param  list<string>  $columns
+     * @return array<string, string|null>
+     */
+    private function timesOf(string $table, array $columns): array
+    {
+        $times = [];
+
+        foreach (DB::table($table)->orderBy('id')->get(['id', ...$columns]) as $row) {
+            foreach ($columns as $column) {
+                $value = $row->{$column};
+                $utc = is_string($value) ? CarbonImmutable::parse($value)->utc()->format('Y-m-d H:i:s') : null;
+                $times["{$column}.{$row->id}"] = $utc;
+            }
+        }
+
+        return $times;
     }
 
     /**

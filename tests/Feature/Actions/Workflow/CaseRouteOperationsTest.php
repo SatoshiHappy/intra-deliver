@@ -46,18 +46,18 @@ final class CaseRouteOperationsTest extends TransactionalTestCase
         $this->addVersion($this->r1());
         [$case] = $this->applyOnRoute(['budget' => 500]);
 
-        $chief = $this->approve($case, 'section_chief', 'u0002', ['council' => ['u0004', 'u0005', 'u0009'], 'owner' => ['u0010']]);
+        $chief = $this->approve($case, 'section_chief', 'u0002', ['council' => ['u0004', 'u0005', 'u0006'], 'owner' => ['u0010']]);
 
         $this->assertSame(['apply' => 'done', 'section_chief' => 'done', 'budget' => 'passed', 'manager' => 'waiting[u0003]', 'budget_end' => 'unreached', 'council' => 'unreached', 'owner' => 'unreached'], $this->shape($case));
         $this->assertResult($case, $chief, WorkflowAction::Approve, 'u0002', ['manager' => ['u0003']], null);
-        $this->assertSame([[$chief->historyId, 'council', 1, 'u0004'], [$chief->historyId, 'council', 2, 'u0005'], [$chief->historyId, 'council', 3, 'u0009'], [$chief->historyId, 'owner', 1, 'u0010']], $this->assignmentRows($case));
+        $this->assertSame([[$chief->historyId, 'council', 1, 'u0004'], [$chief->historyId, 'council', 2, 'u0005'], [$chief->historyId, 'council', 3, 'u0006'], [$chief->historyId, 'owner', 1, 'u0010']], $this->assignmentRows($case));
         $this->assertSame([true, false], WorkflowCaseEdge::query()->where('workflow_case_id', $case->id)->where('from_workflow_case_node_id', $this->labelIds($case)['budget'])->orderBy('sort_key')->pluck('taken')->all());
 
         $manager = $this->approve($case, 'manager', 'u0003');
 
-        $this->assertSame(['running', 'waiting[u0004]', 'waiting[u0005]', 'waiting[u0009]'], $this->councilShape($case));
-        $this->assertResult($case, $manager, WorkflowAction::Approve, 'u0003', ['council.1' => ['u0004'], 'council.2' => ['u0005'], 'council.3' => ['u0009']], null);
-        $this->assertSame(['u0003' => ['processed'], 'u0004' => ['pending'], 'u0005' => ['pending'], 'u0009' => ['pending']], $this->appearances($case, 'u0003', 'u0004', 'u0005', 'u0009'));
+        $this->assertSame(['running', 'waiting[u0004]', 'waiting[u0005]', 'waiting[u0006]'], $this->councilShape($case));
+        $this->assertResult($case, $manager, WorkflowAction::Approve, 'u0003', ['council.1' => ['u0004'], 'council.2' => ['u0005'], 'council.3' => ['u0006']], null);
+        $this->assertSame(['u0003' => ['processed'], 'u0004' => ['pending'], 'u0005' => ['pending'], 'u0006' => ['pending']], $this->appearances($case, 'u0003', 'u0004', 'u0005', 'u0006'));
     }
 
     /**
@@ -65,19 +65,19 @@ final class CaseRouteOperationsTest extends TransactionalTestCase
      */
     public function test_council_votes_pass_with_the_needed_count_then_the_owner_completes_the_case(): void
     {
-        $case = $this->caseAtCouncil(['u0004', 'u0005', 'u0009']);
+        $case = $this->caseAtCouncil(['u0004', 'u0005', 'u0006']);
 
         $first = $this->approve($case, 'council.1', 'u0004');
 
-        $this->assertSame(['running', 'done', 'waiting[u0005]', 'waiting[u0009]', 'unreached'], [...$this->councilShape($case), $this->shape($case)['owner']]);
+        $this->assertSame(['running', 'done', 'waiting[u0005]', 'waiting[u0006]', 'unreached'], [...$this->councilShape($case), $this->shape($case)['owner']]);
         $this->assertResult($case, $first, WorkflowAction::Approve, 'u0004', [], null);
-        $this->assertSame(['u0004' => ['processed'], 'u0005' => ['pending'], 'u0009' => ['pending']], $this->appearances($case, 'u0004', 'u0005', 'u0009'));
+        $this->assertSame(['u0004' => ['processed'], 'u0005' => ['pending'], 'u0006' => ['pending']], $this->appearances($case, 'u0004', 'u0005', 'u0006'));
 
         $second = $this->approve($case, 'council.2', 'u0005');
 
         $this->assertSame(['passed', 'done', 'done', 'skipped', 'waiting[u0010]'], [...$this->councilShape($case), $this->shape($case)['owner']]);
         $this->assertResult($case, $second, WorkflowAction::Approve, 'u0005', ['owner' => ['u0010']], null);
-        $this->assertSame(['u0009' => [], 'u0010' => ['pending', 'referenced']], $this->appearances($case, 'u0009', 'u0010'));
+        $this->assertSame(['u0006' => [], 'u0010' => ['pending', 'referenced']], $this->appearances($case, 'u0006', 'u0010'));
 
         $owner = $this->approve($case, 'owner', 'u0010');
 
@@ -91,11 +91,11 @@ final class CaseRouteOperationsTest extends TransactionalTestCase
      */
     public function test_council_rejections_wait_while_passable_and_complete_as_rejected_when_not(): void
     {
-        $case = $this->caseAtCouncil(['u0004', 'u0005', 'u0009']);
+        $case = $this->caseAtCouncil(['u0004', 'u0005', 'u0006']);
 
         $first = $this->reject($case, 'council.1', 'u0004');
 
-        $this->assertSame(['running', 'done', 'waiting[u0005]', 'waiting[u0009]'], $this->councilShape($case));
+        $this->assertSame(['running', 'done', 'waiting[u0005]', 'waiting[u0006]'], $this->councilShape($case));
         $this->assertResult($case, $first, WorkflowAction::Reject, 'u0004', [], null);
 
         $second = $this->reject($case, 'council.2', 'u0005');
@@ -103,7 +103,7 @@ final class CaseRouteOperationsTest extends TransactionalTestCase
         $this->assertSame(['skipped', 'done', 'done', 'skipped'], $this->councilShape($case));
         $this->assertSame([WorkflowCaseState::Completed, WorkflowCompletionReason::Rejected], [$case->refresh()->state, $case->completion_reason]);
         $this->assertResult($case, $second, WorkflowAction::Reject, 'u0005', [], WorkflowCompletionReason::Rejected);
-        $this->assertSame(['u0009' => [], 'u0001' => ['processed']], $this->appearances($case, 'u0009', 'u0001'));
+        $this->assertSame(['u0006' => [], 'u0001' => ['processed']], $this->appearances($case, 'u0006', 'u0001'));
     }
 
     /**
@@ -111,14 +111,14 @@ final class CaseRouteOperationsTest extends TransactionalTestCase
      */
     public function test_approving_early_in_the_council_completes_the_case_and_cleans_up(): void
     {
-        $case = $this->caseAtCouncil(['u0004', 'u0005', 'u0009']);
+        $case = $this->caseAtCouncil(['u0004', 'u0005', 'u0006']);
 
         $result = $this->operateOn(ApproveCaseEarly::class, $case, 'council.2', 'u0005');
 
         $this->assertSame(['skipped', 'skipped', 'done', 'skipped', 'unreached'], [...$this->councilShape($case), $this->shape($case)['owner']]);
         $this->assertSame([WorkflowCaseState::Completed, WorkflowCompletionReason::ApprovedEarly], [$case->refresh()->state, $case->completion_reason]);
         $this->assertResult($case, $result, WorkflowAction::ApproveEarly, 'u0005', [], WorkflowCompletionReason::ApprovedEarly);
-        $this->assertSame(['u0004' => [], 'u0009' => []], $this->appearances($case, 'u0004', 'u0009'));
+        $this->assertSame(['u0004' => [], 'u0006' => []], $this->appearances($case, 'u0004', 'u0006'));
     }
 
     /**
@@ -194,7 +194,7 @@ final class CaseRouteOperationsTest extends TransactionalTestCase
      */
     public function test_approving_early_a_serial_child_completes_the_case_and_skips_the_parent(): void
     {
-        $case = $this->caseAtLine(['u0004', 'u0005', 'u0009']);
+        $case = $this->caseAtLine(['u0004', 'u0005', 'u0006']);
         $this->approve($case, 'line.1', 'u0004');
 
         $result = $this->operateOn(ApproveCaseEarly::class, $case, 'line.2', 'u0005');
@@ -202,7 +202,7 @@ final class CaseRouteOperationsTest extends TransactionalTestCase
         $this->assertSame(['skipped', 'done', 'done', 'unreached', 'unreached'], [...$this->lineShape($case), $this->shape($case)['final']]);
         $this->assertSame([WorkflowCaseState::Completed, WorkflowCompletionReason::ApprovedEarly], [$case->refresh()->state, $case->completion_reason]);
         $this->assertResult($case, $result, WorkflowAction::ApproveEarly, 'u0005', [], WorkflowCompletionReason::ApprovedEarly);
-        $this->assertSame(['u0005' => ['processed'], 'u0009' => []], $this->appearances($case, 'u0005', 'u0009'));
+        $this->assertSame(['u0005' => ['processed'], 'u0006' => []], $this->appearances($case, 'u0005', 'u0006'));
     }
 
     /**

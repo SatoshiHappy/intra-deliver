@@ -139,7 +139,7 @@ final class BulkApprovalsTest extends TransactionalTestCase
         $this->operate(ApproveCase::class, $this->seededUser('u0002'), $case);
 
         $this->assertSame([true, false], [$this->canConfirm($case, $confirmer), $this->canConfirm($case, $other)]);
-        $this->sendBack($this->seededUser('u0003'), $case, 'apply');
+        $this->sendBack($this->seededUser('u0007'), $case, 'apply');
         $this->assertFalse($this->canConfirm($case, $confirmer));
     }
 

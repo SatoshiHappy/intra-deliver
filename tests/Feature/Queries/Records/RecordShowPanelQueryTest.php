@@ -109,6 +109,19 @@ final class RecordShowPanelQueryTest extends TransactionalTestCase
         $this->assertSame(RecordShowPanelQuery::HELD_NOTICE, $notice);
     }
 
+    public function test_a_held_record_of_a_module_not_allowing_attachments_carries_the_not_allowed_notice_first(): void
+    {
+        $unused = $this->recordModule('memos');
+        $unused->update(['is_attachment_enabled' => false]);
+        $record = Record::factory()->create(['record_module_id' => $unused->id]);
+        RecordAttachment::factory()->create(['record_module_id' => $unused->id, 'record_id' => $record->id]);
+        $this->registerRecordHolds([$record->id => 'workflow-case:1']);
+
+        $notice = $this->content($record->id, 'attachments', null, 'memos')['notice'] ?? null;
+
+        $this->assertSame(RecordShowPanelQuery::UNUSED_NOTICE, $notice);
+    }
+
     public function test_the_head_of_a_revision_has_the_actor_the_principal_of_a_proxy_and_the_origin(): void
     {
         [$applicant, $proxy] = [$this->user(), $this->user()];

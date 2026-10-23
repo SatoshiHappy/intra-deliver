@@ -26,11 +26,11 @@ final class RecordAttachmentQueryTest extends TransactionalTestCase
     public function test_it_returns_the_attachments_newest_first_page_by_page(): void
     {
         $this->fakeUploadDisk();
-        $this->limitUploads();
+        $this->limitUploads(request: 5_000);
         $user = $this->user();
         $recordId = Record::factory()->create(['record_module_id' => $this->recordModule('projects')->id])->id;
         app(AttachRecordUploads::class)->execute($this->contextFor($user->id), 'projects', $recordId, [
-            $this->uploadedFile('a.pdf'), $this->uploadedFile('b.txt', 'txt'), $this->uploadedFile('c.png', 'png'),
+            $this->uploadedFile('a.pdf'), $this->uploadedFile('b.docx', 'docx'), $this->uploadedFile('c.png', 'png'),
         ]);
         [$a, $b, $c] = RecordAttachment::query()->where('record_id', $recordId)->orderBy('id')->get()->all();
         Upload::query()->whereKey($a->upload_id)->update(['purged_at' => now(), 'purge_due_on' => '2026-10-01']);

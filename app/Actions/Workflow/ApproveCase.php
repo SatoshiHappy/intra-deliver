@@ -66,22 +66,47 @@ class ApproveCase
                 nodeId: $nodeId,
                 principalUserId: $principalUserId,
             );
-            $actor = CaseActor::forProcessor($permit->processorUserId(), $context);
-            $this->guard->rejectApplicant($permit, $actor);
-            $comment = $this->inputRules->comment($comment);
-            $contact = $this->contactValidator->validated($contact, $context);
-            $assignments = $this->assignmentRules->validated($permit->case(), $nodeId, $assignments);
-            $node = $permit->node();
-            $flow = $this->attachments->rejectFiles(WorkflowOperation::Approve, $permit, $node, $attachFiles);
-            $plan = $this->planner->plan(CasePlanRequest::by($actor, $context, $permit->case(), $nodeId, WorkflowAction::Approve, $assignments));
-            $action = WorkflowAction::Approve;
-            $revisionId = $this->attachments->attach($permit, $actor, $context, $action, $node, $flow, $attachFiles);
 
-            $result = $this->writer->writePlan($plan, $actor, $comment, $revisionId, assignments: $assignments);
-
-            $this->notices->execute($result, $contact, $context->date);
-
-            return $result;
+            return $this->approvePermitted($context, $permit, $comment, $assignments, $contact, $attachFiles);
         });
+    }
+
+    /**
+     * 判定の順の 1〜5 を通った後の承認(6 の申請者承認防止から、書き込み・通知まで)。単独の承認({@see self::execute()})と一括承認の 1 件
+     * ({@see BulkApproveCases}。判定 = {@see CaseOperationGuard::lockAndPermitBulkApproval()})が通る。呼び手は判定と同じトランザクションの中で呼ぶ。
+     *
+     * @param  CaseOperationPermit  $permit  判定の結果(操作するノード = 承認するノード、処理者 = 処理担当者)
+     * @param  array<int, list<int>>  $assignments  指定({@see self::execute()} と同じ)
+     * @param  list<UploadedFile>  $attachFiles  付ける添付({@see self::execute()} と同じ)
+     *
+     * @throws ValidationException 申請者承認防止・展開(case)、コメント(comment)、連絡(contact.user_ids・contact.message)、指定(assignments)、
+     *                             添付(attachments・attachments.<添字>)・添付を付けるレコードの持ち主(record)の誤り
+     * @throws RuntimeException 添付の実体を書けなかったとき
+     */
+    public function approvePermitted(
+        AccessContext $context,
+        CaseOperationPermit $permit,
+        ?string $comment,
+        array $assignments = [],
+        ?CaseContact $contact = null,
+        array $attachFiles = [],
+    ): CaseOperationResult {
+        $node = $permit->node();
+        $actor = CaseActor::forProcessor($permit->processorUserId(), $context);
+        $this->guard->rejectApplicant($permit, $actor);
+        $comment = $this->inputRules->comment($comment);
+        $contact = $this->contactValidator->validated($contact, $context);
+        $assignments = $this->assignmentRules->validated($permit->case(), $node->id, $assignments);
+        $flow = $this->attachments->rejectFiles(WorkflowOperation::Approve, $permit, $node, $attachFiles);
+        $action = WorkflowAction::Approve;
+        $case = $permit->case();
+        $plan = $this->planner->plan(CasePlanRequest::by($actor, $context, $case, $node->id, $action, $assignments));
+        $revisionId = $this->attachments->attach($permit, $actor, $context, $action, $node, $flow, $attachFiles);
+
+        $result = $this->writer->writePlan($plan, $actor, $comment, $revisionId, assignments: $assignments);
+
+        $this->notices->execute($result, $contact, $context->date);
+
+        return $result;
     }
 }

@@ -173,3 +173,31 @@ describe('plainTextExcerpt(リンク・画像・文字のまま残すもの)', (
         expect(plainTextExcerpt('上\n\n---\n\n下')).toBe('上 下');
     });
 });
+
+describe('コメントの本文(一覧の RichText と入力のプレビューが使う規則)', () => {
+    it('生の HTML は要素にせず、文字のまま残す', () => {
+        expect(plainTextExcerpt('<script>alert(1)</script>')).toBe(
+            '<script>alert(1)</script>',
+        );
+        expect(plainTextExcerpt('前\n<img src=x onerror=alert(1)>\n後')).toBe(
+            '前 <img src=x onerror=alert(1)> 後',
+        );
+    });
+
+    it('javascript: のリンクの記法は、リンクにならない URL として扱う', () => {
+        expect(linkUrlOf('', '[a](javascript:alert(1))')).toBeNull();
+        expect(
+            linkUrlOf('javascript:alert(1)', '[a](javascript:alert(1))'),
+        ).toBeNull();
+        expect(plainTextExcerpt('[怪しい](javascript:alert(1))')).toBe(
+            '怪しい',
+        );
+    });
+
+    it('画像の記法は画像を作らず、説明の文字を残す', () => {
+        expect(
+            plainTextExcerpt('![説明](https://example.com/a.png) の後'),
+        ).toBe('説明 の後');
+        expect(plainTextExcerpt('![説明](javascript:alert(1))')).toBe('説明');
+    });
+});

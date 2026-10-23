@@ -94,7 +94,8 @@ async function detachFile(page: Page, name: string) {
 }
 
 /**
- * 更新履歴の先頭の「編集」の削除の行のリンクから、外した時点のファイルを開ける(中身が外したファイルのまま)。
+ * 更新履歴の先頭の「編集」の削除の行のリンクから、外した時点のファイルを開ける(テキストはプレビューの型なのでプレビューの口。
+ * 中身が外したファイルのまま)。
  */
 async function expectRemovedFileOpens(page: Page, name: string) {
     await railButton(page, '更新履歴').click();
@@ -104,9 +105,10 @@ async function expectRemovedFileOpens(page: Page, name: string) {
     const href = await latest
         .getByRole('link', { name, exact: true })
         .getAttribute('href');
-    expect(href).toMatch(/\/revision-files\/\d+$/);
+    expect(href).toMatch(/\/revision-files\/\d+\/preview$/);
     const file = await page.request.get(href ?? '');
     expect(file.status()).toBe(200);
+    expect(file.headers()['content-type']).toBe('text/plain; charset=UTF-8');
     expect(await file.text()).toBe(`${name}\n`);
 }
 

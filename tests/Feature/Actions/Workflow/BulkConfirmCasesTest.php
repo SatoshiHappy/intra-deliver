@@ -13,7 +13,7 @@ use Tests\Support\TransactionalTestCase;
 
 /**
  * 一括確認(docs の 設計/ワークフロー/案件の運用/案件の操作/操作.md の 10.7 節、同時実行と検査.md の 13 節・14.2 節)。
- * フロー = 申請(u0001)→ first(u0002。確認する人 = 経理部の u0010)→ second(u0003)。first の承認で u0010 の確認が開く。
+ * フロー = 申請(u0001)→ first(u0002。確認する人 = 経理部の u0010)→ second(u0007)。first の承認で u0010 の確認が開く。
  */
 final class BulkConfirmCasesTest extends TransactionalTestCase
 {
@@ -37,7 +37,7 @@ final class BulkConfirmCasesTest extends TransactionalTestCase
     public function test_confirms_in_order_and_stops_at_the_first_failure(): void
     {
         [$first, $closed, $last] = [$this->opened(), $this->opened(), $this->opened()];
-        $this->sendBack($this->seededUser('u0003'), $closed, 'apply');
+        $this->sendBack($this->seededUser('u0007'), $closed, 'apply');
         $this->confirmAs($first, 'u0010');
         $before = $this->workflowCounts();
 
@@ -62,12 +62,12 @@ final class BulkConfirmCasesTest extends TransactionalTestCase
     {
         $missing = (int) WorkflowCase::query()->max('id') + 1;
         [$open, $completed] = [$this->opened(), $this->opened()];
-        $this->operate(ApproveCase::class, $this->seededUser('u0003'), $completed);
+        $this->operate(ApproveCase::class, $this->seededUser('u0007'), $completed);
 
         $results = [
             $this->resultLines($this->bulkConfirm($this->seededUser('u0006'), [$open->id, $missing])),
             $this->resultLines($this->bulkConfirm($this->seededUser('u0010'), [$completed->id, $open->id, $missing])),
-            $this->resultLines($this->bulkConfirm($this->seededUser('u0003'), [$open->id])),
+            $this->resultLines($this->bulkConfirm($this->seededUser('u0007'), [$open->id])),
         ];
 
         $this->assertSame([

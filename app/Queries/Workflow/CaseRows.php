@@ -2,6 +2,7 @@
 
 namespace App\Queries\Workflow;
 
+use App\Enums\Workflow\WorkflowCaseRowField;
 use App\Enums\Workflow\WorkflowCaseState;
 use App\Models\Workflow\WorkflowCase;
 use App\Models\Workflow\WorkflowFlow;
@@ -11,14 +12,29 @@ use Illuminate\Database\Eloquent\Collection;
 use LogicException;
 
 /**
- * 一覧の行・関連する案件の行(docs の 設計/ワークフロー/画面.md 1.2 の WorkflowCaseRow、認可と一覧.md 3.2 の行の項目)。閲覧の判定は呼び手が済ませた案件を渡す。
+ * 一覧の行・関連する案件の行(docs の 設計/ワークフロー/画面.md 1.2 の WorkflowCaseRow、認可と一覧.md 3.2 の行の項目、足した項目 =
+ * 設計/ワークフロー/案件の運用/認可と一覧.md の 2.2 節)。閲覧の判定は呼び手が済ませた案件を渡す。
  * 問い合わせの回数は行の数に依らない(フロー・状況({@see CaseOperationDecider::situationsOf()}。現在のノードを含む)・申請者の名前・行の can をまとめて引く)。
  * 引戻し・取止めの入口の canAttach は、処理のダイアログを開く行(一覧)だけ求め、ほかの行(関連する案件・ホームの節)は偽
- * (docs の 設計/ワークフロー/申請の周辺/添付/README.md の 5 節)。
+ * (docs の 設計/ワークフロー/申請の周辺/添付/README.md の 5 節)。期限・代理元・確認・一括の項目は呼び手が求めた行だけ({@see CaseRowExtras})。
  *
  * @phpstan-import-type Person from WorkflowPeople
+ * @phpstan-import-type Deadline from CaseRowExtras
+ * @phpstan-import-type RowBulkApproval from CaseRowExtras
+ * @phpstan-import-type Steps from CaseConfirmations
  *
- * @phpstan-type CaseRow array{id: int, number: string|null, name: string, flowName: string, applicant: Person, appliedAt: string|null, currentSummary: array{state: string, name: string}|null, state: string, completionReason: string|null, revision: int, can: array{pullBack: bool, reapply: bool, withdraw: bool, editDraft: bool, deleteDraft: bool}, pullBackNodes: list<PullBackNode>, canAttachOnWithdraw: bool}
+ * @phpstan-type CaseRow array{
+ *     id: int, number: string|null, name: string, flowName: string, applicant: Person, appliedAt: string|null,
+ *     currentSummary: array{state: string, name: string}|null, currentNodes: list<RowCurrentNode>, state: string,
+ *     completionReason: string|null, revision: int, can: RowCan, pullBackNodes: list<PullBackNode>,
+ *     canAttachOnWithdraw: bool,
+ *     deadline: Deadline|null, principals: list<Person>, confirmation: Steps|null, bulkApproval: RowBulkApproval|null,
+ * }
+ * @phpstan-type RowCan array{
+ *     pullBack: bool, reapply: bool, withdraw: bool, editDraft: bool, deleteDraft: bool,
+ *     bulkApprove: bool, confirm: bool,
+ * }
+ * @phpstan-type RowCurrentNode array{id: int, name: string, state: string}
  * @phpstan-type PullBackNode array{id: int, name: string, blockedReason: string|null, canAttach: bool}
  */
 class CaseRows
@@ -27,6 +43,7 @@ class CaseRows
         private CaseOperationDecider $decider,
         private WorkflowPeople $people,
         private CaseAttachEntries $attachEntries,
+        private CaseRowExtras $extras,
     ) {}
 
     /**
@@ -34,6 +51,7 @@ class CaseRows
      *
      * @param  Collection<int, WorkflowCase>  $cases
      * @param  bool  $opensDialogs  行から処理のダイアログを開くか(偽なら canAttach はどれも偽)
+     * @param  list<WorkflowCaseRowField>  $fields  求める追加の項目(求めない項目は null・空・偽)
      * @return list<CaseRow>
      */
     public function rows(
@@ -42,6 +60,7 @@ class CaseRows
         string $localeCode,
         Collection $cases,
         bool $opensDialogs = false,
+        array $fields = [],
     ): array {
         if ($cases->isEmpty()) {
             return [];
@@ -53,6 +72,7 @@ class CaseRows
         $cans = $this->decider->rowCansOf($requester, $date, array_values($situations));
         $withdrawable = array_map(fn (array $can) => $can['withdraw'], $cans);
         $attach = $opensDialogs ? $this->attachEntries->of(array_values($situations), $withdrawable) : [];
+        $extras = $this->extras->of($requester, $date, $localeCode, $situations, $fields);
 
         return array_values($cases->map(fn (WorkflowCase $case) => [
             'id' => $case->id,
@@ -62,13 +82,35 @@ class CaseRows
             'applicant' => $applicants[$case->user_id],
             'appliedAt' => $case->applied_at?->toIso8601String(),
             'currentSummary' => self::currentSummaryOf($situations[$case->id]),
+            'currentNodes' => self::currentNodesOf($situations[$case->id]),
             'state' => $case->state->value,
             'completionReason' => $case->completion_reason?->value,
             'revision' => $case->revision,
-            'can' => $cans[$case->id],
+            'can' => [
+                ...$cans[$case->id],
+                'bulkApprove' => $extras[$case->id]['canBulkApprove'],
+                'confirm' => $extras[$case->id]['canConfirm'],
+            ],
             'pullBackNodes' => self::pullBackNodesOf($situations[$case->id], $attach[$case->id]['pullBack'] ?? []),
             'canAttachOnWithdraw' => $attach[$case->id]['withdraw'] ?? false,
+            'deadline' => $extras[$case->id]['deadline'],
+            'principals' => $extras[$case->id]['principals'],
+            'confirmation' => $extras[$case->id]['confirmation'],
+            'bulkApproval' => $extras[$case->id]['bulkApproval'],
         ])->all());
+    }
+
+    /**
+     * 現在のノードの並び(現在のステップの保留中の札をノードの名前の後に出すため = 設計/ワークフロー/案件の運用/認可と一覧.md の 2.2 節)。
+     *
+     * @return list<RowCurrentNode>
+     */
+    public static function currentNodesOf(CaseSituation $situation): array
+    {
+        return array_map(
+            fn (CurrentNode $node) => ['id' => $node->id, 'name' => $node->name, 'state' => $node->state->value],
+            $situation->currentNodes,
+        );
     }
 
     /**

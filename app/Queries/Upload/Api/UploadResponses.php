@@ -3,6 +3,7 @@
 namespace App\Queries\Upload\Api;
 
 use App\Models\Upload\Upload;
+use App\Queries\Upload\TextCharset;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
@@ -16,16 +17,19 @@ use Symfony\Component\HttpFoundation\ResponseHeaderBag;
 class UploadResponses
 {
     /** プレビューで開ける画像・PDF の型(音声・動画の型は形式の対応表の audio/*・video/* = {@see UploadLimits::mediaMimes()}) */
-    private const PREVIEW_MIMES = ['image/png', 'image/jpeg', 'application/pdf'];
+    private const PREVIEW_MIMES = ['image/png', 'image/jpeg', 'image/gif', 'application/pdf'];
 
-    public function __construct(private UploadLimits $limits) {}
+    /** 文字として開くテキスト・Markdown・CSV の型(型は文字コードつきの text/plain にして返す) */
+    private const TEXT_MIMES = ['text/plain', 'text/markdown', 'text/csv'];
+
+    public function __construct(private UploadLimits $limits, private TextCharset $charsets) {}
 
     /**
      * プレビューで開ける型か(欄の「プレビュー」を出すかと、preview の 404 が同じ規則を使う)。
      */
     public function isPreviewable(string $mime): bool
     {
-        return in_array($mime, [...self::PREVIEW_MIMES, ...$this->limits->mediaMimes()], true);
+        return in_array($mime, [...self::PREVIEW_MIMES, ...self::TEXT_MIMES, ...$this->limits->mediaMimes()], true);
     }
 
     /**
@@ -60,7 +64,31 @@ class UploadResponses
         $response = $this->response($upload);
         $response->headers->set('Content-Disposition', ResponseHeaderBag::DISPOSITION_INLINE);
 
+        if (in_array($upload->mime, self::TEXT_MIMES, true)) {
+            $response->headers->set('Content-Type', 'text/plain; charset='.$this->charsetOf($upload));
+        }
+
         return $response;
+    }
+
+    /**
+     * テキストの 3 形式の文字コードのラベル(中身から判定する = {@see TextCharset})。
+     *
+     * @throws ModelNotFoundException<Upload> 実体を開けないとき
+     */
+    private function charsetOf(Upload $upload): string
+    {
+        $stream = Storage::disk('local')->readStream($upload->path);
+
+        if ($stream === null) {
+            throw (new ModelNotFoundException)->setModel(Upload::class, [$upload->id]);
+        }
+
+        try {
+            return $this->charsets->labelOf($stream);
+        } finally {
+            fclose($stream);
+        }
     }
 
     /**

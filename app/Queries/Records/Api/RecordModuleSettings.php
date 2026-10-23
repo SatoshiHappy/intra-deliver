@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 class RecordModuleSettings
 {
     /**
-     * 「添付ファイルを使用」の今の値。
+     * 「添付ファイルの追加・削除を許可」の今の値。
      *
      * @throws ModelNotFoundException<RecordModule> 業務モジュールが無い・明細のモジュールのとき(呼び手の誤り)
      */
@@ -24,7 +24,7 @@ class RecordModuleSettings
     }
 
     /**
-     * 「添付ファイルを使用」の今の値をまとめて読む(一覧の行ごとに読み直さないため)。
+     * 「添付ファイルの追加・削除を許可」の今の値をまとめて読む(一覧の行ごとに読み直さないため)。
      *
      * @param  list<int>  $recordModuleIds
      * @return array<int, bool> 業務モジュールの id → 値

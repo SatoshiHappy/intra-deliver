@@ -28,7 +28,7 @@ class MembershipQuery
      */
     public function membershipsOn(int $userId, DateTimeInterface $date): Collection
     {
-        return $this->membershipsQueryOn($userId, $date)->get();
+        return $this->membershipsQueryOn([$userId], $date)->get();
     }
 
     /**
@@ -104,13 +104,40 @@ class MembershipQuery
      */
     public function currentDepartmentCandidatesOn(int $userId, DateTimeInterface $date): Collection
     {
-        return $this->membershipsQueryOn($userId, $date)
-            ->whereIn('department_set_id', DepartmentSet::query()->select('id')->where('is_default', true))
-            ->get();
+        return $this->currentDepartmentCandidatesAmongOn([$userId], $date)[$userId];
     }
 
     /**
-     * カレント組織の所属(docs の 設計/デモユーザー切替/今の利用者.md 5.5。判定が使う): ユーザーの d の候補を引いて
+     * ユーザーそれぞれのカレント組織の候補({@see self::currentDepartmentCandidatesOn()} と同じ候補を同じ並びで)。
+     *
+     * @param  list<int>  $userIds
+     * @return array<int, Collection<int, DepartmentMembership>> キー = 渡したユーザーすべて(候補が無ければ空)
+     */
+    public function currentDepartmentCandidatesAmongOn(array $userIds, DateTimeInterface $date): array
+    {
+        $candidates = [];
+
+        foreach ($userIds as $userId) {
+            $candidates[$userId] = new Collection;
+        }
+
+        if ($candidates === []) {
+            return [];
+        }
+
+        $memberships = $this->membershipsQueryOn(array_keys($candidates), $date)
+            ->whereIn('department_set_id', DepartmentSet::query()->select('id')->where('is_default', true))
+            ->get();
+
+        foreach ($memberships as $membership) {
+            $candidates[$membership->user_id]->push($membership);
+        }
+
+        return $candidates;
+    }
+
+    /**
+     * カレント組織の所属(docs の 設計/デモユーザー切替/今の利用者.md 5.5): ユーザーの d の候補を引いて
      * {@see self::currentMembershipAmong()} に渡す。
      *
      * @param  int|null  $selectedDepartmentId  利用者が選んだ組織(departments.id)。null = 選んでいない
@@ -169,14 +196,15 @@ class MembershipQuery
     }
 
     /**
-     * ユーザーの d に成り立つ所属の問い合わせ(読み込むものと並びは {@see self::membershipsOn()} の説明のとおり)。
+     * d に成り立つ所属の問い合わせ(読み込むものと並びは {@see self::membershipsOn()} の説明のとおり)。
      *
+     * @param  list<int>  $userIds
      * @return Builder<DepartmentMembership>
      */
-    private function membershipsQueryOn(int $userId, DateTimeInterface $date): Builder
+    private function membershipsQueryOn(array $userIds, DateTimeInterface $date): Builder
     {
         return DepartmentMembership::query()
-            ->where('user_id', $userId)
+            ->whereRaw('department_memberships.user_id = ANY (?::bigint[])', ['{'.implode(',', $userIds).'}'])
             ->holdsOn($date)
             ->with('department')
             ->with('departmentMembershipPosts', fn (Relation $posts) => $this->postsOn($posts, $date))

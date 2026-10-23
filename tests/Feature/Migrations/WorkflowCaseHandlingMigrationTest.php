@@ -45,6 +45,25 @@ final class WorkflowCaseHandlingMigrationTest extends TransactionalTestCase
         'workflow_proxies',
     ];
 
+    /** 足した履歴の種別(前の形で表せない = down が止まる種別。マイグレーションの down の止める条件と同じ) */
+    private const ADDED_ACTIONS = [
+        'hold', 'release', 'transfer', 'retarget', 'reexpand', 'move_back', 'move_forward', 'move_finish', 'reassign',
+    ];
+
+    /**
+     * 初期データの見本のうち前の形で表せない行を持つ案件(保留・申請の代理・担当変更 = 設計/ワークフロー/案件の運用/初期データ.md 4.3)を
+     * TX の中で消してから始める(残すと、どのテストの down もその行で止まり、止まる筋のテストが自分の入れた行で止まることを確かめなくなる)。
+     */
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $held = DB::table('workflow_case_nodes')->where('state', 'hold')->pluck('workflow_case_id');
+        $added = DB::table('workflow_case_histories')->whereIn('action', self::ADDED_ACTIONS)
+            ->orWhereNotNull('executor_user_id')->pluck('workflow_case_id');
+        WorkflowCase::query()->whereKey([...$held, ...$added])->delete();
+    }
+
     public function test_up_on_a_database_with_cases_fills_the_reached_time_and_the_previous_processor(): void
     {
         [$sentBack, $council] = $this->casesMadeBeforeTheMigration();

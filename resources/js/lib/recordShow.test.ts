@@ -179,11 +179,14 @@ describe('isLinkableUrl', () => {
 describe('previewKind', () => {
     it('画像・音声・動画は型の頭で Dialog の種類を決め、PDF などは新しいタブ', () => {
         expect(previewKind('image/png')).toBe('image');
+        expect(previewKind('image/gif')).toBe('image');
         expect(previewKind('audio/mpeg')).toBe('audio');
         expect(previewKind('audio/mp4')).toBe('audio');
         expect(previewKind('video/webm')).toBe('video');
         expect(previewKind('application/pdf')).toBe('tab');
         expect(previewKind('text/plain')).toBe('tab');
+        expect(previewKind('text/markdown')).toBe('tab');
+        expect(previewKind('text/csv')).toBe('tab');
     });
 });
 

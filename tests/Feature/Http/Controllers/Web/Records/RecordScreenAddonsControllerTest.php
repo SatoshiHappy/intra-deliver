@@ -119,13 +119,14 @@ final class RecordScreenAddonsControllerTest extends TransactionalTestCase
     public function test_a_page_without_rows_does_not_call_badges(): void
     {
         $this->recordModule('addon_empty');
+        $this->field($this->module, 'title', attributes: ['is_title' => true, 'is_searchable' => true]);
         $empty = $this->registerRecordScreenAddons(new FixedRecordScreenAddons('addon_empty'));
         $paged = $this->registerRecordScreenAddons(new FixedRecordScreenAddons('addon_check'));
 
         $page = $this->get('/records/data/addon_empty')->assertOk()->viewData('page');
-        // 3 件の業務モジュールの 2 ページ目 = 行の無いページ
-        $reload = $this->partial('/records/data/addon_check?page=2', 'Records/Index', 'records,query,addonBadges')
-            ->assertOk()->viewData('page');
+        // 3 件の業務モジュールの、どの行にも当たらない検索の条件 = 行の無いページ(最後のページを超えた page は最後のページに詰めるので行が出る)
+        $url = '/records/data/addon_check?filter[title]=どの行にも無い語';
+        $reload = $this->partial($url, 'Records/Index', 'records,query,addonBadges')->assertOk()->viewData('page');
 
         $this->assertSame([[], '{}', '{}'], [
             $reload['props']['records']['data'],

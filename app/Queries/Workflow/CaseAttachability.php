@@ -19,7 +19,7 @@ class CaseAttachability
     public function __construct(private RecordModuleSettings $modules) {}
 
     /**
-     * 業務モジュールの「添付ファイルを使用」・フローの「添付を使う」・ステップが許す、の 3 つがすべて真か。
+     * 業務モジュールの「添付ファイルの追加・削除を許可」・フローの「添付を使う」・ステップが許す、の 3 つがすべて真か。
      *
      * @param  WorkflowCase|null  $case  申請の後の操作の案件(写した値を読む)。申請の前の操作(一時保存・申請)は渡さない
      * @param  WorkflowCaseNode|null  $node  操作するノード(承認の系統と引戻しだけ。引戻しは引戻す先のノード)
@@ -42,7 +42,7 @@ class CaseAttachability
     }
 
     /**
-     * フローごとの、コンテンツの業務モジュールの「添付ファイルを使用」の今の値(一覧の行ごとに読み直さないため、2 回の問い合わせでまとめて読む)。
+     * フローごとの、コンテンツの業務モジュールの「添付ファイルの追加・削除を許可」の今の値(一覧の行ごとに読み直さないため、2 回の問い合わせでまとめて読む)。
      *
      * @param  list<WorkflowFlow>  $flows
      * @return array<int, bool> フローの id → 値

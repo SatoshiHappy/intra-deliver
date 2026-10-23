@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import type { StatusTone } from '@/types';
@@ -11,7 +12,7 @@ const TONE_CLASSES: Record<StatusTone, string> = {
 
 /**
  * 状態の札(Badge の地と字を状態色にしたもの。docs の 設計/画面の意匠/トークンとダーク.md 1.2、設計/ワークフロー/画面.md 8 節)。
- * 語を必ず出し、色だけで伝えない(結果には ✓ / ×)。ワークフローの画面とホームの表の節の 2 つのモジュールが使うため直下に置く
+ * 語を必ず出し、色だけで伝えない(結果には ✓ / ×、保留中には一時停止の印)。ワークフローの画面とホームの表の節の 2 つのモジュールが使うため直下に置く
  * (docs の 設計/コード構成/README.md 5 節)。
  */
 export function StatusBadge({
@@ -21,7 +22,7 @@ export function StatusBadge({
 }: {
     label: string;
     tone: StatusTone;
-    mark?: string | null;
+    mark?: ReactNode;
 }) {
     return (
         <Badge className={cn('border-transparent', TONE_CLASSES[tone])}>

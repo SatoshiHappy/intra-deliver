@@ -24,7 +24,6 @@ use App\Models\Workflow\WorkflowRouteEdge;
 use App\Models\Workflow\WorkflowRouteNode;
 use App\Models\Workflow\WorkflowRouteSendBack;
 use App\Queries\Workflow\CaseDetailQuery;
-use App\Queries\Workflow\CaseListQuery;
 use App\Queries\Workflow\CaseNumbers;
 use App\Support\AccessContext;
 use Carbon\CarbonImmutable;
@@ -34,14 +33,20 @@ use Tests\Support\TransactionalTestCase;
 
 /**
  * ワークフローの初期データ(docs の 設計/ワークフロー/ルートの深さ/初期データ.md 7 節の検査。見せるもの = 設計/ワークフロー/初期データ.md 4 節を追従させたもの): 定義の件数・版の期間と状態・
- * 一本道 A の版の中身、案件の見本 13 の状態・現在のノード・履歴、利用者ごとのタブ(読み取りで)、関連する案件、再申請の差分、未完了の案件のレコードの持ち主、ルートのリソース。
- * 版 3(分岐 B)の中身と足した見本の細部は {@see WorkflowSeederRouteDepthTest}。初期データは DatabaseSeeder が 1 回入れたもの(流し直さない)。
+ * 一本道 A の版の中身、案件の見本 17 の状態・現在のノード・履歴、関連する案件、再申請の差分、未完了の案件のレコードの持ち主、ルートのリソース。
+ * 版 3(分岐 B)の中身と足した見本の細部は {@see WorkflowSeederRouteDepthTest}、案件の運用の見本は {@see WorkflowSeederOperationSamplesTest}、
+ * 利用者ごとのタブは {@see WorkflowSeederTabsTest}。初期データは DatabaseSeeder が 1 回入れたもの(流し直さない)。
  */
 final class WorkflowSeederTest extends TransactionalTestCase
 {
+    /** 未完了の案件の番号(設計/ワークフロー/案件の運用/初期データ.md 5 節の未完了 10) */
+    private const ACTIVE_NUMBERS = [
+        'WF-000002', 'WF-000003', 'WF-000004', 'WF-000005', 'WF-000009', 'WF-000010', 'WF-000013', 'WF-000014', 'WF-000015', 'WF-000016',
+    ];
+
     /**
-     * 定義: コンテンツ 2・フロー 2・版 4(計画の版 1 だけユーザー無効。期間に重複と空白なし)・ノード 16・辺 13・差戻しできる先 16(設計/ワークフロー/ルートの深さ/初期データ.md 3.1・6 節)・対象者 5
-     * (一本道 A の版のノードが同じ対象者を指す)。一本道 A の 3 版は辺が一本道、差戻しできる先は承認のノードごとに前の全部、申請者承認防止はオフ。どの版も定義の検査を通る。
+     * 定義: コンテンツ 2・フロー 2・版 4(計画の版 1 だけユーザー無効。期間に重複と空白なし)・ノード 16・辺 13・差戻しできる先 16(設計/ワークフロー/ルートの深さ/初期データ.md 3.1・6 節)・対象者 6
+     * (一本道 A の版のノードが同じ対象者を指す。確認する人の 1 つ = 設計/ワークフロー/案件の運用/初期データ.md 5 節)。一本道 A の 3 版は辺が一本道、差戻しできる先は承認のノードごとに前の全部、申請者承認防止はオフ。どの版も定義の検査を通る。
      */
     public function test_seeds_the_definitions_of_the_design(): void
     {
@@ -72,12 +77,12 @@ final class WorkflowSeederTest extends TransactionalTestCase
             ], $this->routeOf($version));
         }
 
-        $this->assertSame(5, AuthzSubjectGroup::query()->where('purpose', SubjectGroupPurpose::Selection)->count());
+        $this->assertSame(6, AuthzSubjectGroup::query()->where('purpose', SubjectGroupPurpose::Selection)->count());
     }
 
     /**
-     * 案件の見本 13 = 申請の順に WF-000001〜WF-000012 と一時保存 1(一時保存 1・未完了 6・完了 6)。状態・完了の理由・現在のノード(表示名・状態・処理対象者)・案件名
-     * (空で渡した既定)・履歴(種別と処理者)。申請基準日と版は {@see WorkflowSeederRouteDepthTest}。
+     * 案件の見本 17 = 申請の順に WF-000001〜WF-000016 と一時保存 1(一時保存 1・未完了 10・完了 6 = 設計/ワークフロー/案件の運用/初期データ.md 5 節)。状態・完了の理由・
+     * 現在のノード(表示名・状態・処理対象者)・案件名(空で渡した既定)・履歴(種別と処理者)。申請基準日と版は {@see WorkflowSeederRouteDepthTest}。
      */
     public function test_seeds_the_sample_cases_of_the_design(): void
     {
@@ -99,37 +104,12 @@ final class WorkflowSeederTest extends TransactionalTestCase
             ['WF-000010', 'project_plan', 'u0001', 'プロジェクト計画の承認 社内研修の刷新', 'active', null, [['関係部署の合議 承認 1', 'waiting', ['u0009']], ['関係部署の合議 承認 2', 'waiting', ['u0010']]], ['apply u0001', 'approve u0002']],
             ['WF-000011', 'project_plan', 'u0001', 'プロジェクト計画の承認 海外展示会への出展', 'completed', 'rejected', [], ['apply u0001', 'approve u0002', 'approve u0003', 'reject u0009', 'reject u0010']],
             ['WF-000012', 'project_plan', 'u0001', 'プロジェクト計画の承認 営業資料の多言語化', 'completed', 'approved', [], ['apply u0001', 'approve u0002', 'approve u0009', 'approve u0010', 'approve u0003']],
+            ['WF-000013', 'project_plan', 'u0001', 'プロジェクト計画の承認 新製品の発売計画', 'active', null, [['部長', 'hold', ['u0003']]], ['apply u0001', 'approve u0002', 'hold u0003']],
+            ['WF-000014', 'project_plan', 'u0001', 'プロジェクト計画の承認 第二四半期の営業計画', 'active', null, [['部長', 'waiting', ['u0003']]], ['apply u0001', 'approve u0002']],
+            ['WF-000015', 'issue_resolution', 'u0010', '課題の対応の承認 在庫システムの表示不具合', 'active', null, [['課長の承認', 'waiting', ['u0002']]], ['apply u0010']],
+            ['WF-000016', 'issue_resolution', 'u0001', '課題の対応の承認 ログイン画面の文言修正', 'active', null, [['課長の承認', 'waiting', ['u0009']]], ['apply u0001', 'transfer u0002']],
             [null, 'issue_resolution', 'u0001', null, 'draft', null, [], []],
         ], $cases);
-    }
-
-    /**
-     * 利用者ごとのタブ(案件一覧の読み取り。設計/ワークフロー/ルートの深さ/初期データ.md 7 節): 一時保存と未処理の件数、u0010 の参照(計画のフローの参照者 = 経理部。未完了 6・完了 6)と処理済
-     * (完了に WF-000006・WF-000011・WF-000012)、ゲストはすべて 0。
-     */
-    public function test_each_user_sees_the_tabs_of_the_design(): void
-    {
-        $counts = array_map(fn (?string $code) => $this->list($code, 'pending')['counts'], ['u0001', 'u0002', 'u0003', 'u0009', 'u0010', 'u0016', null]);
-
-        $this->assertSame([
-            ['draft' => 1, 'pending' => 1],
-            ['draft' => 0, 'pending' => 2],
-            ['draft' => 0, 'pending' => 1],
-            ['draft' => 0, 'pending' => 1],
-            ['draft' => 0, 'pending' => 2],
-            ['draft' => 0, 'pending' => 1],
-            ['draft' => 0, 'pending' => 0],
-        ], $counts);
-        $this->assertSame(['WF-000004'], $this->numbersOf('u0001', 'pending'));
-        $this->assertSame(['WF-000002', 'WF-000005'], $this->numbersOf('u0002', 'pending'));
-        $this->assertSame(['WF-000003'], $this->numbersOf('u0003', 'pending'));
-        $this->assertSame(['WF-000010'], $this->numbersOf('u0009', 'pending'));
-        $this->assertSame(['WF-000009', 'WF-000010'], $this->numbersOf('u0010', 'pending'));
-        $this->assertSame(['WF-000009'], $this->numbersOf('u0016', 'pending'));
-        $this->assertSame(['WF-000002', 'WF-000003', 'WF-000004', 'WF-000005', 'WF-000009', 'WF-000010'], $this->numbersOf('u0010', 'referenced'));
-        $this->assertSame(['WF-000001', 'WF-000006', 'WF-000007', 'WF-000008', 'WF-000011', 'WF-000012'], $this->numbersOf('u0010', 'referenced', 'completed'));
-        $this->assertSame([[], ['WF-000006', 'WF-000011', 'WF-000012']], [$this->numbersOf('u0010', 'processed'), $this->numbersOf('u0010', 'processed', 'completed')]);
-        $this->assertSame([[], [], [], []], array_map(fn (string $tab) => $this->numbersOf(null, $tab), ['draft', 'pending', 'processed', 'referenced']));
     }
 
     /**
@@ -160,14 +140,14 @@ final class WorkflowSeederTest extends TransactionalTestCase
     }
 
     /**
-     * 未完了の案件(WF-000002〜000005・WF-000009・WF-000010)のレコードは、業務データの入れ物の業務処理の更新(鍵なし)が 422 record で拒まれる。
+     * 未完了の案件(WF-000002〜000005・WF-000009・WF-000010・WF-000013〜000016)のレコードは、業務データの入れ物の業務処理の更新(鍵なし)が 422 record で拒まれる。
      */
     public function test_the_records_of_the_active_cases_are_held(): void
     {
         $context = $this->contextOf('u0004');
         $rejected = [];
 
-        foreach (['WF-000002', 'WF-000003', 'WF-000004', 'WF-000005', 'WF-000009', 'WF-000010'] as $number) {
+        foreach (self::ACTIVE_NUMBERS as $number) {
             $case = $this->caseOf($number);
             $moduleCode = $case->workflowFlow?->workflowContent?->recordModule->code ?? '';
 
@@ -179,14 +159,14 @@ final class WorkflowSeederTest extends TransactionalTestCase
             }
         }
 
-        $this->assertSame(array_fill_keys(['WF-000002', 'WF-000003', 'WF-000004', 'WF-000005', 'WF-000009', 'WF-000010'], ['record']), $rejected);
+        $this->assertSame(array_fill_keys(self::ACTIVE_NUMBERS, ['record']), $rejected);
     }
 
     /**
      * 設計/ワークフロー/ルートの深さ/初期データ.md 1 節、設計/ワークフロー/ルートの深さ/初期データ.md 5 節: 接頭辞のリソースグループ 6 と
-     * ルートのリソース 19(ルート 18 本 = 設計/ワークフロー/認可と一覧.md 4 節と、処理対象者の候補。ID・親は名前から決まる。
-     * 表示名 ja・en = 設計/ワークフロー/認可と一覧.md 4 節)。
-     * ポリシー 38(全体 105)は WorkflowRouteAuthorizationTest・AuthorizationSeedersTest が確かめる。(定義の管理を足すときは、そのリソースグループ・ルートとメニュー「フロー定義」をここで確かめる)
+     * ルートのリソース 22(ルート 18 本 = 設計/ワークフロー/認可と一覧.md 4 節と、処理対象者の候補と、一括承認・一括確認・利用者の候補 =
+     * 設計/ワークフロー/案件の運用/認可と一覧.md の 4 節。ID・親は名前から決まる。表示名 ja・en = それぞれの 4 節)。
+     * ポリシー 44 は WorkflowRouteAuthorizationTest・AuthorizationSeedersTest が確かめる。(定義の管理を足すときは、そのリソースグループ・ルートとメニュー「フロー定義」をここで確かめる)
      */
     public function test_seeds_the_route_resources_of_the_design(): void
     {
@@ -225,8 +205,11 @@ final class WorkflowSeederTest extends TransactionalTestCase
             ['http-services.workflow.cases.assignee-candidates', 'http-services.workflow.cases', '処理対象者の候補', 'Assignee candidates'],
             ['http-services.workflow.reapplications.create', 'http-services.workflow.reapplications', '再申請の画面', 'Reapplication form'],
             ['http-services.workflow.reapplications.store', 'http-services.workflow.reapplications', '再申請', 'Reapply'],
+            ['http-services.workflow.cases.bulk-approve', 'http-services.workflow.cases', '一括承認', 'Bulk approve'],
+            ['http-services.workflow.cases.bulk-confirm', 'http-services.workflow.cases', '一括確認', 'Bulk confirm'],
+            ['http-services.workflow.user-candidates', 'http-services.workflow', '利用者の候補', 'User candidates'],
         ], $groups);
-        $this->assertSame(19, AuthzResource::query()->where('uri', 'like', 'service://workflow/%')->count());
+        $this->assertSame(22, AuthzResource::query()->where('uri', 'like', 'service://workflow/%')->count());
     }
 
     /**
@@ -269,13 +252,13 @@ final class WorkflowSeederTest extends TransactionalTestCase
     }
 
     /**
-     * 現在のノード(写した並び)の [表示名, 状態, 処理対象者のコード]。
+     * 現在のノード(写した並び。保留中を含む)の [表示名, 状態, 処理対象者のコード]。
      *
      * @return list<array{string, string, list<string>}>
      */
     private function currentNodesOf(WorkflowCase $case): array
     {
-        $nodes = WorkflowCaseNode::query()->with('parent')->where('workflow_case_id', $case->id)->whereIn('state', ['waiting', 'reapply'])->get()->sort(WorkflowCaseNode::compareInRoute(...))->values();
+        $nodes = WorkflowCaseNode::query()->with('parent')->where('workflow_case_id', $case->id)->whereIn('state', ['waiting', 'reapply', 'hold'])->get()->sort(WorkflowCaseNode::compareInRoute(...))->values();
 
         return array_values($nodes->map(fn (WorkflowCaseNode $node) => [$node->displayName(), $node->state->value, array_values(WorkflowCaseNodeTarget::query()->with('user')
             ->where('workflow_case_node_id', $node->id)->orderBy('user_id')->get()->map(fn (WorkflowCaseNodeTarget $target) => (string) $target->user?->code)->all())])->all());
@@ -290,27 +273,6 @@ final class WorkflowSeederTest extends TransactionalTestCase
     {
         return array_values(WorkflowCaseHistory::query()->with('actor')->where('workflow_case_id', $case->id)->orderBy('id')->get()
             ->map(fn (WorkflowCaseHistory $history) => "{$history->action->value} {$history->actor?->code}")->all());
-    }
-
-    /**
-     * @return array{query: array{tab: string, scope: string}, counts: array{draft: int, pending: int}, cases: array{data: list<array<string, mixed>>, currentPage: int, lastPage: int, total: int}}
-     */
-    private function list(?string $userCode, string $tab, string $scope = 'active'): array
-    {
-        return app(CaseListQuery::class)->list($this->contextOf($userCode), $tab, $scope, '1');
-    }
-
-    /**
-     * タブの案件の番号(番号の順)。
-     *
-     * @return list<string|null>
-     */
-    private function numbersOf(?string $userCode, string $tab, string $scope = 'active'): array
-    {
-        $numbers = array_column($this->list($userCode, $tab, $scope)['cases']['data'], 'number');
-        sort($numbers);
-
-        return $numbers;
     }
 
     /**

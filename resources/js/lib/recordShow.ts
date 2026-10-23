@@ -128,11 +128,12 @@ export function fileSizeText(bytes: number): string {
         : `${(bytes / KIB ** 3).toFixed(1)} GB`;
 }
 
-/** プレビューの出し方: 画像・音声・動画は Dialog の中、そのほか(PDF)は新しいタブ */
+/** プレビューの出し方: 画像(GIF を含む)・音声・動画は Dialog の中、そのほか(PDF・テキスト・Markdown・CSV)は新しいタブ */
 export type PreviewKind = 'image' | 'audio' | 'video' | 'tab';
 
 /**
- * 添付の型からプレビューの出し方を決める(型の頭で見る = 添付ファイル/README.md の 4 節)。
+ * 添付の型からプレビューの出し方を決める(型の頭で見る = 添付ファイル/README.md の 4 節)。プレビューできる型の範囲はサーバーが決め、
+ * 画面は「プレビュー」を出した行(previewUrl がある行)にだけこれを使う。
  */
 export function previewKind(mime: string): PreviewKind {
     const head = mime.split('/')[0];

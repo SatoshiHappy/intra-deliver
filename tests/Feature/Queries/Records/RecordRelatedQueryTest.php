@@ -180,6 +180,10 @@ final class RecordRelatedQueryTest extends TransactionalTestCase
         $this->assertSame(array_column(array_slice($ids, 0, 20), 1), array_column($first['rows'], 'id'));
         $this->assertSame(array_column(array_slice($ids, 20), 1), array_column($second['rows'], 'id'));
         $this->assertSame([1, 2, 21], [$first['currentPage'], $first['lastPage'], $first['total']]);
+
+        $beyond = $this->related()->rows($this->guest(), $project->id, 'estimates.customer', 99, $this->today(), 'ja');
+        $this->assertSame([2, 2, 21], [$beyond['currentPage'], $beyond['lastPage'], $beyond['total']]);
+        $this->assertSame(array_column($second['rows'], 'id'), array_column($beyond['rows'], 'id'));
         $this->assertSame(['title' => $titles[$ids[0][1]]], $first['rows'][0]['values']);
     }
 

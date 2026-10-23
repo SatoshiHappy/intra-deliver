@@ -2,6 +2,7 @@
 
 namespace App\Queries\Workflow;
 
+use App\Enums\Workflow\WorkflowCaseRowField;
 use App\Queries\Authz\Api\Requester;
 use App\Queries\Menu\Api\HomeSections;
 use App\Support\AccessContext;
@@ -9,12 +10,13 @@ use Carbon\CarbonImmutable;
 
 /**
  * ホームの未処理の申請の表(docs の 設計/ワークフロー/画面.md 7 節。口 = {@see HomeSections}、形 = 設計/メニュー/ホーム.md 6.2)。未処理の先頭の 5 行
- * (並び = 案件一覧と同じ)。列 = 申請日(申請日時の Asia/Tokyo の暦の日付)・申請名(詳細へ)・申請者(名前、無ければコード)・状態(承認待ち・再申請待ちの札)。
- * 申請名・申請者・現在のノードは一覧の行({@see CaseRows})から作る(一覧と同じ読み取り)。
- * 期限の列は出さない。ゲストには null、0 行でも出す(0 件の文)。
+ * (並び = 案件一覧と同じ)。列 = 申請日(申請日時の Asia/Tokyo の暦の日付)・申請名(詳細へ)・申請者(名前、無ければコード)・状態(案件の状態の札)・
+ * 期限(設計/ワークフロー/案件の運用/認可と一覧.md の 2.4 節)。申請名・申請者・現在のノード・期限は一覧の未処理の行({@see CaseRows})から作る
+ * (一覧と同じ読み取り)。ゲストには null、0 行でも出す(0 件の文)。
  *
  * @phpstan-import-type HomeTableSection from HomeSections
  * @phpstan-import-type CaseRow from CaseRows
+ * @phpstan-import-type Deadline from CaseRowExtras
  */
 class PendingCasesHomeSection implements HomeSections
 {
@@ -36,7 +38,9 @@ class PendingCasesHomeSection implements HomeSections
         }
 
         $cases = $this->home->pending($context)->limit(self::LIMIT)->get();
-        $rows = $this->rows->rows(Requester::fromAccessContext($context), $context->date, $context->localeCode, $cases);
+        $requester = Requester::fromAccessContext($context);
+        $fields = [WorkflowCaseRowField::Deadline];
+        $rows = $this->rows->rows($requester, $context->date, $context->localeCode, $cases, fields: $fields);
 
         return [
             'code' => 'workflow-pending',
@@ -48,6 +52,7 @@ class PendingCasesHomeSection implements HomeSections
                 ['code' => 'name', 'label' => '申請名', 'type' => 'title'],
                 ['code' => 'applicant', 'label' => '申請者', 'type' => 'text'],
                 ['code' => 'state', 'label' => '状態', 'type' => 'status'],
+                ['code' => 'due', 'label' => '期限', 'type' => 'status'],
             ],
             'rows' => array_map($this->row(...), $rows),
             'emptyText' => '処理を待っている申請はありません',
@@ -73,7 +78,25 @@ class PendingCasesHomeSection implements HomeSections
                 ['text' => $row['name'], 'tone' => null, 'mark' => null],
                 ['text' => $row['applicant']['name'] ?? $row['applicant']['code'], 'tone' => null, 'mark' => null],
                 ['text' => $state[0] ?? '', 'tone' => $state[1] ?? null, 'mark' => null],
+                self::dueCell($row['deadline']),
             ],
         ];
+    }
+
+    /**
+     * 期限のセル(超過ならセル全体が 1 つの札 = 設計/ワークフロー/案件の運用/認可と一覧.md の 2.4 節)。
+     *
+     * @param  Deadline|null  $deadline
+     * @return HomeTableSection['rows'][int]['cells'][int]
+     */
+    private static function dueCell(?array $deadline): array
+    {
+        $dueOn = $deadline['dueOn'] ?? null;
+
+        return match (true) {
+            $dueOn === null => ['text' => '—', 'tone' => null, 'mark' => null],
+            $deadline['overdue'] ?? false => ['text' => "{$dueOn} 期限超過", 'tone' => 'rejected', 'mark' => null],
+            default => ['text' => $dueOn, 'tone' => null, 'mark' => null],
+        };
     }
 }

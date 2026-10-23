@@ -1,5 +1,6 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { useState } from 'react';
+import { Pagination } from '@/components/Pagination';
 import { RecordAddonActions } from '@/components/Records/RecordAddonActions';
 import { RecordListRows } from '@/components/Records/RecordListRows';
 import { RecordSearchForm } from '@/components/Records/RecordSearchForm';
@@ -47,9 +48,6 @@ const SORTABLE_TYPES = [
     'choice',
 ];
 
-/** ページの番号を出す範囲(今のページの前後。最初と最後はいつも出し、間は「…」) */
-const PAGE_WINDOW = 2;
-
 /**
  * 一覧を、クエリ(検索条件・並び・ページ)を変えた URL へ部分再読み込みする。成功したら onSuccess(あれば)を呼ぶ。
  */
@@ -76,28 +74,6 @@ function visit(
             onSuccess,
         },
     );
-}
-
-/**
- * 出すページの番号(最初・最後・今の前後 PAGE_WINDOW。飛んだところは null =「…」)。
- */
-function pageItems(currentPage: number, lastPage: number): (number | null)[] {
-    const items: (number | null)[] = [];
-
-    for (let page = 1; page <= lastPage; page += 1) {
-        const isShown =
-            page === 1 ||
-            page === lastPage ||
-            Math.abs(page - currentPage) <= PAGE_WINDOW;
-
-        if (isShown) {
-            items.push(page);
-        } else if (items[items.length - 1] !== null) {
-            items.push(null);
-        }
-    }
-
-    return items;
 }
 
 /**
@@ -142,69 +118,6 @@ function SortableHead({
                 )}
             </button>
         </TableHead>
-    );
-}
-
-/**
- * ページング(前へ・次へ・ページの番号(最初・最後・今の前後 2。間は「…」)・件数)。
- */
-function Pagination({
-    records,
-    onPage,
-}: {
-    records: RecordList;
-    onPage: (page: number) => void;
-}) {
-    const pages = pageItems(records.currentPage, records.lastPage);
-
-    return (
-        <nav aria-label="ページ" className="flex items-center gap-2">
-            <Button
-                variant="outline"
-                size="sm"
-                disabled={records.currentPage <= 1}
-                onClick={() => onPage(records.currentPage - 1)}
-            >
-                前へ
-            </Button>
-            {pages.map((page, position) =>
-                page === null ? (
-                    <span
-                        key={`gap-${position}`}
-                        aria-hidden="true"
-                        className="px-1 text-muted-foreground"
-                    >
-                        …
-                    </span>
-                ) : (
-                    <Button
-                        key={page}
-                        variant={
-                            page === records.currentPage ? 'secondary' : 'ghost'
-                        }
-                        size="sm"
-                        aria-current={
-                            page === records.currentPage ? 'page' : undefined
-                        }
-                        onClick={() => onPage(page)}
-                        className="font-num tabular-nums"
-                    >
-                        {page}
-                    </Button>
-                ),
-            )}
-            <Button
-                variant="outline"
-                size="sm"
-                disabled={records.currentPage >= records.lastPage}
-                onClick={() => onPage(records.currentPage + 1)}
-            >
-                次へ
-            </Button>
-            <span className="ml-2 text-sm text-muted-foreground">
-                全 {records.total} 件
-            </span>
-        </nav>
     );
 }
 
@@ -300,7 +213,7 @@ export default function Index(props: Props) {
                         </TableBody>
                     </Table>
                     <Pagination
-                        records={records}
+                        list={records}
                         onPage={(page) =>
                             visit(module.code, currentFilter, query.sort, page)
                         }

@@ -24,7 +24,18 @@ class RoleQuery
      */
     public function rolesOn(int $userId, DateTimeInterface $date): Collection
     {
-        return $this->withSubRoles(UserRole::query()->where('user_id', $userId)->holdsOn($date)->select('role_id'));
+        return $this->rolesOfEach([$userId], $date)[$userId];
+    }
+
+    /**
+     * ユーザーそれぞれが d に持つロールの id({@see self::rolesOn()} と同じ並び)。
+     *
+     * @param  list<int>  $userIds
+     * @return array<int, list<int>> キー = 渡したユーザーすべて
+     */
+    public function roleIdsOfEach(array $userIds, DateTimeInterface $date): array
+    {
+        return array_map(fn (Collection $roles) => $this->roleIdsOf($roles), $this->rolesOfEach($userIds, $date));
     }
 
     /**
@@ -35,29 +46,77 @@ class RoleQuery
      */
     public function subRoleIds(int $roleId): array
     {
-        $children = RoleInclusion::query()->where('parent_role_id', $roleId)->select('child_role_id');
+        $children = RoleInclusion::query()
+            ->where('parent_role_id', $roleId)
+            ->select(['parent_role_id', 'child_role_id']);
 
-        return array_values($this->withSubRoles($children)->map(fn (Role $role) => $role->id)->all());
+        $subRoles = $this->withSubRolesOfEach($children, [$roleId])[$roleId];
+
+        return $this->roleIdsOf($subRoles);
     }
 
     /**
-     * 起点のロール(問い合わせが返す 1 列)と、そこからサブロールを親から子へたどったロール。
+     * ユーザーそれぞれが d に持つロール(並びは {@see self::rolesOn()} の説明のとおり)。
+     *
+     * @param  list<int>  $userIds
+     * @return array<int, Collection<int, Role>> キー = 渡したユーザーすべて
+     */
+    private function rolesOfEach(array $userIds, DateTimeInterface $date): array
+    {
+        $grants = UserRole::query()
+            ->whereRaw('user_roles.user_id = ANY (?::bigint[])', ['{'.implode(',', $userIds).'}'])
+            ->holdsOn($date)
+            ->select(['user_id', 'role_id']);
+
+        return $this->withSubRolesOfEach($grants, $userIds);
+    }
+
+    /**
+     * 持ち主それぞれの起点のロール(問い合わせが返す 2 列 = 持ち主・ロール)と、そこからサブロールを親から子へたどったロール。
+     * 持ち主の列は返すロールの属性に残さない(1 人の口が返すロールの属性を、持ち主を持たずにたどっていたときと変えないため)。
      *
      * @param  Builder<UserRole>|Builder<RoleInclusion>  $seeds
-     * @return Collection<int, Role>
+     * @param  list<int>  $ownerIds
+     * @return array<int, Collection<int, Role>> キー = 渡した持ち主すべて(無ければ空)
      */
-    private function withSubRoles(Builder $seeds): Collection
+    private function withSubRolesOfEach(Builder $seeds, array $ownerIds): array
     {
+        $held = array_fill_keys($ownerIds, []);
+
+        if ($held === []) {
+            return [];
+        }
+
         $sql = sprintf(<<<'SQL'
-            WITH RECURSIVE held (id) AS (
+            WITH RECURSIVE held (owner_id, id) AS (
                 %s
                 UNION
-                SELECT role_inclusions.child_role_id FROM role_inclusions JOIN held ON role_inclusions.parent_role_id = held.id
+                SELECT held.owner_id, role_inclusions.child_role_id FROM role_inclusions
+                JOIN held ON role_inclusions.parent_role_id = held.id
             )
-            SELECT roles.* FROM roles JOIN held ON held.id = roles.id
+            SELECT held.owner_id AS held_by_id, roles.* FROM roles JOIN held ON held.id = roles.id
             ORDER BY roles.sort_key, roles.code, roles.id
             SQL, $seeds->toSql());
 
-        return Role::fromQuery($sql, $seeds->getBindings());
+        $connection = Role::query()->getConnection();
+
+        foreach ($connection->select($sql, $seeds->getBindings()) as $row) {
+            $attributes = (array) $row;
+            $ownerId = intval($attributes['held_by_id']);
+            $held[$ownerId][] = array_diff_key($attributes, ['held_by_id' => true]);
+        }
+
+        return array_map(fn (array $roles) => Role::query()->hydrate($roles), $held);
+    }
+
+    /**
+     * @param  Collection<int, Role>  $roles
+     * @return list<int>
+     */
+    private function roleIdsOf(Collection $roles): array
+    {
+        $ids = $roles->map(fn (Role $role) => $role->id)->all();
+
+        return array_values($ids);
     }
 }

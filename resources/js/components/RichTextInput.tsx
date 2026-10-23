@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { FocusEvent } from 'react';
+import type { FocusEvent, RefObject } from 'react';
 import { CharacterCount } from '@/components/CountedTextInput';
 import { invalidProps } from '@/components/FormBlock';
 import { RichText } from '@/components/RichText';
@@ -23,6 +23,10 @@ type Props = {
     isRequiredNow: boolean;
     /** ラベルを持たない欄(明細の表のセル)の名前 */
     ariaLabel?: string;
+    /** 入力の案内(空のときの薄い字) */
+    placeholder?: string;
+    /** 入力を押せなくする(送っている間。札は切り替えられる) */
+    disabled?: boolean;
 };
 
 /**
@@ -111,19 +115,50 @@ function PreviewPanel({
 }
 
 /**
+ * 「編集」の面(入力)。札を切り替えても残す(forceMount)。誤りの印は編集の札が開いている間だけ持つ。
+ */
+function EditPanel({
+    field,
+    hidden,
+    invalid,
+    textareaRef,
+}: {
+    field: Props;
+    hidden: boolean;
+    invalid: boolean;
+    textareaRef: RefObject<HTMLTextAreaElement | null>;
+}) {
+    const { id, value, onChange, max, isRequiredNow } = field;
+
+    return (
+        <TabsContent value="edit" forceMount hidden={hidden}>
+            <Textarea
+                ref={textareaRef}
+                id={id}
+                aria-label={field.ariaLabel}
+                placeholder={field.placeholder}
+                disabled={field.disabled}
+                aria-required={isRequiredNow || undefined}
+                {...invalidProps(
+                    id,
+                    invalid ? '' : undefined,
+                    false,
+                    max !== null,
+                )}
+                value={value}
+                onChange={(event) => onChange(event.target.value)}
+            />
+        </TabsContent>
+    );
+}
+
+/**
  * 文字列(複数行)の入力(docs の 設計/業務データの入れ物/画面/業務の画面.md 2.2 の表、画面/README.md 1.4)。プレビューは詳細と
  * 同じ RichText で描く。文字数の要素は札の外に 1 つ置き、どちらの札でも見えるようにする(結び方は CountedTextInput と同じ)。
  * 誤りの印は見えている側(入力か面)だけが持つ(隠れた入力へはフォーカスを移せないため)。
  */
-export function RichTextInput({
-    id,
-    value,
-    onChange,
-    max,
-    invalid,
-    isRequiredNow,
-    ariaLabel,
-}: Props) {
+export function RichTextInput(props: Props) {
+    const { id, value, max, invalid } = props;
     const { tab, select, root, textarea, moveToEdit } = useRichTextTab(invalid);
 
     return (
@@ -133,22 +168,12 @@ export function RichTextInput({
                     <TabsTrigger value="edit">編集</TabsTrigger>
                     <TabsTrigger value="preview">プレビュー</TabsTrigger>
                 </TabsList>
-                <TabsContent value="edit" forceMount hidden={tab !== 'edit'}>
-                    <Textarea
-                        ref={textarea}
-                        id={id}
-                        aria-label={ariaLabel}
-                        aria-required={isRequiredNow || undefined}
-                        {...invalidProps(
-                            id,
-                            invalid && tab === 'edit' ? '' : undefined,
-                            false,
-                            max !== null,
-                        )}
-                        value={value}
-                        onChange={(event) => onChange(event.target.value)}
-                    />
-                </TabsContent>
+                <EditPanel
+                    field={props}
+                    hidden={tab !== 'edit'}
+                    invalid={invalid && tab === 'edit'}
+                    textareaRef={textarea}
+                />
                 <PreviewPanel
                     id={id}
                     value={value}

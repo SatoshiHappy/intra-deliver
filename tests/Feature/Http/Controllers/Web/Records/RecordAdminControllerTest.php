@@ -113,7 +113,8 @@ final class RecordAdminControllerTest extends TransactionalTestCase
             ->where('module.isVisible', true)
             ->has('module.fields', 9)
             ->where('module.rules.0.kind', 'compare')
-            ->where('fieldUsage', ['name' => 12, 'department' => 12, 'manager' => 12, 'status' => 12, 'start_date' => 12, 'end_date' => 9, 'budget' => 12, 'summary' => 3, 'milestones' => 12])
+            // 案件の運用の見本の 2 件(WF-000013 = 終了日あり、WF-000014 = 終了日なし。どちらも概要とマイルストーンなし = 案件の運用/初期データ.md の 4.3)を足した数
+            ->where('fieldUsage', ['name' => 14, 'department' => 14, 'manager' => 14, 'status' => 14, 'start_date' => 14, 'end_date' => 10, 'budget' => 14, 'summary' => 3, 'milestones' => 12])
             ->where('textMaxLengths', ['code' => 50, 'name' => 1000, 'description' => 4000])
         );
         $this->get('/records/admin/modules/project_milestone')->assertOk()->assertInertia(fn (Assert $page) => $page

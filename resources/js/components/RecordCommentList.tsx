@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog';
 import { RecordPanelMore } from '@/components/RecordPanelMore';
+import { RichText } from '@/components/RichText';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { canDeleteComment } from '@/lib/recordComments';
@@ -114,7 +115,7 @@ function CommentItem({
                     author={author}
                     deleteButton={deleteButton}
                 />
-                <p className="wrap-anywhere whitespace-pre-wrap">{row.body}</p>
+                <RichText source={row.body ?? ''} />
                 {row.mentions.length > 0 && (
                     <div className="flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
                         宛先
@@ -131,8 +132,8 @@ function CommentItem({
 }
 
 /**
- * コメントの一覧(docs の 設計/業務データの入れ物/レコードの共通機能/コメント.md の 7 節): 新しい順の 1 件 = 書いた人・日時・本文(文字として描く。
- * 改行を保ち、リンク・書式にしない)・宛先。「削除」は自分の分と、管理の権限がある人に出す(押すと確かめの Dialog)。
+ * コメントの一覧(docs の 設計/業務データの入れ物/レコードの共通機能/コメント.md の 7 節): 新しい順の 1 件 = 書いた人・日時・本文(複数行の欄と
+ * 同じ RichText。画面/README.md 1.4)・宛先。「削除」は自分の分と、管理の権限がある人に出す(押すと確かめの Dialog)。
  * 削除した行は印だけ。5 件ずつ「さらに表示」。
  */
 export function RecordCommentList(props: Props) {

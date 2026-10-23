@@ -16,7 +16,7 @@ export type RecordDetailCan = {
     update: boolean;
     delete: boolean;
     copy: boolean; // 業務モジュールの create(複製)
-    attach: boolean; // 業務モジュールの update かつ添付ファイルを使用する
+    attach: boolean; // 業務モジュールの update かつ添付ファイルの追加・削除を許可する
     apply: boolean; // 申請の入口(applyEntries)がある
 };
 

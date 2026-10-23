@@ -249,7 +249,7 @@ final class CaseDetailQueryTest extends TransactionalTestCase
         $related = $this->show($this->users['a'], $case->id)['related'];
 
         $this->assertSame([[$sameRecord->id], [$newer->id, $older->id], [$issueCase->id]], [array_column($related['sameRecord'], 'id'), array_column($related['referenced'], 'id'), array_column($related['referencing'], 'id')]);
-        $this->assertSame(['pullBack', 'reapply', 'withdraw', 'editDraft', 'deleteDraft'], array_keys($related['referenced'][0]['can']));
+        $this->assertSame(['pullBack', 'reapply', 'withdraw', 'editDraft', 'deleteDraft', 'bulkApprove', 'confirm'], array_keys($related['referenced'][0]['can']));
     }
 
     /**

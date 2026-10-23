@@ -11,10 +11,14 @@ use App\Enums\Workflow\WorkflowNodeState;
  */
 final class WorkflowHomeLabels
 {
-    /** 現在のノードの状態 → [語, 札の色](8 節の案件・ノードの状態の札。印なし)。並びは内訳の並び */
+    /**
+     * 案件の状態の札の状態 → [語, 札の色](8 節の案件・ノードの状態の札。印なし。保留中 = 設計/ワークフロー/案件の運用/認可と一覧.md の 2.4 節)。
+     * 並びは内訳の並び
+     */
     public const CURRENT_NODE_STATES = [
         WorkflowNodeState::Waiting->value => ['承認待ち', 'pending'],
         WorkflowNodeState::Reapply->value => ['再申請待ち', 'returned'],
+        WorkflowNodeState::Hold->value => ['保留中', 'returned'],
     ];
 
     /** 今月の処理済みの種別 → [語, 札の色, 印](8 節の履歴の処理の種別の札)。並びは内訳の並び */

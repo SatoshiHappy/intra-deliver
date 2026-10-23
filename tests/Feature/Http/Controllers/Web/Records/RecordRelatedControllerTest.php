@@ -102,6 +102,24 @@ final class RecordRelatedControllerTest extends TransactionalTestCase
             ->assertInertia(fn (Assert $full) => $full->where('relatedRecordRows.currentPage', 1));
     }
 
+    public function test_a_partial_reload_past_the_last_page_gets_the_last_page(): void
+    {
+        foreach (range(1, 20) as $number) {
+            $estimate = $this->recordIn($this->f['estimates'], ['title' => "見積 {$number}"]);
+            $this->refer($estimate, $this->f['customer'], $this->project);
+        }
+
+        $page = $this->partial(['tab' => 'related', 'relatedPage' => '99'], 'relatedRecordRows')
+            ->assertOk()->viewData('page');
+
+        $this->assertSame([2, 2, 21], [
+            $page['props']['relatedRecordRows']['currentPage'],
+            $page['props']['relatedRecordRows']['lastPage'],
+            $page['props']['relatedRecordRows']['total'],
+        ]);
+        $this->assertCount(1, $page['props']['relatedRecordRows']['rows']);
+    }
+
     public function test_the_form_comes_with_a_partial_reload_of_it_for_an_entry_that_may_create(): void
     {
         $page = $this->partial(['tab' => 'related', 'related' => 'estimates.customer'], 'relatedRecordForm')

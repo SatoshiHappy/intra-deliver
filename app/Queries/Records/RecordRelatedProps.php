@@ -7,6 +7,7 @@ use App\Queries\Authz\Api\Requester;
 use App\Queries\Records\Api\RecordRelatedEntry;
 use App\Queries\Records\Api\RecordRelatedQuery;
 use App\Support\AccessContext;
+use App\Support\PageNumbers;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 /**
@@ -39,7 +40,8 @@ class RecordRelatedProps
 
     /**
      * relatedRecordRows: クエリ tab が related のときだけ、選んだ入口(無い・見えなければ先頭)の表。見える入口が無ければ null。
-     * 入口を決めるのに件数を数えない(entryNames)。$page は部分の再読み込みのクエリ relatedPage(正の整数でなければ 1 ページ目)。
+     * 入口を決めるのに件数を数えない(entryNames)。$page は部分の再読み込みのクエリ relatedPage(正の整数でなければ 1 ページ目。
+     * 最後のページを超えれば最後のページに詰める = {@see RecordRelatedQuery::rows()})。
      *
      * @return RelatedRows|null
      *
@@ -53,8 +55,8 @@ class RecordRelatedProps
 
         $requester = Requester::fromAccessContext($context);
         $keys = array_column($this->related->entryNames($requester, $recordId, $context->date), 'key');
+        $number = PageNumbers::requested($page);
         $key = is_string($related) && in_array($related, $keys, true) ? $related : ($keys[0] ?? null);
-        $number = is_string($page) && preg_match('/^[1-9][0-9]{0,8}\z/', $page) === 1 ? (int) $page : 1;
 
         return is_string($key)
             ? $this->related->rows($requester, $recordId, $key, $number, $context->date, $context->localeCode)

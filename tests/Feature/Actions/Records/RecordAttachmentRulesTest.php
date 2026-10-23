@@ -125,6 +125,27 @@ final class RecordAttachmentRulesTest extends TransactionalTestCase
         $this->assertTrue(RecordAttachment::query()->whereKey($attachmentId)->exists());
     }
 
+    public function test_a_held_record_of_a_module_not_allowing_attachments_rejects_with_the_holder_first(): void
+    {
+        $module = $this->recordModule('projects');
+        $recordId = $this->recordIn('projects');
+        $context = $this->contextFor();
+        app(AttachRecordUploads::class)->execute($context, 'projects', $recordId, [$this->uploadedFile('a.pdf')]);
+        $attachmentId = RecordAttachment::query()->where('record_id', $recordId)->sole()->id;
+        $module->update(['is_attachment_enabled' => false]);
+        $this->registerRecordHolds([$recordId => 'case:1']);
+        $expected = ['record' => self::HOLD_REASON];
+
+        $file = $this->uploadedFile('b.pdf');
+        $attach = fn () => app(AttachRecordUploads::class)->execute($context, 'projects', $recordId, [$file]);
+        $detach = fn () => app(DetachRecordAttachments::class)->execute($context, 'projects', $recordId, $attachmentId);
+
+        $this->assertSame($expected, $this->validationErrors($attach));
+        $this->assertSame($expected, $this->validationErrors($detach));
+        $this->assertSame(1, RecordAttachment::query()->where('record_id', $recordId)->count());
+        $this->assertSame(1, $this->storedFileCount());
+    }
+
     private function recordIn(string $moduleCode): int
     {
         $moduleId = RecordModule::query()->where('code', $moduleCode)->sole()->id;

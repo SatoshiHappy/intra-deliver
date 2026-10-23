@@ -1,5 +1,4 @@
 import { Link } from '@inertiajs/react';
-import type { ReactNode } from 'react';
 import {
     Table,
     TableBody,
@@ -19,8 +18,6 @@ type Props = {
     rows: WorkflowCaseRow[];
     /** 0 件のときの文 */
     emptyText: string;
-    /** 行の操作(案件一覧 = あり。列「現在のステップ」と「操作」を出す。関連する案件 = なし) */
-    actions?: (row: WorkflowCaseRow) => ReactNode;
     /** 表の読み上げの名前 */
     label: string;
 };
@@ -44,11 +41,11 @@ function CaseNameCell({ row }: { row: WorkflowCaseRow }) {
 }
 
 /**
- * 案件の行の表(docs の 設計/ワークフロー/画面.md 4 節の案件一覧と 5 節の関連する案件): 案件番号(一時保存は「—」)・案件名(折り返す)・フロー・申請者・
- * 申請日・(現在のステップ = 名前を「、」で並べて折り返す)・状態の札・(操作。見出しは読み上げ用だけ、ボタンはセルの右端)。
+ * 関連する案件の表(docs の 設計/ワークフロー/画面.md 5 節): 申請番号・申請名(折り返す)・フロー・申請者・申請日・状態の札。
+ * 申請一覧の表は列がタブごとに違うので別の部品(CaseListTable)。
  */
-export function CaseRowsTable({ rows, emptyText, actions, label }: Props) {
-    const columnCount = actions === undefined ? 6 : 8;
+export function CaseRowsTable({ rows, emptyText, label }: Props) {
+    const columnCount = 6;
 
     return (
         <Table aria-label={label}>
@@ -59,15 +56,7 @@ export function CaseRowsTable({ rows, emptyText, actions, label }: Props) {
                     <TableHead>フロー</TableHead>
                     <TableHead>申請者</TableHead>
                     <TableHead>申請日</TableHead>
-                    {actions !== undefined && (
-                        <TableHead>現在のステップ</TableHead>
-                    )}
                     <TableHead>状態</TableHead>
-                    {actions !== undefined && (
-                        <TableHead>
-                            <span className="sr-only">操作</span>
-                        </TableHead>
-                    )}
                 </TableRow>
             </TableHeader>
             <TableBody>
@@ -96,14 +85,6 @@ export function CaseRowsTable({ rows, emptyText, actions, label }: Props) {
                                 ? EMPTY_VALUE
                                 : formatDateOf(row.appliedAt)}
                         </TableCell>
-                        {actions !== undefined && (
-                            <TableCell className="min-w-32 wrap-anywhere whitespace-normal">
-                                {row.state === 'active' &&
-                                row.currentSummary !== null
-                                    ? row.currentSummary.name
-                                    : EMPTY_VALUE}
-                            </TableCell>
-                        )}
                         <TableCell>
                             <CaseStateBadge
                                 state={row.state}
@@ -113,13 +94,6 @@ export function CaseRowsTable({ rows, emptyText, actions, label }: Props) {
                                 }
                             />
                         </TableCell>
-                        {actions !== undefined && (
-                            <TableCell>
-                                <div className="flex items-center justify-end gap-1">
-                                    {actions(row)}
-                                </div>
-                            </TableCell>
-                        )}
                     </TableRow>
                 ))}
             </TableBody>

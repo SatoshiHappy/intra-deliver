@@ -54,12 +54,12 @@ async function openCommentsAsAdministrator(page: Page): Promise<Locator> {
 }
 
 /**
- * コメントの欄の一覧(新しい順)。
+ * コメントの欄の一覧の行(新しい順。本文の箇条書きの項目は数えない)。
  */
 function comments(pane: Locator) {
     return pane
         .getByRole('list', { name: 'コメントの一覧' })
-        .getByRole('listitem');
+        .locator(':scope > li');
 }
 
 /**
@@ -162,4 +162,48 @@ test('自分のコメントは確かめを見てから削除でき、削除の�
     await expect(mark).toContainText('このコメントは削除されました。');
     await expect(mark).toContainText('削除した人　伊藤 涼子');
     await expect(mark).not.toContainText('E2E の削除の確かめ');
+});
+
+test('URL を含むコメントを投稿すると、別のタブで開くリンクで出て、記法のうち描かないものは文字のまま出る', async ({
+    page,
+}) => {
+    const pane = await openCommentsAsAdministrator(page);
+    const form = pane.getByRole('form', { name: 'コメントの入力' });
+    const input = form.getByRole('textbox', { name: 'コメント', exact: true });
+    await expect(input).toHaveAttribute('aria-required', 'true');
+    const detailUrl = page.url();
+
+    await input.fill(
+        [
+            '[公式](https://example.com/guide)',
+            'https://example.org/a',
+            '[怪しい](javascript:alert(1))',
+            '<script>alert(1)</script>',
+            '- 箇条 1',
+            '- 箇条 2',
+        ].join('\n'),
+    );
+    await form.getByRole('tab', { name: 'プレビュー' }).click();
+    await expect(
+        form.getByRole('tabpanel').getByRole('link', { name: '公式' }),
+    ).toBeVisible();
+    await form.getByRole('tab', { name: '編集' }).click();
+    await submitAndExpectUrl(
+        page,
+        form.getByRole('button', { name: '投稿', exact: true }),
+        detailUrl,
+    );
+
+    const latest = comments(pane).first();
+    const link = latest.getByRole('link', { name: '公式', exact: true });
+    await expect(link).toHaveAttribute('href', 'https://example.com/guide');
+    await expect(link).toHaveAttribute('target', '_blank');
+    await expect(link).toHaveAttribute('rel', 'noopener noreferrer');
+    await expect(
+        latest.getByRole('link', { name: 'https://example.org/a' }),
+    ).toHaveAttribute('href', 'https://example.org/a');
+    await expect(latest.getByRole('listitem')).toHaveCount(2);
+    await expect(latest).toContainText('<script>alert(1)</script>');
+    await expect(latest.getByRole('link', { name: '怪しい' })).toHaveCount(0);
+    await expect(latest).toContainText('怪しい');
 });

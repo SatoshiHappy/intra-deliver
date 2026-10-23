@@ -37,8 +37,8 @@ final class MoveCaseNodeForwardTest extends TransactionalTestCase
     }
 
     /**
-     * 申請 → a1(u0002。確認する人 u0010)→ a2(u0003): a1 を進めると処理済み(進む)で a2 が u0003 の承認待ち。a2 の前処理者 = a1 のただ 1 人の
-     * 処理対象者 u0002(起点の組織 = 主所属の東京営業課)。u0003 に処理依頼、u0010 に確認依頼が届く(管理者には届かない)。u0002 は未処理から消え、
+     * 申請 → a1(u0002。確認する人 u0010)→ a2(u0007): a1 を進めると処理済み(進む)で a2 が u0007 の承認待ち。a2 の前処理者 = a1 のただ 1 人の
+     * 処理対象者 u0002(起点の組織 = 主所属の東京営業課)。u0007 に処理依頼、u0010 に確認依頼が届く(管理者には届かない)。u0002 は未処理から消え、
      * 管理者の処理済に出る。
      */
     public function test_moving_an_approval_forward_is_the_same_as_approving_it(): void
@@ -48,17 +48,17 @@ final class MoveCaseNodeForwardTest extends TransactionalTestCase
 
         $this->moveOn($case, 'a1', 'forward');
 
-        $this->assertSame(['a1' => 'done', 'a2' => 'waiting[u0003]'], $this->pick($case, 'a1', 'a2'));
+        $this->assertSame(['a1' => 'done', 'a2' => 'waiting[u0007]'], $this->pick($case, 'a1', 'a2'));
         $this->assertSame(['move_forward', self::MANAGER, null], array_slice($this->latestRow($case), 0, 3));
         $this->assertSame(['u0002', $this->departmentIdOf('tokyo-sales')], $this->previousOf($case, 'a2'));
         $request = ['step_name' => 'a2', 'step_kind' => 'approve'];
         $this->assertSame([
             $this->caseNotice(WorkflowNoticeType::ConfirmRequest, 'u0010', self::MANAGER, $case, ['step_name' => 'a1']),
-            $this->caseNotice(WorkflowNoticeType::ProcessRequest, 'u0003', self::MANAGER, $case, $request),
+            $this->caseNotice(WorkflowNoticeType::ProcessRequest, 'u0007', self::MANAGER, $case, $request),
         ], $this->noticesSince($lastId));
         $this->assertSame(
-            ['u0002' => [], 'u0003' => ['pending'], self::MANAGER => ['processed']],
-            $this->appearances($case, 'u0002', 'u0003', self::MANAGER),
+            ['u0002' => [], 'u0007' => ['pending'], self::MANAGER => ['processed']],
+            $this->appearances($case, 'u0002', 'u0007', self::MANAGER),
         );
     }
 
@@ -76,7 +76,7 @@ final class MoveCaseNodeForwardTest extends TransactionalTestCase
 
         $this->moveOn($case, 'a2', 'forward');
 
-        $this->assertSame(['a1' => 'done', 'a2' => 'waiting[u0003]'], $held);
+        $this->assertSame(['a1' => 'done', 'a2' => 'waiting[u0007]'], $held);
         $case->refresh();
         $this->assertSame(['completed', 'approved'], [$case->state->value, $case->completion_reason?->value]);
         $params = ['completion_reason' => 'approved'];
@@ -253,7 +253,7 @@ final class MoveCaseNodeForwardTest extends TransactionalTestCase
     }
 
     /**
-     * 申請 → a1(u0002。確認する人 u0010)→ a2(u0003)の案件。
+     * 申請 → a1(u0002。確認する人 u0010)→ a2(u0007)の案件。
      */
     private function confirmedLineCase(): WorkflowCase
     {
@@ -267,7 +267,7 @@ final class MoveCaseNodeForwardTest extends TransactionalTestCase
             sendBackCodes: ['apply'],
             confirmSubjectGroupId: $this->confirmGroup('u0010'),
         );
-        $nodes = [$this->applyNode(), $a1, $this->approveNode('a2', 'u0003', ['apply', 'a1'])];
+        $nodes = [$this->applyNode(), $a1, $this->approveNode('a2', 'u0007', ['apply', 'a1'])];
         $this->addVersion([$nodes, $this->chain(['apply', 'a1'], ['a1', 'a2'])]);
 
         return $this->applyOnRoute([])[0];

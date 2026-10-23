@@ -14,12 +14,13 @@ export const demoGroups = [
         ],
     },
     {
-        // workflow の件数と並びは、workflow-route の申請・承認を含む
+        // workflow の件数と並びは、workflow-route の申請・承認を含む。zz-workflow-operations は前の 2 つが案件を変えた後の状態を使う
         name: 'demo-workflow',
         files: [
             'tests/e2e/demo/notice.spec.ts',
             'tests/e2e/demo/workflow-route.spec.ts',
             'tests/e2e/demo/workflow.spec.ts',
+            'tests/e2e/demo/zz-workflow-operations.spec.ts',
         ],
     },
     {

@@ -5,6 +5,7 @@ import {
     fillVersionTwoBaseDate,
 } from '../support/seed-dates';
 import { submitAndExpectUrl } from '../support/submit';
+import * as home from '../support/workflow-home';
 
 // ワークフローの画面(docs の 設計/ワークフロー/画面.md 9 節の demo)。デモユーザー切替で利用者を替え、初期データの案件の見本(ルートの深さ/初期データ.md 4 節)と、
 // 筋の中で申請する案件を使う。画面は PC の幅だけを前提にする。筋は前の筋の結果(申請した案件・処理の後の状態)を使うので、順に走らせる
@@ -176,31 +177,34 @@ test('初期データの見本: 上長のホームに、あいさつ欄・件数
     await expect(
         page.getByRole('heading', { level: 1, name: /^こんにちは、/ }),
     ).toBeVisible();
-    // 件数カード(4 枚)。数字と内訳の 1 行(ルートの深さ/初期データ.md 4 節: u0002 = 未処理 2・進行中 0・今月の処理済み 11(2 段目の 7 と版 3 の見本の承認 4)・一時保存 0。
-    // 名前の順で先に走る demo/workflow-route.spec.ts の上長の承認 1 件を足して 12)
+    // 件数カード(4 枚)。数字と内訳の 1 行(設計/ワークフロー/案件の運用/初期データ.md 4 節: u0002 = 未処理 3(期限超過なし = WF-000005 は当日)・
+    // 進行中 0・一時保存 0。今月の処理済みは流す日の日付で変わる = home.chiefProcessedThisMonth)
     await expect(counterCard(page, '未処理の申請')).toHaveText(
-        /^未処理の申請2件承認待ち\s*2$/,
+        /^未処理の申請3件承認待ち\s*3$/,
     );
     await expect(counterCard(page, '進行中の申請')).toHaveText(
         /^進行中の申請0件$/,
     );
+    const thisMonth = home.chiefProcessedThisMonth();
     await expect(counterCard(page, '今月の処理済み')).toHaveText(
-        /^今月の処理済み12件承認\s*7・承認終了\s*1・否認\s*1・差戻し\s*3$/,
+        home.processedCardText(thisMonth),
     );
     await expect(counterCard(page, '一時保存')).toHaveText(/^一時保存0件$/);
 
-    // 未処理の申請の表: WF-000002 と WF-000005 の申請名が承認待ちで出る
+    // 未処理の申請の表: WF-000002・WF-000005・WF-000015 の申請名が承認待ちで出る
     const pending = page.getByRole('table', { name: '未処理の申請' });
     await expect(pending.getByRole('columnheader')).toHaveText([
         '申請日',
         '申請名',
         '申請者',
         '状態',
+        '期限',
     ]);
-    await expect(pending.getByRole('row')).toHaveCount(3);
+    await expect(pending.getByRole('row')).toHaveCount(4);
     for (const name of [
         '課題の対応の承認 導入先の部署が決定していない',
         'プロジェクト計画の承認 代理店向け説明会の開催',
+        '課題の対応の承認 在庫システムの表示不具合',
     ]) {
         await expect(
             pending
@@ -209,15 +213,12 @@ test('初期データの見本: 上長のホームに、あいさつ欄・件数
         ).toContainText('承認待ち');
     }
 
-    // 今月の処理済みの表: 先頭の 5 行(履歴の新しい順)。workflow-route.spec.ts の承認と版 3 の見本 4 件の承認が先頭に来て、結果の列の札は「承認」と印 ✓
-    // (申請名にはフロー名の「承認」が入るので、結果の列のセルで確かめる。否認 × は兼務の利用者のホーム、差戻しの印なしは差戻しの筋の後で確かめる)
+    // 今月の処理済みの表: 先頭の 5 行(履歴の id の降順)。workflow-route.spec.ts の承認が先頭で、続く見本の処理は今月の分だけ。結果の列の札は
+    // 承認 = 印 ✓、差戻し = 印なし(申請名にはフロー名の「承認」が入るので、結果の列のセルで確かめる。否認 × は兼務の利用者のホームで確かめる)
     const processed = page.getByRole('table', { name: '今月の処理済み' });
-    await expect(processed.getByRole('row')).toHaveCount(6);
-    const results = resultCells(page, processed);
-    await expect(results).toHaveCount(5);
-    for (const cell of await results.all()) {
-        await expect(cell).toHaveText(/^✓\s*承認$/);
-    }
+    const latest = home.latestBadges(thisMonth);
+    await expect(processed.getByRole('row')).toHaveCount(latest.length + 1);
+    await expect(resultCells(page, processed)).toHaveText(latest);
 
     // 面の頭のリンク(申請一覧)の行き先は、その案件が入る案件一覧のタブ
     await expect(
@@ -247,12 +248,11 @@ test('初期データの見本: 上長のホームに、あいさつ欄・件数
     ).toHaveAttribute('href', /\/master\/organization-chart$/);
 });
 
-test('初期データの見本: 兼務の利用者のホームの今月の処理済みに、合議の否認が印 × で出る', async ({
+test('初期データの見本: 兼務の利用者のホームの今月の処理済みに、今月の合議の否認が印 × で出る', async ({
     page,
 }) => {
     await openAs(page, 'concurrent', '/');
-
-    // u0009 = 版 3 の見本の合議の票(WF-000009・000012 の承認、WF-000011 の否認)と workflow-route.spec.ts の承認(初期データ.md 4 節)
+    // u0009 = 合議の票(WF-000009 = D − 5・000012 の承認、WF-000011 = D − 12 の否認 = 案件の運用/初期データ.md 4.2)と route の承認。否認は今月の分だけ
     const processed = page.getByRole('table', { name: '今月の処理済み' });
     const rejected = processed.getByRole('row').filter({
         has: page.getByRole('link', {
@@ -260,7 +260,9 @@ test('初期データの見本: 兼務の利用者のホームの今月の処理
             exact: true,
         }),
     });
-    await expect(rejected.locator('td:nth-child(4)')).toHaveText(/^×\s*否認$/);
+    await expect(rejected.locator('td:nth-child(4)')).toHaveText(
+        home.badgesIfThisMonth(12, '否認'),
+    );
 });
 
 test('初期データの見本: 上長のホームの件数カードを押すと未処理のタブ、タイルの「承認する」「自分の申請」で該当のタブが今のタブになり、サイドバーの「申請一覧」が現在地になる', async ({
@@ -279,7 +281,7 @@ test('初期データの見本: 上長のホームの件数カードを押すと
         'aria-current',
         'page',
     );
-    await expect(caseTab(page, '未処理')).toHaveText('未処理2');
+    await expect(caseTab(page, '未処理')).toHaveText('未処理3');
 
     // タイルの行き先は引数つき(?tab=…)でも、現在地はパスだけで比べる(表示.md 3.2)
     await page.goto('/');
@@ -305,47 +307,45 @@ test('初期データの見本: 上長のホームの件数カードを押すと
     await expect(sidebarCaseList(page)).toHaveAttribute('aria-current', 'page');
 });
 
-test('初期データの見本: 申請者のホームの進行中の申請に、合議の途中の案件がノードの状態どおりのステップの点と線で出る', async ({
+test('初期データの見本: 申請者のホームの進行中の申請に、保留中の案件がノードの状態どおりのステップの点と線で出る', async ({
     page,
 }) => {
     await openAs(page, 'applicant', '/');
 
-    // u0001 = 未処理 1(再申請待ち 1)・進行中 7(2 段目の 4・版 3 の見本の未完了 2・workflow-route.spec.ts の申請 1。承認待ち 6・再申請待ち 1)・今月の処理済み 0・一時保存 1
+    // u0001 = 未処理 1・進行中 10(2 段目の 4・版 3 の 2・案件の運用の 3・workflow-route.spec.ts の申請 1)・今月の処理済み 0・一時保存 1
     await expect(counterCard(page, '未処理の申請')).toHaveText(
         /^未処理の申請1件再申請待ち\s*1$/,
     );
     await expect(counterCard(page, '進行中の申請')).toHaveText(
-        /^進行中の申請7件承認待ち\s*6・再申請待ち\s*1$/,
+        /^進行中の申請10件承認待ち\s*8・再申請待ち\s*1・保留中\s*1$/,
     );
     await expect(counterCard(page, '今月の処理済み')).toHaveText(
         /^今月の処理済み0件$/,
     );
     await expect(counterCard(page, '一時保存')).toHaveText(/^一時保存1件$/);
 
-    // 経路は先頭の 3 件(更新の新しい順 = workflow-route.spec.ts の申請・WF-000010・WF-000009。再申請待ちの WF-000004 は 4 件目以降で出ない)。
-    // WF-000009 は合議の途中: ステップはノードの状態どおり(通過の分岐・分岐終了は処理済み、展開中の合議は承認待ち = ルートの深さ/認可と一覧.md 2 節の H2・H3)
+    // 経路は先頭の 3 件(更新の新しい順 = route の申請・WF-000013 = D − 1・WF-000014 = D − 2。WF-000009・000004 は出ない)。WF-000013 は部長が
+    // 保留中: ステップはノードの状態どおり(通過の分岐は処理済み、保留中は現在のステップ = 案件の運用/認可と一覧.md の 2.4 節)
     const routes = homePanel(page, '進行中の申請');
     await expect(routes.getByRole('list', { name: 'ステップ' })).toHaveCount(3);
-    const title = 'プロジェクト計画の承認 新規顧客開拓の訪問強化';
+    const title = 'プロジェクト計画の承認 新製品の発売計画';
     const item = routes
         .getByRole('listitem')
         .filter({ has: page.getByRole('link', { name: title, exact: true }) });
-    await expect(item).toContainText(
-        '承認待ち：関係部署の合議 承認 2、関係部署の合議 承認 3',
-    );
+    await expect(item).toContainText('保留中：部長');
     await expect(
         item.getByRole('list', { name: 'ステップ' }).getByRole('listitem'),
     ).toHaveText([
         /^申請\s*\(処理済み\)$/,
         /^課長\s*\(処理済み\)$/,
         /^予算\s*\(処理済み\)$/,
-        /^部長\s*\(処理済み\)$/,
-        /^分岐終了\s*\(処理済み\)$/,
-        /^関係部署の合議\s*\(承認待ち\)$/,
+        /^部長\s*\(保留中\)$/,
+        /^分岐終了\s*\(到達していない\)$/,
+        /^関係部署の合議\s*\(到達していない\)$/,
         /^責任者\s*\(到達していない\)$/,
     ]);
     await expect(item.locator('li[aria-current="step"]')).toHaveCount(1);
-    // 「再申請」は再申請待ちの案件だけ(先頭の 3 件はどれも承認待ち)
+    // 「再申請」は再申請待ちの案件だけ(先頭の 3 件は承認待ちと保留中)
     await expect(routes.getByRole('link', { name: /^再申請/ })).toHaveCount(0);
 });
 
@@ -359,7 +359,7 @@ test('初期データの見本: 課題の案件に関連する案件、部長の
         'aria-current',
         'page',
     );
-    await expect(caseTab(page, '未処理')).toHaveText('未処理2');
+    await expect(caseTab(page, '未処理')).toHaveText('未処理3');
 
     await page
         .getByRole('table', { name: '未処理の申請' })
@@ -487,7 +487,7 @@ test('一時保存のタブで、申請できる人の行は申請名がリン�
 
     await expect(page).toHaveURL('/workflow/cases?tab=draft');
     await expect(
-        draftTable.getByRole('cell', { name: draftName, exact: true }),
+        draftTable.getByText(draftName, { exact: true }),
     ).toBeVisible();
     await expect(
         draftTable.getByRole('link', { name: draftName, exact: true }),
@@ -669,25 +669,26 @@ test('上長が差戻し先の「申請」を選択して差戻すと、申請�
 
     await switchUser(page, USERS.chief[1], 'applicant');
     await page.goto('/workflow/cases');
-    const pending = page.getByRole('table', { name: '未処理の申請' });
-    const row = pending.getByRole('row').filter({ hasText: CASE_NAME });
+    // 未処理のタブの現在のステップは「申請」。未処理の行は操作の列を持たないので、再申請・取止めは処理済のタブの行から(案件の画面.md の 2 節)
+    const pendingRow = page.getByRole('row').filter({ hasText: CASE_NAME });
+    await expect(
+        pendingRow.getByRole('cell', { name: '申請', exact: true }),
+    ).toBeVisible();
+    await page.goto('/workflow/cases?tab=processed');
+    const row = page.getByRole('row').filter({ hasText: CASE_NAME });
     await expect(row).toContainText('再申請待ち');
     await expect(
         row.getByRole('button', { name: `${CASE_NAME}の取止め`, exact: true }),
     ).toBeVisible();
-    // 同じ利用者の古いタブで、再申請の前の未処理の一覧を開いておく(再申請の後に、行の取止めを改訂番号の不一致にする)
+    // 同じ利用者の古いタブで、再申請の前の処理済の一覧を開いておく(再申請の後に、行の取止めを改訂番号の不一致にする)
     const stale = await page.context().newPage();
-    await stale.goto('/workflow/cases');
-    const staleRow = stale
-        .getByRole('table', { name: '未処理の申請' })
+    await stale.goto('/workflow/cases?tab=processed');
+    const staleWithdraw = stale
+        .getByRole('table', { name: '処理済の申請' })
         .getByRole('row')
-        .filter({ hasText: CASE_NAME });
-    await expect(
-        staleRow.getByRole('button', {
-            name: `${CASE_NAME}の取止め`,
-            exact: true,
-        }),
-    ).toBeVisible();
+        .filter({ hasText: CASE_NAME })
+        .getByRole('button', { name: `${CASE_NAME}の取止め`, exact: true });
+    await expect(staleWithdraw).toBeVisible();
     await row
         .getByRole('link', { name: `${CASE_NAME}の再申請`, exact: true })
         .click();
@@ -714,10 +715,8 @@ test('上長が差戻し先の「申請」を選択して差戻すと、申請�
         page.getByText('再申請しました', { exact: true }),
     ).toBeVisible();
 
-    // 古いタブで行の取止めを決定すると、案件は課長の承認へ進んでいるので不一致になり、行は一覧から外れるが、ダイアログは残って誤りを表示する
-    await staleRow
-        .getByRole('button', { name: `${CASE_NAME}の取止め`, exact: true })
-        .click();
+    // 古いタブで行の取止めを決定すると、案件は課長の承認へ進んでいるので不一致になり、描き直した行は取止めを持たないが、ダイアログは残って誤りを表示する
+    await staleWithdraw.click();
     const staleDialog = stale.getByRole('dialog', { name: '取止める' });
     await submitAndExpectUrl(
         stale,
@@ -729,7 +728,7 @@ test('上長が差戻し先の「申請」を選択して差戻すと、申請�
     await expect(
         staleDialog.getByRole('link', { name: '再表示', exact: true }),
     ).toBeVisible();
-    await expect(staleRow).toHaveCount(0);
+    await expect(staleWithdraw).toHaveCount(0);
     await stale.close();
 
     await page.getByRole('button', { name: '差分を表示', exact: true }).click();

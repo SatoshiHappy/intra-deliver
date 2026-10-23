@@ -200,7 +200,7 @@ export type RecordAdminModuleForm = {
     isDetails: boolean;
     /** 所属するモジュール分類の ID(明細のモジュールは null、非表示は空 = モジュール分類/画面と検査.md 4.2) */
     categoryIds: string[] | null;
-    /** 添付ファイルを使用するか(明細のモジュールは null = レコードの共通機能/業務モジュールの管理.md 2 節) */
+    /** 添付ファイルの追加・削除を許可するか(明細のモジュールは null = レコードの共通機能/業務モジュールの管理.md 2 節) */
     isAttachmentEnabled: boolean | null;
     /** 見える範囲(明細のモジュールは null = レコードの共通機能/業務モジュールの管理.md 2 節) */
     rowAccessScope: RowAccessScope | null;

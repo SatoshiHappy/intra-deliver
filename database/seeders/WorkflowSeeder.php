@@ -2,25 +2,28 @@
 
 namespace Database\Seeders;
 
+use App\Actions\Authz\Api\CreateSelectionSubjectGroup;
 use App\Actions\Authz\Api\SelectionCondition;
 use App\Actions\Authz\CreatePolicy;
 use App\Actions\Authz\CreateRoutePrefixResourceGroup;
 use App\Actions\Authz\CreateRouteResource;
 use App\Actions\Authz\FindOrCreateSingleConditionSubjectGroup;
-use App\Actions\Records\Api\RecordInput;
+use App\Actions\Master\FillsAllLocales;
 use App\Actions\Workflow\AddRouteVersion;
-use App\Actions\Workflow\ApplicationInput;
 use App\Actions\Workflow\ApplyCase;
 use App\Actions\Workflow\ApproveCase;
 use App\Actions\Workflow\ApproveCaseEarly;
+use App\Actions\Workflow\ConfirmCase;
 use App\Actions\Workflow\CreateDraft;
 use App\Actions\Workflow\CreateWorkflowContent;
 use App\Actions\Workflow\CreateWorkflowFlow;
-use App\Actions\Workflow\DraftInput;
+use App\Actions\Workflow\HoldCase;
 use App\Actions\Workflow\ReapplyCase;
+use App\Actions\Workflow\RegisterProxy;
 use App\Actions\Workflow\RejectCase;
 use App\Actions\Workflow\RouteEdgeInput;
 use App\Actions\Workflow\SendBackCase;
+use App\Actions\Workflow\TransferCase;
 use App\Actions\Workflow\WithdrawCase;
 use App\Actions\Workflow\WorkflowRouteNodeInput;
 use App\Enums\Authz\PolicyEffect;
@@ -41,16 +44,18 @@ use LogicException;
 
 /**
  * ワークフローの初期データ(docs の 設計/ワークフロー/ルートの深さ/初期データ.md。中身の正本はこの seeder、設計の値 = 2〜4 節)。RecordsSeeder の後に 1 回入れる前提。
- * すべて業務処理を通す: 処理対象者と参照者の対象者 5(用途 selection)はフローを作る業務処理の中で作り、定義(コンテンツ 2・フロー 2・版 4 = 計画の版 1(ユーザー無効)・2 が
- * 一本道 A、版 3 が分岐 B、課題の版 1 が一本道 A。一本道 A の版は同じ対象者を指す = 2 節・3 節)の後に、案件の見本 13 を案件の操作の業務処理で順に作る
- * (番号は申請の順に WF-000001 から。2 段目の見本 9 は申請基準日を版 2・版 1 に置き、足した見本 4 は版 3 = 4 節)。
+ * すべて業務処理を通す: 処理対象者と参照者の対象者 5(用途 selection)はフローを作る業務処理の中で作り(確認する人の 1 は認可の口)、定義(コンテンツ 2・フロー 2・版 4 = 計画の版 1(ユーザー無効)・2 が
+ * 一本道 A、版 3 が分岐 B、課題の版 1 が一本道 A。一本道 A の版は同じ対象者を指す = 2 節・3 節)の後に、代理 4・案件の見本 17 を業務処理で作る
+ * (番号は申請の順に WF-000001 から。2 段目の見本 9 は申請基準日を版 2・版 1 に置き、足した見本 4 は版 3 = 4 節。案件の運用の見本 4 =
+ * 設計/ワークフロー/案件の運用/初期データ.md 4.3)。
  *
- * 判定の入力は操作する人ごとの AccessContext(接続元・選んだ組織なし、基準日 = 流す日の Asia/Tokyo の日付、ロケール ja)。処理の日時は流した時刻
- * (業務処理が操作した時の時計で付ける)。
+ * 見本(代理 4・案件 17・確認)は操作ごとに時計をその操作の時刻に合わせて業務処理を通し、全部の後に時計を戻す({@see SeedingClock}。
+ * 設計/ワークフロー/案件の運用/初期データ.md 1.2・4 節)。判定の入力は操作する人ごとの AccessContext(接続元・選んだ組織なし、基準日 = 操作の日、ロケール ja)。
  * 申請の案件名は空で渡して既定にする(docs の 設計/ワークフロー/初期データ.md 4 節)。業務データは RecordsSeeder のプロジェクトを参照する。
  *
- * 先頭に、接頭辞のリソースグループ 6・ルートのリソース 19 と、各ルートのゲストユーザ・認証済みユーザへの execute の許可
- * (38 = 設計/ワークフロー/ルートの深さ/初期データ.md 5 節)を入れる(設計/ワークフロー/ルートの深さ/初期データ.md 1 節。
+ * 先頭に、接頭辞のリソースグループ 6・ルートのリソース 22 と、各ルートのゲストユーザ・認証済みユーザへの execute の許可
+ * (44 = 設計/ワークフロー/ルートの深さ/初期データ.md 5 節の 38 と、一括承認・一括確認・利用者の候補の 6 =
+ * 設計/ワークフロー/案件の運用/認可と一覧.md の 4 節)を入れる(設計/ワークフロー/ルートの深さ/初期データ.md 1 節。
  * 接頭辞のリソースグループには許可を置かない)。メニューのグループ「ワークフロー」は MenuSeeder が入れる。
  * 定義の前に workflow-flow のセットとシステム管理者の許可 2 を入れ、フローを作るたびにフローのリソースを足す({@see WorkflowFlowResources}。
  * 設計/ワークフロー/案件の運用/認可と一覧.md の 3 節)。
@@ -61,13 +66,16 @@ use LogicException;
 class WorkflowSeeder extends Seeder
 {
     use BuildsWorkflowSampleRecords;
+    use FillsAllLocales;
     use FindsAuthzSubjects;
+    use SeedsWorkflowOperationSamples;
     use SeedsWorkflowRouteCases;
     use SeedsWorkflowRouteVersions;
+    use SeedsWorkflowSampleCases;
 
     /**
      * 初期データの日付(1 か所。docs の 設計/ワークフロー/ルートの深さ/初期データ.md 3.1・4 節): 計画のフローの版の開始日、課題のフローの版 1 の開始日、2 段目の計画の見本の申請基準日(版 2 の中)。
-     * 足した見本と課題の見本の申請基準日は流す日(版 3・課題の版 1)。
+     * 版 3 の見本の申請基準日は流す日、課題の見本は申請の操作の日(設計/ワークフロー/案件の運用/初期データ.md 4.2)。
      */
     public const DATES = [
         'plan_version_1' => '2025-04-01',
@@ -108,6 +116,9 @@ class WorkflowSeeder extends Seeder
         'workflow.cases.assignee-candidates' => ['処理対象者の候補', 'Assignee candidates'],
         'workflow.reapplications.create' => ['再申請の画面', 'Reapplication form'],
         'workflow.reapplications.store' => ['再申請', 'Reapply'],
+        'workflow.cases.bulk-approve' => ['一括承認', 'Bulk approve'],
+        'workflow.cases.bulk-confirm' => ['一括確認', 'Bulk confirm'],
+        'workflow.user-candidates' => ['利用者の候補', 'User candidates'],
     ];
 
     /** コンテンツ: コード => [業務モジュールのコード, 名前] */
@@ -151,6 +162,11 @@ class WorkflowSeeder extends Seeder
         private SendBackCase $sendBack,
         private ReapplyCase $reapply,
         private WithdrawCase $withdraw,
+        private CreateSelectionSubjectGroup $createSelection,
+        private RegisterProxy $registerProxy,
+        private HoldCase $hold,
+        private TransferCase $transfer,
+        private ConfirmCase $confirm,
     ) {}
 
     public function run(): void
@@ -158,8 +174,13 @@ class WorkflowSeeder extends Seeder
         $this->createRoutes();
         $this->flowResources->createSet();
         $this->createDefinitions();
-        $this->createCases();
-        $this->createRouteCases();
+        SeedingClock::restoring(function () {
+            $this->createProxies();
+            $this->createCases();
+            $this->createRouteCases();
+            $this->createOperationCases();
+            $this->confirmSamples();
+        });
     }
 
     /**
@@ -184,7 +205,8 @@ class WorkflowSeeder extends Seeder
 
     /**
      * コンテンツ 2・フロー 2(版 1 とノード 3。処理対象者の対象者 3 を 1 つ目のフローの業務処理が作り、2 つ目は同じ対象者を指す。参照者の対象者 2 も
-     * フローの業務処理が作る)と、計画のフローの版 2(一本道 A)・版 3(分岐 B)。
+     * フローの業務処理が作る)と、計画のフローの版 2(一本道 A)・版 3(分岐 B)。版 2・版 3 の承認のノードに期限の日数、課長と部長に確認する人
+     * (対象者 1 つを 4 つのノードが共有する。表示名はすべてのロケールで同じ = 設計/ワークフロー/案件の運用/初期データ.md 3 節)。
      */
     private function createDefinitions(): void
     {
@@ -205,93 +227,32 @@ class WorkflowSeeder extends Seeder
         }
 
         $subjects = $this->firstVersionSubjects('project_plan');
-        $this->addVersion->execute('project_plan', SeedingDates::date(self::DATES['plan_version_2']), $this->linearRoute($subjects), [
+        $confirmer = $this->createSelection->execute(
+            [$this->condition(SelectionConditionKind::User, 'u0010')],
+            $this->forAllLocales('プロジェクト計画の承認 / 確認する人'),
+        );
+        $version2 = SeedingDates::date(self::DATES['plan_version_2']);
+        $this->addVersion->execute('project_plan', $version2, $this->linearRoute($subjects, $confirmer), [
             new RouteEdgeInput('apply', 'section_chief'), new RouteEdgeInput('section_chief', 'manager'),
         ]);
-        [$branchNodes, $branchEdges] = $this->branchRoute($subjects['apply']);
+        [$branchNodes, $branchEdges] = $this->branchRoute($subjects['apply'], $confirmer);
         $this->addVersion->execute('project_plan', SeedingDates::date(self::DATES['plan_version_3']), $branchNodes, $branchEdges);
     }
 
     /**
-     * 案件の見本 9(見せるもの = 設計/ワークフロー/初期データ.md 4 節。申請の順に案件番号が付く)。計画の申請基準日 = 版 2 の日、課題 = 流す日(版 1)。
+     * 時計を操作の時刻に合わせ、操作する人の判定の入力(接続元・選んだ組織なし、基準日 = 操作の日、ロケール ja)を返す。
+     *
+     * @param  string  $at  操作の時刻(基準の日に書いた Asia/Tokyo の日時 = {@see SeedingClock::set()})
      */
-    private function createCases(): void
+    private function contextAt(string $at, string $userCode): AccessContext
     {
-        $first = $this->applyPlan('u0001', 1, '営業支援ツールの導入計画を申請します。');
-        $this->approve->execute($this->contextOf('u0002'), $first, $this->revisionOf($first), $this->currentNodeIdOf($first), '確認しました。');
-        $this->approve->execute($this->contextOf('u0003'), $first, $this->revisionOf($first), $this->currentNodeIdOf($first), '承認します。');
-
-        $this->applyIssue('u0001', '導入先の部署が決定していない', $this->recordIdOf($first), 'u0001', 'medium', '2026-11-13');
-
-        $third = $this->applyPlan('u0001', 3);
-        $this->approve->execute($this->contextOf('u0002'), $third, $this->revisionOf($third), $this->currentNodeIdOf($third), '部長の確認をお願いします。');
-
-        $fourth = $this->applyPlan('u0001', 4);
-        $this->sendBackToApply($fourth, '対象の資料の一覧を添えてください。');
-
-        $fifth = $this->applyPlan('u0001', 5, '代理店向け説明会の計画を申請します。');
-        $this->sendBackToApply($fifth, '予算と終了日を再検討してください。');
-        $end = SeedingDates::day('2027-04-30');
-        $reapplied = new ApplicationInput(null, "予算を 350 万円に、終了日を {$end} に変更しました。", $this->planInput(5, ['budget' => 350, 'end_date' => $end]));
-        $this->reapply->execute($this->contextOf('u0001'), $fifth, $this->revisionOf($fifth), $reapplied);
-
-        $sixth = $this->applyIssue('u0010', '経費の入力画面が分かりにくい', $this->projectIdOf('経費精算の電子化'), 'u0010', 'low', null);
-        $this->reject->execute($this->contextOf('u0002'), $sixth, $this->revisionOf($sixth), $this->currentNodeIdOf($sixth), '運用マニュアルで対応します。');
-
-        $seventh = $this->applyIssue('u0009', '人事の申請の入口が分かれている', $this->projectIdOf('社内ポータル刷新'), 'u0011', 'high', '2026-11-30');
-        $this->approveEarly->execute($this->contextOf('u0002'), $seventh, $this->revisionOf($seventh), $this->currentNodeIdOf($seventh), '急ぎのため、課長の承認で終了します。');
-
-        $eighth = $this->applyPlan('u0001', 8);
-        $this->sendBackToApply($eighth, '開催の目的を追加してください。');
-        $this->withdraw->execute($this->contextOf('u0001'), $eighth, $this->revisionOf($eighth), '今期は見送ります。');
-
-        $this->createDraft->execute($this->contextOf('u0001'), 'issue_resolution', new DraftInput('課題の対応の承認 請求書の様式の変更', null, [
-            'title' => '請求書の様式の変更', 'project' => $this->projectIdOf('経費精算の電子化'), 'priority' => 'medium', 'status' => 'open',
-        ], []));
+        return new AccessContext($this->userId($userCode), null, null, SeedingClock::set($at), AccessContext::LOCALE_CODE);
     }
 
     /**
-     * 計画の案件を申請する(案件名は空 = 既定)。申請基準日の既定 = 2 段目の見本の日(版 2)を流す日からの相対にした日。
+     * 流す日(Asia/Tokyo の日付。版 3 の見本の申請基準日)。
      */
-    private function applyPlan(string $applicant, int $plan, ?string $comment = null, ?string $baseDate = null): int
-    {
-        $baseDate ??= SeedingDates::day(self::DATES['stage2_plan_base_date']);
-
-        return $this->apply->execute($this->contextOf($applicant), 'project_plan', new ApplicationInput(null, $comment, $this->planInput($plan)), $baseDate)->caseId;
-    }
-
-    /**
-     * 課題の案件を申請する(案件名は空 = 既定。状態は未着手。期限は基準の日の値で受ける)。
-     */
-    private function applyIssue(string $applicant, string $title, int $projectId, string $assignee, string $priority, ?string $dueDate): int
-    {
-        return $this->apply->execute($this->contextOf($applicant), 'issue_resolution', new ApplicationInput(null, null, new RecordInput([
-            'title' => $title, 'project' => $projectId, 'assignee' => $this->userId($assignee), 'priority' => $priority, 'status' => 'open',
-            'due_date' => SeedingDates::day($dueDate),
-        ])), $this->today()->toDateString())->caseId;
-    }
-
-    /**
-     * u0002(課長の承認の処理対象者)が申請のノードへ差戻す。
-     */
-    private function sendBackToApply(int $caseId, string $comment): void
-    {
-        $applyNode = WorkflowCaseNode::query()->where('workflow_case_id', $caseId)->where('code', 'apply')->sole();
-        $this->sendBack->execute($this->contextOf('u0002'), $caseId, $this->revisionOf($caseId), $this->currentNodeIdOf($caseId), $applyNode->id, $comment);
-    }
-
-    /**
-     * 操作する人の判定の入力(接続元・選んだ組織なし、基準日 = 流す日の Asia/Tokyo の日付、ロケール ja)。
-     */
-    private function contextOf(string $userCode): AccessContext
-    {
-        return new AccessContext($this->userId($userCode), null, null, $this->today(), AccessContext::LOCALE_CODE);
-    }
-
-    /**
-     * 流す日(Asia/Tokyo の日付。操作の基準日と申請基準日)。
-     */
-    private function today(): CarbonImmutable
+    private function seedingDay(): CarbonImmutable
     {
         return SeedingDates::seedingDay();
     }

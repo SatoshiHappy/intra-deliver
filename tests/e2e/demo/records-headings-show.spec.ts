@@ -8,7 +8,7 @@ import {
 } from '../support/records-headings';
 import { submitAndExpectUrl } from '../support/submit';
 
-// 見出しのまとまりの畳みと「添付ファイルを使用」(docs の 設計/業務データの入れ物/レコードの共通機能/詳細の画面/見出し.md の 2・3・6 節、
+// 見出しのまとまりの畳みと「添付ファイルの追加・削除を許可」(docs の 設計/業務データの入れ物/レコードの共通機能/詳細の画面/見出し.md の 2・3・6 節、
 // 業務モジュールの管理.md の 7 節の E2E の行): フォームで畳んだ見出しの中の必須を空にして保存すると、誤りの見出しだけが開いて最初の誤りの欄に
 // フォーカスが移る。詳細で見出しを畳み、再読み込みで全部開く。業務モジュール「見出し確認」(見出し「担当情報」「補足事項」)は records-headings-admin が作る。
 test.use({ viewport: { width: 1280, height: 720 } });
@@ -117,15 +117,21 @@ test('詳細では見出しごとに畳め、URL に映らず、再読み込み�
     await expect(value).toBeVisible();
 });
 
-test('「添付ファイルを使用」を外すと詳細の添付の欄が出なくなり、戻すと出る', async ({
+test('「添付ファイルの追加・削除を許可」を外すと詳細の添付の欄が出なくなり、戻すと出る', async ({
     page,
 }) => {
     await openAsAdministrator(page, `${HEADING_MODULE}/edit`);
     const used = page.getByRole('checkbox', {
-        name: '添付ファイルを使用',
+        name: '添付ファイルの追加・削除を許可',
         exact: true,
     });
     await expect(used).toBeChecked();
+    await expect(
+        page.getByText(
+            'チェックを解除すると、詳細の画面で添付ファイルを追加・削除できなくなります。すでに付いている添付ファイルは削除されず、表示できます。申請の添付ファイルも、この業務モジュールで許可する場合だけ追加・削除できます。',
+            { exact: true },
+        ),
+    ).toBeVisible();
     await used.click();
     await submitAndExpectUrl(
         page,
@@ -141,12 +147,12 @@ test('「添付ファイルを使用」を外すと詳細の添付の欄が出�
     await expect(railButton(page, /^添付ファイル/)).toHaveCount(0);
 });
 
-test('「添付ファイルを使用」を戻すと、詳細に添付の欄が出る', async ({
+test('「添付ファイルの追加・削除を許可」を戻すと、詳細に添付の欄が出る', async ({
     page,
 }) => {
     await openAsAdministrator(page, `${HEADING_MODULE}/edit`);
     const used = page.getByRole('checkbox', {
-        name: '添付ファイルを使用',
+        name: '添付ファイルの追加・削除を許可',
         exact: true,
     });
     await expect(used).not.toBeChecked();

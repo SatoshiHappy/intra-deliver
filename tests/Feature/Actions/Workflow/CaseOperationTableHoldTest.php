@@ -12,7 +12,7 @@ use Tests\Support\TransactionalTestCase;
 
 /**
  * 状態 × 操作の表(docs の 設計/ワークフロー/案件の運用/案件の操作/操作.md の 8 節、同時実行と検査.md の 14.1 節)のうち、保留と振替の 4 つの状況の全組。
- * 期待と記号は {@see ChecksCaseOperationTable} に足して: D = 承認 2(u0007)、E・F = B の承認の代理先(u0008・u0009)、H = 申請者 A の承認の代理先(u0011)。
+ * 期待と記号は {@see ChecksCaseOperationTable} に足して: D = 承認 2(u0007)、E・F = B の承認の代理先(u0008・u0013)、H = 申請者 A の承認の代理先(u0011)。
  * 保留の状況はフロー = 申請 → 承認 1(B・C)→ 承認 2(D)、振替の状況は承認 1 = B だけ(B が C へ振替)。代理元として操作する役割(E・F が B として)は、
  * 申請の系統の操作(再申請・取止め)で承認の代理が合わないので 422 principal_user_id(13 節)。入力 = 承認 1・差戻し先 = 申請・振替先 = U。
  * 案件の管理者 P は、保留中の承認 1 を解除でき(保留者側でなくてよい)、承認 1 の処理対象者の変更(U へ)・再展開(写した指定の人。振替の前の B に戻る)・
@@ -46,7 +46,7 @@ final class CaseOperationTableHoldTest extends TransactionalTestCase
      */
     protected function tablePeople(): array
     {
-        return [...self::PEOPLE, 'D' => 'u0007', 'E' => 'u0008', 'F' => 'u0009', 'H' => 'u0011'];
+        return [...self::PEOPLE, 'D' => 'u0007', 'E' => 'u0008', 'F' => 'u0013', 'H' => 'u0011'];
     }
 
     /**
@@ -226,7 +226,7 @@ final class CaseOperationTableHoldTest extends TransactionalTestCase
     {
         [$b, $a] = [$this->seededUser('u0002'), $this->seededUser('u0001')];
         $this->addProxy($b, $this->seededUser('u0008'));
-        $this->addProxy($b, $this->seededUser('u0009'));
+        $this->addProxy($b, $this->seededUser('u0013'));
         $this->addProxy($a, $this->seededUser('u0011'));
     }
 

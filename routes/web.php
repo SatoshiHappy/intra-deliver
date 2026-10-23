@@ -26,11 +26,13 @@ use App\Http\Controllers\Web\Records\RelatedColumnController;
 use App\Http\Controllers\Web\Records\RuleController;
 use App\Http\Controllers\Web\Workflow\ApplicationController;
 use App\Http\Controllers\Web\Workflow\AssigneeCandidateController;
+use App\Http\Controllers\Web\Workflow\BulkActionController;
 use App\Http\Controllers\Web\Workflow\CaseActionController;
 use App\Http\Controllers\Web\Workflow\CaseController;
 use App\Http\Controllers\Web\Workflow\DraftController;
 use App\Http\Controllers\Web\Workflow\FlowController;
 use App\Http\Controllers\Web\Workflow\ReapplicationController;
+use App\Http\Controllers\Web\Workflow\UserCandidateController;
 use Illuminate\Support\Facades\Route;
 
 // ルートの名前 = <モジュール名の小文字>.<区切り>(.<区切り>…)、241 文字以内、ほかのルートの名前の接頭辞にしない、アプリのルートの中で一意。
@@ -165,6 +167,11 @@ Route::put('/workflow/drafts/{case}', [DraftController::class, 'update'])->name(
 Route::post('/workflow/drafts/{case}/apply', [DraftController::class, 'apply'])->name('workflow.drafts.apply')->where('case', '[0-9]{1,18}');
 Route::delete('/workflow/drafts/{case}', [DraftController::class, 'destroy'])->name('workflow.drafts.destroy')->where('case', '[0-9]{1,18}');
 Route::get('/workflow/cases', [CaseController::class, 'index'])->name('workflow.cases.index');
+Route::post('/workflow/cases/bulk-approve', [BulkActionController::class, 'approve'])
+    ->name('workflow.cases.bulk-approve');
+Route::post('/workflow/cases/bulk-confirm', [BulkActionController::class, 'confirm'])
+    ->name('workflow.cases.bulk-confirm');
+Route::get('/workflow/user-candidates', UserCandidateController::class)->name('workflow.user-candidates');
 Route::get('/workflow/cases/{case}', [CaseController::class, 'show'])->name('workflow.cases.show')->where('case', '[0-9]{1,18}');
 Route::post('/workflow/cases/{case}/approve', [CaseActionController::class, 'approve'])->name('workflow.cases.approve')->where('case', '[0-9]{1,18}');
 Route::post('/workflow/cases/{case}/approve-early', [CaseActionController::class, 'approveEarly'])->name('workflow.cases.approve-early')->where('case', '[0-9]{1,18}');

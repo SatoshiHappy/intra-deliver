@@ -58,8 +58,8 @@ class CurrentNodes
     }
 
     /**
-     * 案件の札の状態の 1 か所(ルートの深さ/認可と一覧.md 2 節 = H1): 現在のノードに再申請待ちがあれば再申請待ち、無ければ承認待ち。現在のノードが無ければ null。
-     * 一覧の行・詳細・ホームの件数の内訳と未処理の表が同じ規則を使う。
+     * 案件の札の状態の 1 か所(設計/ワークフロー/案件の運用/認可と一覧.md の 2.4 節): 再申請待ちがあれば再申請待ち、すべて保留中なら保留中、
+     * ほかは承認待ち。現在のノードが無ければ null。一覧の行・詳細・ホームの件数の内訳と未処理の表と経路の note が同じ規則を使う。
      *
      * @param  list<CurrentNode>  $nodes  1 つの案件の現在のノード
      */
@@ -69,12 +69,13 @@ class CurrentNodes
             return null;
         }
 
-        foreach ($nodes as $node) {
-            if ($node->state === WorkflowNodeState::Reapply) {
-                return WorkflowNodeState::Reapply;
-            }
-        }
+        $states = array_map(fn (CurrentNode $node) => $node->state, $nodes);
+        $notHeld = array_filter($states, fn (WorkflowNodeState $state) => $state !== WorkflowNodeState::Hold);
 
-        return WorkflowNodeState::Waiting;
+        return match (true) {
+            in_array(WorkflowNodeState::Reapply, $states, true) => WorkflowNodeState::Reapply,
+            $notHeld === [] => WorkflowNodeState::Hold,
+            default => WorkflowNodeState::Waiting,
+        };
     }
 }

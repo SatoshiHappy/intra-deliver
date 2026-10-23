@@ -1,7 +1,8 @@
+import { formErrorId } from '@/components/FormBlock';
 import { RecordMentionPicker } from '@/components/RecordMentionPicker';
+import { RichTextInput } from '@/components/RichTextInput';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { useCommentPost } from '@/hooks/use-comment-post';
 
 type Props = {
@@ -15,10 +16,17 @@ type Props = {
 const GUIDE =
     '宛先に選択したユーザーだけに、画面内の通知が送信されます。書いたコメントは編集できません。削除できるのは自分のコメントと、システム管理者だけです。';
 
-/** 誤りの文言の並び(欄の下。読み上げに出す) */
-function ErrorLines({ messages }: { messages: string[] }) {
+/** 本文の入力の id(誤りの文言の要素の id もここから作る) */
+const BODY_ID = 'record-comment-body';
+
+/** 誤りの文言の並び(欄の下。読み上げに出す。id は入力の aria-describedby が指す) */
+function ErrorLines({ messages, id }: { messages: string[]; id?: string }) {
     return messages.length === 0 ? null : (
-        <ul role="alert" className="grid gap-0.5 text-sm text-destructive">
+        <ul
+            id={id}
+            role="alert"
+            className="grid gap-0.5 text-sm text-destructive"
+        >
             {messages.map((message) => (
                 <li key={message}>{message}</li>
             ))}
@@ -55,15 +63,21 @@ export function RecordCommentForm({ storeUrl, candidatesUrl }: Props) {
                 このレコードを閲覧できるユーザーだけを選択できます。組織は選択できません。
             </p>
             <ErrorLines messages={errors.mentions} />
-            <Textarea
-                aria-label="コメント"
-                aria-invalid={errors.body !== null || undefined}
+            <RichTextInput
+                id={BODY_ID}
+                ariaLabel="コメント"
                 placeholder="コメントを入力"
                 value={post.body}
+                onChange={post.setBody}
+                max={null}
+                invalid={errors.body !== null}
+                isRequiredNow
                 disabled={sending}
-                onChange={(event) => post.setBody(event.target.value)}
             />
-            <ErrorLines messages={errors.body === null ? [] : [errors.body]} />
+            <ErrorLines
+                id={formErrorId(BODY_ID)}
+                messages={errors.body === null ? [] : [errors.body]}
+            />
             <div className="flex justify-end">
                 <Button type="submit" disabled={sending}>
                     投稿
