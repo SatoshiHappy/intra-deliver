@@ -7,6 +7,7 @@ use App\Models\Ai\AiRun;
 use App\Models\Ai\AiRunText;
 use App\Queries\Ai\AiSettings;
 use App\Queries\Ai\KindSettings;
+use Laravel\Ai\Enums\Lab;
 use LogicException;
 use Throwable;
 
@@ -27,13 +28,14 @@ class LlmClient
         $settings = $this->kinds->prompt($run->kind)
             ?? throw new LogicException("AI の実行の種類 {$run->kind} が文章の種類の設定(config/ai_runs.php の kinds)に無い");
         $maxOutputTokens = $run->max_output_tokens ?? throw new LogicException("AI の実行 {$run->id} に出力の上限が無い");
+        $driver = $this->settings->providerDriver($run->provider);
         $agent = new PromptAgent(
             $text->system_text,
             $kind,
             $maxOutputTokens,
             $settings['timeout_seconds'],
-            $this->settings->providerDriver($run->provider),
-            $settings['provider_options'],
+            $driver,
+            [...$settings['provider_options'], ...self::visitorOptions($driver, $run->visitor_id)],
         );
 
         try {
@@ -41,5 +43,17 @@ class LlmClient
         } catch (Throwable $exception) {
             throw LlmCallFailed::from($exception);
         }
+    }
+
+    /**
+     * 実行ごとに接続先の要求に足す訪問者の ID(送る条件 = docs の 設計/AI/実行と費用.md 4.4)。
+     *
+     * @return array<string, mixed>
+     */
+    private static function visitorOptions(?string $driver, ?string $visitorId): array
+    {
+        return $driver === Lab::Anthropic->value && $visitorId !== null
+            ? [KindSettings::RUN_OPTION_KEY => ['user_id' => $visitorId]]
+            : [];
     }
 }

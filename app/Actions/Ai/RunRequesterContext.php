@@ -10,15 +10,15 @@ use App\Support\AccessContext;
 use Carbon\CarbonImmutable;
 
 /**
- * worker の中の依頼者の判定の入力を実行の記録から作る 1 か所(要求が無いため。docs の 設計/AI/公開の口.md 3.2 の「依頼者の判定の入力」)。
- * 書き込みの口と、worker の中の 2 段目の依頼が使う。
+ * worker の中の依頼者の文脈を実行の記録から作る 1 か所(要求が無いため。docs の 設計/AI/公開の口.md 3.2 の「依頼者の文脈」)。
+ * 書き込みの口と、worker の中の 2 段目の依頼が使う(2 段目の依頼はこの文脈で依頼の口を呼ぶので、新しい実行に同じ訪問者の ID が写る)。
  */
 class RunRequesterContext
 {
     public function __construct(private EffectiveUsers $effectiveUsers) {}
 
     /**
-     * 判定の入力 = 公開の口.md 3.2 の「依頼者の判定の入力」の表。依頼者が当日に有効でなければ断る
+     * 文脈 = 公開の口.md 3.2 の「依頼者の文脈」の表。依頼者が当日に有効でなければ断る
      * (判定は無効な利用者をゲストとして扱うので、人の要求の入口と同じく前で外す)。
      *
      * @throws RunCompletionFailed 依頼者が当日に有効でないとき(理由 {@see FailedRun::REQUESTER_INACTIVE})
@@ -40,6 +40,7 @@ class RunRequesterContext
             selectedDepartmentId: $run->selected_department_id,
             date: $date,
             localeCode: AccessContext::LOCALE_CODE,
+            visitorId: $run->visitor_id,
         );
     }
 }

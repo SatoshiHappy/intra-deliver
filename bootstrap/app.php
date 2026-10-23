@@ -35,7 +35,7 @@ return Application::configure(basePath: dirname(__DIR__))
         },
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        // app は Worker → Tunnel → cloudflared の経路だけを想定し(入口.md 5.4、採った方針 11)、どの相手からの X-Forwarded-For・Host・Proto も
+        // app は Worker → Tunnel → cloudflared の経路だけを想定し(入口/README.md 5.4、採った方針 11)、どの相手からの X-Forwarded-For・Host・Proto も
         // 信じる(Port は信じない。訪問者が付けた X-Forwarded-Port が URL と 302 の行き先に入るため)。環境を見ずに全環境に掛ける。
         // Caddy の trusted_proxies(docker/app/Caddyfile)は Caddy 側の client_ip の判定に使う範囲で、範囲外の相手の X-Forwarded-* を消す
         // ものではない(公式文書)ので、ここの守りとして頼らない。app に直接届く経路を作らないこと(ホストにポートを公開しない = 構成.md 3.1)で守る

@@ -16,6 +16,13 @@ final class PrincipalContext
             return $context;
         }
 
-        return new AccessContext($principalUserId, $context->ipv4Address, null, $context->date, $context->localeCode);
+        return new AccessContext(
+            $principalUserId,
+            $context->ipv4Address,
+            null,
+            $context->date,
+            $context->localeCode,
+            $context->visitorId,
+        );
     }
 }

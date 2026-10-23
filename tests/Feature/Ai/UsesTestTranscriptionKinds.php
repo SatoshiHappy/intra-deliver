@@ -146,13 +146,16 @@ trait UsesTestTranscriptionKinds
         return AiRun::query()->findOrFail($runId);
     }
 
-    protected function transcriberContext(?int $userId = null, ?int $selectedDepartmentId = null): AccessContext
-    {
+    protected function transcriberContext(
+        ?int $userId = null,
+        ?int $selectedDepartmentId = null,
+        ?string $visitorId = null,
+    ): AccessContext {
         $userId ??= (int) User::query()->orderBy('id')->value('id');
 
         $today = CarbonImmutable::today(AccessContext::TIMEZONE);
 
-        return new AccessContext($userId, null, $selectedDepartmentId, $today, AccessContext::LOCALE_CODE);
+        return new AccessContext($userId, null, $selectedDepartmentId, $today, AccessContext::LOCALE_CODE, $visitorId);
     }
 
     /** 区切りの一時ファイルの置き場に、ファイルが残っていない */

@@ -1,29 +1,11 @@
 // 入口の Worker(index.js)の単体テスト(node --test 'deploy/worker/src/*.test.mjs')。VPC サービスの binding は偽物に置き換える。
+// 訪問者の ID は visitor-id.test.mjs。
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import worker from './index.js';
+import { fakeApp } from './test-support.mjs';
 
-/**
- * 受け取った要求を記録し、決めた応答(か例外)を返す偽の binding。
- * @param {(request: Request) => Response | Promise<Response>} respond
- */
-function fakeApp(respond) {
-    /** @type {Request[]} */
-    const received = [];
-    return {
-        received,
-        env: {
-            APP: {
-                fetch: async (request) => {
-                    received.push(request);
-                    return respond(request);
-                },
-            },
-        },
-    };
-}
-
-// Access が通した要求の ctx(中身は Worker が読まないので最小にする)
+// Access が通した要求の ctx(GET の要求だけに使う。Worker は GET で身元を読まないので最小にする)
 const accessed = { access: { aud: 'test-aud' } };
 
 /** @param {Response} response */

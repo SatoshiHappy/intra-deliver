@@ -22,7 +22,7 @@ final class PromptAgent implements Agent, HasProviderOptions, HasStructuredOutpu
 
     /**
      * @param  string|null  $providerDriver  種類の接続先の driver(config/ai.php)
-     * @param  array<string, mixed>  $providerOptions  種類の設定の provider_options(接続先の要求にそのまま足す)
+     * @param  array<string, mixed>  $providerOptions  接続先の要求にそのまま足す指定(種類の設定の provider_options と、実行ごとの訪問者の ID)
      */
     public function __construct(
         private readonly string $systemText,
@@ -44,7 +44,7 @@ final class PromptAgent implements Agent, HasProviderOptions, HasStructuredOutpu
     }
 
     /**
-     * 種類の設定の provider_options(思考の量 output_config.effort など)。種類の接続先のときだけ返す(種類ごとに接続先は 1 つ)。
+     * 接続先の要求に足す指定(思考の量 output_config.effort・訪問者の ID の metadata など)。種類の接続先のときだけ返す(種類ごとに接続先は 1 つ)。
      *
      * @return array<string, mixed>
      */

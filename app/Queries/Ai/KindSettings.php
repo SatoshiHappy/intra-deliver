@@ -27,6 +27,9 @@ class KindSettings
     /** 種類の型: 文字起こし(音声 1 本の区切りごとの呼び出し) */
     public const TRANSCRIPTION = 'transcription';
 
+    /** 接続先の要求に足す指定のうち、種類の設定が持たない鍵(実行ごとに訪問者の ID を入れる = docs の 設計/AI/実行と費用.md 4.4) */
+    public const RUN_OPTION_KEY = 'metadata';
+
     /** 必須の鍵(共通と型ごと。値は空でない文字列 string か正の整数 int) */
     private const REQUIRED_KEYS = [
         '' => ['provider' => 'string', 'model' => 'string', 'budget' => 'string', 'timeout_seconds' => 'int'],
@@ -53,7 +56,8 @@ class KindSettings
     }
 
     /**
-     * 種類の設定の形の食い違い(型と、型ごとの必須の鍵)。設定に無いコードは空。
+     * 種類の設定の形の食い違い(型と、型ごとの必須の鍵と、接続先の要求に足す指定が {@see self::RUN_OPTION_KEY} を持たないこと。
+     * 持つと、実行ごとに混ぜる値と混ぜる順で片方が消える)。設定に無いコードは空。
      *
      * @return list<string>
      */
@@ -72,8 +76,13 @@ class KindSettings
 
         $wrong = self::wrongKeys($kind, $type);
         $keys = implode('・', $wrong);
+        $problems = $wrong === [] ? [] : ["種類 {$code}({$type})の {$keys} が無いか形が合わない(config/ai_runs.php の kinds)"];
+        $options = $kind['provider_options'] ?? [];
 
-        return $wrong === [] ? [] : ["種類 {$code}({$type})の {$keys} が無いか形が合わない(config/ai_runs.php の kinds)"];
+        $runKey = self::RUN_OPTION_KEY;
+        $carriesRunKey = "種類 {$code}({$type})の provider_options が実行ごとに足す鍵 {$runKey} を持つ(config/ai_runs.php の kinds)";
+
+        return is_array($options) && array_key_exists($runKey, $options) ? [...$problems, $carriesRunKey] : $problems;
     }
 
     /**

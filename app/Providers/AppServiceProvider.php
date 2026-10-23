@@ -124,7 +124,7 @@ class AppServiceProvider extends ServiceProvider
         );
 
         // 本番は TLS を終端する手前のプロキシの後ろで動くので、生成する URL(資産・302 の行き先)をいつも https にする
-        // (X-Forwarded-Proto が届かなくても。docs の 設計/公開の配備/入口.md 5.4 の (c))
+        // (X-Forwarded-Proto が届かなくても。docs の 設計/公開の配備/入口/README.md 5.4 の (c))
         URL::forceHttps(app()->isProduction());
     }
 }

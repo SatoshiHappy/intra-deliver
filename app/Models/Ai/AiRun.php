@@ -17,7 +17,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  * 記録の表で、業務レコードと音声の実体を消しても残る。文字起こしの行は音声の長さと元の音声を持ち、出力の上限を持たない。
  * 使用量・単価・費用は分かったときに一緒に書き、分からない失敗は null のまま(列の組は検査制約が止める)。更新日時の列を持たない(状態の時刻は started_at・finished_at)。
  */
-#[Fillable(['kind', 'status', 'requester_user_id', 'selected_department_id', 'record_id', 'original_record_id', 'record_module_code', 'source_record_ids', 'input_upload_id', 'original_input_upload_id', 'audio_seconds', 'provider', 'model', 'budget', 'max_output_tokens', 'reserved_cost_usd', 'input_tokens', 'output_tokens', 'cache_read_input_tokens', 'cache_write_input_tokens', 'reasoning_tokens', 'pricing', 'cost_usd', 'error_code', 'error_message', 'started_at', 'finished_at'])]
+#[Fillable(['kind', 'status', 'requester_user_id', 'selected_department_id', 'visitor_id', 'record_id', 'original_record_id', 'record_module_code', 'source_record_ids', 'input_upload_id', 'original_input_upload_id', 'audio_seconds', 'provider', 'model', 'budget', 'max_output_tokens', 'reserved_cost_usd', 'input_tokens', 'output_tokens', 'cache_read_input_tokens', 'cache_write_input_tokens', 'reasoning_tokens', 'pricing', 'cost_usd', 'error_code', 'error_message', 'started_at', 'finished_at'])]
 class AiRun extends Model
 {
     /** @use HasFactory<AiRunFactory> */

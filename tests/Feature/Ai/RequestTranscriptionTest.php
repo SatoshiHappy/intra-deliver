@@ -209,6 +209,23 @@ final class RequestTranscriptionTest extends TransactionalTestCase
         );
     }
 
+    public function test_the_visitor_id_of_the_context_is_written_to_the_run_and_none_stays_empty(): void
+    {
+        Queue::fake();
+        $visitorId = '0b9e8f3a-6c2d-4d1e-9a7b-3f5c1e2d4a6b';
+        $uploadId = $this->sine();
+
+        $context = $this->transcriberContext(visitorId: $visitorId);
+
+        $withId = app(RequestTranscription::class)->execute($context, $this->request($uploadId));
+        $withoutId = $this->execute($this->request($uploadId));
+
+        $this->assertSame(
+            [$visitorId, null],
+            [AiRun::query()->findOrFail($withId)->visitor_id, AiRun::query()->findOrFail($withoutId)->visitor_id],
+        );
+    }
+
     public function test_the_length_is_measured_before_the_advisory_lock(): void
     {
         Queue::fake();

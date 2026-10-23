@@ -556,7 +556,7 @@
     "tests/Feature/Ai/RequestPromptTest.php": 6,
     "tests/Feature/Ai/RunQueryTest.php": 6,
     "tests/Feature/Ai/StrayRequestsTest.php": 1,
-    "tests/Feature/Ai/UsesTestPromptKinds.php": 5,
+    "tests/Feature/Ai/UsesTestPromptKinds.php": 4,
     "tests/Feature/Demo/DemoDisabledTest.php": 2,
     "tests/Feature/Demo/DemoEnabledTest.php": 7,
     "tests/Feature/Demo/DemoUserQueryTest.php": 2,

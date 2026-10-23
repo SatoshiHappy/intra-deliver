@@ -75,6 +75,7 @@ class RequestTranscription
             'status' => AiRunStatus::Queued,
             'requester_user_id' => $requesterUserId,
             'selected_department_id' => $context->selectedDepartmentId,
+            'visitor_id' => $context->visitorId,
             'record_id' => $request->recordId,
             'original_record_id' => $request->recordId,
             'record_module_code' => $moduleCode,

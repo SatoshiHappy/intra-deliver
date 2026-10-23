@@ -115,6 +115,18 @@ final class PromptKindsTest extends TransactionalTestCase
         ], app(PromptKinds::class)->problems());
     }
 
+    /** 訪問者の ID は実行ごとに metadata に足すので、種類の設定は metadata を持たない(docs の 設計/AI/実行と費用.md 4.4) */
+    public function test_detects_provider_options_with_the_metadata_of_the_run(): void
+    {
+        $options = ['metadata' => ['user_id' => 'fixed']];
+        $this->configureKinds(['test.metadata' => [...$this->kindSettings(), 'provider_options' => $options]]);
+
+        $this->assertSame(
+            ['種類 test.metadata(prompt)の provider_options が実行ごとに足す鍵 metadata を持つ(config/ai_runs.php の kinds)'],
+            app(PromptKinds::class)->problems(),
+        );
+    }
+
     public function test_settings_without_an_implementation_are_allowed(): void
     {
         $this->configureKinds(['test.later' => $this->kindSettings()]);

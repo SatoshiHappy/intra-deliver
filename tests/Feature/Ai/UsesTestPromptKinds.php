@@ -100,9 +100,15 @@ trait UsesTestPromptKinds
         return AiRun::query()->findOrFail($runId);
     }
 
-    protected function requesterContext(?int $userId = null, ?int $selectedDepartmentId = null): AccessContext
-    {
-        return new AccessContext($userId ?? $this->requesterUserId(), null, $selectedDepartmentId, CarbonImmutable::today(AccessContext::TIMEZONE), AccessContext::LOCALE_CODE);
+    protected function requesterContext(
+        ?int $userId = null,
+        ?int $selectedDepartmentId = null,
+        ?string $visitorId = null,
+    ): AccessContext {
+        $userId ??= $this->requesterUserId();
+        $today = CarbonImmutable::today(AccessContext::TIMEZONE);
+
+        return new AccessContext($userId, null, $selectedDepartmentId, $today, AccessContext::LOCALE_CODE, $visitorId);
     }
 
     protected function guestContext(): AccessContext

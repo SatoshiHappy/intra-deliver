@@ -103,6 +103,22 @@ final class RequestPromptTest extends TransactionalTestCase
         $this->assertSame(['transcription', $department->id], [$run->budget, $run->selected_department_id]);
     }
 
+    public function test_the_visitor_id_of_the_context_is_written_to_the_run_and_none_stays_empty(): void
+    {
+        Queue::fake();
+        $visitorId = '0b9e8f3a-6c2d-4d1e-9a7b-3f5c1e2d4a6b';
+
+        $requestPrompt = app(RequestPrompt::class);
+
+        $withId = $requestPrompt->execute($this->requesterContext(visitorId: $visitorId), $this->promptRequest());
+        $withoutId = $requestPrompt->execute($this->requesterContext(), $this->promptRequest());
+
+        $this->assertSame(
+            [$visitorId, null],
+            [AiRun::query()->findOrFail($withId)->visitor_id, AiRun::query()->findOrFail($withoutId)->visitor_id],
+        );
+    }
+
     public function test_the_job_gets_the_time_limit_from_the_call_limit_of_the_kind(): void
     {
         Queue::fake();
