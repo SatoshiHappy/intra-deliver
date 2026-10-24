@@ -50,7 +50,7 @@ type Props = RecordShowPanelProps &
     };
 
 /**
- * 見出しの右の操作(詳細の画面/README.md の 5.1 節): 権限が無ければ出さず、持ち主(申請中)があれば押せない形で出す(理由は見出しの下の 1 行)。
+ * 見出しの右の操作(詳細の画面/README.md の 5.1 節): 権限が無ければ出さず、持ち主(申請済み)があれば押せない形で出す(理由は見出しの下の 1 行)。
  */
 function ShowActions({
     module,
@@ -100,7 +100,7 @@ function ShowActions({
     );
 }
 
-/** 「複製」(押せば登録の画面に元の値が入る。申請中も押せる = レコードの共通機能/複製.md の 1 節) */
+/** 「複製」(押せば登録の画面に元の値が入る。申請済みも押せる = レコードの共通機能/複製.md の 1 節) */
 function CopyButton({
     moduleCode,
     recordId,

@@ -108,7 +108,7 @@ final class DeleteRecordUncheckedTest extends TransactionalTestCase
 
         $errors = $this->validationErrors(fn () => $this->deleteUnchecked($record->id));
 
-        $this->assertSame(['record' => '申請中のため変更できません'], $errors);
+        $this->assertSame(['record' => '申請済みのため変更できません'], $errors);
         $this->assertModelExists($record);
 
         DB::transaction(function () use ($holds, $record): void {
@@ -151,8 +151,11 @@ final class DeleteRecordUncheckedTest extends TransactionalTestCase
         $this->assertNotNull($written);
         $this->assertModelMissing($written);
 
-        $this->registerRecordHolds([$record->id => 'workflow-case:1'], '申請中です');
-        $this->assertSame(['record' => '申請中です'], $this->validationErrors(fn () => $this->deleteUnchecked($record->id)));
+        $this->registerRecordHolds([$record->id => 'workflow-case:1'], '申請済みです');
+        $this->assertSame(
+            ['record' => '申請済みです'],
+            $this->validationErrors(fn () => $this->deleteUnchecked($record->id)),
+        );
     }
 
     private function deleteUnchecked(int $recordId): void

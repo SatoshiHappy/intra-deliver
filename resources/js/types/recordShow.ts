@@ -190,7 +190,7 @@ export type RecordPanelContent =
           kind: 'attachments';
           rows: RecordAttachmentRow[];
           hasMore: boolean;
-          notice: string | null; // 使用しない業務モジュール・申請中の 1 行
+          notice: string | null; // 使用しない業務モジュール・申請済みの 1 行
           guide: string; // 「ファイルを追加」の案内の 1 行(上限と形式)
       }
     | {

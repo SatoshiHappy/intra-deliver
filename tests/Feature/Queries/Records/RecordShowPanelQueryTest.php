@@ -106,7 +106,7 @@ final class RecordShowPanelQueryTest extends TransactionalTestCase
 
         $notice = $this->content($record->id, 'attachments', null)['notice'] ?? null;
 
-        $this->assertSame(RecordShowPanelQuery::HELD_NOTICE, $notice);
+        $this->assertSame('申請済みのため、添付ファイルを追加・削除できません。付いている添付ファイルは表示できます。', $notice);
     }
 
     public function test_a_held_record_of_a_module_not_allowing_attachments_carries_the_not_allowed_notice_first(): void

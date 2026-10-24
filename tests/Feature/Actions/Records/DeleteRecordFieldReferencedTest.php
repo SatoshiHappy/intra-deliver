@@ -115,7 +115,7 @@ final class DeleteRecordFieldReferencedTest extends TransactionalTestCase
         return [
             '組み込み' => ['builtin', '組み込みの項目は削除できません'],
             '規則' => ['rule', 'memoを使用する規則があります。先に規則を削除してください'],
-            '持ち主' => ['hold', '申請中のため変更できません'],
+            '持ち主' => ['hold', '申請済みのため変更できません'],
         ];
     }
 

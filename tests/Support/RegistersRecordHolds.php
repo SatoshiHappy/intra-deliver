@@ -11,7 +11,7 @@ use App\Queries\Records\Api\RecordHolds;
 trait RegistersRecordHolds
 {
     /** 拒むときの文言(ワークフローの実装と同じ文言 = docs の 設計/ワークフロー/業務データとの接続/申請と書き込み.md 4 節) */
-    private const HOLD_REASON = '申請中のため変更できません';
+    private const HOLD_REASON = '申請済みのため変更できません';
 
     private int $registeredRecordHolds = 0;
 

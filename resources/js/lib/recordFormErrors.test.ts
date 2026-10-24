@@ -182,7 +182,7 @@ describe('errorFieldCodes', () => {
                 'values.members': '選べません',
                 'details.lines.0.values.item': '入力してください',
                 values: '封筒の誤り',
-                record: '申請中です',
+                record: '申請済みです',
                 'values.empty': undefined,
             }),
         ).toEqual(['title', 'members']);

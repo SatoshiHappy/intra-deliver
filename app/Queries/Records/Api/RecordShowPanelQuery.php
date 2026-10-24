@@ -43,7 +43,7 @@ class RecordShowPanelQuery
 
     public const UNUSED_NOTICE = 'この業務モジュールでは、添付ファイルを追加・削除できません。付いている添付ファイルは表示できます。';
 
-    public const HELD_NOTICE = '申請中のため、添付ファイルを追加・削除できません。付いている添付ファイルは表示できます。';
+    public const HELD_NOTICE = '申請済みのため、添付ファイルを追加・削除できません。付いている添付ファイルは表示できます。';
 
     /** Records の欄(キー → 正式の名前・帯の名前。帯の名前の規則 = 詳細の画面/README.md の 2.1 節) */
     private const PANES = [

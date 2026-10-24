@@ -49,7 +49,7 @@ final class RecordApplyEntriesPropsTest extends TransactionalTestCase
     }
 
     /**
-     * 持ち主(申請中)があっても入口は出す(押せない形は hold で決める)。
+     * 持ち主(申請済み)があっても入口は出す(押せない形は hold で決める)。
      */
     public function test_a_held_record_keeps_the_entries(): void
     {

@@ -13,13 +13,13 @@ import type { RouteDefinition } from '@/wayfinder';
 type Props = {
     rows: RecordAttachmentRow[];
     hasMore: boolean;
-    /** 使用しない業務モジュール・申請中の 1 行 */
+    /** 使用しない業務モジュール・申請済みの 1 行 */
     notice: string | null;
     /** 「ファイルを追加」の案内の 1 行 */
     guide: string;
     /** 追加と削除を出すか(業務モジュールの update かつ使用する) */
     canAttach: boolean;
-    /** 申請中(追加と削除を押せない形にする) */
+    /** 申請済み(追加と削除を押せない形にする) */
     held: boolean;
     uploadUrl: string;
     deleteActionOf: (row: RecordAttachmentRow) => RouteDefinition<'delete'>;
@@ -32,7 +32,7 @@ type ItemProps = Pick<Props, 'canAttach' | 'held'> & {
     deleteAction: RouteDefinition<'delete'>;
 };
 
-/** 行の削除(申請中は押せない形。押せない間は確かめの Dialog を置かない) */
+/** 行の削除(申請済みは押せない形。押せない間は確かめの Dialog を置かない) */
 function DeleteAttachment({ row, held, deleteAction }: ItemProps) {
     return held ? (
         <Button
@@ -166,8 +166,8 @@ function AddFiles({
 
 /**
  * サイドパネルの「添付ファイル」の欄(docs の 設計/業務データの入れ物/レコードの共通機能/添付ファイル/レコードの添付.md の 9 節): 上に
- * 「ファイルを追加」と案内の 1 行(使用しない業務モジュール・申請中は 1 行)、下に新しい順の一覧と「さらに表示」。
- * 追加と削除は canAttach のときだけ出し、申請中は押せない形にする。URL は呼び手が渡す(部品はルートの名前を知らない)。
+ * 「ファイルを追加」と案内の 1 行(使用しない業務モジュール・申請済みは 1 行)、下に新しい順の一覧と「さらに表示」。
+ * 追加と削除は canAttach のときだけ出し、申請済みは押せない形にする。URL は呼び手が渡す(部品はルートの名前を知らない)。
  */
 export function RecordAttachmentList(props: Props) {
     const { rows, canAttach, held } = props;

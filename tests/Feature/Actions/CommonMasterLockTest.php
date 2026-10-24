@@ -275,7 +275,7 @@ final class CommonMasterLockTest extends TransactionalTestCase
     }
 
     /**
-     * 初期データのプロジェクトは申請中のレコードを持ち項目を消せないので、factory の業務モジュールの項目を消す。
+     * 初期データのプロジェクトは申請済みのレコードを持ち項目を消せないので、factory の業務モジュールの項目を消す。
      */
     public function deleteRecordField(): void
     {

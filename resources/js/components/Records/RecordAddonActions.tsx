@@ -63,7 +63,7 @@ function AddonActionButton({
 }
 
 /**
- * 後ろのモジュールが足す操作のボタン(docs の 設計/業務データの入れ物/画面/業務の画面.md の 2.5)。held = 詳細の持ち主(申請中)の有無
+ * 後ろのモジュールが足す操作のボタン(docs の 設計/業務データの入れ物/画面/業務の画面.md の 2.5)。held = 詳細の持ち主(申請済み)の有無
  * (一覧は false)。
  */
 export function RecordAddonActions({
