@@ -5,8 +5,8 @@ namespace App\Queries\Records\Api;
 use App\Queries\Records\RecordHoldCatalog;
 
 /**
- * レコードに持ち主(申請中)があるかを、後ろのモジュールが読む口(持ち主の束ね方は {@see RecordHoldCatalog} の 1 か所 = docs の
- * 設計/ワークフロー/業務データとの接続/公開の口.md 7 節の表)。主体の判定をしない(呼び手が閲覧を判定済み)。鍵を取らずに読む。
+ * 会議の再作成が、会議に持ち主(申請中)があるかを読む口(持ち主の束ね方は {@see RecordHoldCatalog} の 1 か所。使い手 = docs の
+ * 設計/業務ツール/会議/処理.md 3.7、消す時 = docs の 設計/adr/0025 の決定 9)。主体の判定をしない(呼び手が閲覧を判定済み)。鍵を取らずに読む。
  */
 class RecordHoldQuery
 {

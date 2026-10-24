@@ -94,7 +94,7 @@ class UpdateRecord
             $records = Record::query()->where('record_module_id', $module->id);
 
             if ($holder === null) {
-                $this->rows->constrain($records, $requester, $module, $context->date);
+                $records = $this->rows->constrain($records, $requester, $module, $context->date);
             }
 
             $record = $records->lock('for no key update')->findOrFail($recordId);

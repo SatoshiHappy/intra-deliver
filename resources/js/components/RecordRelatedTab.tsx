@@ -154,22 +154,17 @@ function RelatedTable({
     );
 }
 
-/** 表の上の行(入口の名前・件数・「新規」= 4.1 節の条件のとき) */
+/** 表の上の行(入口の名前・「新規」= 4.1 節の条件のとき。件数はほかの一覧と同じく下のページ送りの「全 N 件」) */
 function RelatedHead({
     entry,
-    total,
     onNew,
 }: {
     entry: RecordRelatedEntry;
-    total: number;
     onNew: (key: string) => void;
 }) {
     return (
         <div className="flex items-center gap-2">
             <Badge variant="secondary">{entry.name}</Badge>
-            <span className="font-num text-sm text-muted-foreground tabular-nums">
-                {total} 件
-            </span>
             {entry.canCreate && (
                 <Button
                     size="sm"
@@ -196,7 +191,7 @@ type TabProps = {
 };
 
 /**
- * 左のタブ「関連レコード」の中身(1 節・3 節): 選んだ入口の名前・件数・「新規」(4.1 節の条件のとき)と、その入口の表(更新日時の降順、
+ * 左のタブ「関連レコード」の中身(1 節・3 節): 選んだ入口の名前・「新規」(4.1 節の条件のとき)と、その入口の表(更新日時の降順、
  * 1 ページ 20 件)とページ送り。表がまだ届いていなければ「読み込んでいます」。
  */
 export function RecordRelatedTab({
@@ -216,11 +211,7 @@ export function RecordRelatedTab({
 
     return (
         <div className="flex flex-col gap-3">
-            <RelatedHead
-                entry={entry}
-                total={rows === null ? entry.count : rows.total}
-                onNew={onNew}
-            />
+            <RelatedHead entry={entry} onNew={onNew} />
             {rows === null ? (
                 <p className="text-sm text-muted-foreground">
                     読み込んでいます

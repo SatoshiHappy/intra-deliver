@@ -21,9 +21,11 @@ use Illuminate\Validation\ValidationException;
  * 組み込みの行があれば拒む(規則 = 設計/業務データの入れ物/データモデル/制約の分担と検査.md 6 節の例外 2、
  * 組み込み = 設計/業務ツール/共通データ.md の「入れ物の拡張」の「組み込みの旗」)。
  * 外部キーの向きに合わせて明示した順で消し、確かめた後に持ち主が増えないよう業務モジュールの排他の勧告ロック({@see LocksRecordModule})の下で行う。
+ * ほかのモジュールの表の行が消す行を指していれば、消す文の外部キー違反を項目 field の検証の誤りに変える(同じ 6 節の例外 1)。
  */
 class DeleteRecordField
 {
+    use ConvertsForeignKeyViolations;
     use LocksRecordModule;
     use WritesCommonMaster;
 
@@ -34,7 +36,8 @@ class DeleteRecordField
 
     /**
      * @throws ModelNotFoundException<RecordModule|RecordField> 業務モジュール・項目が無いとき
-     * @throws ValidationException 組み込みのとき・規則が使っているとき・業務モジュールに持ち主のあるレコードがあるとき(キー field)
+     * @throws ValidationException 組み込みのとき・規則が使っているとき・業務モジュールに持ち主のあるレコードがあるとき・
+     *                             ほかの表の行が消す行を指すとき(キー field)
      */
     public function execute(string $moduleCode, string $fieldCode): void
     {
@@ -56,21 +59,33 @@ class DeleteRecordField
                 throw ValidationException::withMessages(['field' => [$hold->reason]]);
             }
 
-            $child = $field->childRecordModule;
-
-            if ($field->type === RecordFieldType::Details && $child !== null) {
-                Record::query()->where('record_module_id', $child->id)->delete();
-                RecordRule::query()->where('record_module_id', $child->id)->delete();
-                RecordField::query()->where('record_module_id', $child->id)->delete();
-                RecordField::query()->whereKey($field->id)->delete();
-                RecordModule::query()->whereKey($child->id)->delete();
-
-                return;
-            }
-
-            RecordReference::query()->where('record_field_id', $field->id)->delete();
-            RecordField::query()->whereKey($field->id)->delete();
+            $this->convertingForeignKeyViolations(
+                fn () => $this->deleteRows($field),
+                'field',
+                "{$field->name}はほかのデータから参照されているため削除できません",
+            );
         });
+    }
+
+    /**
+     * 項目と一緒に消える行を、外部キーの向きに合わせた順で消す。
+     */
+    private function deleteRows(RecordField $field): void
+    {
+        $child = $field->childRecordModule;
+
+        if ($field->type === RecordFieldType::Details && $child !== null) {
+            Record::query()->where('record_module_id', $child->id)->delete();
+            RecordRule::query()->where('record_module_id', $child->id)->delete();
+            RecordField::query()->where('record_module_id', $child->id)->delete();
+            RecordField::query()->whereKey($field->id)->delete();
+            RecordModule::query()->whereKey($child->id)->delete();
+
+            return;
+        }
+
+        RecordReference::query()->where('record_field_id', $field->id)->delete();
+        RecordField::query()->whereKey($field->id)->delete();
     }
 
     /**

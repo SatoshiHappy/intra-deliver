@@ -41,7 +41,7 @@ class RecordListQuery
     public function list(Requester $requester, RecordModule $module, mixed $filters, mixed $sort, mixed $page, DateTimeInterface $date, string $localeCode): array
     {
         $query = Record::query()->where('record_module_id', $module->id);
-        $this->rows->constrain($query, $requester, $module, $date);
+        $query = $this->rows->constrain($query, $requester, $module, $date);
         $appliedFilters = $this->filters->apply($query, $module->recordFields->where('is_searchable', true), $filters);
         $appliedSort = $this->sort($query, $module, $sort);
         $total = $query->toBase()->getCountForPagination();

@@ -8,7 +8,7 @@ use App\Models\Records\Record;
 use App\Models\Records\RecordReference;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
-use Tests\Support\BuildsRecordModules;
+use Tests\Support\BuildsRowAccessRecords;
 use Tests\Support\CatchesValidationErrors;
 use Tests\Support\TransactionalTestCase;
 
@@ -19,7 +19,7 @@ use Tests\Support\TransactionalTestCase;
  */
 final class DeleteRecordTest extends TransactionalTestCase
 {
-    use BuildsRecordModules;
+    use BuildsRowAccessRecords;
     use CatchesValidationErrors;
 
     public function test_deletes_the_record_with_its_detail_rows_and_references_even_if_the_rows_refer_to_other_records(): void
@@ -77,6 +77,24 @@ final class DeleteRecordTest extends TransactionalTestCase
         } catch (AuthorizationException) {
             $this->assertModelExists($record);
         }
+    }
+
+    /**
+     * 業務モジュールが無い・明細のモジュールなら 404、行の判定を通らないレコードも 404 で何も消えない(9.2 の 2 の「削除の結果」の表)。
+     */
+    public function test_a_missing_or_details_module_and_a_record_hidden_by_the_row_access_are_not_found(): void
+    {
+        $fixture = $this->rowAccessFixture();
+        $recordId = $fixture['recordId'];
+        $guest = $this->contextFor();
+        $stranger = $this->contextFor($fixture['people']['stranger']->id);
+
+        foreach ([['nothing', $guest], ['rows_rows', $guest], ['meetings', $stranger]] as [$code, $context]) {
+            $delete = fn () => app(DeleteRecord::class)->execute($context, $code, $recordId);
+            $this->assertThrows($delete, ModelNotFoundException::class);
+        }
+
+        $this->assertTrue(Record::query()->whereKey($recordId)->exists());
     }
 
     public function test_a_record_of_another_module_is_not_found(): void

@@ -9,7 +9,8 @@ use Tests\Support\RegistersRecordHolds;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * 後ろのモジュールが持ち主の有無を読む口(docs の 設計/ワークフロー/業務データとの接続/公開の口.md 7 節): 束ねる 1 か所に委ね、どの実装の持ち主でもあれば真。
+ * 会議の再作成が持ち主の有無を読む口(使い手 = docs の 設計/業務ツール/会議/処理.md 3.7、消す時 = docs の 設計/adr/0025 の決定 9):
+ * 束ねる 1 か所に委ね、どの実装の持ち主でもあれば真。
  */
 final class RecordHoldQueryTest extends TransactionalTestCase
 {

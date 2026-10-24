@@ -172,7 +172,6 @@
     "app/Queries/Records/Api/RecordConditions.php": 2,
     "app/Queries/Records/Api/RecordDisplayQuery.php": 3,
     "app/Queries/Records/Api/RecordFormQuery.php": 4,
-    "app/Queries/Records/Api/RecordRelations.php": 3,
     "app/Queries/Records/DraftValueReader.php": 8,
     "app/Queries/Records/FieldValueParser.php": 6,
     "app/Queries/Records/ModuleCategoryPageQuery.php": 5,

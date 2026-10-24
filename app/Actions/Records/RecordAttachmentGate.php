@@ -52,7 +52,7 @@ class RecordAttachmentGate
 
         if ($holder === null) {
             $this->gate->authorize($requester, $module, RecordModuleAction::Update, $context->date);
-            $this->rows->constrain($records, $requester, $module, $context->date);
+            $records = $this->rows->constrain($records, $requester, $module, $context->date);
         }
 
         return [$module, $records->lock('for no key update')->findOrFail($recordId)];
