@@ -1,192 +1,78 @@
-// 公開の入口の Worker。Access が通した要求を VPC サービス(Tunnel の先の app)へ中継する。
-// 設計 = docs の 設計/公開の配備/入口/README.md 5.2・5.3、入口/Access.md 5.9。
-import { UNAVAILABLE_PAGE } from './unavailable-page.js';
+// 公開の入口の Worker。自前のログイン画面で入口を確かめ、入口の cookie が有効な要求を VPC サービス(Tunnel の先の app)へ中継する。
+// 設計 = docs の 設計/公開の配備/入口/README.md 5.2・5.3、入口/ログイン.md 5.9。
+import { visitorIdFromCookie } from './entry-session.js';
+import { loginLocation, METHODS_WITH_NEXT, entryRoute } from './login-route.js';
+import { relay } from './relay.js';
+import { NO_STORE, plainText, unavailable } from './responses.js';
 
 /**
  * @typedef {object} Env
  * @property {{ fetch: (request: Request) => Promise<Response> }} APP VPC サービスの binding(wrangler.jsonc の vpc_services)
+ * @property {string} [ENTRY_ID] 入口の ID(Worker の secret。入口/ログイン.md 5.9.4)
+ * @property {string} [ENTRY_PASSWORD] 入口のパスワード(同上)
+ * @property {string} [ENTRY_SESSION_KEY] 入口の cookie の署名の鍵(同上)
  */
+
+/** @typedef {{ id: string, password: string, sessionKey: string }} Secrets */
+
+// Worker の道の接頭辞。cookie によらず app へ中継しない(入口/ログイン.md 5.9.1)
+const ENTRY_PATH_PREFIX = '/_entry/';
+
+const LOGIN_REQUIRED_TEXT =
+    'ログインが必要です。ページを読み込み直してください。';
 
 /**
- * @typedef {object} Identity Access の身元(使う項目だけ)
- * @property {unknown} [user_uuid] Access の利用者の ID
- * @property {unknown} [service_token_status] サービストークンで通った要求なら真
+ * 入口の secret。1 つでも無いか空なら、欠けた名前をログに出して null(値は出さない。入口/ログイン.md 5.9.1)。
+ * @param {Env} env
+ * @returns {Secrets | null}
  */
-
-/**
- * @typedef {object} Context
- * @property {{ aud: string, getIdentity: () => Promise<Identity | undefined> }} [access] Access が通した要求に実行環境が付ける
- *     (身元は getIdentity で取る)。Access が通していなければ undefined(入口/Access.md 5.9.1)
- */
-
-// VPC サービスへ渡す宛先。接続先は VPC サービスの設定が決め、この host は Host ヘッダーになり、port は無視される。
-const ORIGIN = 'http://app:8080';
-
-// 案内ページに替える状態(中継の層・app の停止やメンテナンスモード)。app 自身のそれ以外の 4xx・5xx はそのまま返す。
-const UNAVAILABLE_STATUSES = new Set([502, 503, 504]);
-
-// Access(入口)の資格情報の名前の印。ヘッダーは大文字と小文字を区別せず(Headers は小文字で返す)、cookie の名前は区別する。設計 = 入口/Access.md 5.9.3。
-const ACCESS_HEADER_PREFIX = 'cf-access-';
-const ACCESS_COOKIE_PREFIX = 'CF_';
-
-// 訪問者の ID を app へ渡すヘッダー。訪問者が付けた値は必ず消し、Worker が取れたときだけ置く(入口/README.md 5.2、入口/Access.md 5.9.6)
-const VISITOR_ID_HEADER = 'X-Visitor-Id';
-
-// 身元を取らないメソッド(画面の表示と静的ファイルの要求を待たせない。AI の依頼の口を呼ぶ HTTP の口はこれらにしない = 入口/Access.md 5.9.6)
-const METHODS_WITHOUT_IDENTITY = new Set(['GET', 'HEAD']);
-
-// getIdentity() の待ちの上限(ms)。超えたら ID を付けずに中継する(ID の取得で中継を止めない = 入口/Access.md 5.9.6)
-const IDENTITY_TIMEOUT_MS = 2000;
-
-// Access が通していない要求に返す 403 の本文。案内ページ・Cloudflare の画面と本文で見分けるので変えない(入口/README.md 5.2)
-const FORBIDDEN_TEXT =
-    'この要求は入口(ログイン)を通っていないため、受け付けません。';
-
-/** @returns {Response} */
-function forbidden() {
-    return new Response(FORBIDDEN_TEXT, {
-        status: 403,
-        headers: {
-            'Content-Type': 'text/plain; charset=utf-8',
-            'Cache-Control': 'no-store',
-        },
-    });
-}
-
-/** @returns {Response} */
-function unavailable() {
-    return new Response(UNAVAILABLE_PAGE, {
-        status: 503,
-        headers: {
-            'Content-Type': 'text/html; charset=utf-8',
-            'Cache-Control': 'no-store',
-        },
-    });
-}
-
-/**
- * Access の資格情報(身元の JWT・サービストークン・Access の cookie)を落とす。app は Access を使わず、
- * 落とさないと採用担当のメールアドレスを持つ JWT とサービストークンの秘密が app のアクセスログに残る。
- * @param {Headers} headers
- */
-function dropAccessCredentials(headers) {
-    // 消しながら Headers を回さない(回している途中の削除で、次の名前を飛ばしうる)。名前を先に集める
-    const accessHeaders = Array.from(headers.keys()).filter((name) =>
-        name.startsWith(ACCESS_HEADER_PREFIX),
-    );
-    for (const name of accessHeaders) {
-        headers.delete(name);
-    }
-
-    const cookie = headers.get('Cookie');
-    if (cookie === null) {
-        return;
-    }
-    const kept = cookie
-        .split(';')
-        .map((pair) => pair.trim())
-        .filter(
-            (pair) => pair !== '' && !pair.startsWith(ACCESS_COOKIE_PREFIX),
-        );
-    if (kept.length === 0) {
-        headers.delete('Cookie');
-    } else {
-        headers.set('Cookie', kept.join('; '));
-    }
-}
-
-/**
- * 待ちの上限を置いて getIdentity() を呼ぶ。上限を超えたら例外にする。
- * @param {NonNullable<Context['access']>} access
- * @returns {Promise<Identity | undefined>}
- */
-async function identityWithin(access) {
-    /** @type {ReturnType<typeof setTimeout> | undefined} */
-    let timer;
-    const timeout = new Promise((_resolve, reject) => {
-        timer = setTimeout(
-            () =>
-                reject(
-                    new Error(
-                        `getIdentity() が ${IDENTITY_TIMEOUT_MS} ms の内に返りませんでした`,
-                    ),
-                ),
-            IDENTITY_TIMEOUT_MS,
-        );
-    });
-    try {
-        return await Promise.race([access.getIdentity(), timeout]);
-    } finally {
-        clearTimeout(timer);
-    }
-}
-
-/**
- * 訪問者の ID(Access の利用者の ID)。取れなければ null で、中継は続ける。ログに ID の値を出さない(入口/Access.md 5.9.6)。
- * @param {Request} request
- * @param {NonNullable<Context['access']>} access
- * @returns {Promise<string | null>}
- */
-async function visitorIdOf(request, access) {
-    if (METHODS_WITHOUT_IDENTITY.has(request.method)) {
+function entrySecrets(env) {
+    /** @param {unknown} value */
+    const text = (value) => (typeof value === 'string' ? value : '');
+    const values = {
+        ENTRY_ID: text(env.ENTRY_ID),
+        ENTRY_PASSWORD: text(env.ENTRY_PASSWORD),
+        ENTRY_SESSION_KEY: text(env.ENTRY_SESSION_KEY),
+    };
+    const missing = Object.entries(values)
+        .filter(([, value]) => value === '')
+        .map(([name]) => name);
+    if (missing.length > 0) {
+        console.error(`入口の secret が欠けています: ${missing.join(', ')}`);
         return null;
     }
-
-    const startedAt = performance.now();
-    /** @type {Identity | undefined} */
-    let identity;
-    try {
-        identity = await identityWithin(access);
-    } catch (error) {
-        console.error('訪問者の身元を取れませんでした', error);
-        return null;
-    } finally {
-        console.log(
-            `訪問者の身元の待ち ${Math.round(performance.now() - startedAt)} ms`,
-        );
-    }
-
-    const userUuid = identity?.user_uuid;
-    if (typeof userUuid === 'string' && userUuid !== '') {
-        return userUuid;
-    }
-    // サービストークンの要求でも user_uuid が空になりうる(入口/Access.md 5.9.6 の検証点 19)
-    if (identity?.service_token_status !== true) {
-        console.warn('訪問者の身元の user_uuid が空でした');
-    }
-    return null;
+    return {
+        id: values.ENTRY_ID,
+        password: values.ENTRY_PASSWORD,
+        sessionKey: values.ENTRY_SESSION_KEY,
+    };
 }
 
 /**
- * app が信じる転送ヘッダー(Laravel の trustProxies の For・Host・Proto)と訪問者の ID を、訪問者が付けてきた値に足さず置き換え、
- * Access の資格情報を落とす。app が信じるヘッダーを変えるときは、ここも変える。
+ * 入口の cookie が無効・無い要求。画面の通信の種類とメソッドで、ログイン画面へ移すか 401 にする(入口/ログイン.md 5.9.1)。
  * @param {Request} request
- * @param {string | null} visitorId
- * @returns {Request}
+ * @param {URL} url
+ * @returns {Response}
  */
-function toOriginRequest(request, visitorId) {
-    const url = new URL(request.url);
-    const headers = new Headers(request.headers);
-    const clientIp = request.headers.get('CF-Connecting-IP');
-
-    dropAccessCredentials(headers);
-    headers.delete(VISITOR_ID_HEADER);
-    if (visitorId !== null) {
-        headers.set(VISITOR_ID_HEADER, visitorId);
+function withoutSession(request, url) {
+    if (request.headers.has('X-Inertia')) {
+        return new Response(null, {
+            status: 409,
+            headers: {
+                ...NO_STORE,
+                'X-Inertia-Location': loginLocation(request, url),
+            },
+        });
     }
-    headers.set('X-Forwarded-Host', url.host);
-    headers.set('X-Forwarded-Proto', 'https');
-    if (clientIp === null) {
-        headers.delete('X-Forwarded-For');
-    } else {
-        headers.set('X-Forwarded-For', clientIp);
+    if (
+        request.headers.get('X-Requested-With') === 'XMLHttpRequest' ||
+        !METHODS_WITH_NEXT.has(request.method)
+    ) {
+        return plainText(LOGIN_REQUIRED_TEXT, 401);
     }
-
-    return new Request(`${ORIGIN}${url.pathname}${url.search}`, {
-        method: request.method,
-        headers,
-        body: request.body,
-        redirect: 'manual',
+    return new Response(null, {
+        status: 302,
+        headers: { ...NO_STORE, Location: loginLocation(request, url) },
     });
 }
 
@@ -194,35 +80,27 @@ export default {
     /**
      * @param {Request} request
      * @param {Env} env
-     * @param {Context} [ctx]
      * @returns {Promise<Response>}
      */
-    async fetch(request, env, ctx) {
-        // Access の設定が外れても app へ中継しない(閉じる側に倒す。ctx が無い呼び出しも同じ)
-        if (!ctx?.access) {
-            return forbidden();
-        }
-
-        const visitorId = await visitorIdOf(request, ctx.access);
-
-        let response;
-        try {
-            response = await env.APP.fetch(toOriginRequest(request, visitorId));
-        } catch (error) {
-            console.error('中継に失敗しました', error);
+    async fetch(request, env) {
+        // secret が欠けたら、ログインも中継もしない(閉じる側に倒す。入口/ログイン.md 5.9.1)
+        const secrets = entrySecrets(env);
+        if (secrets === null) {
             return unavailable();
         }
 
-        if (UNAVAILABLE_STATUSES.has(response.status)) {
-            // 本文は使わないので読み捨てる。捨てるのに失敗しても、案内ページを返すことは変えない(記録だけ残す)
-            try {
-                await response.body?.cancel();
-            } catch (error) {
-                console.error('中継の応答の本文を捨てられませんでした', error);
-            }
-            return unavailable();
+        const url = new URL(request.url);
+        if (url.pathname.startsWith(ENTRY_PATH_PREFIX)) {
+            return entryRoute(request, url, secrets);
         }
 
-        return response;
+        const visitorId = await visitorIdFromCookie(
+            request.headers,
+            secrets.sessionKey,
+        );
+        if (visitorId === null) {
+            return withoutSession(request, url);
+        }
+        return relay(request, url, env, visitorId);
     },
 };

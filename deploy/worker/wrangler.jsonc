@@ -6,7 +6,7 @@
     "compatibility_date": "2026-09-25",
     // workers.dev の経路を明示して有効にする(ルートは持たない)
     "workers_dev": true,
-    // Version URLs と Preview URLs を無効にし、Worker の URL を Access で守る本番の workers.dev の 1 つにする(docs の 設計/公開の配備/入口/Access.md 5.9.1)
+    // Version URLs と Preview URLs を無効にし、Worker の URL をログインの口で守る本番の workers.dev の 1 つにする(docs の 設計/公開の配備/入口/ログイン.md 5.9.1)
     "preview_urls": false,
     "vpc_services": [
         {
