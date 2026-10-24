@@ -2,12 +2,14 @@
 
 namespace Tests\Feature\Queries\Workflow;
 
+use App\Actions\Records\Api\AttachRecordUploads;
 use App\Actions\Records\Api\RecordInput;
 use App\Actions\Records\Api\UpdateRecord;
 use App\Actions\Records\DeleteRecord;
-use App\Enums\Workflow\WorkflowCaseState;
-use App\Enums\Workflow\WorkflowCompletionReason;
+use App\Actions\Records\DeleteRecordField;
+use App\Actions\Records\DetachRecordAttachments;
 use App\Models\Records\Record;
+use App\Models\Records\RecordAttachment;
 use App\Models\Records\RecordModule;
 use App\Models\Workflow\WorkflowCase;
 use App\Models\Workflow\WorkflowContent;
@@ -16,100 +18,135 @@ use App\Queries\Records\Api\RecordHold;
 use App\Queries\Workflow\WorkflowRecordHolds;
 use Closure;
 use Illuminate\Support\Facades\DB;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Support\BuildsRecordModules;
+use Tests\Support\BuildsUploads;
 use Tests\Support\CatchesValidationErrors;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * レコードの持ち主のワークフローの実装(docs の 設計/ワークフロー/業務データとの接続/申請と書き込み.md 4 節・写しとつながる申請.md 9 節の「ワークフローの分」の持ち主の行、
- * データモデル/直列化と検査.md 6 節の「ロックの順」の (3)): 未完了の案件が指すレコードだけに持ち主(鍵 workflow-case:<案件の id>)があり、鍵を取らずに読む。
- * 起動の登録を通した本物の実装で、業務データの入れ物の更新・削除が拒まれ、完了の後は更新が通り削除は参照されているので拒まれる。
+ * レコードの持ち主のワークフローの実装(設計/ワークフロー/業務データとの接続/申請と書き込み.md の 4 節の実装と操作の表、
+ * 設計/ワークフロー/データモデル/直列化と検査.md の 6 節の「ロックの順」の (3)): 一時保存でない案件(未完了・完了)が指すレコードに持ち主
+ * (鍵 workflow-case:<案件の id>。文言は未完了・完了で同じ)があり、一時保存の案件だけ・案件の無いレコードには無い。鍵を取らずに読む。
+ * 起動の登録を通した本物の実装で、業務データの入れ物の更新・削除・添付の追加と外す・項目の削除が 422 で何も変わらない。
  */
 final class WorkflowRecordHoldsTest extends TransactionalTestCase
 {
     use BuildsRecordModules;
+    use BuildsUploads;
     use CatchesValidationErrors;
 
-    private const REASON = '申請中のため変更できません';
+    private const REASON = '申請済みのため変更できません';
 
-    private const REFERENCED = 'このレコードはほかのデータから参照されているため削除できません';
+    /**
+     * @return array<string, array{bool}>
+     */
+    public static function caseStates(): array
+    {
+        return ['未完了' => [false], '完了' => [true]];
+    }
 
-    public function test_an_active_case_holds_its_record(): void
+    #[DataProvider('caseStates')]
+    public function test_a_case_that_is_not_a_draft_holds_its_record(bool $completed): void
     {
         $module = $this->recordModule('wf_holds');
         $held = $this->record($module);
         $free = $this->record($module);
-        $case = $this->caseOf($module, $held);
+        $case = $this->caseOf($module, $held, $completed);
 
-        $this->assertEquals([$held->id => new RecordHold("workflow-case:{$case->id}", self::REASON)], $this->holds()->holdsOf([$held->id, $free->id]));
+        $this->assertEquals(
+            [$held->id => new RecordHold("workflow-case:{$case->id}", self::REASON)],
+            $this->holds()->holdsOf([$held->id, $free->id]),
+        );
         $this->assertSame([], $this->holds()->holdsOf([]));
     }
 
-    public function test_completed_and_draft_cases_hold_nothing(): void
+    public function test_a_draft_case_and_a_record_without_a_case_hold_nothing(): void
     {
         $module = $this->recordModule('wf_holds');
         $record = $this->record($module);
-        $this->caseOf($module, $record, completed: true);
         WorkflowCase::factory()->draft()->create(['workflow_flow_id' => $this->flowOf($module)->id]);
 
         $this->assertSame([], $this->holds()->holdsOf([$record->id]));
         $this->assertNull($this->holds()->firstHoldInModule($module->id));
     }
 
-    public function test_the_first_hold_in_a_module_is_its_active_case_with_the_smallest_id(): void
+    public function test_the_first_hold_in_a_module_is_its_case_with_the_smallest_id_whether_completed_or_not(): void
     {
         $module = $this->recordModule('wf_holds');
         $other = $this->recordModule('wf_others');
-        $this->caseOf($module, $this->record($module), completed: true);
-        $first = $this->caseOf($module, $this->record($module));
+        WorkflowCase::factory()->draft()->create(['workflow_flow_id' => $this->flowOf($module)->id]);
+        $first = $this->caseOf($module, $this->record($module), completed: true);
         $this->caseOf($module, $this->record($module));
 
-        $this->assertEquals(new RecordHold("workflow-case:{$first->id}", self::REASON), $this->holds()->firstHoldInModule($module->id));
+        $this->assertEquals(
+            new RecordHold("workflow-case:{$first->id}", self::REASON),
+            $this->holds()->firstHoldInModule($module->id),
+        );
         $this->assertNull($this->holds()->firstHoldInModule($other->id));
     }
 
     /**
-     * 持ち主の読み取りは 1 回の問い合わせで、FOR UPDATE・FOR SHARE を出さない。
+     * 持ち主の読み取りは 1 回の問い合わせで完了した案件の持ち主も返し、FOR UPDATE・FOR SHARE を出さない。
      */
     public function test_reads_the_cases_once_without_locks(): void
     {
         $module = $this->recordModule('wf_holds');
         $record = $this->record($module);
-        $this->caseOf($module, $record);
+        $this->caseOf($module, $record, completed: true);
 
-        $holdsOf = $this->queries(fn () => $this->holds()->holdsOf([$record->id]));
-        $firstHold = $this->queries(fn () => $this->holds()->firstHoldInModule($module->id));
+        $holds = [];
+        $holdsOf = $this->queries(function () use ($record, &$holds): void {
+            $holds = $this->holds()->holdsOf([$record->id]);
+        });
+        $firstHold = null;
+        $firstHoldQueries = $this->queries(function () use ($module, &$firstHold): void {
+            $firstHold = $this->holds()->firstHoldInModule($module->id);
+        });
 
-        $this->assertCount(1, $holdsOf);
-        $this->assertCount(1, $firstHold);
+        $this->assertSame([1, 1], [count($holdsOf), count($firstHoldQueries)]);
+        $this->assertSame([[$record->id], self::REASON], [array_keys($holds), $firstHold?->reason]);
 
-        foreach ([...$holdsOf, ...$firstHold] as $sql) {
+        foreach ([...$holdsOf, ...$firstHoldQueries] as $sql) {
             $this->assertStringNotContainsString('for update', strtolower($sql));
             $this->assertStringNotContainsString('for share', strtolower($sql));
         }
     }
 
     /**
-     * 起動の登録を通した本物の持ち主で、未完了の案件のレコードは業務データの入れ物の更新(鍵なし)・削除が 422 record で何も変わらない。
-     * 完了の後は更新が通り、削除は案件の外部キーで 422 record(参照されている)。
+     * 起動の登録を通した本物の持ち主で、案件のレコードは業務データの入れ物の更新(鍵なし)・削除・添付の追加と外すが 422 record、
+     * 業務モジュールの項目の削除が 422 field(どれも持ち主の理由)で、何も変わらない。
      */
-    public function test_the_registered_holder_blocks_record_writes_until_the_case_completes(): void
+    #[DataProvider('caseStates')]
+    public function test_the_registered_holder_blocks_record_writes_while_the_case_exists(bool $completed): void
     {
+        $this->fakeUploadDisk();
+        $this->limitUploads();
         $module = $this->recordModule('wf_holds');
         $title = $this->field($module, 'title');
         $record = $this->record($module, [$title->id => '旧']);
-        $case = $this->caseOf($module, $record);
+        $this->attach($record, '前.pdf');
+        $attachmentId = RecordAttachment::query()->where('record_id', $record->id)->sole()->id;
+        $this->caseOf($module, $record, $completed);
+        $context = $this->contextFor();
 
-        $this->assertSame(['record' => self::REASON], $this->validationErrors(fn () => $this->updateRecord($record, '新')));
-        $this->assertSame(['record' => self::REASON], $this->validationErrors(fn () => $this->deleteRecord($record)));
+        $errors = [
+            $this->validationErrors(fn () => app(UpdateRecord::class)->execute(
+                $context, 'wf_holds', $record->id, new RecordInput(['title' => '新']), $record->refresh()->version(),
+            )),
+            $this->validationErrors(fn () => app(DeleteRecord::class)->execute($context, 'wf_holds', $record->id)),
+            $this->validationErrors(fn () => $this->attach($record, '後.pdf')),
+            $this->validationErrors(fn () => app(DetachRecordAttachments::class)
+                ->execute($context, 'wf_holds', $record->id, $attachmentId)),
+            $this->validationErrors(fn () => app(DeleteRecordField::class)->execute('wf_holds', 'title')),
+        ];
+
+        $held = ['record' => self::REASON];
+        $this->assertSame([$held, $held, $held, $held, ['field' => self::REASON]], $errors);
         $this->assertEquals([$title->id => '旧'], $record->refresh()->field_values);
-
-        $case->update(['state' => WorkflowCaseState::Completed, 'completion_reason' => WorkflowCompletionReason::Approved, 'completed_at' => now()]);
-        $this->updateRecord($record, '新');
-
-        $this->assertEquals([$title->id => '新'], $record->refresh()->field_values);
-        $this->assertSame(['record' => self::REFERENCED], $this->validationErrors(fn () => $this->deleteRecord($record)));
-        $this->assertModelExists($record);
+        $names = RecordAttachment::query()->where('record_id', $record->id)->pluck('name')->all();
+        $this->assertSame(['前.pdf'], $names);
+        $this->assertModelExists($title);
     }
 
     private function holds(): WorkflowRecordHolds
@@ -127,7 +164,12 @@ final class WorkflowRecordHoldsTest extends TransactionalTestCase
 
     private function flowOf(RecordModule $module): WorkflowFlow
     {
-        return WorkflowFlow::factory()->create(['workflow_content_id' => WorkflowContent::query()->firstOrCreate(['record_module_id' => $module->id], ['code' => "content_{$module->code}", 'name' => $module->code])->id]);
+        $content = WorkflowContent::query()->firstOrCreate(
+            ['record_module_id' => $module->id],
+            ['code' => "content_{$module->code}", 'name' => $module->code],
+        );
+
+        return WorkflowFlow::factory()->create(['workflow_content_id' => $content->id]);
     }
 
     /**
@@ -140,14 +182,10 @@ final class WorkflowRecordHoldsTest extends TransactionalTestCase
         return $factory->create(['workflow_flow_id' => $this->flowOf($module)->id, 'record_id' => $record->id]);
     }
 
-    private function updateRecord(Record $record, string $title): void
+    private function attach(Record $record, string $name): void
     {
-        app(UpdateRecord::class)->execute($this->contextFor(), 'wf_holds', $record->id, new RecordInput(['title' => $title]), $record->refresh()->version());
-    }
-
-    private function deleteRecord(Record $record): void
-    {
-        app(DeleteRecord::class)->execute($this->contextFor(), 'wf_holds', $record->id);
+        $files = [$this->uploadedFile($name)];
+        app(AttachRecordUploads::class)->execute($this->contextFor(), 'wf_holds', $record->id, $files);
     }
 
     /**

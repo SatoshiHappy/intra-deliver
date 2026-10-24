@@ -21,7 +21,7 @@ use Illuminate\Validation\ValidationException;
 class RecordApplicationSteps
 {
     /** 持ち主がある・同じレコードへの別の申請と競合した(422 record) */
-    public const HELD = '申請中のため申請できません';
+    public const HELD = '申請済みのため申請できません';
 
     /** 同じレコードに未完了の案件を 1 つまでにする部分一意索引 */
     private const ACTIVE_RECORD_UNIQUE = 'workflow_cases_record_id_unique';

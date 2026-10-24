@@ -611,7 +611,7 @@ test('申請者が一時保存すると一時保存のタブの件数が 1 増�
 
     await openProjectRecord(page);
     await expect(
-        page.getByText('申請中のため変更できません', {
+        page.getByText('申請済みのため変更できません', {
             exact: true,
         }),
     ).toBeVisible();
@@ -624,7 +624,7 @@ test('申請者が一時保存すると一時保存のタブの件数が 1 増�
 
     await page.goto(`${page.url()}/edit`);
     await expect(
-        page.getByText('申請中のため変更できません', {
+        page.getByText('申請済みのため変更できません', {
             exact: true,
         }),
     ).toBeVisible();
@@ -741,7 +741,7 @@ test('上長が差戻し先の「申請」を選択して差戻すと、申請�
     ).toBeVisible();
 });
 
-test('上長・部長が承認すると完了(承認)になり、レコードを業務データの画面で更新すると詳細に注意が表示され、経理部長の参照(完了)に表示される', async ({
+test('上長・部長が承認すると完了(承認)になり、完了の後もレコードを業務データの画面で変更できず、経理部長の参照(完了)に表示される', async ({
     page,
 }) => {
     await openAs(page, 'chief', caseUrl);
@@ -764,22 +764,16 @@ test('上長・部長が承認すると完了(承認)になり、レコードを
         '完了(承認)',
     );
 
+    // 申請した申請書のレコードは完了の後も持ち主が外れない(docs の 設計/ワークフロー/業務データとの接続/申請と書き込み.md の 4 節)
     await openProjectRecord(page);
-    await page.getByRole('link', { name: '編集', exact: true }).click();
-    const form = page.getByRole('form', { name: 'プロジェクトの入力' });
-    await form
-        .getByRole('textbox', { name: '予算(万円)', exact: true })
-        .fill('160');
-    await submitAndExpectUrl(
-        page,
-        form.getByRole('button', { name: '更新', exact: true }),
-    );
-    await expect(page.getByText('更新しました', { exact: true })).toBeVisible();
-
-    await page.goto(caseUrl);
-    await expect(page.getByRole('note')).toContainText(
-        '最後の申請・再申請の後に、業務データの画面で更新されています。',
-    );
+    await expect(
+        page.getByText('申請済みのため変更できません', {
+            exact: true,
+        }),
+    ).toBeVisible();
+    await expect(
+        page.getByRole('button', { name: '編集', exact: true }),
+    ).toBeDisabled();
 
     await switchUser(page, USERS.manager[1], 'accounting');
     await page.goto('/workflow/cases');

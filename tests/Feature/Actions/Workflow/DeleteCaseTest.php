@@ -28,7 +28,8 @@ use Tests\Support\TransactionalTestCase;
 /**
  * 案件の削除(docs の 設計/ワークフロー/案件の運用/案件の操作/案件操作.md の 15.7 節・同時実行と検査.md の 12 節、
  * 設計/ワークフロー/案件の運用/データモデル/表.md の 3.13 節):
- * 案件の行と部品が連鎖で全部消え、業務データのレコードは残って持ち主が外れ、通知の行は残って移り先を持たなくなる。履歴を書かず通知を作らない。
+ * 案件の行と部品が連鎖で全部消え、申請書のレコードも消え(部品と参照されているときは DeleteCaseFormRecordTest)、通知の行は残って移り先を
+ * 持たなくなる。履歴を書かず通知を作らない。
  * 一時保存・改訂番号の違いは 422 case。削除の後の操作は 404、操作が先に確定した後の削除は改訂番号の 422。管理者 = u0004。
  * ルートの見本 R1(課長に確認する人 u0010)で、課長が合議と責任者を指定して承認し(指定の行・確認対象者)、合議の子 1 を振替えた(履歴の人)案件を消す。
  */
@@ -45,9 +46,9 @@ final class DeleteCaseTest extends TransactionalTestCase
     }
 
     /**
-     * 消すと部品の行が 0 になり、レコードは残って持ち主(未完了の案件)が外れる。通知の行は残り、移り先を持たない(文だけ)。
+     * 消すと部品の行が 0 になり、持ち主のあった申請書のレコードも消える。通知の行は残り、移り先を持たない(文だけ)。
      */
-    public function test_deleting_cascades_to_the_parts_and_keeps_the_record_and_notices(): void
+    public function test_deleting_cascades_to_the_parts_and_the_form_record_and_keeps_the_notices(): void
     {
         $case = $this->busyCase();
         $this->confirmAs($case, 'u0010');
@@ -61,9 +62,8 @@ final class DeleteCaseTest extends TransactionalTestCase
 
         $this->assertFalse(WorkflowCase::query()->whereKey($case->id)->exists());
         $this->assertSame(array_fill_keys(array_keys($parts()), 0), $parts());
-        $this->assertTrue(Record::query()->whereKey($case->record_id)->exists());
-        $holdsAfter = array_keys(app(WorkflowRecordHolds::class)->holdsOf([(int) $case->record_id]));
-        $this->assertSame([[(int) $case->record_id], []], [$holdsBefore, $holdsAfter]);
+        $this->assertFalse(Record::query()->whereKey($case->record_id)->exists());
+        $this->assertSame([(int) $case->record_id], $holdsBefore);
         $kept = Notice::query()->where('target_id', $case->id)->count();
         $this->assertSame([$notices, []], [$kept, $this->noticesSince($lastId)]);
         $context = $this->contextOf($this->seededUser('u0002'));
@@ -72,7 +72,7 @@ final class DeleteCaseTest extends TransactionalTestCase
     }
 
     /**
-     * 完了の案件も消せる。
+     * 完了の案件も消せ、申請書のレコードも消える。
      */
     public function test_a_completed_case_can_be_deleted(): void
     {
@@ -85,6 +85,7 @@ final class DeleteCaseTest extends TransactionalTestCase
         $this->deleteCaseAs($case);
 
         $this->assertFalse(WorkflowCase::query()->whereKey($case->id)->exists());
+        $this->assertFalse(Record::query()->whereKey($case->record_id)->exists());
     }
 
     /**

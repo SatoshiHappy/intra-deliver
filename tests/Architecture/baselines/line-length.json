@@ -694,7 +694,6 @@
     "tests/Feature/Queries/Workflow/PreviousProcessorsTest.php": 2,
     "tests/Feature/Queries/Workflow/WorkflowHomeOnRoutesTest.php": 10,
     "tests/Feature/Queries/Workflow/WorkflowHomeSectionsTest.php": 29,
-    "tests/Feature/Queries/Workflow/WorkflowRecordHoldsTest.php": 7,
     "tests/Feature/Routing/AppRoutesTest.php": 5,
     "tests/Feature/Seeders/AuthorizationSeedersTest.php": 21,
     "tests/Feature/Seeders/CommonMasterSeederTest.php": 13,

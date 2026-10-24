@@ -31,7 +31,7 @@ use Tests\Support\UsesSeededRecords;
  * 再申請(docs の 設計/ワークフロー/案件の操作/操作.md 3.9、業務データとの接続/申請と書き込み.md 3〜4 節・業務データとの接続/写しとつながる申請.md 5・9 節、
  * 設計/ワークフロー/案件の操作/同時実行と検査.md 7 節の「入口の 403 と `can`」):
  * レコードが変わり履歴の行が再申請で書いた版を指す、承認 1 を展開し直す、申請日時・担当組織・案件番号は変えない、案件名は入力で更新(空なら既定)。update の禁止は 403 が
- * 状態の 422 より先。持ち主の鍵で通り、未完了の間の業務データの入れ物の更新は 422 record、完了の後は通る。フロー = 申請 → 承認 1(u0002)→ 承認 2(u0003)。
+ * 状態の 422 より先。持ち主の鍵で通り、業務データの入れ物の更新は未完了の間も完了の後も 422 record。フロー = 申請 → 承認 1(u0002)→ 承認 2(u0003)。
  */
 final class ReapplyCaseTest extends TransactionalTestCase
 {
@@ -152,24 +152,23 @@ final class ReapplyCaseTest extends TransactionalTestCase
     }
 
     /**
-     * 未完了の間、業務データの入れ物の更新(鍵なし)は 422 record で、再申請(持ち主の鍵)は通る。完了の後は鍵なしの更新が通る。
+     * 未完了の間、業務データの入れ物の更新(鍵なし)は 422 record で、再申請(持ち主の鍵)は通る。完了の後も鍵なしの更新は 422 record。
      */
-    public function test_the_record_is_held_while_the_case_is_active(): void
+    public function test_the_record_is_held_while_the_case_exists(): void
     {
         $u0001 = $this->seededUser('u0001');
         $case = $this->waitingForReapplication();
         $update = fn () => app(UpdateRecord::class)->execute($this->contextOf($u0001), 'project', (int) $case->record_id, new RecordInput(['name' => '画面から']), Record::query()->findOrFail($case->record_id)->version());
 
-        $this->assertSame(['record' => '申請中のため変更できません'], $this->validationErrors($update));
+        $this->assertSame(['record' => '申請済みのため変更できません'], $this->validationErrors($update));
 
         $this->reapply($u0001, $case, $this->projectInput(['name' => '再申請で']));
         $this->assertSame('再申請で', $this->fieldValue((int) $case->record_id, 'name'));
         $this->operate(PullBackCase::class, $u0001, $case);
         $this->operate(WithdrawCase::class, $u0001, $case);
 
-        $update();
-
-        $this->assertSame('画面から', $this->fieldValue((int) $case->record_id, 'name'));
+        $this->assertSame(['record' => '申請済みのため変更できません'], $this->validationErrors($update));
+        $this->assertSame('再申請で', $this->fieldValue((int) $case->record_id, 'name'));
     }
 
     /**

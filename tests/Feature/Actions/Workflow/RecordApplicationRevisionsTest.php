@@ -9,8 +9,6 @@ use App\Actions\Workflow\ApplicationInput;
 use App\Actions\Workflow\ApplyCase;
 use App\Models\Records\Record;
 use App\Models\Workflow\WorkflowCase;
-use App\Queries\Authz\Api\Requester;
-use App\Queries\Records\Api\RecordRevisionQuery;
 use App\Queries\Workflow\WorkflowRecordHolds;
 use Tests\Support\AppliesFromRecords;
 use Tests\Support\CatchesValidationErrors;
@@ -19,7 +17,7 @@ use Tests\Support\TransactionalTestCase;
 /**
  * 既存のデータからの申請の更新の口と版(docs の 設計/ワークフロー/申請の周辺/既存のデータからの申請/README.md の 4 節の 2・3、6 節、8 節):
  * 値を変えなくても版を 1 つ書き、履歴の行がその版を指す。申請のコミットの後は業務の画面から更新・削除できない。開いた後に業務の画面で更新されて
- * いれば 422 record で何も書かない。完了の後にもう一度申請でき、1 つ目の申請の写しは 1 つ目の版のまま。
+ * いれば 422 record で何も書かない。完了の後も同じレコードはもう一度申請できず、1 つ目の申請の写しは 1 つ目の版のまま。
  */
 final class RecordApplicationRevisionsTest extends TransactionalTestCase
 {
@@ -135,32 +133,27 @@ final class RecordApplicationRevisionsTest extends TransactionalTestCase
     }
 
     /**
-     * 完了の後にもう一度申請でき、2 つ目の申請の履歴の行は新しい版を指す。1 つ目の申請の写しは 1 つ目の版のまま。
+     * 完了の後も持ち主が残るので、同じレコードはもう一度申請できず 422 record で何も書かない。1 つ目の申請の写しは 1 つ目の版のまま。
      */
-    public function test_a_completed_record_can_be_applied_again_and_the_first_copy_stays(): void
+    public function test_a_completed_record_cannot_be_applied_again_and_the_first_copy_stays(): void
     {
         $u0001 = $this->seededUser('u0001');
         $record = $this->projectRecord($u0001);
         $first = $this->applyFromRecord($u0001, $record->id, $this->projectInput(['name' => '1 回目']));
         $this->complete($first);
-
-        $second = $this->applyFromRecord($u0001, $record->id, $this->projectInput(['name' => '2 回目']));
-
         $firstRevision = $this->historyRevisionIds($first)[0];
-        $secondRevision = $this->historyRevisionIds($second)[0];
-        $requester = new Requester($u0001->id, null);
-        $diff = app(RecordRevisionQuery::class)
-            ->diffBetween($requester, (int) $firstRevision, (int) $secondRevision, $this->operationDay(), 'ja');
-        $names = array_values(array_filter($diff['fields'], fn (array $field) => $field['code'] === 'name'));
-        $revisionIds = $this->revisionIds($record->id);
-        $this->assertSame($revisionIds[count($revisionIds) - 1], $secondRevision);
-        $changes = array_map(fn (array $field) => [$field['before'], $field['after']], $names);
-        $this->assertSame([['1 回目', '2 回目']], $changes);
+        $counts = $this->workflowCounts();
+
+        $applying = fn () => $this->applyFromRecord($u0001, $record->id, $this->projectInput(['name' => '2 回目']));
+
+        $this->assertSame(['record' => '申請済みのため申請できません'], $this->validationErrors($applying));
+        $this->assertSame($counts, $this->workflowCounts());
+        $this->assertSame('1 回目', $this->valueOf($record->id, 'name'));
         $this->assertSame($firstRevision, $this->historyRevisionIds($first)[0]);
     }
 
     /**
-     * 完了した申請のあるレコードは業務の画面から消せず(ほかのデータからの参照の文言)、案件を削除した後は消せる。
+     * 完了した申請のあるレコードは業務の画面から消せず(持ち主の理由)、案件の行が消えて持ち主が外れた後は消せる。
      */
     public function test_a_record_with_a_completed_case_is_deleted_only_after_the_case_is_deleted(): void
     {
@@ -174,7 +167,7 @@ final class RecordApplicationRevisionsTest extends TransactionalTestCase
         WorkflowCase::query()->whereKey($case->id)->delete();
         $deleting();
 
-        $this->assertSame(['record' => 'このレコードはほかのデータから参照されているため削除できません'], $errors);
+        $this->assertSame(['record' => '申請済みのため変更できません'], $errors);
         $this->assertFalse(Record::query()->whereKey($record->id)->exists());
     }
 }

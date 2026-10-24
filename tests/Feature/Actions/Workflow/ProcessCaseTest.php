@@ -67,7 +67,8 @@ final class ProcessCaseTest extends TransactionalTestCase
         $this->assertSame([WorkflowCaseState::Completed, WorkflowCompletionReason::Approved, 2], [$case->state, $case->completion_reason, $case->revision]);
         $this->assertNotNull($case->completed_at);
         $this->assertSame(['done', 'done', 'done'], array_column($this->nodeStates($case), 1));
-        $this->assertSame([], app(WorkflowRecordHolds::class)->holdsOf([(int) $case->record_id]));
+        $holds = app(WorkflowRecordHolds::class)->holdsOf([(int) $case->record_id]);
+        $this->assertSame([(int) $case->record_id], array_keys($holds));
         $this->assertNodeInvariant($case);
     }
 
@@ -102,7 +103,7 @@ final class ProcessCaseTest extends TransactionalTestCase
     }
 
     /**
-     * 取止めは再申請待ちの申請のノードでだけできる(承認待ちの案件は 422)。完了してもレコードは残り、持ち主が消える。
+     * 取止めは再申請待ちの申請のノードでだけできる(承認待ちの案件は 422)。完了してもレコードと持ち主は残る。
      */
     public function test_withdrawing_completes_a_case_waiting_for_reapplication(): void
     {
@@ -118,7 +119,8 @@ final class ProcessCaseTest extends TransactionalTestCase
         $this->assertSame([WorkflowCaseState::Completed, WorkflowCompletionReason::Withdrawn, 2], [$case->state, $case->completion_reason, $case->revision]);
         $this->assertSame([['apply', 'done', 'withdraw', []], ['approval1', 'unreached', null, []], ['approval2', 'unreached', null, []]], $this->nodeStates($case));
         $this->assertNotNull($case->record_id);
-        $this->assertSame([], app(WorkflowRecordHolds::class)->holdsOf([(int) $case->record_id]));
+        $holds = app(WorkflowRecordHolds::class)->holdsOf([(int) $case->record_id]);
+        $this->assertSame([(int) $case->record_id], array_keys($holds));
         $this->assertNodeInvariant($case);
     }
 
