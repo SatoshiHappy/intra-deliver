@@ -8,7 +8,9 @@ use App\Models\Records\RecordAttachment;
 use App\Models\Upload\Upload;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\Storage;
+use League\Flysystem\UnableToDeleteFile;
 use RuntimeException;
 use Tests\Support\BuildsUploads;
 use Tests\Support\TransactionalTestCase;
@@ -57,6 +59,23 @@ final class DeleteUploadsTest extends TransactionalTestCase
 
         $this->assertTrue(Upload::query()->whereKey($id)->exists());
         $this->assertSame(1, $this->storedFileCount());
+    }
+
+    public function test_a_file_that_cannot_be_deleted_after_the_commit_is_reported_without_an_exception(): void
+    {
+        Exceptions::fake();
+        $files = [$this->uploadedFile('a.pdf'), $this->uploadedFile('b.pdf')];
+        [$first, $second] = app(StoreUploads::class)->execute(null, $files);
+        [$stuck, $other] = Upload::query()->whereKey([$first, $second])->orderBy('id')->pluck('path')->all();
+        $this->makeUploadsUndeletable(fn (string $path): bool => $path === $stuck);
+
+        DB::transaction(fn () => app(DeleteUploads::class)->execute([$first, $second]));
+
+        Exceptions::assertReported(UnableToDeleteFile::class);
+        Exceptions::assertReportedCount(1);
+        $this->assertSame(0, Upload::query()->whereKey([$first, $second])->count());
+        Storage::disk('local')->assertExists($stuck);
+        Storage::disk('local')->assertMissing($other);
     }
 
     public function test_an_upload_pointed_by_an_owner_row_is_a_foreign_key_violation(): void

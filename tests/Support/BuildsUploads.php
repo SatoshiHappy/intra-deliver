@@ -2,7 +2,9 @@
 
 namespace Tests\Support;
 
+use Closure;
 use Illuminate\Filesystem\Filesystem;
+use Illuminate\Filesystem\LocalFilesystemAdapter;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
 
@@ -21,6 +23,24 @@ trait BuildsUploads
         $root = Storage::fake('local')->path('');
         // 自分の置き場(トークンつき)だけを消す。親の disks は並べて走るほかのテストのプロセスと共有なので触れない
         $this->beforeApplicationDestroyed(fn () => (new Filesystem)->deleteDirectory($root));
+    }
+
+    /**
+     * 決めたパスの実体だけ消せなくする(削除が UnableToDeleteFile を投げる。実行するユーザーの権限によらない)。
+     * fakeUploadDisk の後に呼ぶ。報告の設定などは今の disk のものを引き継ぐ。
+     *
+     * @param  Closure(string): bool  $fails  消せないパスなら true
+     */
+    protected function makeUploadsUndeletable(Closure $fails): void
+    {
+        $disk = Storage::disk('local');
+        assert($disk instanceof LocalFilesystemAdapter);
+
+        Storage::set('local', new LocalFilesystemAdapter(
+            new UndeletableFilesystem($disk->getAdapter(), $fails),
+            $disk->getAdapter(),
+            $disk->getConfig(),
+        ));
     }
 
     protected function limitUploads(

@@ -11,7 +11,9 @@ use App\Queries\Upload\Api\UploadLimits;
 use App\Queries\Upload\Api\UploadQuery;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\Storage;
+use League\Flysystem\UnableToDeleteFile;
 use RuntimeException;
 use Tests\Support\BuildsUploads;
 use Tests\Support\CatchesValidationErrors;
@@ -133,6 +135,30 @@ final class PurgeUploadsTest extends TransactionalTestCase
 
         $this->assertNull(Upload::query()->findOrFail($id)->purged_at);
         $this->assertSame(1, $this->storedFileCount());
+    }
+
+    public function test_a_file_that_cannot_be_deleted_after_the_commit_is_reported_and_the_row_stays_purged(): void
+    {
+        Exceptions::fake();
+        [$first, $second] = $this->store(['a.mp3', 'b.mp4'], ['mp3', 'mp4']);
+        [$stuck, $other] = Upload::query()->whereKey([$first, $second])->orderBy('id')->pluck('path')->all();
+        $this->makeUploadsUndeletable(fn (string $path): bool => $path === $stuck);
+
+        $purged = DB::transaction(
+            fn () => app(PurgeUploads::class)->execute([$first, $second], CarbonImmutable::parse('2026-10-20')),
+        );
+
+        $this->assertSame(2, $purged);
+        Exceptions::assertReported(UnableToDeleteFile::class);
+        Exceptions::assertReportedCount(1);
+
+        foreach (Upload::query()->whereKey([$first, $second])->get() as $upload) {
+            $this->assertSame('2026-10-21 03:00:00', $upload->purged_at?->utc()->toDateTimeString());
+            $this->assertSame('2026-10-20', $upload->purge_due_on?->toDateString());
+        }
+
+        Storage::disk('local')->assertExists($stuck);
+        Storage::disk('local')->assertMissing($other);
     }
 
     /**

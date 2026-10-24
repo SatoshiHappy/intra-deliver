@@ -37,7 +37,7 @@ class PurgeRecordMedia
     /**
      * @param  string  $dueFieldCode  期限の項目(日付の型)のコード。値は行の鍵の下で読み直す
      * @param  DateTimeInterface  $baseDate  基準日(Asia/Tokyo の日付で見る。期限の日がこれより前のときだけ消す)
-     * @return int 消した実体の数(期限が基準日より前でない・値が無い・消す実体が無いときは 0)
+     * @return int 消した扱いにした実体の数(実体の削除はコミットの後。期限が基準日より前でない・値が無い・消す実体が無いときは 0)
      *
      * @throws ModelNotFoundException<Record> 親の無いレコードがその業務モジュールに無いとき(明細の行を含む)
      * @throws LogicException 業務モジュール・項目が無い・明細のモジュール・項目が日付の型でないとき(作りの誤り)

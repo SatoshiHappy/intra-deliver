@@ -2,6 +2,7 @@
 
 namespace App\Actions\Upload\Api;
 
+use App\Actions\Upload\DeleteStoredFiles;
 use App\Models\Upload\Upload;
 use App\Queries\Upload\Api\UploadLimits;
 use Illuminate\Http\UploadedFile;
@@ -16,6 +17,7 @@ use Symfony\Component\Mime\MimeTypes;
  * ファイルを上げる(口の保証の正本 = docs の 設計/業務データの入れ物/レコードの共通機能/添付ファイル/README.md の 2 節の表、書く順 = 5 節)。
  * 主体は呼び手(認可を見ない)。確かめ(422)は鍵の前、台帳の鍵は呼び手の鍵の後(この口の中で最後)に取る。
  * 自分のトランザクションを持ち、呼び手のトランザクションの中では savepoint で含まれる。巻き戻ったら書いた実体を消す。
+ * 消せなかったときの扱い = docs の 設計/業務データの入れ物/レコードの共通機能/添付ファイル/README.md の 2 節の「後から消す実体の削除」。
  */
 class StoreUploads
 {
@@ -25,10 +27,10 @@ class StoreUploads
      */
     public const LEDGER_LOCK_KEY = 4_400_000_000_000_000;
 
-    /** 実体を置くディスクの中のディレクトリ */
-    private const DIRECTORY = 'uploads';
+    /** 実体を置くディスクの中のディレクトリ(掃除 App\Actions\Upload\PruneUploadFiles も同じ値を使う) */
+    public const DIRECTORY = 'uploads';
 
-    public function __construct(private UploadLimits $limits) {}
+    public function __construct(private UploadLimits $limits, private DeleteStoredFiles $files) {}
 
     /**
      * @param  int|null  $userId  上げた人(ゲストなら null)
@@ -153,7 +155,7 @@ class StoreUploads
         $extension = MimeTypes::getDefault()->getExtensions($mime)[0] ?? 'bin';
         $basename = Str::random(40).'.'.$extension;
         $path = self::DIRECTORY.'/'.$basename;
-        DB::afterRollBack(fn () => $disk->delete($path));
+        DB::afterRollBack(fn () => $this->files->execute([$path]));
 
         if ($disk->putFileAs(self::DIRECTORY, $file, $basename) === false) {
             throw new RuntimeException("添付の実体を書けなかった: {$path}");

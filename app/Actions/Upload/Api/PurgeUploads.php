@@ -2,19 +2,22 @@
 
 namespace App\Actions\Upload\Api;
 
+use App\Actions\Upload\DeleteStoredFiles;
 use App\Models\Upload\Upload;
 use DateTimeInterface;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 
 /**
  * 実体だけを消し、台帳の行は残す(口の保証の正本 = docs の 設計/業務データの入れ物/レコードの共通機能/添付ファイル/README.md の
  * 2 節の表、呼べる場面 = 6 節の 4 の期限の削除だけ)。主体は呼び手(認可を見ない)。行に purged_at(今)と purge_due_on(期限の日)を書くと
  * 台帳の合計から外れ、実体はコミットの後に消す(巻き戻ったら実体は残る)。持ち主の行が指していても消せる(行は残る)。
  * 無い id・既に消した id は無視する。自分のトランザクションを持ち、呼び手のトランザクションの中では savepoint で含まれる。
+ * 消せなかったときの扱い = docs の 設計/業務データの入れ物/レコードの共通機能/添付ファイル/README.md の 2 節の「後から消す実体の削除」。
  */
 class PurgeUploads
 {
+    public function __construct(private DeleteStoredFiles $files) {}
+
     /**
      * @param  list<int>  $uploadIds
      * @param  DateTimeInterface  $dueOn  期限の日(日付の部分をそのまま書く。時刻・時差は見ない)
@@ -32,8 +35,8 @@ class PurgeUploads
                 $upload->update(['purged_at' => now(), 'purge_due_on' => $dueOn->format('Y-m-d')]);
             }
 
-            $paths = $uploads->pluck('path')->all();
-            DB::afterCommit(fn () => Storage::disk('local')->delete($paths));
+            $paths = array_values($uploads->map(fn (Upload $upload): string => $upload->path)->all());
+            DB::afterCommit(fn () => $this->files->execute($paths));
 
             return count($paths);
         });

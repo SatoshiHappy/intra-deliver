@@ -200,6 +200,10 @@ final class SideEffects
                 'Illuminate\Support\Facades\Storage' => self::STORAGE_WRITES,
                 'Illuminate\Contracts\Filesystem\Filesystem' => self::STORAGE_WRITES,
                 'Illuminate\Filesystem\FilesystemManager' => self::STORAGE_WRITES,
+                'League\Flysystem\FilesystemWriter' => [
+                    'write', 'writeStream', 'delete', 'deleteDirectory',
+                    'createDirectory', 'move', 'copy', 'setVisibility',
+                ],
                 'Illuminate\Http\UploadedFile' => ['store', 'storeAs', 'storePublicly', 'storePubliclyAs', 'move'],
                 'Illuminate\Support\Facades\File' => self::FILESYSTEM_WRITES,
                 'Illuminate\Filesystem\Filesystem' => self::FILESYSTEM_WRITES,

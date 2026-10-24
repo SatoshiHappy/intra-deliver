@@ -18,6 +18,8 @@ use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Log\Events\MessageLogged;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Event;
+use Illuminate\Support\Facades\Exceptions;
+use League\Flysystem\UnableToDeleteFile;
 use Tests\Support\TransactionalTestCase;
 
 /**
@@ -48,6 +50,19 @@ final class PurgeMeetingMediaTest extends TransactionalTestCase
         $this->assertSame([true, false], [$this->isPurged($past), $this->isPurged($due)]);
         $this->assertSame(1, RecordAttachment::query()->where('record_id', $past)->count());
         $this->assertTrue(Transcript::query()->where('record_id', $past)->exists());
+    }
+
+    public function test_a_stuck_file_after_the_commit_is_reported_and_the_meeting_counts_as_purged(): void
+    {
+        Exceptions::fake();
+        $past = $this->meetingDueOn(CarbonImmutable::today(AccessContext::TIMEZONE)->subDay());
+        $this->makeUploadsUndeletable(fn (): bool => true);
+
+        $this->assertSame(0, Artisan::call(PurgeMeetingMedia::class));
+
+        $this->assertTrue($this->isPurged($past));
+        $this->assertStringContainsString('1 件消した扱いにした', Artisan::output());
+        Exceptions::assertReported(UnableToDeleteFile::class);
     }
 
     public function test_a_failure_of_one_meeting_does_not_stop_the_others_and_fails_the_command(): void

@@ -37,7 +37,7 @@ final class PurgeMeetingMedia extends Command
             }
         }
 
-        $this->info("削除予定日を過ぎた会議の音声・動画の実体を {$purged} 件消した");
+        $this->info("削除予定日を過ぎた会議の音声・動画の実体を {$purged} 件消した扱いにした");
 
         return $failed === 0 ? self::SUCCESS : self::FAILURE;
     }
