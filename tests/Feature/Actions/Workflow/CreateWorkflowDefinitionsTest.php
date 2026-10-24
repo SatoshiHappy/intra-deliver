@@ -32,12 +32,13 @@ use Tests\Support\CatchesValidationErrors;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * 定義を作る業務処理(docs の 設計/ワークフロー/データモデル/表.md 2.1〜2.4 の「業務処理で止める規則」、入力の形 = 初期データ.md 2〜3 節(値は WorkflowSeeder)。段 3a で
- * ルートの表が消え、フローを作る業務処理が版 1 と一本道のルートを作る = ルートの深さ/データモデル/定義の表.md 2.1・2.5・2.6):
+ * 定義を作る業務処理(docs の 設計/ワークフロー/データモデル/表.md の 2.1〜2.4 節の「業務処理で止める規則」、入力の形 = 設計/ワークフロー/初期データ.md の
+ * 2〜3 節(値は WorkflowSeeder)。ルートの表は無く、フローを作る業務処理が版 1 と一本道のルートを作る =
+ * 設計/ワークフロー/ルートの深さ/データモデル/定義の表.md の 2.1・2.5・2.6 節):
  * 正しい入力でコンテンツ・フロー・版・ルートのノード・辺・差戻しできる先と処理対象者・参照者の専用の対象者(用途 selection)ができる、ルートを既存のフローの
  * コードで渡すと同じノードで同じ対象者を指す、各 422 のキー、無い業務モジュール・コンテンツ・ルートの写し元のフローは 404、失敗で何も残らない、同じ入力の
- * 2 回目はコードの重複。定義は 設計/ワークフロー/初期データ.md 3 節と同じ中身を、初期データ(WorkflowSeeder)と重ならないコードで作り、自分が作った行だけを見る
- * (件数は前後の差で比べる)。
+ * 2 回目はコードの重複(コンテンツは業務モジュールの重複も)。定義は 設計/ワークフロー/初期データ.md の 3 節と同じ中身を、初期データ(WorkflowSeeder)と
+ * 重ならないコードと業務モジュールで作り、自分が作った行だけを見る(件数は前後の差で比べる)。業務モジュールの一意と申請対象は CreateWorkflowContentTest。
  */
 final class CreateWorkflowDefinitionsTest extends TransactionalTestCase
 {
@@ -53,14 +54,14 @@ final class CreateWorkflowDefinitionsTest extends TransactionalTestCase
     private const START_DATE = '2026-04-01';
 
     /**
-     * 設計/ワークフロー/初期データ.md 3 節と同じ中身の定義(コンテンツ 2・フロー 2(版 1 とノード 3。2 つ目のフローのルートは 1 つ目と同じ))を作り、行と対象者を確かめる。
+     * 設計/ワークフロー/初期データ.md の 3 節と同じ中身の定義(コンテンツ 2・フロー 2(版 1 とノード 3。2 つ目のフローのルートは 1 つ目と同じ))を作り、行と対象者を確かめる。
      */
     public function test_creates_the_definitions_of_the_seed_example(): void
     {
         $this->createSeedExample();
 
         $this->assertSame(
-            [[self::ISSUE, '課題の対応', 'project_issue'], [self::PLAN, 'プロジェクト計画', 'project']],
+            [[self::ISSUE, '課題の対応', self::ISSUE], [self::PLAN, 'プロジェクト計画', self::PLAN]],
             WorkflowContent::query()->whereIn('code', [self::PLAN, self::ISSUE])->orderBy('code')->get()->map(fn (WorkflowContent $content) => [$content->code, $content->name, RecordModule::query()->findOrFail($content->record_module_id)->code])->all(),
         );
         $flows = WorkflowFlow::query()->whereIn('code', [self::PLAN, self::ISSUE])->orderBy('sort_key')->get();
@@ -201,29 +202,32 @@ final class CreateWorkflowDefinitionsTest extends TransactionalTestCase
     }
 
     /**
-     * 同じ入力の 2 回目は、どちらもコードの重複(422 code)。
+     * 同じ入力の 2 回目は、コードの重複(422 code)。コンテンツは業務モジュールの重複(module)も並ぶ。
      */
     public function test_the_same_input_twice_is_a_duplicate_code(): void
     {
         $this->createSeedExample();
+        $taken = ['code' => 'このコードは既に使用されています'];
+        $again = fn () => $this->content(self::PLAN, self::PLAN, 'プロジェクト計画');
 
-        foreach ([fn () => $this->content(code: self::PLAN), fn () => $this->flow(code: self::PLAN)] as $again) {
-            $this->assertSame(['code' => 'このコードは既に使用されています'], $this->validationErrors($again));
-        }
+        $this->assertSame([...$taken, 'module' => 'この業務モジュールは既にほかのコンテンツが使用しています'], $this->validationErrors($again));
+        $this->assertSame($taken, $this->validationErrors(fn () => $this->flow(code: self::PLAN)));
     }
 
     /**
-     * 設計/ワークフロー/初期データ.md 3 節と同じ中身の定義を、初期データと重ならないコードで作る。
+     * 設計/ワークフロー/初期データ.md の 3 節と同じ中身の定義を、初期データと重ならないコードと業務モジュール(コンテンツと同じコード)で作る。
      */
     private function createSeedExample(): void
     {
-        $this->content('project', self::PLAN, 'プロジェクト計画');
-        $this->content('project_issue', self::ISSUE, '課題の対応');
+        RecordModule::factory()
+            ->createMany([['code' => self::PLAN], ['code' => self::ISSUE], ['code' => 'other_content']]);
+        $this->content(self::PLAN, self::PLAN, 'プロジェクト計画');
+        $this->content(self::ISSUE, self::ISSUE, '課題の対応');
         $this->flow();
         $this->flow(self::ISSUE, '課題の対応の承認', 'プロジェクトで起きた課題の対応方針を、上長と部長の承認で決めます。', self::ISSUE, route: self::PLAN, referrers: [new SelectionCondition(SelectionConditionKind::CompanyPost, CompanyPost::query()->where('code', 'manager')->sole()->id)], sortKey: 20);
     }
 
-    private function content(string $moduleCode = 'project', string $code = 'other_content', string $name = '別のコンテンツ'): int
+    private function content(string $moduleCode = 'other_content', string $code = 'other_content', string $name = '別のコンテンツ'): int
     {
         return app(CreateWorkflowContent::class)->execute($moduleCode, $code, $name);
     }

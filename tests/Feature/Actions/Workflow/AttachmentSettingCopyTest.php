@@ -104,7 +104,7 @@ final class AttachmentSettingCopyTest extends TransactionalTestCase
             ->update(['prevents_attachment_add' => true]);
 
         app(CreateWorkflowFlow::class)->execute(
-            'wf_plan_copy', '複製', null, self::CONTENT_CODE, self::FLOW_CODE,
+            'wf_plan_copy', '複製', null, $this->projectContentCode(), self::FLOW_CODE,
             CarbonImmutable::parse(self::FLOW_START_DATE), null, [],
         );
 

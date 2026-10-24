@@ -242,8 +242,8 @@ final class CaseDetailQueryTest extends TransactionalTestCase
         $older->update(['applied_at' => '2026-10-01 09:00:00']);
         $newer = $this->appliedCase($target, $this->users['a'], flow: $targetFlow);
         $this->appliedCase(Record::factory()->create(['record_module_id' => $this->targets->id]), $this->users['a'], flow: $targetFlow);
-        $this->appliedCase($issue, $this->users['d'], flow: $this->flowOf($issues));
-        $issueCase = $this->appliedCase($issue, $this->users['a'], completed: true, flow: $this->flowOf($issues));
+        $this->appliedCase($issue, $this->users['d'], flow: $issueFlow = $this->flowOf($issues));
+        $issueCase = $this->appliedCase($issue, $this->users['a'], completed: true, flow: $issueFlow);
         WorkflowCase::factory()->draft()->create(['workflow_flow_id' => $targetFlow->id, 'user_id' => $this->users['a']->id]);
 
         $related = $this->show($this->users['a'], $case->id)['related'];

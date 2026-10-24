@@ -18,6 +18,7 @@ use Tests\Support\TransactionalTestCase;
 use Tests\Support\UploadSchema;
 use Tests\Support\WorkflowAttachmentSchema;
 use Tests\Support\WorkflowCaseHandlingSchema;
+use Tests\Support\WorkflowContentTargetSchema;
 use Tests\Support\WorkflowSchema;
 
 /**
@@ -29,7 +30,7 @@ use Tests\Support\WorkflowSchema;
  *
  * 外部キーの行はモジュールごとの表の形(tests/Support/ の CommonMasterSchema・MenuSchema・RecordsSchema・WorkflowSchema・
  * WorkflowCaseHandlingSchema・NoticeSchema・RecordsCommonSchema・UploadSchema・WorkflowAttachmentSchema・
- * MeetingSchema の FOREIGN_KEYS)に置き、ここで並べる(一時保存の添付の表 = 設計/ワークフロー/申請の周辺/データモデル.md の 3.3 節)。
+ * WorkflowContentTargetSchema・MeetingSchema の FOREIGN_KEYS)に置き、ここで並べる(一時保存の添付の表 = 設計/ワークフロー/申請の周辺/データモデル.md の 3.3 節)。
  * 1 行 = 1 つの外部キー: 参照する側のモデル、factory の状態、列、参照先の表と列、削除の動作、
  * 参照する側のリレーション、参照先の側のリレーション(参照先のモジュールから参照する側のモジュールへ依存できないとき・同じ向きのリレーションが
  * 別の行にあるときは null)。削除の動作は、参照先の行を参照先の列のすべてで選んで消して確かめる(複合外部キーの参照先の列が id で終わらないため。
@@ -50,6 +51,7 @@ final class ForeignKeysTest extends TransactionalTestCase
         ...NoticeSchema::FOREIGN_KEYS,
         ...UploadSchema::FOREIGN_KEYS,
         ...WorkflowAttachmentSchema::FOREIGN_KEYS,
+        ...WorkflowContentTargetSchema::FOREIGN_KEYS,
         ...MeetingSchema::FOREIGN_KEYS,
     ];
 
@@ -68,6 +70,10 @@ final class ForeignKeysTest extends TransactionalTestCase
      * - WorkflowCaseConfirmation (workflow_case_id, workflow_case_node_id)・WorkflowCaseConfirmation (user_id):
      *   確認した人はそのノードの確認対象者(複合外部キー)なので、ノードは確認対象者の行(連鎖で消える)と確認の履歴の行からも、
      *   人は確認対象者の行からも指され、そちらの制約が先に拒む(設計/ワークフロー/案件の運用/データモデル/表.md の 3.11 節)。
+     * - WorkflowContent (record_module_id, target_record_field_id)・
+     *   WorkflowContent (target_record_field_id, target_record_module_id):
+     *   申請対象の項目の行を 2 本の RESTRICT の外部キーが指し、どちらの制約が先に拒むか(RI のトリガーの名前の順)に頼れない
+     *   (項目の削除を拒むことは tests/Feature/Models/Workflow/ の申請対象の制約のテスト)。
      */
     private const DELETE_NOT_ISOLATED = [
         'Record (record_module_id, parent_record_module_id)',
@@ -80,6 +86,8 @@ final class ForeignKeysTest extends TransactionalTestCase
         'WorkflowCaseHistory (workflow_case_id, send_back_workflow_case_node_id)',
         'WorkflowCaseConfirmation (workflow_case_id, workflow_case_node_id)',
         'WorkflowCaseConfirmation (user_id)',
+        'WorkflowContent (record_module_id, target_record_field_id)',
+        'WorkflowContent (target_record_field_id, target_record_module_id)',
     ];
 
     /**

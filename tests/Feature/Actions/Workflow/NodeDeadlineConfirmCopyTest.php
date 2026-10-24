@@ -4,7 +4,6 @@ namespace Tests\Feature\Actions\Workflow;
 
 use App\Actions\Authz\Api\CreateSelectionSubjectGroup;
 use App\Actions\Authz\Api\SelectionCondition;
-use App\Actions\Workflow\CreateWorkflowContent;
 use App\Actions\Workflow\CreateWorkflowFlow;
 use App\Actions\Workflow\RouteEdgeInput;
 use App\Actions\Workflow\RouteNodeInput;
@@ -76,12 +75,12 @@ final class NodeDeadlineConfirmCopyTest extends TransactionalTestCase
             $this->linearApproval('first', 'u0002', 2, $confirm),
             $this->linearApproval('second', 'u0010', 99, null),
         ];
-        app(CreateWorkflowContent::class)->execute('project', self::CONTENT_CODE, 'プロジェクト計画');
+        $contentCode = $this->projectContentCode();
         $flows = app(CreateWorkflowFlow::class);
         $start = CarbonImmutable::parse(self::FLOW_START_DATE);
 
-        $flows->execute('wf_deadline', '期限つき', null, self::CONTENT_CODE, $nodes, $start, null, []);
-        $flows->execute('wf_deadline_copy', '期限つきの複製', null, self::CONTENT_CODE, 'wf_deadline', $start, null, []);
+        $flows->execute('wf_deadline', '期限つき', null, $contentCode, $nodes, $start, null, []);
+        $flows->execute('wf_deadline_copy', '期限つきの複製', null, $contentCode, 'wf_deadline', $start, null, []);
 
         $expected = ['apply' => [null, $confirm], 'first' => [2, $confirm], 'second' => [99, null]];
         $this->assertSame($expected, $this->routeColumns($this->firstVersionId('wf_deadline')));

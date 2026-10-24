@@ -11,7 +11,7 @@ use Tests\Support\WorkflowSchema;
 
 /**
  * ワークフローの 18 表の制約と索引の名前(docs の 設計/ワークフロー/データモデル/直列化と検査.md 4 節・6 節と、段 3a の ルートの深さ/データモデル/直列化と検査.md
- * 5 節・7 節: 名前は 設計/共通マスタ/共通の規則.md 9 節の形で、63 バイトを超える名前を PostgreSQL が切り詰めても重ならない)。設計どおりの名前(主キーを除く 255 個)を切り詰めた一覧と、マイグレーションの後の
+ * 5 節・7 節: 名前は 設計/共通マスタ/共通の規則.md 9 節の形で、63 バイトを超える名前を PostgreSQL が切り詰めても重ならない)。設計どおりの名前(主キーを除く 260 個)を切り詰めた一覧と、マイグレーションの後の
  * DB の名前(主キーを含む)を照合する。ワークフローの表だけを見る。
  */
 final class ConstraintNamesTest extends TransactionalTestCase
@@ -22,7 +22,7 @@ final class ConstraintNamesTest extends TransactionalTestCase
     {
         $truncated = $this->truncatedNames();
 
-        $this->assertCount(255, WorkflowConstraintNames::NAMES);
+        $this->assertCount(260, WorkflowConstraintNames::NAMES);
         $this->assertSame(count(WorkflowConstraintNames::NAMES), count(array_unique($truncated)));
     }
 

@@ -17,6 +17,7 @@ use Tests\Support\TransactionalTestCase;
 use Tests\Support\UploadSchema;
 use Tests\Support\WorkflowAttachmentSchema;
 use Tests\Support\WorkflowCaseHandlingSchema;
+use Tests\Support\WorkflowContentTargetSchema;
 use Tests\Support\WorkflowSchema;
 
 /**
@@ -36,7 +37,8 @@ final class SchemaTest extends TransactionalTestCase
         + NoticeSchema::COLUMNS + UploadSchema::COLUMNS + WorkflowAttachmentSchema::COLUMNS + MeetingSchema::COLUMNS;
 
     /** 表を作った後に足した列(表 → 列。表の末尾に付く) */
-    private const COLUMNS_ADDED_LATER = CommonMasterSchema::COLUMNS_ADDED_LATER + RecordsSchema::COLUMNS_ADDED_LATER + WorkflowSchema::COLUMNS_ADDED_LATER;
+    private const COLUMNS_ADDED_LATER = CommonMasterSchema::COLUMNS_ADDED_LATER + RecordsSchema::COLUMNS_ADDED_LATER + WorkflowSchema::COLUMNS_ADDED_LATER
+        + WorkflowContentTargetSchema::COLUMNS_ADDED_LATER;
 
     /** 表 → モデル */
     private const MODELS = CommonMasterSchema::MODELS + MenuSchema::MODELS + RecordsSchema::MODELS

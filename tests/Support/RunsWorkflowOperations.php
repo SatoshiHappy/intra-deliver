@@ -9,7 +9,6 @@ use App\Actions\Workflow\ApplicationInput;
 use App\Actions\Workflow\ApplyCase;
 use App\Actions\Workflow\ApproveCase;
 use App\Actions\Workflow\ApproveCaseEarly;
-use App\Actions\Workflow\CreateWorkflowContent;
 use App\Actions\Workflow\CreateWorkflowFlow;
 use App\Actions\Workflow\PullBackCase;
 use App\Actions\Workflow\ReapplyCase;
@@ -44,18 +43,16 @@ use Illuminate\Support\Facades\DB;
 use LogicException;
 
 /**
- * 案件の操作の業務処理のテストの手助け(docs の 設計/ワークフロー/案件の操作/同時実行と検査.md 7 節)。定義は 4a の定義の業務処理で、案件は本物の業務処理で作る。
- * 既定のフロー = 初期データ.md 3 節の「プロジェクト計画の承認」と同じ形(申請 = 一般利用者のロール(初期データの全員)、承認 1 = u0002、承認 2 = u0003、
- * 参照者 = 経理部)。人・組織は初期データ(u0001〜)を使う。初期データのワークフローの定義・案件と混ざらないように、コンテンツとフローはテスト用のコード
- * ({@see self::CONTENT_CODE}・{@see self::FLOW_CODE})で作る(自分が作った行だけを見る)。
+ * 案件の操作の業務処理のテストの手助け(docs の 設計/ワークフロー/案件の操作/同時実行と検査.md 7 節)。定義は定義の業務処理で、案件は本物の業務処理で作る。
+ * 既定のフロー = 設計/ワークフロー/初期データ.md の 3 節の「プロジェクト計画の承認」と同じ形(申請 = 一般利用者のロール(初期データの全員)、承認 1 = u0002、承認 2 = u0003、
+ * 参照者 = 経理部)。人・組織は初期データ(u0001〜)を使う。初期データのワークフローの定義・案件と混ざらないように、フローはテスト用のコード
+ * ({@see self::FLOW_CODE})で作る(自分が作った行だけを見る)。コンテンツは初期データの、業務モジュール project を指すもの
+ * ({@see self::projectContentCode()})。
  */
 trait RunsWorkflowOperations
 {
     /** 既定のフローのコード(初期データの project_plan とは別) */
     protected const FLOW_CODE = 'wf_plan';
-
-    /** テストのフローが使うコンテンツのコード(業務モジュール project。初期データの project_plan とは別) */
-    protected const CONTENT_CODE = 'wf_project';
 
     /** テストのフローの版 1 の開始日(操作の基準日 {@see self::operationDay()} と、過去の基準日で申請するテスト(2025-09-01)を含む) */
     protected const FLOW_START_DATE = '2025-04-01';
@@ -89,10 +86,7 @@ trait RunsWorkflowOperations
      */
     protected function createFlow(string $code = self::FLOW_CODE, string $name = 'プロジェクト計画の承認', ?array $approvals = null, ?array $applicants = null): int
     {
-        if (! WorkflowContent::query()->where('code', self::CONTENT_CODE)->exists()) {
-            app(CreateWorkflowContent::class)->execute('project', self::CONTENT_CODE, 'プロジェクト計画');
-        }
-
+        $contentCode = $this->projectContentCode();
         $approvals ??= [[$this->userCondition('u0002')], [$this->userCondition('u0003')]];
         $nodes = [new WorkflowRouteNodeInput('apply', '申請', WorkflowNodeKind::Apply, $applicants ?? [new SelectionCondition(SelectionConditionKind::Role, Role::query()->where('code', 'general_user')->sole()->id)], ['ja' => '申請'])];
 
@@ -101,10 +95,23 @@ trait RunsWorkflowOperations
             $nodes[] = new WorkflowRouteNodeInput("approval{$position}", "承認{$position}", WorkflowNodeKind::Approve, $conditions, ['ja' => "承認{$position}"]);
         }
 
-        $flowId = app(CreateWorkflowFlow::class)->execute($code, $name, null, self::CONTENT_CODE, $nodes, CarbonImmutable::parse(self::FLOW_START_DATE), [new SelectionCondition(SelectionConditionKind::Department, $this->departmentIdOf('accounting'))], ['ja' => '参照者'], 10);
+        $referrers = [new SelectionCondition(SelectionConditionKind::Department, $this->departmentIdOf('accounting'))];
+        $start = CarbonImmutable::parse(self::FLOW_START_DATE);
+        $flowId = app(CreateWorkflowFlow::class)->execute(
+            $code, $name, null, $contentCode, $nodes, $start, $referrers, ['ja' => '参照者'], 10,
+        );
         app(WorkflowFlowResources::class)->createFor($code);
 
         return $flowId;
+    }
+
+    /**
+     * テストのフローが使う、業務モジュール project を指す初期データのコンテンツのコード。業務モジュールを指すコンテンツは 1 つまで
+     * (docs の 設計/ワークフロー/データモデル/表.md の 2.1 節)なので作らず、無ければ落ちる。
+     */
+    protected function projectContentCode(): string
+    {
+        return WorkflowContent::query()->whereRelation('recordModule', 'code', 'project')->sole()->code;
     }
 
     /**

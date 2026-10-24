@@ -246,7 +246,7 @@ final class RecordApplyFlowsTest extends TransactionalTestCase
             'code' => $code,
             'name' => "{$code} の名前",
             'description' => $description,
-            'workflow_content_id' => WorkflowContent::factory()->create(['record_module_id' => $module->id])->id,
+            'workflow_content_id' => $this->contentOf($module)->id,
             'sort_key' => $sortKey,
         ]);
         $version = WorkflowFlowVersion::factory()->create(['workflow_flow_id' => $flow->id]);
@@ -261,5 +261,16 @@ final class RecordApplyFlowsTest extends TransactionalTestCase
         WorkflowRouteNode::factory()->create(['workflow_flow_version_id' => $version->id, 'position' => 2]);
 
         return $flow;
+    }
+
+    /**
+     * 業務モジュールを指すコンテンツは 1 つまで(docs の 設計/ワークフロー/データモデル/表.md の 2.1 節)なので、同じ業務モジュールのフローは同じコンテンツを使う。
+     */
+    private function contentOf(RecordModule $module): WorkflowContent
+    {
+        return WorkflowContent::query()->firstOrCreate(
+            ['record_module_id' => $module->id],
+            ['code' => "content_{$module->code}", 'name' => $module->code],
+        );
     }
 }
