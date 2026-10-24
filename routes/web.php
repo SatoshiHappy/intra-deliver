@@ -157,7 +157,7 @@ Route::delete('/records/admin/categories/{category}', [ModuleCategoryController:
 Route::put('/records/admin/categories/{category}/reorder', [ModuleCategoryController::class, 'reorderModules'])->name('records.admin.categories.reorder-modules')->where('category', '[0-9a-z]{26}');
 Route::put('/records/admin/categories/{category}/modules', [ModuleCategoryController::class, 'updateModules'])->name('records.admin.categories.modules')->where('category', '[0-9a-z]{26}');
 
-// ワークフローの画面(docs の 設計/ワークフロー/画面.md 1.1)。{flow} = フローのコード、{case} = 案件の id(数字だけ。一時保存も同じ形で指す)。
+// ワークフローの画面(docs の 設計/ワークフロー/画面/README.md 1.1)。{flow} = フローのコード、{case} = 案件の id(数字だけ。一時保存も同じ形で指す)。
 // 入口の判定の順(案件 404 → フロー 404 → 申請できる人・update 403 → 封筒の 422)は FormRequest の authorize と読み取りが持つ(案件の操作/操作.md 3.1 の 1)。
 Route::get('/workflow/flows', [FlowController::class, 'index'])->name('workflow.flows.index');
 Route::get('/workflow/flows/{flow}/apply', [ApplicationController::class, 'create'])->name('workflow.applications.create')->where('flow', '[a-z][a-z0-9_]{0,49}');

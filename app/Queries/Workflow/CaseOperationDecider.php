@@ -13,7 +13,8 @@ use Closure;
 use DateTimeInterface;
 
 /**
- * 案件の操作の判定(docs の 設計/ワークフロー/ルートの深さ/案件の操作/操作.md 8 節の表と 10.5 の引戻しの 1 規則)と画面の can(設計/ワークフロー/認可と一覧.md 3.2、画面.md 1.2・5 節)。
+ * 案件の操作の判定(docs の 設計/ワークフロー/ルートの深さ/案件の操作/操作.md 8 節の表と 10.5 の引戻しの 1 規則)
+ * と画面の can(設計/ワークフロー/認可と一覧.md 3.2、画面/README.md 1.2・画面/申請と案件.md 5 節)。
  * 業務処理の判定と画面の can が食い違わないよう、どちらも状況を読んで役割を作り {@see CaseOperationTable} を引くこの 1 か所を通る。鍵を取らない。
  */
 class CaseOperationDecider
@@ -34,7 +35,8 @@ class CaseOperationDecider
     ) {}
 
     /**
-     * 一覧の行・関連する案件の行の can(画面.md 1.2 の WorkflowCaseRow)。editDraft = 一時保存を開く(上書きの表 ∧ 申請できる人)、reapply = 表 ∧ 業務モジュールの update。
+     * 一覧の行・関連する案件の行の can(画面/README.md 1.2 の WorkflowCaseRow)。
+     * editDraft = 一時保存を開く(上書きの表 ∧ 申請できる人)、reapply = 表 ∧ 業務モジュールの update。
      *
      * @param  Closure(WorkflowOperation): bool  $permits  表(操作 → 許すか)
      * @return array{pullBack: bool, reapply: bool, withdraw: bool, editDraft: bool, deleteDraft: bool}

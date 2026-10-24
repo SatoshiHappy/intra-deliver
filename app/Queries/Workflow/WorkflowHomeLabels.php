@@ -6,7 +6,7 @@ use App\Enums\Workflow\WorkflowAction;
 use App\Enums\Workflow\WorkflowNodeState;
 
 /**
- * ホームのワークフローの節の語と札(docs の 設計/ワークフロー/画面.md 7 節の内訳・ステップの表(ルートの深さ/認可と一覧.md 2 節で読み替え)、8 節の状態の札と
+ * ホームのワークフローの節の語と札(docs の 設計/ワークフロー/画面/ホームと意匠とE2E.md 7 節の内訳・ステップの表(ルートの深さ/認可と一覧.md 2 節で読み替え)、8 節の状態の札と
  * 履歴の処理の種別の札)。値だけを持つ。
  */
 final class WorkflowHomeLabels

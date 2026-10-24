@@ -2,7 +2,7 @@ import { formatDatetime } from '@/lib/recordValues';
 import type { WorkflowAction, WorkflowPerson } from '@/types';
 
 /**
- * ワークフローの画面の語(docs の 設計/ワークフロー/画面.md 1.2・8 節)。人の表示・処理の種別の名前・改訂番号の不一致の文言。
+ * ワークフローの画面の語(docs の 設計/ワークフロー/画面/README.md 1.2・画面/ホームと意匠とE2E.md 8 節)。人の表示・処理の種別の名前・改訂番号の不一致の文言。
  */
 
 /** 処理の種別の名前(履歴・フロー情報の札に添える) */
@@ -28,7 +28,7 @@ export const ACTION_LABELS: Record<WorkflowAction, string> = {
 
 /**
  * 改訂番号の不一致の文言(サーバーの App\Actions\Workflow\CaseOperationErrors::STALE_REVISION と同じ文字列。tests/Architecture/WorkflowStaleRevisionMirrorTest が結ぶ。キー case の文言がこれなら、
- * ダイアログは文言の後に「再表示」のリンクを添える = 画面.md 6 節)。
+ * ダイアログは文言の後に「再表示」のリンクを添える = 画面/申請と案件.md 6 節)。
  */
 export const STALE_REVISION_MESSAGE =
     '画面を表示した後に申請が変更されました。再表示してください';
@@ -41,7 +41,7 @@ export function personName(person: WorkflowPerson): string {
 }
 
 /**
- * 処理対象者の並びの文(3 人までは「<名前>さん、<名前>さん」、3 人を超えたら先頭の人で「<名前>さんほか N 人」= 画面.md 3 節)。0 人なら空文字。
+ * 処理対象者の並びの文(3 人までは「<名前>さん、<名前>さん」、3 人を超えたら先頭の人で「<名前>さんほか N 人」= 画面/申請と案件.md 3 節)。0 人なら空文字。
  */
 export function targetsText(targets: WorkflowPerson[]): string {
     if (targets.length > 3) {

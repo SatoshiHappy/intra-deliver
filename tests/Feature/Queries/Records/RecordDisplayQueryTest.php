@@ -13,7 +13,7 @@ use Tests\Support\BuildsRecordModules;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * レコードの表示の口(docs の 設計/ワークフロー/業務データとの接続/README.md 1 節・9 節「口」、公開の口.md 7 節の表): 業務モジュールの read を
+ * レコードの表示の口(docs の 設計/ワークフロー/業務データとの接続/申請と書き込み.md 1 節・写しとつながる申請.md 9 節「口」、公開の口.md 7 節の表): 業務モジュールの read を
  * 見ずに値を返し、参照先の read が無い他モジュール参照の表示名は null。
  */
 final class RecordDisplayQueryTest extends TransactionalTestCase

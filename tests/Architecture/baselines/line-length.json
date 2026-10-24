@@ -203,7 +203,7 @@
     "app/Queries/Workflow/CaseDiagram.php": 10,
     "app/Queries/Workflow/CaseEntryGate.php": 3,
     "app/Queries/Workflow/CaseHistories.php": 7,
-    "app/Queries/Workflow/CaseOperationDecider.php": 16,
+    "app/Queries/Workflow/CaseOperationDecider.php": 15,
     "app/Queries/Workflow/CaseOperationTable.php": 2,
     "app/Queries/Workflow/CaseRoles.php": 2,
     "app/Queries/Workflow/CaseRows.php": 2,

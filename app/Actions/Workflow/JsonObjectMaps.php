@@ -6,7 +6,7 @@ use stdClass;
 
 /**
  * jsonb に書く写像の位置を JSON のオブジェクトにする 1 か所(空の配列も {} になる。PHP の [] は json_encode で [] になるため)。
- * 対象 = 一時保存の入力 draft_input(docs の 設計/ワークフロー/業務データとの接続/README.md 2 節)の values・details と明細の行の values。
+ * 対象 = 一時保存の入力 draft_input(docs の 設計/ワークフロー/業務データとの接続/申請と書き込み.md 2 節)の values・details と明細の行の values。
  * 明細の項目の行の並びは配列のまま(0 行でも [])。DB の検査制約(jsonb_typeof = 'object')は最上位しか見ないので、中の形はここで決める。
  */
 final class JsonObjectMaps

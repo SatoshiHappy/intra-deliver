@@ -7,7 +7,7 @@ use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
 /**
- * 改訂番号の不一致の文言の写しの整合(docs の 設計/ワークフロー/画面.md 6 節・案件の操作/同時実行と検査.md 6 節)。処理のダイアログは、キー case の文言が
+ * 改訂番号の不一致の文言の写しの整合(docs の 設計/ワークフロー/画面/申請と案件.md 6 節・案件の操作/同時実行と検査.md 6 節)。処理のダイアログは、キー case の文言が
  * resources/js/lib/Workflow/workflowLabels.ts の STALE_REVISION_MESSAGE と一致するときに「再表示」を添える。この定数は業務処理の
  * App\Actions\Workflow\CaseOperationErrors::STALE_REVISION の写し(二重の定義を受け入れ、このテストで結ぶ。片方だけ変わると失敗)。
  *

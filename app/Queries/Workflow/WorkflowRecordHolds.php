@@ -8,7 +8,7 @@ use App\Queries\Records\Api\RecordHold;
 use App\Queries\Records\Api\RecordHolds;
 
 /**
- * レコードの持ち主のワークフローの実装(docs の 設計/ワークフロー/業務データとの接続/README.md 4 節): 未完了の案件が指すレコードは、その案件が持ち主
+ * レコードの持ち主のワークフローの実装(docs の 設計/ワークフロー/業務データとの接続/申請と書き込み.md 4 節): 未完了の案件が指すレコードは、その案件が持ち主
  * (鍵 workflow-case:<案件の id>)。完了・一時保存の案件は持ち主にならない。起動(App\Providers\AppServiceProvider)がタグ {@see RecordHolds::TAG} で登録する。
  * 案件の表を鍵なしで読む(FOR UPDATE・FOR SHARE を出さない = データモデル/直列化と検査.md 6 節の「ロックの順」の (3))。
  */
@@ -19,7 +19,7 @@ class WorkflowRecordHolds implements RecordHolds
 
     /**
      * 案件の持ち主の鍵(workflow-case:<案件の id>)を作る 1 か所。鍵を渡してよいのは持ち主自身(ワークフローの再申請の業務処理)だけ
-     * (docs の 設計/ワークフロー/業務データとの接続/README.md 4 節)。
+     * (docs の 設計/ワークフロー/業務データとの接続/申請と書き込み.md 4 節)。
      */
     public static function holderOf(int $caseId): string
     {

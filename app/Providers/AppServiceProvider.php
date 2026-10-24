@@ -63,10 +63,10 @@ class AppServiceProvider extends ServiceProvider
         // 依存の逆転: 認可の業務処理が、各モジュールの定義するリソースタイプとアクションの一覧の和で検査する(docs の 設計/メニュー/認可との結び付け.md 2.1)
         $this->app->tag([ServiceResourceTypes::class, MenuResourceTypes::class, RecordModuleResourceTypes::class, WorkflowFlowResourceTypes::class], ResourceTypes::TAG);
 
-        // 依存の逆転: 業務データの入れ物の書き込みが、未完了の案件が指すレコードを持ち主の規則で守る(docs の 設計/ワークフロー/業務データとの接続/README.md 4 節)
+        // 依存の逆転: 業務データの入れ物の書き込みが、未完了の案件が指すレコードを持ち主の規則で守る(docs の 設計/ワークフロー/業務データとの接続/申請と書き込み.md 4 節)
         $this->app->tag([WorkflowRecordHolds::class], RecordHolds::TAG);
 
-        // 依存の逆転: 業務データの入れ物の詳細の「申請する」が、レコードから申請できる入口を聞く(docs の 設計/ワークフロー/申請の周辺/既存のデータからの申請.md の 2 節)
+        // 依存の逆転: 業務データの入れ物の詳細の「申請する」が、レコードから申請できる入口を聞く(docs の 設計/ワークフロー/申請の周辺/既存のデータからの申請/README.md の 2 節)
         $this->app->tag([WorkflowRecordApplyEntries::class], RecordApplyEntries::TAG);
 
         // 依存の逆転: メニューの表示判定が、ルートを受け持つモジュールの追加の判定で隠す(docs の 設計/ワークフロー/申請の周辺/メニューと導線.md 1.2)
@@ -100,7 +100,7 @@ class AppServiceProvider extends ServiceProvider
 
     /**
      * 依存の逆転: ホームの入口が、各モジュールの足す節を登録の順に出す(docs の 設計/メニュー/ホーム.md 6.2)。
-     * 右列 = 主な操作 → 進行中の申請(主な操作をワークフローの経路の節より前に = ホーム.md 6.5、ワークフローの 5 つはこの順 = 設計/ワークフロー/画面.md 7 節)
+     * 右列 = 主な操作 → 進行中の申請(主な操作をワークフローの経路の節より前に = ホーム.md 6.5、ワークフローの 5 つはこの順 = 設計/ワークフロー/画面/ホームと意匠とE2E.md 7 節)
      */
     private function tagHomeSections(): void
     {

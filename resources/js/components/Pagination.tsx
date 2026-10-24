@@ -44,7 +44,7 @@ function PageNumbers({ list, onPage, disabled }: Props) {
 
 /**
  * 一覧のページ送り(前へ・ページの番号(最初・最後・今の前後 2。間は「…」)・次へ・「全 N 件」)。案件・通知・業務データの一覧と、
- * 業務データの関連レコードの表が使う(docs の 設計/ワークフロー/画面.md 4 節 = 業務データの入れ物の一覧と同じ形)。
+ * 業務データの関連レコードの表が使う(docs の 設計/ワークフロー/画面/申請と案件.md 4 節 = 業務データの入れ物の一覧と同じ形)。
  * 複数のモジュールが使うため直下に置く。1 ページだけでも出す。
  */
 export function Pagination({ list, onPage, disabled = false }: Props) {

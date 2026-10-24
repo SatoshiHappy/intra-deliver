@@ -13,7 +13,7 @@ use DateTimeInterface;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * レコードから申請できる入口を束ねる 1 か所(docs の 設計/ワークフロー/申請の周辺/既存のデータからの申請.md の 2 節): 起動がワークフローの実装をタグで
+ * レコードから申請できる入口を束ねる 1 か所(docs の 設計/ワークフロー/申請の周辺/既存のデータからの申請/README.md の 2 節): 起動がワークフローの実装をタグで
  * 登録し、束ねる 1 か所はタグの実装を登録の順に呼んで結果をつなぐ。
  */
 final class RecordApplyEntryCatalogTest extends TransactionalTestCase

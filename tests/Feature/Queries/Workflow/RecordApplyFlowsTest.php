@@ -27,7 +27,7 @@ use Tests\Support\RegistersProxies;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * 既存のデータからの申請をできる人の判定の 1 か所(docs の 設計/ワークフロー/申請の周辺/既存のデータからの申請.md の 1 節・8 節): 申請のノードの対象者 +
+ * 既存のデータからの申請をできる人の判定の 1 か所(docs の 設計/ワークフロー/申請の周辺/既存のデータからの申請/README.md の 1 節・8 節): 申請のノードの対象者 +
  * 業務モジュールの read と update(create は求めない)。flowsFor・allowsAny は自分か代理元のどれか、allows はその人だけ。申請者の候補と既定の申請者
  * (設計/ワークフロー/案件の運用/画面/案件の画面.md の 6.1 節)は allows で 1 人ずつ判定する。フローと業務モジュールはテストで作る。
  */

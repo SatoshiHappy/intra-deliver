@@ -20,7 +20,7 @@ use LogicException;
  * 今の展開(新規・一時保存 = 申請基準日の版、再申請 = 案件の写し)。並び = 位置の順。展開は案件の到達と同じ口 {@see NodeTargetExpansion::expand()}
  * (起点の組織 = 担当組織、前処理者の起点の組織 = {@see CaseActor} の口)を申請基準日で呼ぶ(処理対象者.md 4.1〜4.3)。
  * noVersionMessage = 版が無いときの文(申請基準日の日付入り。業務処理の 422 base_date と同じ文 = {@see EffectiveFlowVersions::NO_VERSION_MESSAGE}。版があれば null)。
- * blockedReason = 申請者承認防止のノードの展開が申請者として扱う人だけのときの文言(業務処理の 422 と同じ = 4.6。0 人は画面が 設計/ワークフロー/画面.md 3 節の文で示す)。鍵を取らない。
+ * blockedReason = 申請者承認防止のノードの展開が申請者として扱う人だけのときの文言(業務処理の 422 と同じ = 4.6。0 人は画面が 設計/ワークフロー/画面/申請と案件.md 3 節の文で示す)。鍵を取らない。
  *
  * @phpstan-import-type Person from WorkflowPeople
  *

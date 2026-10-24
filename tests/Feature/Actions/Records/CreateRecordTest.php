@@ -101,7 +101,7 @@ final class CreateRecordTest extends TransactionalTestCase
 
     /**
      * 公開の口は自分のトランザクションを持ち、外側のトランザクションの中では savepoint で外側に含まれる
-     * (docs の 設計/ワークフロー/業務データとの接続/公開の口.md 7 節の原子性、同 README.md 9 節)。
+     * (docs の 設計/ワークフロー/業務データとの接続/公開の口.md 7 節の原子性、同 写しとつながる申請.md 9 節)。
      */
     public function test_a_failure_of_the_outer_transaction_leaves_no_created_record(): void
     {

@@ -3,7 +3,7 @@
 namespace App\Queries\Records\Api;
 
 /**
- * レコードの持ち主({@see RecordHolds} が返す値。docs の 設計/ワークフロー/業務データとの接続/README.md 4 節)。
+ * レコードの持ち主({@see RecordHolds} が返す値。docs の 設計/ワークフロー/業務データとの接続/申請と書き込み.md 4 節)。
  */
 final readonly class RecordHold
 {

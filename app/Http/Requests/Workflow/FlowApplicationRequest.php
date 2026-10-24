@@ -8,9 +8,10 @@ use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
- * フローを指す書き込み(新規の申請 workflow.applications.store・新規の一時保存 workflow.drafts.store)の入力(docs の 設計/ワークフロー/画面.md 1.1・3 節)。
+ * フローを指す書き込み(新規の申請 workflow.applications.store・新規の一時保存 workflow.drafts.store)の入力
+ * (docs の 設計/ワークフロー/画面/README.md 1.1・画面/申請と案件.md 3 節)。
  * 封筒は {@see ReadsApplicationEnvelope}。改訂番号は無い(案件がまだ無い)。添付は受け、外す指定は外す相手が無いので捨てる。
- * 申請のルートだけが record_id・record_version を受け(既存のデータからの申請 = 設計/ワークフロー/申請の周辺/既存のデータからの申請.md の 4 節)、
+ * 申請のルートだけが record_id・record_version を受け(既存のデータからの申請 = 設計/ワークフロー/申請の周辺/既存のデータからの申請/README.md の 4 節)、
  * 一時保存のルートは捨てる(一時保存はレコードを持てない)。
  */
 class FlowApplicationRequest extends FormRequest

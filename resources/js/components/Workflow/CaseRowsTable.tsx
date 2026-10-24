@@ -23,7 +23,7 @@ type Props = {
 };
 
 /**
- * 案件名のリンク(一時保存は一時保存の画面 = 申請できる人のときだけ、ほかは詳細。設計/ワークフロー/画面.md 4 節)。
+ * 案件名のリンク(一時保存は一時保存の画面 = 申請できる人のときだけ、ほかは詳細。設計/ワークフロー/画面/申請と案件.md 4 節)。
  */
 function CaseNameCell({ row }: { row: WorkflowCaseRow }) {
     if (row.state === 'draft' && !row.can.editDraft) {
@@ -41,7 +41,7 @@ function CaseNameCell({ row }: { row: WorkflowCaseRow }) {
 }
 
 /**
- * 関連する案件の表(docs の 設計/ワークフロー/画面.md 5 節): 申請番号・申請名(折り返す)・フロー・申請者・申請日・状態の札。
+ * 関連する案件の表(docs の 設計/ワークフロー/画面/申請と案件.md 5 節): 申請番号・申請名(折り返す)・フロー・申請者・申請日・状態の札。
  * 申請一覧の表は列がタブごとに違うので別の部品(CaseListTable)。
  */
 export function CaseRowsTable({ rows, emptyText, label }: Props) {

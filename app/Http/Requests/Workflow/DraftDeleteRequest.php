@@ -8,7 +8,7 @@ use App\Support\AccessContext;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
- * 一時保存の削除 workflow.drafts.destroy の入力 { revision }(本文で送る。docs の 設計/ワークフロー/画面.md 1.1・6 節)。
+ * 一時保存の削除 workflow.drafts.destroy の入力 { revision }(本文で送る。docs の 設計/ワークフロー/画面/README.md 1.1・画面/申請と案件.md 6 節)。
  * 添付を受けない口なので、送られた attachments は黙って捨てず 422 にする(申請の周辺/添付/README.md の 3.1 節)。
  */
 class DraftDeleteRequest extends FormRequest

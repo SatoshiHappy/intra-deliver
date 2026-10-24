@@ -6,7 +6,7 @@ use App\Queries\Menu\Api\HomeSections;
 use App\Support\AccessContext;
 
 /**
- * ホームのあいさつ欄の一文(docs の 設計/ワークフロー/画面.md 7 節。口 = {@see HomeSections}、形 = 設計/メニュー/ホーム.md 6.2)。
+ * ホームのあいさつ欄の一文(docs の 設計/ワークフロー/画面/ホームと意匠とE2E.md 7 節。口 = {@see HomeSections}、形 = 設計/メニュー/ホーム.md 6.2)。
  * 「未処理の申請は<未処理の件数>件、進行中の申請は<進行中の申請の件数>件です。」。主ボタンは無い。ゲストには null。
  *
  * @phpstan-import-type HomeLeadSection from HomeSections

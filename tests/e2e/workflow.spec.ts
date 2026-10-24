@@ -1,7 +1,7 @@
 import { expect, test } from './support/test';
 import type { Page } from '@playwright/test';
 
-// ワークフローの画面のうち、ゲストだけで成り立つもの(docs の 設計/ワークフロー/画面.md 9 節の main)。画面は PC の幅だけを前提にする。
+// ワークフローの画面のうち、ゲストだけで成り立つもの(docs の 設計/ワークフロー/画面/ホームと意匠とE2E.md 9 節の main)。画面は PC の幅だけを前提にする。
 // ナビの中は、E2E 専用のグループ(database/seeders/E2eMenuSeeder.php)が増えても通るよう、見出しでグループを絞ってから引く。
 test.use({ viewport: { width: 1280, height: 720 } });
 

@@ -13,7 +13,7 @@ use DateTimeInterface;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 /**
- * レコードの表示の口(申請内容の表示と案件名の既定 = docs の 設計/ワークフロー/業務データとの接続/README.md 1 節。主体・認可・結果・失敗の正本 =
+ * レコードの表示の口(申請内容の表示と案件名の既定 = docs の 設計/ワークフロー/業務データとの接続/申請と書き込み.md 1 節。主体・認可・結果・失敗の正本 =
  * 同 公開の口.md 7 節の表)。業務モジュールの read を見ない(呼び手 = ワークフローの閲覧の判定が先)。
  *
  * @phpstan-import-type ModuleDefinition from RecordDefinitionQuery

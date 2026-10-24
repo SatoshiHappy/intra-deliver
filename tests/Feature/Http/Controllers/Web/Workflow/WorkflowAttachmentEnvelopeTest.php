@@ -36,7 +36,7 @@ final class WorkflowAttachmentEnvelopeTest extends TransactionalTestCase
     }
 
     /**
-     * 一時保存の入力は検証せず送られた形のまま保つので、型の違いがそのまま残る(業務データとの接続/README.md の 2 節)。
+     * 一時保存の入力は検証せず送られた形のまま保つので、型の違いがそのまま残る(業務データとの接続/申請と書き込み.md の 2 節)。
      *
      * @return array<string, array{array<string, mixed>}>
      */

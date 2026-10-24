@@ -3,7 +3,7 @@ import { SCOPED_TABS } from '@/lib/Workflow/caseList';
 import { index } from '@/routes/workflow/cases';
 import type { WorkflowCaseScope, WorkflowCaseTab } from '@/types';
 
-/** タブ・切替・ページ・検索の語を変えたときに取り直す props(docs の 設計/ワークフロー/画面.md 4 節) */
+/** タブ・切替・ページ・検索の語を変えたときに取り直す props(docs の 設計/ワークフロー/画面/申請と案件.md 4 節) */
 export const CASE_LIST_PROPS = ['query', 'counts', 'cases'];
 
 /** 一覧のクエリ(読み取りが解釈した値) */

@@ -14,7 +14,8 @@ use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * 再申請(docs の 設計/ワークフロー/画面.md 1.1・3 節)。再申請ができない状態・役割なら、画面を開かずに詳細へ移し {@see CaseOperationErrors::NOT_PERMITTED} を
+ * 再申請(docs の 設計/ワークフロー/画面/README.md 1.1・画面/申請と案件.md 3 節)。
+ * 再申請ができない状態・役割なら、画面を開かずに詳細へ移し {@see CaseOperationErrors::NOT_PERMITTED} を
  * トーストで出す(古いリンクから来た人を行き止まりにしない)。
  */
 class ReapplicationController extends Controller

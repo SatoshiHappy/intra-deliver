@@ -20,7 +20,7 @@ type Props = {
 };
 
 /**
- * 一時保存の行の操作 =「編集」(設計の「開く」を画面の名前に)「削除」(docs の 設計/ワークフロー/画面.md 4 節)。
+ * 一時保存の行の操作 =「編集」(設計の「開く」を画面の名前に)「削除」(docs の 設計/ワークフロー/画面/申請と案件.md 4 節)。
  */
 function DraftRowActions({ row }: { row: WorkflowCaseRow }) {
     return (

@@ -8,7 +8,8 @@ use App\Actions\Workflow\DraftInput;
 use App\Http\Requests\Records\ReadsRecordEnvelope;
 
 /**
- * 申請・一時保存・再申請の入力の封筒(docs の 設計/ワークフロー/業務データとの接続/README.md 2 節・3 節、画面.md 3 節の送る形 { name, comment, values, details }):
+ * 申請・一時保存・再申請の入力の封筒(docs の 設計/ワークフロー/業務データとの接続/申請と書き込み.md 2 節・3 節、
+ * 画面/申請と案件.md 3 節の送る形 { name, comment, values, details }):
  * name・comment が文字列か null、values・details は業務データの入れ物の入口と同じ 1 か所({@see ReadsRecordEnvelope})の規則・文言・変換。
  * 入口が見るのは封筒の形だけで、案件名・コメントの長さと使えない文字・一時保存の大きさは業務処理が 422 にする(案件の操作/同時実行と検査.md 6 節)。
  * 添付とその multipart の送り方は {@see ReadsAttachmentEnvelope}。
@@ -70,7 +71,7 @@ trait ReadsApplicationEnvelope
     }
 
     /**
-     * 一時保存の入力(レコードの入力と同じ変換の後、明細の行の id を捨てる = 業務データとの接続/README.md 2 節)。
+     * 一時保存の入力(レコードの入力と同じ変換の後、明細の行の id を捨てる = 業務データとの接続/申請と書き込み.md 2 節)。
      */
     public function draftInput(): DraftInput
     {

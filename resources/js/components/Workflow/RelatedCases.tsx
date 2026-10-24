@@ -1,7 +1,7 @@
 import { CaseRowsTable } from '@/components/Workflow/CaseRowsTable';
 import type { WorkflowCaseShowProps } from '@/types';
 
-/** 群の見出し(業務モジュールに依らない一般名 = 設計/ワークフロー/画面.md 5 節) */
+/** 群の見出し(業務モジュールに依らない一般名 = 設計/ワークフロー/画面/申請と案件.md 5 節) */
 const GROUPS = [
     ['sameRecord', '同じレコードの申請'],
     ['referenced', '参照先のレコードの申請'],
@@ -9,7 +9,7 @@ const GROUPS = [
 ] as const;
 
 /**
- * 関連する案件(docs の 設計/ワークフロー/画面.md 5 節。W-4): 群ごとに見出しと表(案件番号・案件名・フロー・申請者・申請日・状態)。空の群は出さず、
+ * 関連する案件(docs の 設計/ワークフロー/画面/申請と案件.md 5 節。W-4): 群ごとに見出しと表(案件番号・案件名・フロー・申請者・申請日・状態)。空の群は出さず、
  * 3 つとも空なら「関連する申請はありません」。
  */
 export function RelatedCases({

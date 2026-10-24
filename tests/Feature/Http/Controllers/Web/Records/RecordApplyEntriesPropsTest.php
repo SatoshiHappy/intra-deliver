@@ -13,7 +13,7 @@ use Tests\Support\RegistersProxies;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * レコードの詳細の申請の入口(docs の 設計/ワークフロー/申請の周辺/既存のデータからの申請.md の 2 節、
+ * レコードの詳細の申請の入口(docs の 設計/ワークフロー/申請の周辺/既存のデータからの申請/README.md の 2 節、
  * 設計/業務データの入れ物/レコードの共通機能/詳細の画面/README.md の 6.1 節): can.apply = 入口が空でない、applyEntries = 入口の一覧
  * (名前・説明・申請の画面の URL。can.apply が偽なら空)。持ち主の有無は見ない(hold で押せない形にする)。問い合わせの数は入口の数に比例しない。
  * 業務モジュール project の入口 = 初期データのフローとテストのフロー、project_issue の入口 = 初期データのフロー 1 つ。

@@ -76,7 +76,7 @@ final class CaseDiagramTest extends TransactionalTestCase
     }
 
     /**
-     * 合議の進み具合(画面.md 7 節・案件の操作 2.5): WF-000009 = 1 人が承認・必要 2 人・未処理 2、子ごとの行(人・所属 = 申請基準日の主所属・処理日時・状態の語・自分)。
+     * 合議の進み具合(画面/ホームと意匠とE2E.md 7 節・案件の操作 2.5): WF-000009 = 1 人が承認・必要 2 人・未処理 2、子ごとの行(人・所属 = 申請基準日の主所属・処理日時・状態の語・自分)。
      */
     public function test_the_council_in_progress_counts_approvals_and_lists_each_child(): void
     {
@@ -143,7 +143,7 @@ final class CaseDiagramTest extends TransactionalTestCase
     }
 
     /**
-     * 否認の票(画面.md 7 節・区切り 4-2 の修正 #2): 合議の途中で子 1 が否認すると、進み具合の行と図の子の箱が処理の種別(否認)を持ち、否認は承認に数えない。
+     * 否認の票(画面/ホームと意匠とE2E.md 7 節・区切り 4-2 の修正 #2): 合議の途中で子 1 が否認すると、進み具合の行と図の子の箱が処理の種別(否認)を持ち、否認は承認に数えない。
      * 否認した本人の行と箱だけが自分。
      */
     public function test_a_rejected_vote_carries_its_action_and_is_not_counted_as_an_approval(): void
@@ -178,7 +178,7 @@ final class CaseDiagramTest extends TransactionalTestCase
     }
 
     /**
-     * 指定の前の枠(修正 #8・#31、画面.md 8 節): 処理の時に指定するノードは、今の指定が無い && 到達していない && 案件が未完了のときだけ awaitingDesignation。
+     * 指定の前の枠(修正 #8・#31、画面/ホームと意匠とE2E.md 8 節): 処理の時に指定するノードは、今の指定が無い && 到達していない && 案件が未完了のときだけ awaitingDesignation。
      * 申請の直後(課長がまだ指定していない)= 合議・責任者が真、指定した後 = 偽、指定せずに承認終了で完了した案件 = 偽。ほかのノードはいつも偽。
      */
     public function test_awaiting_designation_only_before_the_designation_of_an_active_case(): void

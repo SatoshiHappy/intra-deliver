@@ -25,7 +25,8 @@ use Tests\Support\UsesSeededRecords;
 use Tests\Unit\Queries\Workflow\CaseOperationTableTest;
 
 /**
- * 案件の操作の判定と can(docs の 設計/ワークフロー/案件の操作/操作.md 3.2 の表と引戻しの 1 規則・README.md 1.3 の役割、設計/ワークフロー/認可と一覧.md 3.2、画面.md 1.2・5 節)。
+ * 案件の操作の判定と can(docs の 設計/ワークフロー/案件の操作/操作.md 3.2 の表と引戻しの 1 規則・README.md 1.3 の役割、
+ * 設計/ワークフロー/認可と一覧.md 3.2、画面/README.md 1.2・画面/申請と案件.md 5 節)。
  * 表そのものは {@see CaseOperationTableTest}、役割ごとの表は {@see CaseOperationDeciderPermitsInTest}。ここは本番の口(permitsIn・rowCansOf・detailCanOf・
  * isUpdatable)を、案件・ノード・履歴・処理対象者の行をテストで作って確かめる(初期データのユーザー u0001〜を使う)。
  */

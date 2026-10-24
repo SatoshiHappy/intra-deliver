@@ -10,7 +10,7 @@ use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * フローの一覧 Workflow/FlowIndex(docs の 設計/ワークフロー/画面.md 2 節): 今の利用者が申請できるフロー(並びの順)。ゲスト・申請できない人は空。
+ * フローの一覧 Workflow/FlowIndex(docs の 設計/ワークフロー/画面/README.md 2 節): 今の利用者が申請できるフロー(並びの順)。ゲスト・申請できない人は空。
  */
 class FlowController extends Controller
 {

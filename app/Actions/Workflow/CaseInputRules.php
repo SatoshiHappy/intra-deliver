@@ -9,7 +9,7 @@ use Illuminate\Validation\ValidationException;
 use stdClass;
 
 /**
- * 案件の入力の規則(docs の 設計/ワークフロー/案件の操作/同時実行と検査.md 6 節、操作.md 3.1・3.4、業務データとの接続/README.md 2 節)。
+ * 案件の入力の規則(docs の 設計/ワークフロー/案件の操作/同時実行と検査.md 6 節、操作.md 3.1・3.4、業務データとの接続/申請と書き込み.md 2 節)。
  * 入口と同じ変換({@see InputText})を先に掛けてから確かめる(直接の呼び出しでも HTTP の入口と同じ結果にするため)。
  */
 class CaseInputRules
@@ -20,7 +20,7 @@ class CaseInputRules
     /** コメントの最大の文字数(列の長さ。正は永続化の層の定数) */
     public const COMMENT_MAX = WorkflowCaseHistory::COMMENT_MAX;
 
-    /** 一時保存の入力を json_encode(JSON_UNESCAPED_UNICODE)した文字列の最大のバイト数(4 MiB = 業務データとの接続/README.md 2 節) */
+    /** 一時保存の入力を json_encode(JSON_UNESCAPED_UNICODE)した文字列の最大のバイト数(4 MiB = 業務データとの接続/申請と書き込み.md 2 節) */
     public const DRAFT_MAX_BYTES = 4_194_304;
 
     /**

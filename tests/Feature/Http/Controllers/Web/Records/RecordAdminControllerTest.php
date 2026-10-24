@@ -156,7 +156,7 @@ final class RecordAdminControllerTest extends TransactionalTestCase
 
     /**
      * 項目の削除は業務モジュールに持ち主のあるレコード(初期データの未完了の案件のレコード)があると拒まれるので、新しく作った業務モジュールで行う
-     * (持ち主の規則 = docs の 設計/ワークフロー/業務データとの接続/README.md 4 節)。
+     * (持ち主の規則 = docs の 設計/ワークフロー/業務データとの接続/申請と書き込み.md 4 節)。
      */
     public function test_adds_edits_and_deletes_a_field_through_the_forms(): void
     {

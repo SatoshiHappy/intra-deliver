@@ -11,7 +11,7 @@ use Illuminate\Validation\Validator;
 /**
  * 案件の処理(承認・承認終了・否認・差戻し・引戻し・取止め・保留・保留解除・振替)の入力
  * { comment, revision, node_id?, send_back_node_id?, assignments?, to_user_id?, principal_user_id?, contact? }
- * (docs の 設計/ワークフロー/画面.md 6 節、ルートの深さ/案件の操作/操作.md 10.2〜10.5、同時実行と検査.md 13 節、
+ * (docs の 設計/ワークフロー/画面/申請と案件.md 6 節、ルートの深さ/案件の操作/操作.md 10.2〜10.5、同時実行と検査.md 13 節、
  * 案件の運用/画面/README.md の 1.1 節)。取止めのほかは操作するノード、差戻しは差戻し先、承認は指定(任意)、振替は振替先を受ける。
  * コメントの長さと使えない文字・ノードがこの案件のものか・差戻し先が候補にあるか・指定と振替先と連絡の中身は業務処理が 422 にする。
  * 処理担当者と連絡は {@see ReadsPrincipalAndContact}、添付は {@see ReadsAttachmentEnvelope} で受け(可否は業務処理が見る)、

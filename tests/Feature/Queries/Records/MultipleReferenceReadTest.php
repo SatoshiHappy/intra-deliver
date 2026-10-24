@@ -25,7 +25,7 @@ use Tests\Support\TransactionalTestCase;
 
 /**
  * 複数選べる参照の読み取り(docs の 設計/業務データの入れ物/項目と規則/README.md 5 節の読むときの規則・7 節の検索の「含む」、画面/README.md 1.2 の
- * RecordFieldValue、設計/ワークフロー/業務データとの接続/README.md 2 節の一時保存の入力): 一覧・詳細・編集の初期値・公開の口が、相手の配列を
+ * RecordFieldValue、設計/ワークフロー/業務データとの接続/申請と書き込み.md 2 節の一時保存の入力): 一覧・詳細・編集の初期値・公開の口が、相手の配列を
  * sort_key の順で返し、無ければ null。
  */
 final class MultipleReferenceReadTest extends TransactionalTestCase

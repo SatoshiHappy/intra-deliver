@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\Collection;
 
 /**
  * 一時保存の入力(業務処理の入力 RecordInput と同じ形。項目のコードがキー、検証していない値)を、画面の初期値の形に直す(docs の
- * 設計/ワークフロー/業務データとの接続/README.md 2 節「開き方」)。公開の口 {@see RecordFormQuery::draftValues()} の中身。
+ * 設計/ワークフロー/業務データとの接続/申請と書き込み.md 2 節「開き方」)。公開の口 {@see RecordFormQuery::draftValues()} の中身。
  *
  * - 今の定義の項目だけを読み、定義に無いキーと、明細の項目のキーを values に置いたものは捨てる。値は今の定義の項目のすべてに返す(無ければ未設定)。
  * - 通常の項目は型ごとの受け付ける形({@see FieldValueParser::parse()})で解釈・正規化し、通らない値は未設定(真偽は偽 = 未設定を持たない)。

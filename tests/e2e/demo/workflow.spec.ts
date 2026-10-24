@@ -7,7 +7,7 @@ import {
 import { submitAndExpectUrl } from '../support/submit';
 import * as home from '../support/workflow-home';
 
-// ワークフローの画面(docs の 設計/ワークフロー/画面.md 9 節の demo)。デモユーザー切替で利用者を替え、初期データの案件の見本(ルートの深さ/初期データ.md 4 節)と、
+// ワークフローの画面(docs の 設計/ワークフロー/画面/ホームと意匠とE2E.md 9 節の demo)。デモユーザー切替で利用者を替え、初期データの案件の見本(ルートの深さ/初期データ.md 4 節)と、
 // 筋の中で申請する案件を使う。画面は PC の幅だけを前提にする。筋は前の筋の結果(申請した案件・処理の後の状態)を使うので、順に走らせる
 // (申請はレコードを作り、案件が指すレコードは消せないので、E2E の DB は流すたびに作り直す = scripts/ci/front)。
 // 同じ秒の提出と更新で注意が出ないことは Feature テスト(tests/Feature/Queries/Workflow/CaseDetailQueryTest.php)で確かめる。

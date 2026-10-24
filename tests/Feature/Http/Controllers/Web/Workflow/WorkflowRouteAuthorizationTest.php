@@ -21,7 +21,7 @@ use Tests\Support\TransactionalTestCase;
  */
 final class WorkflowRouteAuthorizationTest extends TransactionalTestCase
 {
-    /** ワークフローのルート 26 本(設計/ワークフロー/画面.md 1.1 の表の順と、ルートの深さ/画面.md 1.1 の処理対象者の候補、案件の運用/画面/README.md の 1.1 節の 7 本) */
+    /** ワークフローのルート 26 本(設計/ワークフロー/画面/README.md 1.1 の表の順と、ルートの深さ/画面.md 1.1 の処理対象者の候補、案件の運用/画面/README.md の 1.1 節の 7 本) */
     private const ROUTES = [
         'workflow.flows.index', 'workflow.applications.create', 'workflow.applications.store', 'workflow.drafts.store', 'workflow.drafts.edit',
         'workflow.drafts.update', 'workflow.drafts.apply', 'workflow.drafts.destroy', 'workflow.cases.index', 'workflow.cases.show',

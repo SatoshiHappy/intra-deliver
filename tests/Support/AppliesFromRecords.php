@@ -26,7 +26,7 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Validation\ValidationException;
 
 /**
- * 既存のデータからの申請のテストの手助け(docs の 設計/ワークフロー/申請の周辺/既存のデータからの申請.md の 8 節)。業務処理は本物を HTTP なしで呼ぶ。
+ * 既存のデータからの申請のテストの手助け(docs の 設計/ワークフロー/申請の周辺/既存のデータからの申請/README.md の 8 節)。業務処理は本物を HTTP なしで呼ぶ。
  * フローは {@see RunsWorkflowOperations} の既定(業務モジュール project・承認 1 = u0002・承認 2 = u0003)。レコードは業務の画面と同じ口で作る。
  */
 trait AppliesFromRecords

@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 /**
- * レコードの関係(他モジュール参照で指す・指される)の口(docs の 設計/ワークフロー/業務データとの接続/README.md 6 節。主体・認可・結果・失敗の正本 =
+ * レコードの関係(他モジュール参照で指す・指される)の口(docs の 設計/ワークフロー/業務データとの接続/写しとつながる申請.md 6 節。主体・認可・結果・失敗の正本 =
  * 同 公開の口.md 7 節の表)。返すのはレコードの id だけで、値は返さない(呼び手が案件の閲覧の判定で絞る)。
  */
 class RecordRelations

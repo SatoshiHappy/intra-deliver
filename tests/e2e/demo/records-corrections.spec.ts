@@ -4,7 +4,7 @@ import { fillVersionTwoBaseDate } from '../support/seed-dates';
 import { submitAndExpectUrl } from '../support/submit';
 
 // 業務データの画面の誤りの出し方・起動・検索欄・選択欄・参照の候補・文字数(docs の 設計/業務データの入れ物/画面/業務の画面.md 2.1・2.2、
-// 管理の画面.md 3 節の冒頭、画面/README.md 4 節、設計/画面の意匠/トークンとダーク.md 8 節、申請の画面の文字数 = 設計/ワークフロー/画面.md 3 節)。システム管理者に切り替えて業務モジュールを作る筋があるので demo の持ち物。
+// 管理の画面.md 3 節の冒頭、画面/README.md 4 節、設計/画面の意匠/トークンとダーク.md 8 節、申請の画面の文字数 = 設計/ワークフロー/画面/申請と案件.md 3 節)。システム管理者に切り替えて業務モジュールを作る筋があるので demo の持ち物。
 // 業務モジュールは消せないので、自分の業務モジュール「訂正確認」を最初の筋で作って使う。
 test.use({ viewport: { width: 1280, height: 720 } });
 test.describe.configure({ mode: 'serial' });

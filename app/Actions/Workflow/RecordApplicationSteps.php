@@ -15,7 +15,7 @@ use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Validation\ValidationException;
 
 /**
- * 既存のデータからの申請の、申請の行を書く前の確かめと申請の行の挿入(docs の 設計/ワークフロー/申請の周辺/既存のデータからの申請.md の 4 節の 0・1、
+ * 既存のデータからの申請の、申請の行を書く前の確かめと申請の行の挿入(docs の 設計/ワークフロー/申請の周辺/既存のデータからの申請/README.md の 4 節の 0・1、
  * 失敗の形 = 同じ文書の 7 節)。挿入の競合は、名前を決めた 2 つの制約の違反だけを捕まえ、ほかの違反は上げる。
  */
 class RecordApplicationSteps

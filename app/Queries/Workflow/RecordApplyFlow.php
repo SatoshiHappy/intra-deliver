@@ -4,7 +4,7 @@ namespace App\Queries\Workflow;
 
 /**
  * 既存のデータからの申請で選べるフロー({@see RecordApplyFlows::flowsFor()} が返す値。docs の
- * 設計/ワークフロー/申請の周辺/既存のデータからの申請.md の 1 節)。
+ * 設計/ワークフロー/申請の周辺/既存のデータからの申請/README.md の 1 節)。
  */
 final readonly class RecordApplyFlow
 {

@@ -7,7 +7,7 @@ use DateTimeInterface;
 use LogicException;
 
 /**
- * 画面の人・組織の表示(docs の 設計/ワークフロー/画面.md 1.2 の WorkflowPerson = id・コード・d とロケールの名前。名前が無ければ name だけ null)。
+ * 画面の人・組織の表示(docs の 設計/ワークフロー/画面/README.md 1.2 の WorkflowPerson = id・コード・d とロケールの名前。名前が無ければ name だけ null)。
  * 名前は共通マスタの公開の口 {@see MasterNames} で引く。判定しない。
  *
  * @phpstan-type Person array{id: int, code: string, name: string|null}

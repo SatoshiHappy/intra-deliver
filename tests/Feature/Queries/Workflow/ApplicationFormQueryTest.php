@@ -19,7 +19,8 @@ use Tests\Support\TransactionalTestCase;
 use Tests\Support\UsesSeededRecords;
 
 /**
- * 申請・一時保存・再申請の画面の読み取り(docs の 設計/ワークフロー/画面.md 3 節の Props、開けないときの順 = 1.1、業務データとの接続/README.md 2 節・9 節):
+ * 申請・一時保存・再申請の画面の読み取り(docs の 設計/ワークフロー/画面/申請と案件.md 3 節の Props、開けないときの順 = 1.1、
+ * 業務データとの接続/申請と書き込み.md 2 節・写しとつながる申請.md 9 節):
  * 3 つのモードの形、404・403 の順、再申請ができない状態・役割の null、承認 1 の今の展開(0 人なら空)、初期値(一時保存 = 今の定義で読み直し・行の id なし、
  * 再申請 = 今のレコード・行の id あり)、閲覧できない案件では業務データの入れ物の表を読まない。フローと案件はテストで作る(初期データの定義・案件を見ない)。
  */
@@ -118,7 +119,7 @@ final class ApplicationFormQueryTest extends TransactionalTestCase
     }
 
     /**
-     * 一時保存の画面は、申請できる人の 403 を状態(一時保存か)より先に見る(画面.md 1.1 の順 = 再申請の画面と同じ形): 見える一時保存でない案件を、申請できる人でない
+     * 一時保存の画面は、申請できる人の 403 を状態(一時保存か)より先に見る(画面/README.md 1.1 の順 = 再申請の画面と同じ形): 見える一時保存でない案件を、申請できる人でない
      * 利用者(承認 1 の u0002)が開くと 403(詳細へ移さない)。
      */
     public function test_the_draft_form_judges_who_can_apply_before_the_state(): void

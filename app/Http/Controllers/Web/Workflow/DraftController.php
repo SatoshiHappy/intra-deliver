@@ -19,7 +19,8 @@ use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * 一時保存(docs の 設計/ワークフロー/画面.md 1.1・3 節)。見えるが一時保存でない案件は、画面を開かずに詳細へ移し {@see CaseOperationErrors::NOT_PERMITTED} を
+ * 一時保存(docs の 設計/ワークフロー/画面/README.md 1.1・画面/申請と案件.md 3 節)。
+ * 見えるが一時保存でない案件は、画面を開かずに詳細へ移し {@see CaseOperationErrors::NOT_PERMITTED} を
  * トーストで出す(古いリンクから来た人と、書き込みが 422 case で元の画面へ戻った人を行き止まりにしない)。
  * 入口で 303 を明示しない(PUT・DELETE は inertia-laravel の Middleware が 303 にする = 案件の操作/同時実行と検査.md 4 節)。
  */

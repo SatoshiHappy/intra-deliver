@@ -43,7 +43,7 @@ class ApplicationBaseDate
 
     /**
      * 既存のデータからの申請: 規則 (4) を、申請者が申請基準日に既存のデータからの申請をできるか({@see RecordApplyFlows::allows()})で見る
-     * (docs の 設計/ワークフロー/申請の周辺/既存のデータからの申請.md の 1 節)。ほかの規則と順は {@see self::resolve()} と同じ。
+     * (docs の 設計/ワークフロー/申請の周辺/既存のデータからの申請/README.md の 1 節)。ほかの規則と順は {@see self::resolve()} と同じ。
      *
      * @return array{CarbonImmutable, int} 申請基準日と、その日に有効な版の id
      *

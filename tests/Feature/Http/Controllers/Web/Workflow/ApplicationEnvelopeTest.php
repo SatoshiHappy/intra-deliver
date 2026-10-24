@@ -12,7 +12,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * 申請・一時保存・再申請の封筒(docs の 設計/ワークフロー/業務データとの接続/README.md 2 節・9 節): 同じ封筒(配列の欠落・値の無い行を含む)を業務データの入れ物の入口と
+ * 申請・一時保存・再申請の封筒(docs の 設計/ワークフロー/業務データとの接続/申請と書き込み.md 2 節・写しとつながる申請.md 9 節): 同じ封筒(配列の欠落・値の無い行を含む)を業務データの入れ物の入口と
  * ワークフローの入口に送ると、誤りのキー・文言と作るレコードの入力が同じ。一時保存の入力は明細の行の id を捨てる。
  */
 final class ApplicationEnvelopeTest extends TransactionalTestCase

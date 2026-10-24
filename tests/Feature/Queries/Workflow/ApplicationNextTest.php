@@ -86,7 +86,7 @@ final class ApplicationNextTest extends TransactionalTestCase
     }
 
     /**
-     * 申請者承認防止のノードの今の展開が申請者本人だけなら blockedReason に 13 節の文言(画面.md 5 節)。申請者とほかの人がいる・0 人(設計/ワークフロー/画面.md 3 節の文で示す)・
+     * 申請者承認防止のノードの今の展開が申請者本人だけなら blockedReason に 13 節の文言(画面.md 5 節)。申請者とほかの人がいる・0 人(設計/ワークフロー/画面/申請と案件.md 3 節の文で示す)・
      * 防止がオフなら null。並びは位置の順(同期の枝)。
      */
     public function test_a_preventing_node_whose_only_target_is_the_applicant_has_the_blocked_reason(): void
@@ -135,7 +135,7 @@ final class ApplicationNextTest extends TransactionalTestCase
 
     /**
      * 申請基準日の初期値の候補(クエリ・一時保存の値の順)は、日付として読めれば今日の前後 1 年の外でもそのまま欄と next に使い(範囲は送った後の 422 で示す)、
-     * 読めなければ次の候補、どれも読めなければ今日(設計/ワークフロー/画面.md 5 節)。今日 = 2026-10-13:
+     * 読めなければ次の候補、どれも読めなければ今日(設計/ワークフロー/画面/申請と案件.md 5 節)。今日 = 2026-10-13:
      * (a) クエリの 2027-10-14(範囲の外。版 3 は終わりなし)→ その日と版 3 (b) 一時保存の 2025-06-01(範囲の外。無効の版 1 の日)→ その日と版なし(画面は「版がありません」)
      * (c) 読めないクエリ → 一時保存の値、読めない一時保存の値 → 今日。
      */

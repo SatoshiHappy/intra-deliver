@@ -8,7 +8,8 @@ use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
- * 一時保存を指す書き込み(上書き workflow.drafts.update・一時保存からの申請 workflow.drafts.apply)の入力(docs の 設計/ワークフロー/画面.md 1.1・3 節)。
+ * 一時保存を指す書き込み(上書き workflow.drafts.update・一時保存からの申請 workflow.drafts.apply)の入力
+ * (docs の 設計/ワークフロー/画面/README.md 1.1・画面/申請と案件.md 3 節)。
  * 封筒は {@see ReadsApplicationEnvelope} と改訂番号。一時保存でない案件を指すときは、入口でなく業務処理が 422 case にする(案件の操作/操作.md 3.1 の 1)。
  * 添付と、一時保存の添付を外す指定(remove_attachment_ids)を受ける。
  */

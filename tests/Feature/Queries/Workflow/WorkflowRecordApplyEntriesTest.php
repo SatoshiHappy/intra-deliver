@@ -15,7 +15,7 @@ use Tests\Support\RegistersProxies;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * レコードから申請できる入口のワークフローの実装(docs の 設計/ワークフロー/申請の周辺/既存のデータからの申請.md の 2 節): レコードの業務モジュールで
+ * レコードから申請できる入口のワークフローの実装(docs の 設計/ワークフロー/申請の周辺/既存のデータからの申請/README.md の 2 節): レコードの業務モジュールで
  * 選べるフローの名前・説明と、申請の画面の URL(flow とクエリ record)。無いレコード・明細の行は空。持ち主の有無を見ない。
  */
 final class WorkflowRecordApplyEntriesTest extends TransactionalTestCase

@@ -5,7 +5,7 @@ namespace App\Actions\Workflow;
 use Illuminate\Http\UploadedFile;
 
 /**
- * 一時保存の入力(docs の 設計/ワークフロー/業務データとの接続/README.md 2 節)。業務処理は入口と同じ変換(App\Support\InputText = 前後の空白を除き空なら null)を
+ * 一時保存の入力(docs の 設計/ワークフロー/業務データとの接続/申請と書き込み.md 2 節)。業務処理は入口と同じ変換(App\Support\InputText = 前後の空白を除き空なら null)を
  * 掛けた後のまま保つ(検証しない)。封筒から作る変換は入口の仕事。
  */
 final readonly class DraftInput

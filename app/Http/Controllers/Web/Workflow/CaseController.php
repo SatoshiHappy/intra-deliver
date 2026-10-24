@@ -12,7 +12,7 @@ use Inertia\Response;
 
 /**
  * 案件一覧 Workflow/CaseIndex(docs の 設計/ワークフロー/案件の運用/画面/案件の画面.md の 2 節。クエリ tab・scope・page・q は読み取りが解釈し、
- * 解釈できない値は既定にする)と、案件の詳細 Workflow/CaseShow(設計/ワークフロー/画面.md 5 節。閲覧できない・一時保存の案件は 404)。
+ * 解釈できない値は既定にする)と、案件の詳細 Workflow/CaseShow(設計/ワークフロー/画面/申請と案件.md 5 節。閲覧できない・一時保存の案件は 404)。
  */
 class CaseController extends Controller
 {

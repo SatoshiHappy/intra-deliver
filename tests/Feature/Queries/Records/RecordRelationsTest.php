@@ -11,7 +11,7 @@ use Tests\Support\BuildsRecordModules;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * レコードの関係の口(docs の 設計/ワークフロー/業務データとの接続/README.md 6 節・9 節「口」、公開の口.md 7 節の表):
+ * レコードの関係の口(docs の 設計/ワークフロー/業務データとの接続/写しとつながる申請.md 6 節・9 節「口」、公開の口.md 7 節の表):
  * 参照先・参照元(明細の行から指すときは親)を返し、自分を除く。
  */
 final class RecordRelationsTest extends TransactionalTestCase

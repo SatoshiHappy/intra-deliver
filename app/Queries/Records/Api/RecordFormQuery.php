@@ -16,7 +16,7 @@ use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 /**
- * 申請の画面のフォームの口(業務モジュールの定義・判定・一時保存の入力と再申請の初期値 = docs の 設計/ワークフロー/業務データとの接続/README.md 1 節・
+ * 申請の画面のフォームの口(業務モジュールの定義・判定・一時保存の入力と再申請の初期値 = docs の 設計/ワークフロー/業務データとの接続/申請と書き込み.md 1 節・
  * 2 節。主体・認可・結果・失敗の正本 = 同 公開の口.md 7 節の表)。判定は業務データの入れ物の画面と同じ口({@see RecordModuleGate})を通る。
  *
  * @phpstan-import-type ModuleDefinition from RecordDefinitionQuery
@@ -89,7 +89,7 @@ class RecordFormQuery
      * 参照の相手の表示名の出し分けにだけ使う(参照先の read の読み方 = 設計/ワークフロー/業務データとの接続/公開の口.md 7 節の「行の権限」)。
      *
      * values = 項目のコード → 値、details = 明細の項目のコード → 行(id と values)、version = 編集の画面と同じ版(既存のデータからの申請が
-     * 開いたときの版として送り返す = 設計/ワークフロー/申請の周辺/既存のデータからの申請.md の 3 節)。
+     * 開いたときの版として送り返す = 設計/ワークフロー/申請の周辺/既存のデータからの申請/README.md の 3 節)。
      *
      * @return array{values: array<string, mixed>, details: array<string, list<DetailRow>>, version: string}
      *

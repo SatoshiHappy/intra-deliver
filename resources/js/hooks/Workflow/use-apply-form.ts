@@ -14,7 +14,7 @@ export type ApplyForm = {
 };
 
 /**
- * 申請・一時保存・再申請のフォームの状態と送信(docs の 設計/ワークフロー/画面.md 3 節)。
+ * 申請・一時保存・再申請のフォームの状態と送信(docs の 設計/ワークフロー/画面/申請と案件.md 3 節)。
  * focusRequest は送信の失敗ごとに増え、呼ぶ側が誤りのある欄へフォーカスを移す合図に使う。
  */
 export function useApplyForm({

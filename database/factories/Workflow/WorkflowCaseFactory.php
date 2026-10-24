@@ -103,7 +103,7 @@ class WorkflowCaseFactory extends Factory
     }
 
     /**
-     * 一時保存の列(一時保存の入力は 設計/ワークフロー/業務データとの接続/README.md 2 節の形の空のもの)。
+     * 一時保存の列(一時保存の入力は 設計/ワークフロー/業務データとの接続/申請と書き込み.md 2 節の形の空のもの)。
      *
      * @return array<string, mixed>
      */

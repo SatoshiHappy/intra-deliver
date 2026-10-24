@@ -15,9 +15,10 @@ use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * 新規の申請(docs の 設計/ワークフロー/画面.md 1.1・3 節): 画面 Workflow/Apply(mode new。フローが無い 404 → 申請できる人でない 403)と、申請の書き込み。
+ * 新規の申請(docs の 設計/ワークフロー/画面/README.md 1.1・画面/申請と案件.md 3 節):
+ * 画面 Workflow/Apply(mode new。フローが無い 404 → 申請できる人でない 403)と、申請の書き込み。
  * 成功は案件の詳細へのリダイレクト(POST は 302 のまま = 案件の操作/同時実行と検査.md 4 節)と成功のトースト。検証の失敗は元の画面へ戻りキーにエラーが付く。
- * クエリ record(入力 record_id)があれば既存のデータからの申請(設計/ワークフロー/申請の周辺/既存のデータからの申請.md の 3 節・4 節)。
+ * クエリ record(入力 record_id)があれば既存のデータからの申請(設計/ワークフロー/申請の周辺/既存のデータからの申請/README.md の 3 節・4 節)。
  */
 class ApplicationController extends Controller
 {
@@ -67,7 +68,7 @@ class ApplicationController extends Controller
     }
 
     /**
-     * クエリ record(正の整数でない値は無いのと同じ = 新規の申請。設計/ワークフロー/申請の周辺/既存のデータからの申請.md の 3 節)。
+     * クエリ record(正の整数でない値は無いのと同じ = 新規の申請。設計/ワークフロー/申請の周辺/既存のデータからの申請/README.md の 3 節)。
      */
     private function recordIdOf(mixed $value): ?int
     {

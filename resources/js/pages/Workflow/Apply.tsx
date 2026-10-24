@@ -95,7 +95,7 @@ function caseIdOf(props: Props): number {
 }
 
 /**
- * 見出し(設計/ワークフロー/画面.md 3 節)。
+ * 見出し(設計/ワークフロー/画面/申請と案件.md 3 節)。
  */
 function headingOf(props: Props): string {
     return props.mode === 'reapply'
@@ -104,7 +104,7 @@ function headingOf(props: Props): string {
 }
 
 /**
- * 案件名の欄の既定の案内(業務処理が空の案件名に付ける既定と同じ形 = 設計/ワークフロー/画面.md 3 節の面 1)。
+ * 案件名の欄の既定の案内(業務処理が空の案件名に付ける既定と同じ形 = 設計/ワークフロー/画面/申請と案件.md 3 節の面 1)。
  */
 function defaultNameOf(props: Props, record: RecordFormData): string {
     const draft =
@@ -149,7 +149,7 @@ function backHrefOf(props: Props) {
 }
 
 /**
- * 申請・一時保存・再申請(docs の 設計/ワークフロー/画面.md 3 節、ルートの深さ/画面.md 5 節)。業務データの欄は {@link RecordFields}(登録・編集のフォームと共通)。
+ * 申請・一時保存・再申請(docs の 設計/ワークフロー/画面/申請と案件.md 3 節、ルートの深さ/画面.md 5 節)。業務データの欄は {@link RecordFields}(登録・編集のフォームと共通)。
  */
 export default function Apply(props: Props) {
     const { mode, flow, case: workflowCase, module, headings, next } = props;

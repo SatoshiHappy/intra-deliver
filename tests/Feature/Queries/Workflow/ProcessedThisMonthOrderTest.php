@@ -11,7 +11,7 @@ use Carbon\CarbonImmutable;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * ホームの今月の処理済みの表の並び(docs の 設計/ワークフロー/画面.md 7 節): 処理日時の降順、同じ秒は履歴の id の降順。初期データの見本は
+ * ホームの今月の処理済みの表の並び(docs の 設計/ワークフロー/画面/ホームと意匠とE2E.md 7 節): 処理日時の降順、同じ秒は履歴の id の降順。初期データの見本は
  * 案件の番号の順に入るので、処理日時と履歴の id の順が揃わない(設計/ワークフロー/案件の運用/初期データ.md 2 節)。
  */
 final class ProcessedThisMonthOrderTest extends TransactionalTestCase

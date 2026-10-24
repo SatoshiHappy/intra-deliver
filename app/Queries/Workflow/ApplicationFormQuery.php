@@ -19,9 +19,10 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use LogicException;
 
 /**
- * 申請・一時保存・再申請の画面(docs の 設計/ワークフロー/画面.md 3 節の Workflow/Apply の Props。開けないときの判定の順 = 画面.md 1.1、申請基準日 = ルートの深さ/画面.md 5 節)。
+ * 申請・一時保存・再申請の画面(docs の 設計/ワークフロー/画面/申請と案件.md 3 節の Workflow/Apply の Props。
+ * 開けないときの判定の順 = 画面/README.md 1.1、申請基準日 = ルートの深さ/画面.md 5 節)。
  * 403 の判定は書き込みの入口と同じ {@see CaseEntryGate} の口を使う(画面と書き込みで食い違わない)。再申請の一時保存の 404 は画面だけが持つ条件なので、
- * 状態つきの閲覧を口より先に引く。業務データの入れ物の主体の判定をしない口(初期値)は、これらの判定の後にだけ呼ぶ(業務データとの接続/README.md 9 節)。
+ * 状態つきの閲覧を口より先に引く。業務データの入れ物の主体の判定をしない口(初期値)は、これらの判定の後にだけ呼ぶ(業務データとの接続/写しとつながる申請.md 9 節)。
  *
  * @phpstan-import-type Next from ApplicationNext
  * @phpstan-import-type ApplyAttachment from ApplyAttachments
@@ -67,7 +68,7 @@ class ApplicationFormQuery
 
     /**
      * 一時保存の画面(initial = 一時保存の入力を今の定義で読んだ値 = RecordFormQuery::draftValues と、案件名・コメント)。見えるが一時保存でない案件なら null
-     * (別のタブで申請した後など。入口が詳細へ移してトーストを出す = 画面.md 1.1)。
+     * (別のタブで申請した後など。入口が詳細へ移してトーストを出す = 画面/README.md 1.1)。
      *
      * @param  mixed  $baseDate  クエリ base_date(申請基準日を変えたときの部分再読み込み)
      * @return ApplyForm|null
@@ -101,7 +102,7 @@ class ApplicationFormQuery
 
     /**
      * 再申請の画面(initial = 今のレコードの値 = RecordFormQuery::editValues と、今の案件名。コメントは空)。再申請ができない状態・役割なら null
-     * (判定 = 詳細の can の reapply。古いリンクから来た人を行き止まりにしない = 画面.md 1.1)。
+     * (判定 = 詳細の can の reapply。古いリンクから来た人を行き止まりにしない = 画面/README.md 1.1)。
      *
      * @return ApplyForm|null
      *
@@ -139,7 +140,7 @@ class ApplicationFormQuery
     }
 
     /**
-     * 既存のデータからの申請の画面(判定の順 = 設計/ワークフロー/申請の周辺/既存のデータからの申請.md の 3 節。initial = 今のレコードの値と、開いたときの版
+     * 既存のデータからの申請の画面(判定の順 = 設計/ワークフロー/申請の周辺/既存のデータからの申請/README.md の 3 節。initial = 今のレコードの値と、開いたときの版
      * recordVersion)。持ち主があれば null(入口がレコードの詳細へ戻す)。定義・初期値・申請基準日は既定の申請者({@see self::recordApplicant()})で引く。
      *
      * @param  mixed  $baseDate  クエリ base_date(申請基準日を変えたときの部分再読み込み)
@@ -174,7 +175,7 @@ class ApplicationFormQuery
 
     /**
      * 既存のデータからの申請の画面の既定の申請者(選び方 = 設計/ワークフロー/案件の運用/画面/案件の画面.md の 6.1 節。候補 = 自分と各代理元を
-     * 1 人ずつ {@see RecordApplyFlows::allows()} で判定した残り = 設計/ワークフロー/申請の周辺/既存のデータからの申請.md の 1 節)。
+     * 1 人ずつ {@see RecordApplyFlows::allows()} で判定した残り = 設計/ワークフロー/申請の周辺/既存のデータからの申請/README.md の 1 節)。
      *
      * @param  int|null  $applicantUserId  クエリ applicant(解釈できない値は呼び手が null にする)
      * @return int|null 選ぶ代理元(自分なら null)

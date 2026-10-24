@@ -18,7 +18,7 @@ use Tests\Support\RegistersProxies;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * 既存のデータからの申請の入口(docs の 設計/ワークフロー/申請の周辺/既存のデータからの申請.md の 4 節・7 節・8 節): 申請のルートに record_id と
+ * 既存のデータからの申請の入口(docs の 設計/ワークフロー/申請の周辺/既存のデータからの申請/README.md の 4 節・7 節・8 節): 申請のルートに record_id と
  * record_version を足す。判定の順は 403 → 404 → 422 record で、失敗は何も書かない。版の食い違いは 422 record。入力の形の誤りはそのキーの 422。
  * multipart の envelope でも同じ入力になる(添付/README.md の 3.1 節)。一時保存のルートは record_id を捨てる。
  */

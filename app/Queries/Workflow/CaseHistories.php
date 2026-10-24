@@ -15,7 +15,7 @@ use Illuminate\Support\Collection;
 use LogicException;
 
 /**
- * 案件の詳細の履歴(docs の 設計/ワークフロー/画面.md 5 節の histories、業務データとの接続/README.md 5 節の差分)。並びは id の昇順(画面が並べ替える)。
+ * 案件の詳細の履歴(docs の 設計/ワークフロー/画面/申請と案件.md 5 節の histories、業務データとの接続/写しとつながる申請.md 5 節の差分)。並びは id の昇順(画面が並べ替える)。
  * 差分は再申請の行だけで、直前の申請・再申請の行(id が小さい側で最大)が指す版を前、その行が指す版を後として業務データの入れ物の口
  * {@see RecordRevisionQuery::diffOnCurrentDefinition()}(業務モジュールの read を見ない)で求め、画面の差分の形(項目と明細)にする
  * (設計/業務データの入れ物/レコードの共通機能/更新履歴.md の 4.2 節)。呼び手(詳細)が案件の閲覧の判定を済ませてから呼ぶ。

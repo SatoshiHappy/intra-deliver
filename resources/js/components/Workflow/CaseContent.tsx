@@ -12,7 +12,7 @@ import { cn } from '@/lib/utils';
 import type { WorkflowCaseShowProps } from '@/types';
 
 /**
- * 申請内容(docs の 設計/ワークフロー/画面.md 5 節): 「業務モジュール：<名前>」の 1 行と、業務データの入れ物の詳細と同じ描き方(項目の並びの dl を 2 列の格子に、
+ * 申請内容(docs の 設計/ワークフロー/画面/申請と案件.md 5 節): 「業務モジュール：<名前>」の 1 行と、業務データの入れ物の詳細と同じ描き方(項目の並びの dl を 2 列の格子に、
  * 明細は項目ごとの見出しと表。値は RecordValue)。updatedAfterSubmission が真なら面の上に注意を出す。
  */
 export function CaseContent({

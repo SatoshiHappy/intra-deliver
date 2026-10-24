@@ -112,7 +112,7 @@ export function ProcessedBadge({
     prefix?: string;
 }) {
     if (prefix !== '') {
-        // フロー情報の「処理済み(<種別>)」は種別によらず処理済みの色で印なし(設計/ワークフロー/画面.md 8 節)
+        // フロー情報の「処理済み(<種別>)」は種別によらず処理済みの色で印なし(設計/ワークフロー/画面/ホームと意匠とE2E.md 8 節)
         return (
             <StatusBadge
                 label={`${prefix}(${ACTION_LABELS[action]})`}

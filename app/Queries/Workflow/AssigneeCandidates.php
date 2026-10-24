@@ -24,7 +24,7 @@ use LogicException;
  */
 class AssigneeCandidates
 {
-    /** 候補の上限(画面.md 1.1) */
+    /** 候補の上限(ワークフロー/画面/README.md 1.1) */
     public const LIMIT = 20;
 
     public function __construct(

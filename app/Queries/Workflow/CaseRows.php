@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Collection;
 use LogicException;
 
 /**
- * 一覧の行・関連する案件の行(docs の 設計/ワークフロー/画面.md 1.2 の WorkflowCaseRow、認可と一覧.md 3.2 の行の項目、足した項目 =
+ * 一覧の行・関連する案件の行(docs の 設計/ワークフロー/画面/README.md 1.2 の WorkflowCaseRow、認可と一覧.md 3.2 の行の項目、足した項目 =
  * 設計/ワークフロー/案件の運用/認可と一覧.md の 2.2 節)。閲覧の判定は呼び手が済ませた案件を渡す。
  * 問い合わせの回数は行の数に依らない(フロー・状況({@see CaseOperationDecider::situationsOf()}。現在のノードを含む)・申請者の名前・行の can をまとめて引く)。
  * 引戻し・取止めの入口の canAttach は、処理のダイアログを開く行(一覧)だけ求め、ほかの行(関連する案件・ホームの節)は偽

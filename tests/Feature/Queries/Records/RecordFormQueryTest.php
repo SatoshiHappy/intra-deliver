@@ -15,7 +15,7 @@ use Tests\Support\BuildsRecordModules;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * 申請の画面のフォームの口(docs の 設計/ワークフロー/業務データとの接続/README.md 2 節「開き方」・9 節「口」、公開の口.md 7 節の表):
+ * 申請の画面のフォームの口(docs の 設計/ワークフロー/業務データとの接続/申請と書き込み.md 2 節「開き方」・9 節「口」、公開の口.md 7 節の表):
  * 定義と判定、一時保存の入力の初期値(定義に無いキーを捨て、型の解釈に通らない値を未設定にし、明細の行は id を持たない)。
  */
 final class RecordFormQueryTest extends TransactionalTestCase

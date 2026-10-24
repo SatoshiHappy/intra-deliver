@@ -64,7 +64,7 @@ class ApplicableFlows
      *
      * @param  list<int>  $flowIds
      * @param  list<RecordModuleAction>  $actions  コンテンツの業務モジュールに求めるアクション(既存のデータからの申請は read と update =
-     *                                             設計/ワークフロー/申請の周辺/既存のデータからの申請.md の 1 節)
+     *                                             設計/ワークフロー/申請の周辺/既存のデータからの申請/README.md の 1 節)
      * @return list<int>
      */
     public function applicableIds(

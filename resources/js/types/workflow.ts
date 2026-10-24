@@ -24,7 +24,7 @@ import type {
     WorkflowNodeState,
 } from './workflowValues';
 
-/** ワークフローの画面の型(設計/ワークフロー/画面.md 1.2・2〜5 節。App\Queries\Workflow の形。日時は時差つき。人の名前が無ければコード) */
+/** ワークフローの画面の型(設計/ワークフロー/画面/README.md 1.2・2 節・画面/申請と案件.md 3〜5 節。App\Queries\Workflow の形。日時は時差つき。人の名前が無ければコード) */
 
 /** 申請の画面の明細の行(id が無い = 新しい行。一時保存の行はいつも id を持たない)。業務データの入れ物の RecordDetailRow(id が必ずある)は変えない */
 type WorkflowDetailRowInput = {
@@ -40,7 +40,7 @@ export type WorkflowApplicableFlow = {
     moduleName: string;
 };
 
-/** 申請・一時保存・再申請のページ Workflow/Apply の props(設計/ワークフロー/画面.md 3 節) */
+/** 申請・一時保存・再申請のページ Workflow/Apply の props(設計/ワークフロー/画面/申請と案件.md 3 節) */
 export type WorkflowApplyProps = {
     mode: 'new' | 'draft' | 'reapply' | 'record'; // record = 既存のデータからの申請(一時保存を出さない)
     flow: { code: string; name: string; description: string | null };
@@ -75,7 +75,7 @@ export type WorkflowApplyProps = {
     recordTitle: string | null; // 既存のデータからの申請だけ: 見出しの表示の項目の値(無ければ null)
 };
 
-/** 再申請の差分(再申請の行だけ。設計/ワークフロー/画面.md 5 節) */
+/** 再申請の差分(再申請の行だけ。設計/ワークフロー/画面/申請と案件.md 5 節) */
 export type WorkflowDiff = {
     fields: {
         code: string;
@@ -254,7 +254,7 @@ export type WorkflowCaseConfirmation = {
     }[];
 };
 
-/** 案件の詳細のページ Workflow/CaseShow の props(設計/ワークフロー/画面.md 5 節) */
+/** 案件の詳細のページ Workflow/CaseShow の props(設計/ワークフロー/画面/申請と案件.md 5 節) */
 export type WorkflowCaseShowProps = {
     case: {
         id: number;

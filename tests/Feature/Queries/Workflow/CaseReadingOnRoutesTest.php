@@ -141,7 +141,7 @@ final class CaseReadingOnRoutesTest extends TransactionalTestCase
     }
 
     /**
-     * 引戻せるノードの blockedReason(画面.md 6 節、通しの回の T02): 申請者承認防止がオンのステップで申請者が差戻した後は、引戻すと業務処理が 422 にするので
+     * 引戻せるノードの blockedReason(画面/申請と案件.md 6 節、通しの回の T02): 申請者承認防止がオンのステップで申請者が差戻した後は、引戻すと業務処理が 422 にするので
      * 同じ文言(引戻しのボタンは出し、ダイアログが「決定」を押せなくする)。ほかの処理対象者が処理したステップ・防止がオフのステップを申請者が処理した後は null。
      * 詳細の props と一覧の行が同じ値を返す。
      */
@@ -171,7 +171,7 @@ final class CaseReadingOnRoutesTest extends TransactionalTestCase
 
     /**
      * 承認の行の指定は、承認したノードが指定するノードごとに写した並びで出し、0 人を指定したノードは people が空(画面は「指定: {ステップ} = 省略」=
-     * 画面.md 7 節・案件の表.md 3.5、通しの回の T08)。指定するノードを持たない承認の行と、申請の行は空。
+     * 画面/ホームと意匠とE2E.md 7 節・案件の表.md 3.5、通しの回の T08)。指定するノードを持たない承認の行と、申請の行は空。
      */
     public function test_an_approval_lists_every_designated_step_and_a_step_designated_with_nobody_has_no_people(): void
     {
