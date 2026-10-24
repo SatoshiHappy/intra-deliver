@@ -1,5 +1,5 @@
 import { CommandEmpty, CommandItem } from '@/components/ui/command';
-import type { AssigneeCandidatesState } from '@/hooks/Workflow/use-assignee-candidates';
+import type { CandidateSearchState } from '@/hooks/Workflow/use-candidate-search';
 import { personName } from '@/lib/Workflow/workflowLabels';
 import type { WorkflowAssigneeCandidate } from '@/types';
 
@@ -16,7 +16,7 @@ export function AssigneeCandidateList({
     onSelect,
 }: {
     query: string;
-    candidates: AssigneeCandidatesState;
+    candidates: CandidateSearchState;
     options: WorkflowAssigneeCandidate[] | undefined;
     onSelect: (user: WorkflowAssigneeCandidate) => void;
 }) {

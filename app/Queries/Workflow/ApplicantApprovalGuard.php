@@ -30,7 +30,7 @@ class ApplicantApprovalGuard
     /**
      * 展開の結果が申請者として扱う人だけのときの文言の書式(%s = ノードの表示名。業務処理の 422 case と申請の画面の next.nodes の blockedReason = 13 節・画面.md 5 節と、詳細・一覧の行の pullBackNodes の blockedReason = {@see CaseOperationDecider::situationsOf()}・画面.md 6 節)
      */
-    public const ONLY_APPLICANT_TARGETS = '%sの処理対象者が申請者本人だけのため、この操作はできません。このステップには、申請者承認防止が設定されています。';
+    public const ONLY_APPLICANT_TARGETS = '%sの処理担当者が申請者本人だけのため、この操作はできません。このステップには、申請者承認防止が設定されています。';
 
     /** 展開の結果が申請者と申請者の代理先だけ(代理先が 1 人以上)のときの文言の書式(%s = ノードの表示名。同じ 13 節) */
     public const ONLY_APPLICANT_OR_PROXY_TARGETS = '%sの処理担当者が申請者本人と申請者の代理先だけのため、この操作はできません。'

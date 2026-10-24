@@ -174,7 +174,7 @@ final class ApplicantApprovalProxyTest extends TransactionalTestCase
         $key = "assignments.{$ids['pick']}";
 
         $this->assertSame([$key => '申請者の代理先は、このステップの処理担当者に指定できません'], $designate($proxy));
-        $this->assertSame([$key => '申請者本人は、このステップの処理対象者に指定できません'], $designate($a));
+        $this->assertSame([$key => '申請者本人は、このステップの処理担当者に指定できません'], $designate($a));
     }
 
     /**

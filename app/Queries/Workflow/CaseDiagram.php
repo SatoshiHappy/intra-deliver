@@ -14,14 +14,22 @@ use Illuminate\Database\Eloquent\Collection;
 
 /**
  * 案件の詳細のフロー情報(docs の 設計/ワークフロー/ルートの深さ/画面.md 1.2 の図の形・7 節・8 節)。ノードは写した並び({@see WorkflowCaseNode::compareInRoute()})で、
- * 図と表が同じ並びと同じ状態の語({@see WorkflowHomeLabels::step()} = 認可と一覧.md 2 節の写しの表)を読む。表のための処理の種別と日時を持つ。
+ * 図と表が同じ並びと同じ状態の語({@see WorkflowHomeLabels::detailStep()} = 認可と一覧.md 2 節の写しの表。保留中は state が hold)を読む。表のための処理の種別と日時を持つ。
  * 辺は写した順(id)。名前は表示名({@see WorkflowCaseNode::displayName()} = 案件の操作/README.md 1.3)。
- * awaitingDesignation = 処理の時に指定するノードで、今の指定が無い(指定するノードがまだ指定していない。0 人を指定した = 行が 0 件は含まない) && 到達していない && 案件が未完了(枠の「処理対象者はまだ指定されていません」= 画面.md 8 節)。
+ * awaitingDesignation = 処理の時に指定するノードで、今の指定が無い(指定するノードがまだ指定していない。0 人を指定した = 行が 0 件は含まない) && 到達していない && 案件が未完了(枠の文 = docs の 設計/ワークフロー/ルートの深さ/画面.md の 8 節。文言の持ち主は WorkflowDiagram.tsx)。
+ * フロー情報の表の処理担当者 targets(現在のノードの処理対象者)と処理実行者(processed の actor・executor)=
+ * 設計/ワークフロー/案件の運用/画面/案件の画面.md の 4 節。
  *
  * @phpstan-import-type Person from WorkflowPeople
  * @phpstan-import-type Council from CaseCouncils
  *
- * @phpstan-type DiagramNode array{id: int, code: string|null, name: string, kind: string, parentId: int|null, sequence: int|null, subtitle: string|null, state: string, people: list<array{id: int, code: string, name: string|null, isMe: bool}>, placeholders: list<array{label: string, optional: bool}>, consensus: array{text: string}|null, stepState: array{state: string, label: string}, processed: array{action: string, at: string|null}|null, awaitingDesignation: bool}
+ * @phpstan-type MarkedPerson array{id: int, code: string, name: string|null, isMe: bool}
+ * @phpstan-type Processed array{action: string, at: string|null, actor: Person, executor: Person|null}
+ * @phpstan-type DiagramNode array{id: int, code: string|null, name: string, kind: string, parentId: int|null,
+ *     sequence: int|null, subtitle: string|null, state: string, people: list<MarkedPerson>,
+ *     targets: list<MarkedPerson>, placeholders: list<array{label: string, optional: bool}>,
+ *     consensus: array{text: string}|null,
+ *     stepState: array{state: string, label: string}, processed: Processed|null, awaitingDesignation: bool}
  * @phpstan-type DiagramEdge array{from: int, to: int, label: string|null, taken: bool|null}
  */
 class CaseDiagram
@@ -63,7 +71,7 @@ class CaseDiagram
     {
         $history = $node->state === WorkflowNodeState::Done ? $histories->get($node->workflow_case_history_id) : null;
         $designatorId = $node->designator_workflow_case_node_id;
-        [$state, $label] = WorkflowHomeLabels::step($node->state);
+        [$state, $label] = WorkflowHomeLabels::detailStep($node->state);
 
         return [
             'id' => $node->id,
@@ -75,10 +83,11 @@ class CaseDiagram
             'subtitle' => StepDescriptions::subtitle($node->kind, $designatorId === null ? null : ($names[(int) $designatorId] ?? null)),
             'state' => $node->state->value,
             'people' => $this->peopleOf($node, $history, $situation, $people, $requesterUserId),
+            'targets' => $this->targetsOf($node, $situation, $people, $requesterUserId),
             'placeholders' => [],
             'consensus' => $node->kind === WorkflowNodeKind::Parallel ? ['text' => $this->consensusOf($node, $council)] : null,
             'stepState' => ['state' => $state, 'label' => $label],
-            'processed' => $history === null ? null : ['action' => $history->action->value, 'at' => $history->created_at?->toIso8601String()],
+            'processed' => $history === null ? null : self::processedOf($history, $people),
             'awaitingDesignation' => $awaitingDesignation,
         ];
     }
@@ -104,6 +113,44 @@ class CaseDiagram
         $me = $situation->isTargetOf($current) ? $requesterUserId : null;
 
         return array_map(fn (int $userId) => [...$people[$userId], 'isMe' => $userId === $me], $current->targetUserIds);
+    }
+
+    /**
+     * 処理担当者 = 現在のノードの処理対象者の行の人(isMe = 判定を求める者その人)。現在のノードでなければ空。
+     *
+     * @param  array<int, Person>  $people
+     * @return list<MarkedPerson>
+     */
+    private function targetsOf(
+        WorkflowCaseNode $node,
+        CaseSituation $situation,
+        array $people,
+        ?int $requesterUserId,
+    ): array {
+        $current = $situation->currentNode($node->id);
+
+        return $current === null ? [] : array_map(
+            fn (int $userId) => [...$people[$userId], 'isMe' => $userId === $requesterUserId],
+            $current->targetUserIds,
+        );
+    }
+
+    /**
+     * 処理済みにした履歴の行の種別・日時と処理実行者の表示(実行者は代理で処理したときだけ = 設計/ワークフロー/案件の運用/画面/README.md の 8.2 節)。
+     *
+     * @param  array<int, Person>  $people  処理者と実行者を含む
+     * @return Processed
+     */
+    private static function processedOf(WorkflowCaseHistory $history, array $people): array
+    {
+        $executorId = $history->executor_user_id;
+
+        return [
+            'action' => $history->action->value,
+            'at' => $history->created_at?->toIso8601String(),
+            'actor' => $people[(int) $history->user_id],
+            'executor' => $executorId === null ? null : $people[(int) $executorId],
+        ];
     }
 
     /**

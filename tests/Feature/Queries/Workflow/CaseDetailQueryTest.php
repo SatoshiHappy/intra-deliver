@@ -136,15 +136,15 @@ final class CaseDetailQueryTest extends TransactionalTestCase
     {
         $case = $this->standardCase();
         [$apply, $approve1, $approve2] = $this->nodesOf($case);
-        $detail = $this->show($this->users['c'], $case->id);
-        $at = now()->toIso8601String();
+        [$detail, $at] = [$this->show($this->users['c'], $case->id), now()->toIso8601String()];
+        $due = ['reachedOn' => self::DATE, 'elapsedDays' => 0, 'dueOn' => null, 'overdue' => false];
 
         $this->assertSame([
             'id' => $case->id, 'number' => CaseNumbers::format((int) $case->case_number), 'name' => $case->name, 'state' => 'active', 'completionReason' => null,
             'flow' => ['code' => $this->flow->code, 'name' => $this->flow->name], 'applicant' => ['id' => $this->users['a']->id, 'code' => 'u0001', 'name' => '佐々木 陽太'],
             'department' => ['id' => $case->department_id, 'code' => $case->department()->sole()->code, 'name' => null],
             'appliedAt' => $case->applied_at?->toIso8601String(), 'completedAt' => null, 'baseDate' => $case->base_date?->format('Y-m-d'), 'version' => 1,
-            'currentSummary' => ['state' => 'waiting', 'name' => $approve2->name], 'revision' => 0,
+            'currentSummary' => ['state' => 'waiting', 'name' => $approve2->name], 'deadline' => $due, 'revision' => 0,
         ], $detail['case']);
         $this->assertSame(['wf_detail', $case->record_id, false], [$detail['content']['module']['code'], $detail['content']['record']['id'], $detail['content']['updatedAfterSubmission']]);
         $this->assertSame([
@@ -160,9 +160,9 @@ final class CaseDetailQueryTest extends TransactionalTestCase
         $this->assertSame([[$apply->name, 'apply', $this->users['a']->id, $at, null, null, null, null, []], [$approve1->name, 'approve', $this->users['b']->id, $at, null, null, null, null, []]], array_map(fn (array $history) => [
             $history['nodeName'], $history['action'], $history['actor']['id'], $history['at'], $history['comment'], $history['sendBackNodeName'], $history['diff'], $history['diffBaseAt'], $history['assignments'],
         ], $detail['histories']));
-        $this->assertSame([['pullBack' => false, 'reapply' => false, 'withdraw' => false], 4000], [$detail['can'], $detail['commentMaxLength']]);
-        $this->assertSame([['nodeId' => $approve2->id, 'name' => $approve2->name, 'approve' => true, 'approveEarly' => true, 'reject' => true, 'sendBack' => true, 'blockedReason' => null, 'sendBackTargets' => [['id' => $apply->id, 'name' => $apply->name], ['id' => $approve1->id, 'name' => $approve1->name]], 'sendBackRestricted' => false, 'isCouncilVote' => false, 'designations' => []]], $detail['nodeActions']);
-        $this->assertSame([['pullBack' => true, 'reapply' => false, 'withdraw' => false], []], array_values(array_intersect_key($this->show($this->users['b'], $case->id), ['can' => 0, 'nodeActions' => 0])));
+        $this->assertSame([['pullBack' => false, 'reapply' => false, 'withdraw' => false, 'confirm' => false], 4000], [$detail['can'], $detail['commentMaxLength']]);
+        $this->assertSame([['nodeId' => $approve2->id, 'name' => $approve2->name, 'approve' => true, 'approveEarly' => true, 'reject' => true, 'sendBack' => true, 'hold' => true, 'release' => false, 'transfer' => true, 'blockedReason' => null, 'holdBlockedReason' => null, 'sendBackTargets' => [['id' => $apply->id, 'name' => $apply->name], ['id' => $approve1->id, 'name' => $approve1->name]], 'sendBackRestricted' => false, 'isCouncilVote' => false, 'principals' => array_fill_keys(['approve', 'approveEarly', 'reject', 'sendBack', 'hold', 'transfer'], [['id' => $this->users['c']->id, 'name' => '高橋 誠', 'isSelf' => true]]), 'designations' => []]], $detail['nodeActions']);
+        $this->assertSame([['pullBack' => true, 'reapply' => false, 'withdraw' => false, 'confirm' => false], []], array_values(array_intersect_key($this->show($this->users['b'], $case->id), ['can' => 0, 'nodeActions' => 0])));
     }
 
     public function test_a_send_back_row_names_its_target_node(): void

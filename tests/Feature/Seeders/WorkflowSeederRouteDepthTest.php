@@ -129,7 +129,7 @@ final class WorkflowSeederRouteDepthTest extends TransactionalTestCase
 
         $errors = $this->validationErrors(fn () => app(ApplyCase::class)->execute(new AccessContext($u0002->id, null, null, $today, AccessContext::LOCALE_CODE), 'project_plan', $input, $today->toDateString()));
 
-        $this->assertSame(['case' => '課長の処理対象者が申請者本人だけのため、この操作はできません。このステップには、申請者承認防止が設定されています。'], $errors);
+        $this->assertSame(['case' => '課長の処理担当者が申請者本人だけのため、この操作はできません。このステップには、申請者承認防止が設定されています。'], $errors);
         $this->assertSame($before, [WorkflowCase::query()->count(), Record::query()->count()]);
     }
 

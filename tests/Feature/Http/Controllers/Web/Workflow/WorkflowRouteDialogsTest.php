@@ -31,6 +31,8 @@ final class WorkflowRouteDialogsTest extends TransactionalTestCase
 
     private const BLOCKED = '申請者本人は、この申請を承認できません。このステップには、申請者承認防止が設定されています。';
 
+    private const HOLD_BLOCKED = '申請者本人は、この申請を保留できません。このステップには、申請者承認防止が設定されています。';
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -44,13 +46,17 @@ final class WorkflowRouteDialogsTest extends TransactionalTestCase
     {
         $case = $this->applyOnBranch('u0001', 350);
         $this->actingAsUser('u0002');
+        $self = [['id' => $this->seededUser('u0002')->id, 'name' => '中村 美咲', 'isSelf' => true]];
+        $principals = array_fill_keys(['approve', 'approveEarly', 'reject', 'sendBack', 'hold', 'transfer'], $self);
 
         $this->get("/workflow/cases/{$case}")->assertOk()->assertInertia(fn (Assert $page) => $page
             ->where('case.currentSummary', ['state' => 'waiting', 'name' => '課長'])
             ->where('case.version', 3)
             ->where('nodeActions', [[
                 'nodeId' => $this->nodeIdOf($case, 'section_chief'), 'name' => '課長', 'approve' => true, 'approveEarly' => true, 'reject' => true, 'sendBack' => true,
-                'blockedReason' => null, 'sendBackTargets' => [['id' => $this->nodeIdOf($case, 'apply'), 'name' => '申請']], 'sendBackRestricted' => false, 'isCouncilVote' => false,
+                'hold' => true, 'release' => false, 'transfer' => true,
+                'blockedReason' => null, 'holdBlockedReason' => null, 'sendBackTargets' => [['id' => $this->nodeIdOf($case, 'apply'), 'name' => '申請']], 'sendBackRestricted' => false, 'isCouncilVote' => false,
+                'principals' => $principals,
                 'designations' => [
                     ['nodeId' => $this->nodeIdOf($case, 'council'), 'name' => '関係部署の合議', 'kind' => 'parallel', 'kindLabel' => '縦配置', 'min' => 2, 'max' => 5, 'decision' => ['rule' => 'count', 'value' => 2, 'required' => [2, 2, 2, 2, 2]], 'initial' => []],
                     ['nodeId' => $this->nodeIdOf($case, 'owner'), 'name' => '責任者', 'kind' => 'approve', 'kindLabel' => '承認', 'min' => 1, 'max' => 1, 'decision' => null, 'initial' => []],
@@ -154,8 +160,8 @@ final class WorkflowRouteDialogsTest extends TransactionalTestCase
     }
 
     /**
-     * 処理対象者が複数(東京営業課 = u0001・u0002)で申請者がその 1 人(モック 6a): 申請者の詳細に blockedReason が出て、承認・承認終了・否認の HTTP が 422 case で
-     * 何も変わらない。ほかの処理対象者(u0002)には出ない。差戻しは申請者もできる(候補がある)。
+     * 処理対象者が複数(東京営業課 = u0001・u0002)で申請者がその 1 人(モック 6a): 申請者の詳細に blockedReason と holdBlockedReason(保留の文言)が出て、
+     * 承認・承認終了・否認・保留の HTTP が 422 case で何も変わらない。ほかの処理対象者(u0002)には出ない。差戻しは申請者もできる(候補がある)。
      */
     public function test_the_applicant_among_several_targets_is_blocked_with_the_reason_and_a_422(): void
     {
@@ -170,17 +176,19 @@ final class WorkflowRouteDialogsTest extends TransactionalTestCase
         $this->get("/workflow/cases/{$case->id}")->assertOk()->assertInertia(fn (Assert $page) => $page
             ->where('nodeActions.0.nodeId', $sales)
             ->where('nodeActions.0.blockedReason', self::BLOCKED)
+            ->where('nodeActions.0.holdBlockedReason', self::HOLD_BLOCKED)
             ->where('nodeActions.0.sendBack', true)
         );
 
-        foreach (['approve', 'approve-early', 'reject'] as $action) {
+        foreach (['approve' => self::BLOCKED, 'approve-early' => self::BLOCKED, 'reject' => self::BLOCKED, 'hold' => self::HOLD_BLOCKED] as $action => $message) {
             $this->post("/workflow/cases/{$case->id}/{$action}", ['revision' => $this->revisionOfCase($case->id), 'comment' => null, 'node_id' => $sales], self::INERTIA)
-                ->assertStatus(302)->assertSessionHasErrors(['case' => self::BLOCKED]);
+                ->assertStatus(302)->assertSessionHasErrors(['case' => $message]);
         }
 
         $this->assertSame([0, 'waiting'], [$this->revisionOfCase($case->id), WorkflowCaseNode::query()->findOrFail($sales)->state->value]);
         $this->actingAsUser('u0002');
-        $this->get("/workflow/cases/{$case->id}")->assertOk()->assertInertia(fn (Assert $page) => $page->where('nodeActions.0.blockedReason', null));
+        $this->get("/workflow/cases/{$case->id}")->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->where('nodeActions.0.blockedReason', null)->where('nodeActions.0.holdBlockedReason', null));
     }
 
     /**
@@ -192,13 +200,13 @@ final class WorkflowRouteDialogsTest extends TransactionalTestCase
         $this->actingAsUser('u0002');
         $count = WorkflowCase::query()->count();
         $this->get('/workflow/flows/project_plan/apply')->assertOk()->assertInertia(fn (Assert $page) => $page
-            ->where('next.nodes', [['name' => '課長', 'targets' => [['id' => $this->branchUserId('u0002'), 'code' => 'u0002', 'name' => '中村 美咲']], 'blockedReason' => '課長の処理対象者が申請者本人だけのため、この操作はできません。このステップには、申請者承認防止が設定されています。']])
+            ->where('next.nodes', [['name' => '課長', 'targets' => [['id' => $this->branchUserId('u0002'), 'code' => 'u0002', 'name' => '中村 美咲']], 'blockedReason' => '課長の処理担当者が申請者本人だけのため、この操作はできません。このステップには、申請者承認防止が設定されています。']])
         );
 
         $this->post('/workflow/flows/project_plan/apply', [
             'name' => '', 'comment' => null, 'base_date' => $this->branchToday()->toDateString(),
             'values' => ['name' => '自分の課の計画', 'department' => $this->departmentIdOf('tokyo-sales'), 'manager' => $this->branchUserId('u0002'), 'status' => 'planning', 'start_date' => '2026-11-01', 'budget' => 100],
-        ], self::INERTIA)->assertStatus(302)->assertSessionHasErrors(['case' => '課長の処理対象者が申請者本人だけのため、この操作はできません。このステップには、申請者承認防止が設定されています。']);
+        ], self::INERTIA)->assertStatus(302)->assertSessionHasErrors(['case' => '課長の処理担当者が申請者本人だけのため、この操作はできません。このステップには、申請者承認防止が設定されています。']);
         $this->assertSame($count, WorkflowCase::query()->count());
     }
 

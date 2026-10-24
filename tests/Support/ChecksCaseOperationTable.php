@@ -31,7 +31,9 @@ use Illuminate\Validation\ValidationException;
  * 成功の結果を {@see self::ONLY_INVARIANTS} にした組は、8 節の結果を確かめず 2.7 の不変の条件({@see RunsRoutePlans::assertRouteInvariants()})
  * だけを確かめる(R1〜R3 = 設計/ワークフロー/ルートの深さ/案件の操作/同時実行と検査.md 14 節。
  * 結果が書かれていない組・キーの書き違えは、不変の条件だけに落とさず失敗にする)。
- * principals(役割 → 代理元の記号)の役割は、その代理元として操作する(画面の can は処理者 = 自分だけなので比べない)。成功の役割は複数を並べられる
+ * principals(役割 → 代理元の記号)の役割は、その代理元として操作する(画面の can は自分として操作できるかだけを見るので比べない。
+ * 詳細の旗は自分か代理元のどれかで許される操作で出るため、自分の分は principals の isSelf で読む
+ * = {@see ChecksCaseOperationCans::detailCans()})。成功の役割は複数を並べられる
  * (結果が同じ組 = 保留者側)。rejections(役割 → 操作 → 期待)は 422 case 以外の拒否(422:principal_user_id など)。
  * 案件の管理者({@see self::tableManagers()}。案件のフローの operate を持つ人)の成功は manager(操作 → 結果)に書く。案件操作
  * ({@see self::MANAGER_OPERATIONS})は、閲覧できて管理者でない人には 403(設計/ワークフロー/案件の運用/案件の操作/案件操作.md の 15.2 節)。
@@ -148,7 +150,7 @@ trait ChecksCaseOperationTable
     }
 
     /**
-     * 自分として操作する役割の can の突き合わせ(代理元として操作する役割の can は処理担当者の候補ごとの札で比べる。画面の can は処理者 = 自分だけ)。
+     * 自分として操作する役割の can の突き合わせ(代理元として操作する役割の can は処理担当者の候補ごとの札で比べる。画面の can で比べるのは自分として操作できるかだけ)。
      *
      * @param  array<string, mixed>  $can
      * @param  Spec  $spec

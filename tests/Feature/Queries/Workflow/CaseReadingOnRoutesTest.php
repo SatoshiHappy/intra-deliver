@@ -160,7 +160,7 @@ final class CaseReadingOnRoutesTest extends TransactionalTestCase
         $approvedOnOpen = $this->applyOnRoute([])[0];
         $this->approve($approvedOnOpen, 'sales', 'u0002');
         $this->approve($approvedOnOpen, 'open', 'u0001');
-        $blocked = '東京営業課の処理対象者が申請者本人だけのため、この操作はできません。このステップには、申請者承認防止が設定されています。';
+        $blocked = '東京営業課の処理担当者が申請者本人だけのため、この操作はできません。このステップには、申請者承認防止が設定されています。';
 
         $this->assertSame([
             [true, [['東京営業課', $blocked]]],
@@ -209,7 +209,12 @@ final class CaseReadingOnRoutesTest extends TransactionalTestCase
         $detail = app(CaseDetailQuery::class)->show($context, $case->id);
         $rows = array_merge(...array_map(fn (string $tab) => app(CaseListQuery::class)->list($context, $tab, null, null)['cases']['data'], ['pending', 'processed']));
         $row = array_values(array_filter($rows, fn (array $row) => $row['id'] === $case->id))[0] ?? $this->fail("{$userCode} の一覧に案件 {$case->id} の行が無い");
-        $this->assertSame([$detail['can']['pullBack'], $detail['pullBackNodes']], [$row['can']['pullBack'], $row['pullBackNodes']]);
+        // 詳細だけが持つ引戻しの処理者(案件の運用/画面/案件の画面.md の 4 節)は、本人として引戻すので null
+        $withoutPrincipal = fn (array $node) => array_diff_key($node, ['principalUserId' => null]);
+        $detailNodes = array_map($withoutPrincipal, $detail['pullBackNodes']);
+        $principals = array_column($detail['pullBackNodes'], 'principalUserId');
+        $this->assertSame(array_fill(0, count($principals), null), $principals);
+        $this->assertSame([$detail['can']['pullBack'], $detailNodes], [$row['can']['pullBack'], $row['pullBackNodes']]);
 
         return [$detail['can']['pullBack'], array_map(fn (array $node) => [$node['name'], $node['blockedReason']], $detail['pullBackNodes'])];
     }

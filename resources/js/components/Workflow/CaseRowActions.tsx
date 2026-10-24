@@ -1,15 +1,13 @@
 import { Link } from '@inertiajs/react';
 import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog';
 import { Button } from '@/components/ui/button';
-import {
-    CaseActionButton,
-    pullBackNodesOf,
-} from '@/components/Workflow/CaseActionDialog';
+import { CaseActionButton } from '@/components/Workflow/CaseActionDialog';
+import type { OpenCaseAction } from '@/components/Workflow/CaseActionDialog';
+import { pullBackNodesOf } from '@/lib/Workflow/caseActions';
 import type {
     CaseActionTarget,
     CaseOperation,
-    OpenCaseAction,
-} from '@/components/Workflow/CaseActionDialog';
+} from '@/lib/Workflow/caseActions';
 import { show } from '@/routes/workflow/cases';
 import { destroy, edit } from '@/routes/workflow/drafts';
 import { create as reapply } from '@/routes/workflow/reapplications';
@@ -61,6 +59,7 @@ function CaseRowLinks({ row, commentMaxLength, onOpen }: Props) {
         commentMaxLength,
         nodes:
             operation === 'pullBack' ? pullBackNodesOf(row.pullBackNodes) : [],
+        fixedPrincipalId: null,
     });
 
     return (

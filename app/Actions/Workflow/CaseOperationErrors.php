@@ -27,7 +27,7 @@ final class CaseOperationErrors
     public const NOT_PERMITTED = CaseOperationTable::NOT_PERMITTED_MESSAGE;
 
     /** 展開が 0 人・戻す相手が有効でない(422 case。%s = ノード名) */
-    public const NO_TARGETS = '%sの処理対象者がいないため、この操作はできません';
+    public const NO_TARGETS = '%sの処理担当者がいないため、この操作はできません';
 
     /** 申請者承認防止に当たる(422 case。同 13 節)。正は判定の読み取りの文言(詳細の blockedReason と同じ文言) */
     public const APPLICANT_APPROVAL = ApplicantApprovalGuard::MESSAGE;
@@ -54,19 +54,19 @@ final class CaseOperationErrors
     public const BASE_DATE_NOT_APPLICABLE = '申請基準日 %s には、このフローを申請できません';
 
     /** 指定(422 assignments・assignments.<ノードの id>。同 13 節) */
-    public const ASSIGNMENTS_MISMATCH = '指定するステップの処理対象者を指定してください';
+    public const ASSIGNMENTS_MISMATCH = '指定するステップの処理担当者を指定してください';
 
     /** %1$s = ノードの表示名、%2$d = 最小、%3$d = 最大 */
-    public const ASSIGNMENTS_COUNT = '%1$sの処理対象者は %2$d 人から %3$d 人まで指定してください';
+    public const ASSIGNMENTS_COUNT = '%1$sの処理担当者は %2$d 人から %3$d 人まで指定してください';
 
     /** %1$s = ノードの表示名、%2$d = 人数(最小 = 最大) */
-    public const ASSIGNMENTS_EXACT_COUNT = '%1$sの処理対象者は %2$d 人を指定してください';
+    public const ASSIGNMENTS_EXACT_COUNT = '%1$sの処理担当者は %2$d 人を指定してください';
 
     public const ASSIGNMENTS_DUPLICATE = '同じユーザーを重複して指定できません';
 
     public const ASSIGNMENTS_NOT_EFFECTIVE = '申請基準日に有効でないユーザーは指定できません';
 
-    public const ASSIGNMENTS_APPLICANT = '申請者本人は、このステップの処理対象者に指定できません';
+    public const ASSIGNMENTS_APPLICANT = '申請者本人は、このステップの処理担当者に指定できません';
 
     /** 申請者承認防止のステップの指定に、今日の申請者の代理先(設計/ワークフロー/案件の運用/案件の操作/同時実行と検査.md の 13 節) */
     public const ASSIGNMENTS_APPLICANT_PROXY = '申請者の代理先は、このステップの処理担当者に指定できません';

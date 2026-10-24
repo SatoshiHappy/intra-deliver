@@ -46,3 +46,21 @@ export function CaseActionNotices({
         </>
     );
 }
+
+/**
+ * 注意の囲み(見出しと文。保留・担当変更のダイアログの欄の下に出す)。
+ */
+export function CaseActionCallout({
+    title,
+    text,
+}: {
+    title: string;
+    text: string;
+}) {
+    return (
+        <div className="grid gap-1 rounded-lg border bg-muted/50 p-3 text-sm">
+            <p className="font-medium">{title}</p>
+            <p>{text}</p>
+        </div>
+    );
+}

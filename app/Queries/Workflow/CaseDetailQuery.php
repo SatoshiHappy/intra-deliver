@@ -23,6 +23,8 @@ use LogicException;
  * (閲覧を失った後の履歴・コメントを返さない = 画面.md 5 節・認可と一覧.md 2 節)。組み立て直しは繰り返さず、返す改訂番号は最初に読んだ値。読み取りの間に閲覧を
  * 失って取り戻した場合は返す(受け入れた代償)。
  * 引戻し・取止めの入口の添付の可否と attachmentLimits = 設計/ワークフロー/申請の周辺/添付/README.md の 5 節({@see CaseAttachEntries})。
+ * だれとして処理するか(処理担当者の選択肢・引戻しと取止めの処理者・代理の 1 行)は {@see CaseProcessorChoices}、確認の面は
+ * {@see CaseConfirmationPanel}、基本情報の期限は {@see CaseDeadlines}(設計/ワークフロー/案件の運用/画面/案件の画面.md の 4 節)。
  *
  * @phpstan-import-type Person from WorkflowPeople
  * @phpstan-import-type History from CaseHistories
@@ -30,8 +32,21 @@ use LogicException;
  * @phpstan-import-type DiagramNode from CaseDiagram
  * @phpstan-import-type DiagramEdge from CaseDiagram
  * @phpstan-import-type Council from CaseCouncils
- * @phpstan-import-type PullBackNode from CaseRows
  * @phpstan-import-type AttachmentLimits from WorkflowAttachmentLimits
+ * @phpstan-import-type DetailPullBackNode from CaseProcessorChoices
+ * @phpstan-import-type Confirmation from CaseConfirmationPanel
+ *
+ * @phpstan-type Processing array{can: array{pullBack: bool, reapply: bool, withdraw: bool, confirm: bool},
+ *     nodeActions: list<array<string, mixed>>, pullBackNodes: list<DetailPullBackNode>, casePrincipal: int|null,
+ *     proxyNote: string|null, canAttachOnWithdraw: bool, attachmentLimits: AttachmentLimits|null}
+ * @phpstan-type Detail array{case: array<string, mixed>, content: array<string, mixed>, nodes: list<DiagramNode>,
+ *     edges: list<DiagramEdge>, councils: list<Council>, histories: list<History>,
+ *     related: array{sameRecord: list<CaseRow>, referenced: list<CaseRow>, referencing: list<CaseRow>},
+ *     can: array{pullBack: bool, reapply: bool, withdraw: bool, confirm: bool},
+ *     nodeActions: list<array<string, mixed>>, pullBackNodes: list<DetailPullBackNode>, casePrincipal: int|null,
+ *     proxyNote: string|null,
+ *     confirmations: list<Confirmation>, commentMaxLength: int, canAttachOnWithdraw: bool,
+ *     attachmentLimits: AttachmentLimits|null}
  */
 class CaseDetailQuery
 {
@@ -42,17 +57,18 @@ class CaseDetailQuery
         private CaseHistories $histories,
         private RelatedCases $related,
         private RecordDisplayQuery $display,
-        private CaseNodeActions $nodeActions,
+        private CaseProcessorChoices $choices,
         private CaseDesignations $designations,
         private CaseDiagram $diagram,
         private CaseCouncils $councils,
         private CurrentAssignments $assignments,
-        private CaseAttachEntries $attachEntries,
+        private CaseConfirmationPanel $confirmationPanel,
+        private CaseDeadlines $deadlines,
         private WorkflowAttachmentLimits $limits,
     ) {}
 
     /**
-     * @return array{case: array<string, mixed>, content: array<string, mixed>, nodes: list<DiagramNode>, edges: list<DiagramEdge>, councils: list<Council>, histories: list<History>, related: array{sameRecord: list<CaseRow>, referenced: list<CaseRow>, referencing: list<CaseRow>}, can: array{pullBack: bool, reapply: bool, withdraw: bool}, nodeActions: list<array<string, mixed>>, pullBackNodes: list<PullBackNode>, commentMaxLength: int, canAttachOnWithdraw: bool, attachmentLimits: AttachmentLimits|null}
+     * @return Detail
      *
      * @throws ModelNotFoundException<WorkflowCase> 案件が無い・閲覧できない・一時保存のとき(組み立ての後の 2 回目の閲覧の判定で見えなくなったときを含む)
      */
@@ -65,36 +81,64 @@ class CaseDetailQuery
         $histories = WorkflowCaseHistory::query()->where('workflow_case_id', $case->id)->orderBy('id')->get();
         $situation = $this->decider->situationsOf($requester, $context->date, [$case])[$case->id];
         $targets = array_merge([], ...array_map(fn (CurrentNode $node) => $node->targetUserIds, $situation->currentNodes));
-        $people = $this->people->users([$case->user_id, ...$targets, ...array_values($histories->map(fn (WorkflowCaseHistory $history) => $history->user_id)->all())], $context->date, $context->localeCode);
-        $nodeActions = $this->nodeActions->of($requester, $context->date, $situation);
-        $can = $this->decider->detailCanOf($requester, $context->date, $situation);
-        $attach = $this->attachEntries->of([$situation], [$case->id => $can['withdraw']])[$case->id];
-        $attachable = in_array(true, [$attach['withdraw'], ...$attach['pullBack']], true);
-        $designations = $this->designations->of($case->id, array_values(array_map(fn (array $action) => $action['nodeId'], array_filter($nodeActions, fn (array $action) => $action['approve']))), $context->date, $context->localeCode);
+        $peopleIds = [$case->user_id, ...$targets, ...self::actorIdsOf($histories)];
+        $people = $this->people->users($peopleIds, $context->date, $context->localeCode);
         $content = $this->display->show($requester, $recordId, $context->date, $context->localeCode);
         $historiesById = $histories->keyBy('id');
         $assignments = $nodes->contains(fn (WorkflowCaseNode $node) => $node->designator_workflow_case_node_id !== null) ? $this->assignments->of($case->id) : [];
         $councils = $this->councils->of($case, $nodes, $historiesById, $assignments, $situation, $requester->userId, $context->date, $context->localeCode);
         $diagram = $this->diagram->of($case, $nodes, $historiesById, $assignments, $situation, $people, $councils, $requester->userId);
+        $updatedAfter = $this->updatedAfterSubmission($content['record']['updatedAt'], $histories);
         $detail = [
             'case' => $this->caseOf($case, $situation, $people, $context),
-            'content' => [...$content, 'updatedAfterSubmission' => $this->updatedAfterSubmission($content['record']['updatedAt'], $histories)],
+            'content' => [...$content, 'updatedAfterSubmission' => $updatedAfter],
             'nodes' => $diagram['nodes'],
             'edges' => $diagram['edges'],
             'councils' => array_values($councils),
             'histories' => $this->histories
                 ->of($requester, $context->date, $context->localeCode, $histories, $nodes->keyBy('id'), $people),
             'related' => $this->related->of($requester, $context->date, $context->localeCode, $case, $recordId),
-            'can' => $can,
-            'nodeActions' => array_map(fn (array $action) => [...$action, 'designations' => $designations[$action['nodeId']] ?? []], $nodeActions),
-            'pullBackNodes' => CaseRows::pullBackNodesOf($situation, $attach['pullBack']),
+            ...$this->processingOf($requester, $context, $situation, $nodes),
+            'confirmations' => $this->confirmationPanel
+                ->of($case, $nodes, $context->userId, $context->date, $context->localeCode),
             'commentMaxLength' => WorkflowCaseHistory::COMMENT_MAX,
-            'canAttachOnWithdraw' => $attach['withdraw'],
-            'attachmentLimits' => $this->limits->forPage($attachable),
         ];
         $this->visibleCase($requester, $context, $case->id);
 
         return $detail;
+    }
+
+    /**
+     * 処理の操作の props(can・nodeActions と指定の欄・引戻せるノード・casePrincipal・代理の 1 行・添付の可否)。
+     *
+     * @param  Collection<int, WorkflowCaseNode>  $nodes  写した並びのノード
+     * @return Processing
+     */
+    private function processingOf(
+        Requester $requester,
+        AccessContext $context,
+        CaseSituation $situation,
+        Collection $nodes,
+    ): array {
+        $date = $context->date;
+        $kinds = array_map(fn (WorkflowCaseNode $node) => $node->kind, $nodes->keyBy('id')->all());
+        $choices = $this->choices->of($requester, $context, $situation, $kinds);
+        $approvable = array_filter($choices['nodeActions'], fn (array $action) => $action['approve']);
+        $approveIds = array_values(array_map(fn (array $action) => $action['nodeId'], $approvable));
+        $designations = $this->designations->of($situation->case->id, $approveIds, $date, $context->localeCode);
+        $designated = fn (array $action) => [...$action, 'designations' => $designations[$action['nodeId']] ?? []];
+        $pullBackAttach = array_column($choices['pullBackNodes'], 'canAttach');
+        $attachable = in_array(true, [$choices['canAttachOnWithdraw'], ...$pullBackAttach], true);
+
+        return [
+            'can' => [...$choices['can'], 'confirm' => $this->decider->canConfirm($requester, $date, $situation)],
+            'nodeActions' => array_map($designated, $choices['nodeActions']),
+            'pullBackNodes' => $choices['pullBackNodes'],
+            'casePrincipal' => $choices['casePrincipal'],
+            'proxyNote' => $choices['proxyNote'],
+            'canAttachOnWithdraw' => $choices['canAttachOnWithdraw'],
+            'attachmentLimits' => $this->limits->forPage($attachable),
+        ];
     }
 
     /**
@@ -129,8 +173,29 @@ class CaseDetailQuery
             'baseDate' => $case->base_date?->format(ApplicationBaseDates::FORMAT),
             'version' => $case->workflowFlowVersion()->sole()->number,
             'currentSummary' => CaseRows::currentSummaryOf($situation),
+            'deadline' => $case->state === WorkflowCaseState::Active
+                ? $this->deadlines->viewOf($situation->currentNodes, $context->date)
+                : null,
             'revision' => $case->revision,
         ];
+    }
+
+    /**
+     * 履歴の処理者と実行者(処理実行者の表示 = 設計/ワークフロー/案件の運用/画面/README.md の 8.2 節)。
+     *
+     * @param  Collection<int, WorkflowCaseHistory>  $histories
+     * @return list<int>
+     */
+    private static function actorIdsOf(Collection $histories): array
+    {
+        $ids = [];
+
+        foreach ($histories as $history) {
+            $executor = $history->executor_user_id;
+            $ids = [...$ids, $history->user_id, ...($executor === null ? [] : [$executor])];
+        }
+
+        return $ids;
     }
 
     /**

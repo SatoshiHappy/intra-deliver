@@ -164,9 +164,9 @@ final class WorkflowSeederTest extends TransactionalTestCase
 
     /**
      * 設計/ワークフロー/ルートの深さ/初期データ.md 1 節、設計/ワークフロー/ルートの深さ/初期データ.md 5 節: 接頭辞のリソースグループ 6 と
-     * ルートのリソース 22(ルート 18 本 = 設計/ワークフロー/認可と一覧.md 4 節と、処理対象者の候補と、一括承認・一括確認・利用者の候補 =
-     * 設計/ワークフロー/案件の運用/認可と一覧.md の 4 節。ID・親は名前から決まる。表示名 ja・en = それぞれの 4 節)。
-     * ポリシー 44 は WorkflowRouteAuthorizationTest・AuthorizationSeedersTest が確かめる。(定義の管理を足すときは、そのリソースグループ・ルートとメニュー「フロー定義」をここで確かめる)
+     * ルートのリソース 26(ルート 18 本 = 設計/ワークフロー/認可と一覧.md 4 節と、処理対象者の候補と、一括承認・一括確認・利用者の候補・
+     * 保留・保留解除・振替・確認 = 設計/ワークフロー/案件の運用/認可と一覧.md の 4 節。ID・親は名前から決まる。表示名 ja・en = それぞれの 4 節)。
+     * ポリシー 52 は WorkflowRouteAuthorizationTest・AuthorizationSeedersTest が確かめる。(定義の管理を足すときは、そのリソースグループ・ルートとメニュー「フロー定義」をここで確かめる)
      */
     public function test_seeds_the_route_resources_of_the_design(): void
     {
@@ -208,8 +208,12 @@ final class WorkflowSeederTest extends TransactionalTestCase
             ['http-services.workflow.cases.bulk-approve', 'http-services.workflow.cases', '一括承認', 'Bulk approve'],
             ['http-services.workflow.cases.bulk-confirm', 'http-services.workflow.cases', '一括確認', 'Bulk confirm'],
             ['http-services.workflow.user-candidates', 'http-services.workflow', '利用者の候補', 'User candidates'],
+            ['http-services.workflow.cases.hold', 'http-services.workflow.cases', '保留', 'Hold'],
+            ['http-services.workflow.cases.release', 'http-services.workflow.cases', '保留解除', 'Release hold'],
+            ['http-services.workflow.cases.transfer', 'http-services.workflow.cases', '担当変更', 'Transfer'],
+            ['http-services.workflow.cases.confirm', 'http-services.workflow.cases', '確認', 'Confirm'],
         ], $groups);
-        $this->assertSame(22, AuthzResource::query()->where('uri', 'like', 'service://workflow/%')->count());
+        $this->assertSame(26, AuthzResource::query()->where('uri', 'like', 'service://workflow/%')->count());
     }
 
     /**

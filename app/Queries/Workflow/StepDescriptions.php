@@ -11,7 +11,7 @@ use App\Enums\Workflow\WorkflowNodeKind;
 final class StepDescriptions
 {
     /**
-     * 図の短い文(承認の動的承認・横配置 =「{指定するステップ}が指定」、縦配置 =「処理対象者は{指定するステップ}が指定」)。処理の時に指定しないノードは null。
+     * 図の短い文(承認の動的承認・横配置 =「{指定するステップ}が指定」、縦配置 =「処理担当者は{指定するステップ}が指定」)。処理の時に指定しないノードは null。
      *
      * @param  string|null  $designatorName  指定するノードの名前(処理の時に指定しないノードは null)
      */
@@ -21,6 +21,6 @@ final class StepDescriptions
             return null;
         }
 
-        return $kind === WorkflowNodeKind::Parallel ? "処理対象者は{$designatorName}が指定" : "{$designatorName}が指定";
+        return $kind === WorkflowNodeKind::Parallel ? "処理担当者は{$designatorName}が指定" : "{$designatorName}が指定";
     }
 }

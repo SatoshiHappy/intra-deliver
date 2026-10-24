@@ -1,4 +1,3 @@
-import { Badge } from '@/components/ui/badge';
 import {
     Table,
     TableBody,
@@ -10,33 +9,13 @@ import {
 import { CaseStepBadge } from '@/components/Workflow/WorkflowStatusBadge';
 import { EMPTY_VALUE, formatDatetime } from '@/lib/recordValues';
 import { cn } from '@/lib/utils';
-import { personName } from '@/lib/Workflow/workflowLabels';
+import { actorViewText, targetsCellText } from '@/lib/Workflow/caseDetail';
 import type { WorkflowCaseDiagramNode } from '@/types';
 
-/** 処理対象者(現在のステップだけ。自分には「(自分)」と「処理対象者」の札) */
-function Targets({ node }: { node: WorkflowCaseDiagramNode }) {
-    if (node.processed !== null || node.people.length === 0) {
-        return EMPTY_VALUE;
-    }
-
-    return (
-        <div className="flex flex-wrap items-center gap-2">
-            <span>
-                {node.people
-                    .map(
-                        (person) =>
-                            `${personName(person)}${person.isMe ? '(自分)' : ''}`,
-                    )
-                    .join('、')}
-            </span>
-            <Badge variant="outline">処理対象者</Badge>
-        </div>
-    );
-}
-
 /**
- * フロー情報の表(docs の 設計/ワークフロー/画面.md 5 節、ルートの深さ/画面.md 7 節。図の文字の代わり): ステップ名(表示名。展開の行は親の下に字下げ)・状態(処理済みは「処理済み(<種別>)」)・
- * 処理対象者(現在のステップだけ)・処理者・処理日時(処理済みだけ)。並びはサーバーの写した並び。
+ * フロー情報の表(docs の 設計/ワークフロー/案件の運用/画面/案件の画面.md の 4 節。図の文字の代わり): ステップ名(表示名。展開の行は親の下に字下げ)・
+ * 状態(処理済みは「処理済み(<種別>)」、保留中は保留中の札)・処理担当者(現在のステップだけ。自分に「(自分)」)・処理実行者(処理済みだけ。
+ * 代理で処理したときは「{実行者}({処理者}さんの代理)」)・処理日時(処理済みだけ)。並びはサーバーの写した並び。
  */
 export function FlowInfoTable({ nodes }: { nodes: WorkflowCaseDiagramNode[] }) {
     return (
@@ -45,8 +24,8 @@ export function FlowInfoTable({ nodes }: { nodes: WorkflowCaseDiagramNode[] }) {
                 <TableRow>
                     <TableHead>ステップ名</TableHead>
                     <TableHead>状態</TableHead>
-                    <TableHead>処理対象者</TableHead>
-                    <TableHead>処理者</TableHead>
+                    <TableHead>処理担当者</TableHead>
+                    <TableHead>処理実行者</TableHead>
                     <TableHead>処理日時</TableHead>
                 </TableRow>
             </TableHeader>
@@ -65,12 +44,14 @@ export function FlowInfoTable({ nodes }: { nodes: WorkflowCaseDiagramNode[] }) {
                             />
                         </TableCell>
                         <TableCell className="whitespace-normal">
-                            <Targets node={node} />
+                            {(node.processed === null
+                                ? targetsCellText(node.targets)
+                                : null) ?? EMPTY_VALUE}
                         </TableCell>
-                        <TableCell>
-                            {node.processed === null || node.people.length === 0
+                        <TableCell className="whitespace-normal">
+                            {node.processed === null
                                 ? EMPTY_VALUE
-                                : personName(node.people[0])}
+                                : actorViewText(node.processed)}
                         </TableCell>
                         <TableCell className="font-num tabular-nums">
                             {node.processed === null ||

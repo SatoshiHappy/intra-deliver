@@ -213,6 +213,26 @@ class CaseConfirmations
     }
 
     /**
+     * 確認日時 = その人の最新の確認の行の日時(1.5 節。閉じた確認・開き直す前の行も含む)。問い合わせは 1 回。
+     *
+     * @return array<int, array<int, string>> ノードの id → ユーザーの id → 日時(ISO 8601)
+     */
+    public function latestConfirmedAtOf(WorkflowCase $case): array
+    {
+        $rows = WorkflowCaseConfirmation::query()->where('workflow_case_id', $case->id)
+            ->groupBy('workflow_case_node_id', 'user_id')->toBase()
+            ->selectRaw('workflow_case_node_id, user_id, max(created_at) as confirmed_at')->get();
+        $latest = [];
+
+        foreach ($rows as $row) {
+            $at = CarbonImmutable::parse((string) $row->confirmed_at)->toIso8601String();
+            $latest[(int) $row->workflow_case_node_id][(int) $row->user_id] = $at;
+        }
+
+        return $latest;
+    }
+
+    /**
      * 1 人の確認の状態(設計/ワークフロー/案件の運用/案件の操作/README.md の 1.5 節の式)。
      *
      * @param  bool  $confirmed  その人の確認の行のうち、ノードの今の履歴の行を指すものがあるか

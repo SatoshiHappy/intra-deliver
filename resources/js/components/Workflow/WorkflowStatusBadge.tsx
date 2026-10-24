@@ -1,4 +1,5 @@
 import { Pause } from 'lucide-react';
+import type { ReactNode } from 'react';
 import { StatusBadge } from '@/components/StatusBadge';
 import { cn } from '@/lib/utils';
 import { BULK_OUTCOMES } from '@/lib/Workflow/bulkActions';
@@ -24,28 +25,32 @@ const COMPLETED: Record<
     withdrawn: { label: '完了(取止め)', tone: 'settled', mark: null },
 };
 
-/** 履歴の処理の種別ごとの色と印(設計/ワークフロー/画面.md 8 節の「履歴の処理の種別の札」。ここに無い種別 = 申請・再申請・取止めは処理済みの色で印なし) */
+/** 保留の印(一時停止) */
+const PAUSE_MARK = <Pause className="size-3" aria-hidden="true" />;
+
+/**
+ * 履歴の処理の種別ごとの色と印(設計/ワークフロー/案件の運用/画面/README.md の 8.1 節の「履歴の処理の種別の札」。
+ * ここに無い種別 = 申請・再申請・取止め・保留解除・担当変更・処理担当者の変更・再展開・指定の変更は処理済みの色で印なし)
+ */
 const HISTORY_ACTIONS: Partial<
-    Record<WorkflowAction, { tone: StatusTone; mark: string | null }>
+    Record<WorkflowAction, { tone: StatusTone; mark: ReactNode }>
 > = {
     approve: { tone: 'settled', mark: '✓' },
     approve_early: { tone: 'settled', mark: '✓' },
     reject: { tone: 'rejected', mark: '×' },
     send_back: { tone: 'returned', mark: null },
     pull_back: { tone: 'returned', mark: null },
+    hold: { tone: 'returned', mark: PAUSE_MARK },
+    move_back: { tone: 'returned', mark: null },
+    move_forward: { tone: 'settled', mark: '✓' },
+    move_finish: { tone: 'settled', mark: '✓' },
 };
 
 /**
  * 保留中の札(差戻しの色と一時停止の印 = docs の 設計/ワークフロー/案件の運用/画面/README.md の 8.1 節)。案件の状態と、現在のステップの名前の後に出す。
  */
 export function HoldBadge() {
-    return (
-        <StatusBadge
-            label="保留中"
-            tone="returned"
-            mark={<Pause className="size-3" aria-hidden="true" />}
-        />
-    );
+    return <StatusBadge label="保留中" tone="returned" mark={PAUSE_MARK} />;
 }
 
 /** 期限超過の札(否認・期限切れの色 = 同じ 8.1 節) */
@@ -128,6 +133,7 @@ export function ProcessedBadge({
 
 /** ステップの状態ごとの札の色(到達していない・省略は札にしない = ルートの深さ/画面.md 8 節) */
 const STEP_TONES: Record<WorkflowStepState['state'], StatusTone | null> = {
+    hold: 'returned',
     done: 'settled',
     current: 'pending',
     returned: 'returned',
@@ -146,6 +152,10 @@ export function StepStateBadge({
     /** 札にしない語(到達していない・省略)の文字の書式(大きさは呼び手が決める。表は段 2 のまま本文の大きさ) */
     className?: string;
 }) {
+    if (stepState.state === 'hold') {
+        return <HoldBadge />;
+    }
+
     const tone = STEP_TONES[stepState.state];
 
     return tone === null ? (

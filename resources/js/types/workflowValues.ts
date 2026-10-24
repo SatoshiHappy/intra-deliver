@@ -44,6 +44,13 @@ export type WorkflowAction =
     | 'move_forward'
     | 'move_finish'
     | 'reassign';
+export type WorkflowConfirmationProgress =
+    | 'unconfirmed'
+    | 'confirmed'
+    | 'waiting'
+    | 'reapply'
+    | 'skipped'
+    | 'none';
 export type WorkflowBulkOutcome =
     | 'approved'
     | 'confirmed'

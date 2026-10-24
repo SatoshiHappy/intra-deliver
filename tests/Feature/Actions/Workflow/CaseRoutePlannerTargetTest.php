@@ -68,7 +68,7 @@ final class CaseRoutePlannerTargetTest extends TransactionalTestCase
 
         foreach (['担当組織の無い申請者' => [$withoutDepartment, 'u0001'], '根の組織の上位組織' => [$root, 'u0005']] as $label => [$case, $applicant]) {
             $before = $this->shape($case);
-            $this->assertSame(['case' => 'bossの処理対象者がいないため、この操作はできません'], $this->validationErrors(fn () => $this->step($case, 'apply', WorkflowAction::Apply, $applicant)), $label);
+            $this->assertSame(['case' => 'bossの処理担当者がいないため、この操作はできません'], $this->validationErrors(fn () => $this->step($case, 'apply', WorkflowAction::Apply, $applicant)), $label);
             $this->assertSame($before, $this->shape($case), $label);
             $this->assertSame(0, WorkflowCaseHistory::query()->where('workflow_case_id', $case->id)->count(), $label);
         }
@@ -94,7 +94,7 @@ final class CaseRoutePlannerTargetTest extends TransactionalTestCase
         $chiefApplies = $this->caseOf($r1, $this->seededUser('u0002'), ['budget' => 100]);
 
         $this->assertSame(
-            ['case' => '課長の処理対象者が申請者本人だけのため、この操作はできません。このステップには、申請者承認防止が設定されています。'],
+            ['case' => '課長の処理担当者が申請者本人だけのため、この操作はできません。このステップには、申請者承認防止が設定されています。'],
             $this->validationErrors(fn () => $this->step($chiefApplies, 'apply', WorkflowAction::Apply, 'u0002')),
         );
 
@@ -110,7 +110,7 @@ final class CaseRoutePlannerTargetTest extends TransactionalTestCase
         $this->step($case, 'apply', WorkflowAction::Apply, 'u0001');
 
         $this->assertSame(
-            ['case' => '関係部署の合議 承認 1の処理対象者が申請者本人だけのため、この操作はできません。このステップには、申請者承認防止が設定されています。'],
+            ['case' => '関係部署の合議 承認 1の処理担当者が申請者本人だけのため、この操作はできません。このステップには、申請者承認防止が設定されています。'],
             $this->validationErrors(fn () => $this->step($case, 'section_chief', WorkflowAction::Approve, 'u0002', ['council' => ['u0001', 'u0010'], 'owner' => ['u0007']])),
         );
         $this->assertSame('waiting[u0002]', $this->shape($case)['section_chief']);
@@ -122,12 +122,12 @@ final class CaseRoutePlannerTargetTest extends TransactionalTestCase
 
         $case = $this->caseOf($versionId);
         $this->step($case, 'apply', WorkflowAction::Apply, 'u0001');
-        $this->assertSame(['case' => '順番の承認の処理対象者がいないため、この操作はできません'], $this->validationErrors(fn () => $this->step($case, 'chief', WorkflowAction::Approve, 'u0002', ['line' => ['u0003', 'u0015']])), '親の展開は子の全員を確かめる');
-        $this->assertSame(['case' => '順番の承認の処理対象者がいないため、この操作はできません'], $this->validationErrors(fn () => $this->step($case, 'chief', WorkflowAction::Approve, 'u0002', ['line' => ['u0015']])), '最小 0 で全員が無効でも拒む');
+        $this->assertSame(['case' => '順番の承認の処理担当者がいないため、この操作はできません'], $this->validationErrors(fn () => $this->step($case, 'chief', WorkflowAction::Approve, 'u0002', ['line' => ['u0003', 'u0015']])), '親の展開は子の全員を確かめる');
+        $this->assertSame(['case' => '順番の承認の処理担当者がいないため、この操作はできません'], $this->validationErrors(fn () => $this->step($case, 'chief', WorkflowAction::Approve, 'u0002', ['line' => ['u0015']])), '最小 0 で全員が無効でも拒む');
 
         $this->step($case, 'chief', WorkflowAction::Approve, 'u0002', ['line' => ['u0003', 'u0004']]);
         UserTerm::query()->where('user_id', $this->seededUser('u0004')->id)->update(['end_date' => '2026-10-01']);
-        $this->assertSame(['case' => '順番の承認 承認 2の処理対象者がいないため、この操作はできません'], $this->validationErrors(fn () => $this->step($case, 'line.1', WorkflowAction::Approve, 'u0003')), '横配置の子 k + 1 の到達でも確かめる');
+        $this->assertSame(['case' => '順番の承認 承認 2の処理担当者がいないため、この操作はできません'], $this->validationErrors(fn () => $this->step($case, 'line.1', WorkflowAction::Approve, 'u0003')), '横配置の子 k + 1 の到達でも確かめる');
         $this->assertSame('waiting[u0003]', $this->shape($case)['line.1']);
     }
 

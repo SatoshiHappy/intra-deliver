@@ -4,10 +4,13 @@ namespace Tests\Feature\Http\Controllers\Web\Workflow;
 
 use App\Enums\Records\RecordModuleAction;
 use App\Models\Workflow\WorkflowCaseNode;
+use App\Queries\Workflow\CaseDeadlines;
+use App\Queries\Workflow\WorkflowPeople;
 use App\Support\AccessContext;
 use Carbon\CarbonImmutable;
 use Database\Seeders\WorkflowSeeder;
 use Inertia\Testing\AssertableInertia as Assert;
+use LogicException;
 use Tests\Support\TransactionalTestCase;
 use Tests\Support\UsesSeededRecords;
 
@@ -252,6 +255,10 @@ final class WorkflowPagesTest extends TransactionalTestCase
     {
         $this->actingAsUser('u0002');
         $case = $this->caseNumbered(5);
+        $u0002 = $this->userIdOf('u0002');
+        $name = app(WorkflowPeople::class)->users([$u0002], CarbonImmutable::today(), 'ja')[$u0002]['name'];
+        $operations = ['approve', 'approveEarly', 'reject', 'sendBack', 'hold', 'transfer'];
+        $principals = array_fill_keys($operations, [['id' => $u0002, 'name' => (string) $name, 'isSelf' => true]]);
 
         $this->get("/workflow/cases/{$case}")->assertOk()->assertInertia(fn (Assert $page) => $page
             ->component('Workflow/CaseShow')
@@ -269,12 +276,20 @@ final class WorkflowPagesTest extends TransactionalTestCase
             ->has('histories', 3)
             ->where('histories.2.action', 'reapply')
             ->has('histories.2.diff.fields', 2)
-            ->where('can', ['pullBack' => false, 'reapply' => false, 'withdraw' => false])
+            ->where('can', ['pullBack' => false, 'reapply' => false, 'withdraw' => false, 'confirm' => false])
             ->where('commentMaxLength', 4000)
             ->where('nodeActions', [[
                 'nodeId' => $this->nodeIdOf($case, 2), 'name' => '課長の承認', 'approve' => true, 'approveEarly' => true, 'reject' => true, 'sendBack' => true,
-                'blockedReason' => null, 'sendBackTargets' => [['id' => $this->nodeIdOf($case, 1), 'name' => '申請']], 'sendBackRestricted' => false, 'isCouncilVote' => false, 'designations' => [],
+                'hold' => true, 'release' => false, 'transfer' => true,
+                'blockedReason' => null, 'holdBlockedReason' => null, 'sendBackTargets' => [['id' => $this->nodeIdOf($case, 1), 'name' => '申請']], 'sendBackRestricted' => false, 'isCouncilVote' => false,
+                'principals' => $principals,
+                'designations' => [],
             ]])
+            ->where('pullBackNodes', [])
+            ->where('casePrincipal', $this->userIdOf('u0001'))
+            ->where('proxyNote', null)
+            ->has('confirmations', 2)->where('confirmations.0.people.0.status', 'waiting')
+            ->where('case.deadline.dueOn', $this->dueOnOf($case))
             ->has('related', fn (Assert $related) => $related->has('sameRecord')->has('referenced')->has('referencing'))
         );
     }
@@ -289,6 +304,15 @@ final class WorkflowPagesTest extends TransactionalTestCase
         $this->get('/workflow/cases/'.$this->caseNumbered(1))->assertOk()->assertInertia(fn (Assert $page) => $page
             ->where('related.referencing.0.number', 'WF-000002')
         );
+    }
+
+    /** 現在のステップの期限日(到達した日 + 写した期限の日数 = 案件の運用/案件の操作/README.md の 1.4 節) */
+    private function dueOnOf(int $caseId): ?string
+    {
+        $node = WorkflowCaseNode::query()->where('workflow_case_id', $caseId)->where('state', 'waiting')->sole();
+        $reachedAt = $node->reached_at ?? throw new LogicException("現在のノード {$node->id} に到達日時が無い");
+
+        return app(CaseDeadlines::class)->dueOn($reachedAt, $node->deadline_days);
     }
 
     private function nodeIdOf(int $caseId, int $position): int

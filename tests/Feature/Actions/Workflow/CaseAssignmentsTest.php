@@ -31,10 +31,10 @@ final class CaseAssignmentsTest extends TransactionalTestCase
         $ids = $this->labelIds($case);
         $other = $this->applied();
 
-        $this->assertRejected($case, ['council' => ['u0004', 'u0005']], ['assignments' => '指定するステップの処理対象者を指定してください']);
-        $this->assertRejected($case, [], ['assignments' => '指定するステップの処理対象者を指定してください']);
-        $this->assertRejectedById($case, [$ids['council'] => $this->userIds('u0004', 'u0005'), $ids['owner'] => $this->userIds('u0010'), $ids['manager'] => $this->userIds('u0003')], ['assignments' => '指定するステップの処理対象者を指定してください']);
-        $this->assertRejectedById($case, [$ids['council'] => $this->userIds('u0004', 'u0005'), $this->labelIds($other)['owner'] => $this->userIds('u0010')], ['assignments' => '指定するステップの処理対象者を指定してください']);
+        $this->assertRejected($case, ['council' => ['u0004', 'u0005']], ['assignments' => '指定するステップの処理担当者を指定してください']);
+        $this->assertRejected($case, [], ['assignments' => '指定するステップの処理担当者を指定してください']);
+        $this->assertRejectedById($case, [$ids['council'] => $this->userIds('u0004', 'u0005'), $ids['owner'] => $this->userIds('u0010'), $ids['manager'] => $this->userIds('u0003')], ['assignments' => '指定するステップの処理担当者を指定してください']);
+        $this->assertRejectedById($case, [$ids['council'] => $this->userIds('u0004', 'u0005'), $this->labelIds($other)['owner'] => $this->userIds('u0010')], ['assignments' => '指定するステップの処理担当者を指定してください']);
     }
 
     /**
@@ -48,12 +48,12 @@ final class CaseAssignmentsTest extends TransactionalTestCase
         $owner = "assignments.{$ids['owner']}";
         $missing = (int) User::query()->max('id') + 1000;
 
-        $this->assertRejected($case, ['council' => ['u0004'], 'owner' => ['u0010', 'u0011']], [$council => '関係部署の合議の処理対象者は 2 人から 5 人まで指定してください', $owner => '責任者の処理対象者は 1 人を指定してください']);
-        $this->assertRejected($case, ['council' => ['u0004', 'u0005', 'u0006', 'u0007', 'u0008', 'u0009'], 'owner' => ['u0010']], [$council => '関係部署の合議の処理対象者は 2 人から 5 人まで指定してください']);
+        $this->assertRejected($case, ['council' => ['u0004'], 'owner' => ['u0010', 'u0011']], [$council => '関係部署の合議の処理担当者は 2 人から 5 人まで指定してください', $owner => '責任者の処理担当者は 1 人を指定してください']);
+        $this->assertRejected($case, ['council' => ['u0004', 'u0005', 'u0006', 'u0007', 'u0008', 'u0009'], 'owner' => ['u0010']], [$council => '関係部署の合議の処理担当者は 2 人から 5 人まで指定してください']);
         $this->assertRejected($case, ['council' => ['u0004', 'u0004'], 'owner' => ['u0010']], [$council => '同じユーザーを重複して指定できません']);
         $this->assertRejected($case, ['council' => ['u0004', 'u0014'], 'owner' => ['u0015']], [$council => '申請基準日に有効でないユーザーは指定できません', $owner => '申請基準日に有効でないユーザーは指定できません']);
         $this->assertRejectedById($case, [$ids['council'] => [...$this->userIds('u0004'), $missing], $ids['owner'] => $this->userIds('u0010')], [$council => '申請基準日に有効でないユーザーは指定できません']);
-        $this->assertRejected($case, ['council' => ['u0004', 'u0001'], 'owner' => ['u0001']], [$council => '申請者本人は、このステップの処理対象者に指定できません', $owner => '申請者本人は、このステップの処理対象者に指定できません']);
+        $this->assertRejected($case, ['council' => ['u0004', 'u0001'], 'owner' => ['u0001']], [$council => '申請者本人は、このステップの処理担当者に指定できません', $owner => '申請者本人は、このステップの処理担当者に指定できません']);
     }
 
     /**

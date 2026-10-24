@@ -16,6 +16,7 @@ use LogicException;
 /**
  * 案件の詳細の合議の進み具合(docs の 設計/ワークフロー/ルートの深さ/画面.md 7 節)。縦配置が展開中か通過のときだけ作る。承認した人数と必要な人数は
  * 業務処理の合議の判定と同じ 1 か所({@see WorkflowDecisionRule::decide()})、可決したかは親の状態(通過)。行は今の指定の人数 n までの子。
+ * 行の stepState は図・表と同じ 1 か所({@see WorkflowHomeLabels::detailStep()})を通る。
  *
  * @phpstan-import-type Person from WorkflowPeople
  *
@@ -91,7 +92,7 @@ class CaseCouncils
             $current !== null => $current->targetUserIds[0] ?? null,
             default => $assigned[(int) $child->sequence - 1] ?? null,
         };
-        [$state, $label] = WorkflowHomeLabels::step($child->state);
+        [$state, $label] = WorkflowHomeLabels::detailStep($child->state);
 
         $isMine = $history !== null || ($current !== null && $situation->isTargetOf($current));
 

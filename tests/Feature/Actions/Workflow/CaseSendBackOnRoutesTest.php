@@ -127,7 +127,7 @@ final class CaseSendBackOnRoutesTest extends TransactionalTestCase
 
         $errors = $this->validationErrors(fn () => app(SendBackCase::class)->execute($this->contextOf($this->seededUser('u0004')), $case->id, $this->revisionOf($case), $ids['council.1'], $ids['section_chief'], null));
 
-        $this->assertSame(['case' => '課長の処理対象者がいないため、この操作はできません'], $errors);
+        $this->assertSame(['case' => '課長の処理担当者がいないため、この操作はできません'], $errors);
         $this->assertSame($before, [$this->shape($case), $this->workflowCounts(), $this->revisionOf($case)]);
     }
 

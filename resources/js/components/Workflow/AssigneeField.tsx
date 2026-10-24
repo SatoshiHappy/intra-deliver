@@ -2,7 +2,6 @@ import { Plus } from 'lucide-react';
 import { useState } from 'react';
 import { AssigneeCandidateList } from '@/components/Workflow/AssigneeCandidateList';
 import { AssigneePickedList } from '@/components/Workflow/AssigneePickedList';
-import type { PickedAssignee } from '@/components/Workflow/AssigneePickedList';
 import { FormBlock, invalidProps } from '@/components/FormBlock';
 import { Button } from '@/components/ui/button';
 import { Command, CommandInput, CommandList } from '@/components/ui/command';
@@ -13,9 +12,8 @@ import {
 } from '@/components/ui/popover';
 import { useAssigneeCandidates } from '@/hooks/Workflow/use-assignee-candidates';
 import { CANDIDATE_QUERY_MAX_LENGTH } from '@/hooks/use-record-candidates';
+import type { PickedUser } from '@/lib/Workflow/caseActionForm';
 import type { WorkflowDesignation } from '@/types';
-
-export type { PickedAssignee };
 
 /**
  * 「選択中 {n} 人」の後ろの文(ルートの深さ/画面.md 6 節)。必要な数はサーバーの表 `decision.required` を引き、画面は式を持たない。
@@ -53,8 +51,8 @@ export function AssigneeField({
 }: {
     caseId: number;
     assigneeField: WorkflowDesignation;
-    picked: PickedAssignee[];
-    onChange: (picked: PickedAssignee[]) => void;
+    picked: PickedUser[];
+    onChange: (picked: PickedUser[]) => void;
     error?: string;
 }) {
     const [open, setOpen] = useState(false);
@@ -76,7 +74,7 @@ export function AssigneeField({
             </h3>
             <FormBlock
                 id={id}
-                label="処理対象者"
+                label="処理担当者"
                 help={`${assigneeField.min} 人から ${assigneeField.max} 人まで選択できます。`}
                 error={error}
             >
@@ -116,7 +114,7 @@ export function AssigneeField({
                         <PopoverContent align="start" className="w-80 p-0">
                             <Command
                                 shouldFilter={false}
-                                label={`${assigneeField.name}の処理対象者の候補`}
+                                label={`${assigneeField.name}の処理担当者の候補`}
                             >
                                 <CommandInput
                                     value={query}

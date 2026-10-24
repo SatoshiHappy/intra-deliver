@@ -53,6 +53,18 @@ final class CurrentNodesHoldTest extends TransactionalTestCase
     }
 
     /**
+     * 案件の詳細の語は step() と同じで、保留中だけ state が hold(ホームの経路は step() のまま current)。
+     */
+    public function test_the_detail_step_differs_from_the_home_step_only_for_a_held_node(): void
+    {
+        foreach (WorkflowNodeState::cases() as $state) {
+            $expected = $state === WorkflowNodeState::Hold ? ['hold', '保留中'] : WorkflowHomeLabels::step($state);
+
+            $this->assertSame($expected, WorkflowHomeLabels::detailStep($state), $state->value);
+        }
+    }
+
+    /**
      * 申請・承認 2 つの一本道で、承認 1 が保留(処理対象者 u0002)の案件。
      *
      * @return array{WorkflowCase, WorkflowCaseNode, int}

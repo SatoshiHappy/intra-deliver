@@ -106,7 +106,7 @@ final class MoveCaseNodeBackTest extends TransactionalTestCase
 
         $error = $this->attemptOf(fn () => $this->moveOn($case, 'a2', 'back', 'a1'));
 
-        $this->assertSame(['case' => 'a1の処理対象者がいないため、この操作はできません'], $error);
+        $this->assertSame(['case' => 'a1の処理担当者がいないため、この操作はできません'], $error);
         $this->assertSame($before, $this->snapshot($case));
     }
 

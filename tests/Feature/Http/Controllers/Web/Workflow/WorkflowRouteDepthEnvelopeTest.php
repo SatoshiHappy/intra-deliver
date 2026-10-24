@@ -50,7 +50,7 @@ final class WorkflowRouteDepthEnvelopeTest extends TransactionalTestCase
         $approve('x')->assertUnprocessable()->assertJsonValidationErrors(['assignments']);
         $approve([$base['node_id'] => 'x'])->assertUnprocessable()->assertJsonValidationErrors(["assignments.{$base['node_id']}"]);
         $approve([$base['node_id'] => ['a']])->assertUnprocessable()->assertJsonValidationErrors(["assignments.{$base['node_id']}.0"]);
-        $approve(['abc' => [$this->userIdOf('u0004')]])->assertUnprocessable()->assertJsonValidationErrors(['assignments' => '指定するステップの処理対象者を指定してください']);
+        $approve(['abc' => [$this->userIdOf('u0004')]])->assertUnprocessable()->assertJsonValidationErrors(['assignments' => '指定するステップの処理担当者を指定してください']);
 
         $this->assertSame($base['revision'], $this->revisionOf($case));
     }

@@ -90,14 +90,8 @@ class CaseRowExtras
     private function deadlineOf(CaseSituation $situation, DateTimeInterface $today): array
     {
         $nodes = $this->deadlines->pendingNodesOf($situation->currentNodes, $situation->targetNodeIds);
-        $summary = $this->deadlines->summaryOf($nodes, $today);
 
-        return [
-            'reachedOn' => $this->deadlines->earliestReachedOn($nodes),
-            'elapsedDays' => $summary->elapsedDays,
-            'dueOn' => $summary->dueOn,
-            'overdue' => $summary->isOverdue,
-        ];
+        return $this->deadlines->viewOf($nodes, $today);
     }
 
     /**

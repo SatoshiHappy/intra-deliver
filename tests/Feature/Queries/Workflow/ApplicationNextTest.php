@@ -100,7 +100,7 @@ final class ApplicationNextTest extends TransactionalTestCase
         $flowId = WorkflowFlow::query()->where('code', self::FLOW_CODE)->sole()->id;
 
         $this->assertSame([
-            ['only', ['u0001'], 'onlyの処理対象者が申請者本人だけのため、この操作はできません。このステップには、申請者承認防止が設定されています。'],
+            ['only', ['u0001'], 'onlyの処理担当者が申請者本人だけのため、この操作はできません。このステップには、申請者承認防止が設定されています。'],
             ['東京営業課', ['u0001', 'u0002'], null],
             ['nobody', [], null],
             ['free', ['u0001'], null],

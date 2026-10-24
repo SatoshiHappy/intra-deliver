@@ -5,10 +5,12 @@ namespace App\Queries\Workflow;
 use App\Enums\Workflow\WorkflowAction;
 use App\Models\Workflow\WorkflowCaseAssignment;
 use App\Models\Workflow\WorkflowCaseHistory;
+use App\Models\Workflow\WorkflowCaseHistoryUser;
 use App\Models\Workflow\WorkflowCaseNode;
 use App\Queries\Authz\Api\Requester;
 use App\Queries\Records\Api\RecordRevisionQuery;
 use DateTimeInterface;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use LogicException;
 
@@ -26,14 +28,23 @@ use LogicException;
  *
  * @phpstan-type CaseDiff array{fields: list<array{code: string, before: mixed, after: mixed}>,
  *     details: list<array{code: string, rows: list<RowChange>}>}
- * @phpstan-type History array{id: int, nodeName: string, action: string, actor: Person, at: string|null,
- *     comment: string|null, sendBackNodeName: string|null, diff: CaseDiff|null, diffBaseAt: string|null,
- *     assignments: list<array{nodeName: string, people: list<Person>}>}
+ *
+ * 処理実行者の表示 = actor(処理者)と executor(代理で処理したときの実行者。本人なら null)。添える 1 行の人 users =
+ * 振替先・処理対象者の変更と再展開の後の人(履歴の人)、指定の変更の人(その行の指定の行)。
+ * sendBackNodeName = 差戻しの行の差戻し先(戻るの行は null)。moveTargetName = ステップの移動(戻る)の
+ * 戻り先(設計/ワークフロー/案件の運用/画面/案件の画面.md の 4 節、データモデル/表.md の 3.9 節)。
+ * @phpstan-type History array{id: int, nodeName: string, action: string, actor: Person, executor: Person|null,
+ *     at: string|null, comment: string|null, sendBackNodeName: string|null, diff: CaseDiff|null,
+ *     diffBaseAt: string|null, assignments: list<array{nodeName: string, people: list<Person>}>, users: list<Person>,
+ *     moveTargetName: string|null}
  */
 class CaseHistories
 {
     /** 更新履歴の版を指す(提出の)種別 */
     public const SUBMISSIONS = [WorkflowAction::Apply, WorkflowAction::Reapply];
+
+    /** 履歴の人を持つ種別(データモデル/表.md の 3.9 節) */
+    private const PEOPLE_ACTIONS = [WorkflowAction::Transfer, WorkflowAction::Retarget, WorkflowAction::Reexpand];
 
     public function __construct(
         private RecordRevisionQuery $revisions,
@@ -43,7 +54,7 @@ class CaseHistories
     /**
      * @param  Collection<int, WorkflowCaseHistory>  $histories  案件の履歴(id の昇順)
      * @param  Collection<int, WorkflowCaseNode>  $nodes  案件のノード(id → ノード)
-     * @param  array<int, Person>  $people  処理者を含むユーザーの表示
+     * @param  array<int, Person>  $people  処理者と実行者を含むユーザーの表示
      * @return list<History>
      */
     public function of(
@@ -57,20 +68,25 @@ class CaseHistories
         $rows = [];
         $base = null;
         $assignments = $this->assignmentsOf($histories, $nodes, $date, $localeCode);
+        $users = $this->usersOf($histories, $date, $localeCode);
 
         foreach ($histories as $history) {
             $isReapply = $history->action === WorkflowAction::Reapply && $base !== null;
+            $executorId = $history->executor_user_id;
             $rows[] = [
                 'id' => $history->id,
                 'nodeName' => $this->nodeName($nodes, $history->workflow_case_node_id),
                 'action' => $history->action->value,
                 'actor' => $people[$history->user_id],
+                'executor' => $executorId === null ? null : $people[$executorId],
                 'at' => $history->created_at?->toIso8601String(),
                 'comment' => $history->comment,
-                'sendBackNodeName' => $history->send_back_workflow_case_node_id === null ? null : $this->nodeName($nodes, $history->send_back_workflow_case_node_id),
+                'sendBackNodeName' => $this->targetName($nodes, $history, WorkflowAction::SendBack),
                 'diff' => $isReapply ? $this->diff($requester, $base, $history, $date, $localeCode) : null,
                 'diffBaseAt' => $isReapply ? $base->created_at?->toIso8601String() : null,
                 'assignments' => $assignments[$history->id] ?? [],
+                'users' => $users[$history->id] ?? [],
+                'moveTargetName' => $this->targetName($nodes, $history, WorkflowAction::MoveBack),
             ];
 
             if (in_array($history->action, self::SUBMISSIONS, true)) {
@@ -120,6 +136,74 @@ class CaseHistories
     private function nodeName(Collection $nodes, int $nodeId): string
     {
         return $nodes->get($nodeId)?->displayName() ?? throw new LogicException("案件のノード {$nodeId} を読み込んでいない");
+    }
+
+    /**
+     * 差戻しの行の差戻し先と戻るの行の戻り先の表示名(2 つは同じ列 = データモデル/表.md の 3.7 節。指定した種別の行だけが値を持ち、ほかの行は null)。
+     *
+     * @param  Collection<int, WorkflowCaseNode>  $nodes
+     */
+    private function targetName(Collection $nodes, WorkflowCaseHistory $history, WorkflowAction $action): ?string
+    {
+        $targetId = $history->send_back_workflow_case_node_id;
+
+        if ($history->action !== $action || $targetId === null) {
+            return null;
+        }
+
+        return $this->nodeName($nodes, $targetId);
+    }
+
+    /**
+     * 履歴の行ごとの添える 1 行の人(行の id → 並びの順の人)。振替・処理対象者の変更・再展開は履歴の人、指定の変更はその行の指定の行。
+     * 問い合わせは行の数に依らない(履歴の人・指定の行・名前が各 1 回まで)。
+     *
+     * @param  Collection<int, WorkflowCaseHistory>  $histories
+     * @return array<int, list<Person>>
+     */
+    private function usersOf(Collection $histories, DateTimeInterface $date, string $localeCode): array
+    {
+        $idsOf = fn (array $actions) => array_values($histories
+            ->filter(fn (WorkflowCaseHistory $history) => in_array($history->action, $actions, true))
+            ->map(fn (WorkflowCaseHistory $history) => $history->id)->all());
+        $pairs = [
+            ...self::userPairs(WorkflowCaseHistoryUser::query(), $idsOf(self::PEOPLE_ACTIONS)),
+            ...self::userPairs(WorkflowCaseAssignment::query(), $idsOf([WorkflowAction::Reassign])),
+        ];
+
+        if ($pairs === []) {
+            return [];
+        }
+
+        $people = $this->people->users(array_column($pairs, 1), $date, $localeCode);
+        $byHistory = [];
+
+        foreach ($pairs as [$historyId, $userId]) {
+            $byHistory[$historyId][] = $people[$userId];
+        }
+
+        return $byHistory;
+    }
+
+    /**
+     * 履歴の行を指す人の行の [行の id, ユーザーの id](並びの順)。行が無ければ問い合わせない。
+     *
+     * @param  Builder<WorkflowCaseHistoryUser>|Builder<WorkflowCaseAssignment>  $query
+     * @param  list<int>  $historyIds
+     * @return list<array{int, int}>
+     */
+    private static function userPairs(Builder $query, array $historyIds): array
+    {
+        if ($historyIds === []) {
+            return [];
+        }
+
+        $rows = $query->whereIn('workflow_case_history_id', $historyIds)->orderBy('sequence')->get();
+        $pair = fn (WorkflowCaseHistoryUser|WorkflowCaseAssignment $row) => [
+            (int) $row->workflow_case_history_id, (int) $row->user_id,
+        ];
+
+        return array_values($rows->map($pair)->all());
     }
 
     /**

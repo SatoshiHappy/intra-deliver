@@ -75,7 +75,7 @@ final class ApplicantApprovalPreventionTest extends TransactionalTestCase
 
         $errors = $this->validationErrors(fn () => app(PullBackCase::class)->execute($this->contextOf($this->seededUser('u0001')), $case->id, $this->revisionOf($case), $node, null));
 
-        $this->assertSame(['case' => '東京営業課の処理対象者が申請者本人だけのため、この操作はできません。このステップには、申請者承認防止が設定されています。'], $errors);
+        $this->assertSame(['case' => '東京営業課の処理担当者が申請者本人だけのため、この操作はできません。このステップには、申請者承認防止が設定されています。'], $errors);
         $this->assertSame($before, [$this->shape($case), $this->workflowCounts(), $this->revisionOf($case)]);
     }
 
@@ -94,13 +94,13 @@ final class ApplicantApprovalPreventionTest extends TransactionalTestCase
      */
     public function test_reaching_a_node_whose_only_target_is_the_applicant_is_rejected(): void
     {
-        $message = ['case' => '申請者だけの処理対象者が申請者本人だけのため、この操作はできません。このステップには、申請者承認防止が設定されています。'];
+        $message = ['case' => '申請者だけの処理担当者が申請者本人だけのため、この操作はできません。このステップには、申請者承認防止が設定されています。'];
         $this->addVersion([[$this->applyNode(), $this->approveNode('only', 'u0001', ['apply'], prevents: true)], $this->chain(['apply', 'only'])]);
         $counts = $this->workflowCounts();
 
         $applied = $this->validationErrors(fn () => app(ApplyCase::class)->execute($this->contextOf($this->seededUser('u0001')), self::FLOW_CODE, $this->projectInput(), $this->operationDay()->toDateString()));
 
-        $this->assertSame(['case' => 'onlyの処理対象者が申請者本人だけのため、この操作はできません。このステップには、申請者承認防止が設定されています。'], $applied);
+        $this->assertSame(['case' => 'onlyの処理担当者が申請者本人だけのため、この操作はできません。このステップには、申請者承認防止が設定されています。'], $applied);
         $this->assertSame($counts, $this->workflowCounts());
 
         $this->addVersion([[$this->applyNode(), $this->approveNode('first', 'u0002', ['apply']), new RouteNodeInput('only', '申請者だけ', WorkflowNodeKind::Approve, WorkflowTargetKind::Fixed, [$this->userCondition('u0001')], ['ja' => '申請者だけ'], preventsApplicantApproval: true, sendBackCodes: ['apply'])], $this->chain(['apply', 'first'], ['first', 'only'])], '2026-06-01');

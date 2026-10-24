@@ -108,7 +108,7 @@ final class CaseSendBackToPlacementTest extends TransactionalTestCase
 
         $errors = $this->validationErrors(fn () => app(SendBackCase::class)->execute($this->contextOf($this->seededUser('u0010')), $case->id, $this->revisionOf($case), $ids['final'], $ids['family'], null));
 
-        $this->assertSame(['case' => '配置の処理対象者がいないため、この操作はできません'], $errors);
+        $this->assertSame(['case' => '配置の処理担当者がいないため、この操作はできません'], $errors);
         $this->assertSame($before, [$this->shape($case), $this->workflowCounts(), $this->revisionOf($case)]);
     }
 

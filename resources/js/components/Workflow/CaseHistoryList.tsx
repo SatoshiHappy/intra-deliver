@@ -3,12 +3,91 @@ import { Button } from '@/components/ui/button';
 import { CaseDiffTable } from '@/components/Workflow/CaseDiffTable';
 import { ProcessedBadge } from '@/components/Workflow/WorkflowStatusBadge';
 import { formatDatetime } from '@/lib/recordValues';
-import { personName } from '@/lib/Workflow/workflowLabels';
+import {
+    actorViewText,
+    assignmentNoteOf,
+    historyNoteOf,
+} from '@/lib/Workflow/caseDetail';
 import type { RecordModuleDefinition, WorkflowCaseHistory } from '@/types';
 
 /**
- * 履歴の 1 行(ステップ名・処理の種別・処理者・処理日時と、下にコメント。差戻しは差戻し先、再申請は差分の開閉 = 既定は閉じる。承認の指定は
- * コメントの下に「指定: {指定されたステップ} = {名前}」、0 人の指定は「= 省略」= ルートの深さ/画面.md 7 節)。
+ * 履歴の 1 行の見出し(ステップ名・処理の種別の札・処理実行者・処理日時・差戻し先。再申請は差分の開閉)。
+ */
+function HistoryHead({
+    history,
+    isDiffOpen,
+    onToggleDiff,
+}: {
+    history: WorkflowCaseHistory;
+    isDiffOpen: boolean;
+    onToggleDiff: () => void;
+}) {
+    return (
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+            <span className="font-medium">{history.nodeName}</span>
+            <ProcessedBadge action={history.action} />
+            <span>{actorViewText(history)}</span>
+            <span className="font-num text-muted-foreground tabular-nums">
+                {formatDatetime(history.at)}
+            </span>
+            {history.sendBackNodeName !== null && (
+                <span className="text-muted-foreground">
+                    差戻し先: {history.sendBackNodeName}
+                </span>
+            )}
+            {history.diff !== null && (
+                <Button
+                    variant="link"
+                    size="sm"
+                    className="h-auto p-0"
+                    aria-expanded={isDiffOpen}
+                    aria-controls={diffIdOf(history)}
+                    onClick={onToggleDiff}
+                >
+                    {isDiffOpen ? '差分を非表示' : '差分を表示'}
+                </Button>
+            )}
+        </div>
+    );
+}
+
+/** 差分の要素の id */
+function diffIdOf(history: WorkflowCaseHistory): string {
+    return `case-history-${history.id}-diff`;
+}
+
+/**
+ * コメントと、その下に添える行(担当変更・処理担当者の変更と再展開・戻る・指定の変更の 1 行と、承認の指定。
+ * 「指定: {指定されたステップ} = {名前}」、0 人の指定は「= 省略」= 設計/ワークフロー/ルートの深さ/画面.md 7 節)。
+ */
+function HistoryNotes({ history }: { history: WorkflowCaseHistory }) {
+    const note = historyNoteOf(history);
+    const notes = [
+        ...(note === null ? [] : [note]),
+        ...history.assignments.map(assignmentNoteOf),
+    ];
+
+    return (
+        <>
+            {history.comment !== null && (
+                <p className="text-sm wrap-anywhere whitespace-pre-wrap">
+                    {history.comment}
+                </p>
+            )}
+            {notes.map((line, index) => (
+                <p
+                    key={`${index}-${line}`}
+                    className="text-sm wrap-anywhere text-muted-foreground"
+                >
+                    {line}
+                </p>
+            ))}
+        </>
+    );
+}
+
+/**
+ * 履歴の 1 行(見出しの下にコメントと添える行、再申請は差分 = 既定は閉じる)。
  */
 function HistoryItem({
     history,
@@ -18,50 +97,17 @@ function HistoryItem({
     module: RecordModuleDefinition;
 }) {
     const [isDiffOpen, setDiffOpen] = useState(false);
-    const diffId = `case-history-${history.id}-diff`;
 
     return (
         <li className="flex flex-col gap-2 border-b py-3 last:border-b-0">
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
-                <span className="font-medium">{history.nodeName}</span>
-                <ProcessedBadge action={history.action} />
-                <span>{personName(history.actor)}</span>
-                <span className="font-num text-muted-foreground tabular-nums">
-                    {formatDatetime(history.at)}
-                </span>
-                {history.sendBackNodeName !== null && (
-                    <span className="text-muted-foreground">
-                        差戻し先: {history.sendBackNodeName}
-                    </span>
-                )}
-                {history.diff !== null && (
-                    <Button
-                        variant="link"
-                        size="sm"
-                        className="h-auto p-0"
-                        aria-expanded={isDiffOpen}
-                        aria-controls={diffId}
-                        onClick={() => setDiffOpen((open) => !open)}
-                    >
-                        {isDiffOpen ? '差分を非表示' : '差分を表示'}
-                    </Button>
-                )}
-            </div>
-            {history.comment !== null && (
-                <p className="text-sm wrap-anywhere whitespace-pre-wrap">
-                    {history.comment}
-                </p>
-            )}
-            {history.assignments.map((assignment) => (
-                <p
-                    key={assignment.nodeName}
-                    className="text-sm wrap-anywhere text-muted-foreground"
-                >
-                    {`指定: ${assignment.nodeName} = ${assignment.people.length === 0 ? '省略' : assignment.people.map(personName).join('、')}`}
-                </p>
-            ))}
+            <HistoryHead
+                history={history}
+                isDiffOpen={isDiffOpen}
+                onToggleDiff={() => setDiffOpen((open) => !open)}
+            />
+            <HistoryNotes history={history} />
             {history.diff !== null && isDiffOpen && (
-                <div id={diffId}>
+                <div id={diffIdOf(history)}>
                     <CaseDiffTable
                         diff={history.diff}
                         baseAt={history.diffBaseAt}

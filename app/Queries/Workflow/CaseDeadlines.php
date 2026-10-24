@@ -10,6 +10,8 @@ use LogicException;
 /**
  * 到達日時・期限日・経過日数の計算の 1 か所(docs の 設計/ワークフロー/案件の運用/案件の操作/README.md の 1.4 節)。日付は Asia/Tokyo の暦日
  * (Y-m-d の文字列)。今日は呼び手が渡す基準日(日付だけを使う)。問い合わせをしない。
+ *
+ * @phpstan-type Deadline array{reachedOn: string|null, elapsedDays: int|null, dueOn: string|null, overdue: bool}
  */
 class CaseDeadlines
 {
@@ -67,6 +69,25 @@ class CaseDeadlines
         $earliest = $dues === [] ? null : min($dues);
 
         return new CaseDeadline($elapsed, $earliest, $this->isOverdue($earliest, $today));
+    }
+
+    /**
+     * 画面の期限の表示(設計/ワークフロー/案件の運用/画面/README.md の 1.2 節の WorkflowDeadline)。到達日 = 集まりで最も早い到達した日
+     * (経過日数 = 最も長い と同じノード)。一覧の行と詳細の基本情報が同じ形を使う。
+     *
+     * @param  list<CurrentNode>  $nodes  対象のノードの集まり(呼び手が選ぶ)
+     * @return Deadline
+     */
+    public function viewOf(array $nodes, DateTimeInterface $today): array
+    {
+        $summary = $this->summaryOf($nodes, $today);
+
+        return [
+            'reachedOn' => $this->earliestReachedOn($nodes),
+            'elapsedDays' => $summary->elapsedDays,
+            'dueOn' => $summary->dueOn,
+            'overdue' => $summary->isOverdue,
+        ];
     }
 
     /**

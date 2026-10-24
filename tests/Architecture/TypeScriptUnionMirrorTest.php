@@ -10,6 +10,7 @@ use App\Enums\Workflow\WorkflowAction;
 use App\Enums\Workflow\WorkflowBulkOutcome;
 use App\Enums\Workflow\WorkflowCaseState;
 use App\Enums\Workflow\WorkflowCompletionReason;
+use App\Enums\Workflow\WorkflowConfirmationProgress;
 use App\Enums\Workflow\WorkflowNodeKind;
 use App\Enums\Workflow\WorkflowNodeState;
 use BackedEnum;
@@ -49,6 +50,9 @@ TS;
             'WorkflowNodeKind' => ['WorkflowNodeKind', self::WORKFLOW_VALUES, WorkflowNodeKind::class],
             'WorkflowAction' => ['WorkflowAction', self::WORKFLOW_VALUES, WorkflowAction::class],
             'WorkflowBulkOutcome' => ['WorkflowBulkOutcome', self::WORKFLOW_VALUES, WorkflowBulkOutcome::class],
+            'WorkflowConfirmationProgress' => [
+                'WorkflowConfirmationProgress', self::WORKFLOW_VALUES, WorkflowConfirmationProgress::class,
+            ],
             'RecordFieldType' => ['RecordFieldType', 'resources/js/types/records.ts', RecordFieldType::class],
             'RecordConditionOperator' => ['RecordConditionOperator', 'resources/js/types/records.ts', RecordConditionOperator::class],
             'RecordRuleKind' => ['RecordRuleKind', 'resources/js/types/records.ts', RecordRuleKind::class],

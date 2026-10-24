@@ -117,7 +117,7 @@ final class ReexpandCaseNodeTest extends TransactionalTestCase
 
         $error = $this->attemptOf(fn () => $this->reexpandOn($case, 'rel'));
 
-        $this->assertSame(['case' => 'relの処理対象者がいないため、この操作はできません'], $error);
+        $this->assertSame(['case' => 'relの処理担当者がいないため、この操作はできません'], $error);
         $this->assertSame($before, $this->snapshot($case));
     }
 

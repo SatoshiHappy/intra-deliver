@@ -34,7 +34,7 @@ const CASE_NAME = `プロジェクト計画の承認 ${PROJECT_NAME}`;
 
 /** 申請者承認防止で申請者本人だけのときの文言(設計/ワークフロー/ルートの深さ/案件の操作/同時実行と検査.md 13 節・画面.md 5 節。課長 = 申請者の所属組織 + 課長 = u0002 だけ) */
 const APPLICANT_ONLY =
-    '課長の処理対象者が申請者本人だけのため、この操作はできません。このステップには、申請者承認防止が設定されています。';
+    '課長の処理担当者が申請者本人だけのため、この操作はできません。このステップには、申請者承認防止が設定されています。';
 
 /** 筋の中で申請した案件の詳細の URL(申請の筋で決まり、後の筋が使う) */
 let caseUrl = '';
@@ -350,10 +350,10 @@ test('申請者: 申請の画面に申請基準日(既定は今日)と担当組�
     await expect(basic).toContainText('版 3');
     await expect(currentSteps(page)).toHaveText('課長');
 
-    // フロー情報の既定は図: 凡例の札 3 つ、課長の箱が承認待ち、まだ到達していない責任者、最後の後に「終了」の印(画面.md 7・8 節)
+    // フロー情報の既定は図: 凡例の札 4 つ、課長の箱が承認待ち、まだ到達していない責任者、最後の後に「終了」の印(画面.md 7・8 節)
     await expect(
         page.getByRole('list', { name: '凡例' }).getByRole('listitem'),
-    ).toHaveText(['処理済み', '承認待ち', '到達していない']);
+    ).toHaveText(['処理済み', '承認待ち', '保留中', '到達していない']);
     await expect(diagramStep(page, '申請')).toContainText('処理済み(申請)');
     await expect(diagramStep(page, '課長')).toContainText('中村 美咲');
     await expect(diagramStep(page, '課長')).toContainText('承認待ち');
@@ -365,7 +365,7 @@ test('申請者: 申請の画面に申請基準日(既定は今日)と担当組�
     await expect(councilProgress(page)).toHaveCount(0);
     // 課長がまだ合議の人を指定していないので、合議の枠に指定の前の文(画面.md 8 節)
     await expect(
-        diagram(page).getByText('処理対象者はまだ指定されていません', {
+        diagram(page).getByText('処理担当者はまだ指定されていません', {
             exact: true,
         }),
     ).toBeVisible();
@@ -445,10 +445,9 @@ test('上長: 承認のダイアログに指定するステップが 2 つ出て
     );
     await addAssignee(page, owner, 'u0003', '高橋 誠');
     await expect(owner).toContainText('選択中 1 人');
-    await submitAndExpectUrl(
-        page,
-        dialog.getByRole('button', { name: '決定', exact: true }),
-    );
+    const decide = dialog.getByRole('button', { name: '決定', exact: true });
+    await expect(decide).toBeInViewport({ ratio: 1 }); // 指定の欄が 2 つでも「決定」は画面の中(欄だけがスクロールする)
+    await submitAndExpectUrl(page, decide);
 
     await expect(page.getByText('承認しました', { exact: true })).toBeVisible();
     await expect(currentSteps(page)).toHaveText('部長');
@@ -461,7 +460,7 @@ test('上長: 承認のダイアログに指定するステップが 2 つ出て
     // 指定した後は、合議に到達する前(子の箱がまだ無い間)でも指定の前の文を出さない
     await expect(diagram(page)).toContainText('縦配置「関係部署の合議」');
     await expect(
-        diagram(page).getByText('処理対象者はまだ指定されていません'),
+        diagram(page).getByText('処理担当者はまだ指定されていません'),
     ).toHaveCount(0);
 });
 
@@ -492,7 +491,7 @@ test('引戻しの申請者承認防止: 引戻せるステップに防止の文
 }) => {
     // 初期データの版 3 では申請者が防止のステップの処理対象者にならないので、詳細の応答の引戻せるステップに文言を入れて返す(画面.md 6 節、通しの回の T02・解消確認の R09)
     const reason =
-        '課長の承認の処理対象者が申請者本人だけのため、この操作はできません。このステップには、申請者承認防止が設定されています。';
+        '課長の承認の処理担当者が申請者本人だけのため、この操作はできません。このステップには、申請者承認防止が設定されています。';
     await openAs(page, 'chief', '/workflow/cases?tab=processed');
     await rewriteDetailProps(page, caseUrl, (props) => {
         for (const node of props.pullBackNodes) {
@@ -638,7 +637,7 @@ test('古い画面: 合議の 2 人が同じ詳細を開き、先に 1 人が承
     await stale.context().close();
 });
 
-test('申請者承認防止: 上長が版 3 の申請の画面を開くと、課長の処理対象者が申請者本人だけのため、送る前に申請情報の下に文言が出て「申請」を押せない', async ({
+test('申請者承認防止: 上長が版 3 の申請の画面を開くと、課長の処理担当者が申請者本人だけのため、送る前に申請情報の下に文言が出て「申請」を押せない', async ({
     page,
 }) => {
     await openAs(page, 'chief', '/workflow/flows/project_plan/apply');
@@ -720,6 +719,6 @@ test('否認の票と通らなかった枝: 見本 WF-000011(合議が可決で�
     // 省略の合議には進み具合の面を出さず、指定の前の文も出さない
     await expect(councilProgress(page)).toHaveCount(0);
     await expect(
-        diagram(page).getByText('処理対象者はまだ指定されていません'),
+        diagram(page).getByText('処理担当者はまだ指定されていません'),
     ).toHaveCount(0);
 });

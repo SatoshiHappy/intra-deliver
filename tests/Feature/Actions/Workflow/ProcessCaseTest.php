@@ -186,7 +186,7 @@ final class ProcessCaseTest extends TransactionalTestCase
         $case = $this->applyAs($this->seededUser('u0001'), 'to_retired');
         $counts = $this->workflowCounts();
 
-        $this->assertSame(['case' => '承認2の処理対象者がいないため、この操作はできません'], $this->validationErrors(fn () => $this->operate(ApproveCase::class, $this->seededUser('u0002'), $case)));
+        $this->assertSame(['case' => '承認2の処理担当者がいないため、この操作はできません'], $this->validationErrors(fn () => $this->operate(ApproveCase::class, $this->seededUser('u0002'), $case)));
         $this->assertSame([$counts, 0], [$this->workflowCounts(), $this->revisionOf($case)]);
 
         $this->operate(ApproveCaseEarly::class, $this->seededUser('u0002'), $case);

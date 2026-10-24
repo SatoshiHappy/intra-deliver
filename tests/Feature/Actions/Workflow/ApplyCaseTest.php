@@ -221,7 +221,7 @@ final class ApplyCaseTest extends TransactionalTestCase
 
         $errors = $this->validationErrors(fn () => $this->applyAs($this->seededUser('u0001'), 'to_retired'));
 
-        $this->assertSame(['case' => '承認1の処理対象者がいないため、この操作はできません'], $errors);
+        $this->assertSame(['case' => '承認1の処理担当者がいないため、この操作はできません'], $errors);
         $this->assertNotSame([], array_values(array_filter($log, fn (string $sql) => str_contains($sql, 'insert into "records"'))));
         $this->assertSame($counts, $this->workflowCounts());
     }

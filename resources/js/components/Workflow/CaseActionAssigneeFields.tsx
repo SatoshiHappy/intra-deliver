@@ -1,5 +1,5 @@
 import { AssigneeField } from '@/components/Workflow/AssigneeField';
-import type { PickedAssignee } from '@/components/Workflow/AssigneeField';
+import type { PickedUser } from '@/lib/Workflow/caseActionForm';
 import type { WorkflowDesignation } from '@/types';
 
 /**
@@ -15,9 +15,9 @@ export function CaseActionAssigneeFields({
 }: {
     caseId: number;
     assigneeFields: WorkflowDesignation[];
-    assignments: Record<string, PickedAssignee[]>;
+    assignments: Record<string, PickedUser[]>;
     errors: Record<string, string | undefined>;
-    onChange: (nodeId: number, picked: PickedAssignee[]) => void;
+    onChange: (nodeId: number, picked: PickedUser[]) => void;
 }) {
     return (
         <>

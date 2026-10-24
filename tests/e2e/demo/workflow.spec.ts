@@ -393,7 +393,7 @@ test('初期データの見本: 課題の案件に関連する案件、部長の
     const detailUrl = page.url();
     const dialog = await openActionDialog(page, '引戻し', '引戻す');
     await expect(dialog).toContainText(
-        '次のステップの処理対象者が処理する前に、自分のステップへ戻します。',
+        '次のステップの処理担当者が処理する前に、自分のステップへ戻します。',
     );
     await submitAndExpectUrl(
         page,

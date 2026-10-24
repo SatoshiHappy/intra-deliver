@@ -50,7 +50,7 @@ final class WorkflowRouteWriteDestinationTest extends TransactionalTestCase
         $props = $this->detail('u0002', $case);
         $this->assertSame(['state' => 'waiting', 'name' => '部長'], $props['case']['currentSummary']);
         $this->assertSame([['関係部署の合議', ['u0009', 'u0010', 'u0016']], ['責任者', ['u0003']]], $this->lastAssignments($props));
-        $this->assertSame([true, [['id' => $this->nodeOf($case, 'section_chief'), 'name' => '課長', 'blockedReason' => null, 'canAttach' => true]]], [$props['can']['pullBack'], $props['pullBackNodes']]);
+        $this->assertSame([true, [['id' => $this->nodeOf($case, 'section_chief'), 'name' => '課長', 'blockedReason' => null, 'canAttach' => true, 'principalUserId' => null]]], [$props['can']['pullBack'], $props['pullBackNodes']]);
     }
 
     /**

@@ -61,7 +61,7 @@ final class WorkflowRouteShapesWriteDestinationTest extends TransactionalTestCas
 
         $this->assertSame($before, $this->snapshotOf($case->id));
         $props = $this->detail('u0001', $case->id);
-        $this->assertSame([true, [['id' => $this->nodeOf($case->id, 'sales'), 'name' => '東京営業課', 'blockedReason' => $message, 'canAttach' => true]]], [$props['can']['pullBack'], $props['pullBackNodes']]);
+        $this->assertSame([true, [['id' => $this->nodeOf($case->id, 'sales'), 'name' => '東京営業課', 'blockedReason' => $message, 'canAttach' => true, 'principalUserId' => null]]], [$props['can']['pullBack'], $props['pullBackNodes']]);
     }
 
     /**

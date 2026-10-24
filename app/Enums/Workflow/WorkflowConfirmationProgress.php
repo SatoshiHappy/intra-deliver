@@ -12,7 +12,7 @@ enum WorkflowConfirmationProgress: string
     case Skipped = 'skipped';
 
     /** —(到達しないまま完了した) */
-    case NotProcessed = 'not_processed';
+    case NotProcessed = 'none';
 
     /** 確認済 */
     case Confirmed = 'confirmed';

@@ -57,6 +57,7 @@ const FRAME_KIND_LABELS: Partial<Record<DiagramInputNode['kind'], string>> = {
 
 /** 状態ごとの箱の縁(状態色 = 札と同じトークン。到達していないは既定の縁、省略は薄い破線の縁 = 設計/ワークフロー/ルートの深さ/画面.md 8 節) */
 const BORDER_CLASSES: Record<WorkflowStepState['state'], string> = {
+    hold: 'border-status-returned-foreground',
     done: 'border-status-settled-foreground/70',
     current: 'border-status-pending-foreground',
     returned: 'border-status-returned-foreground',
@@ -73,9 +74,7 @@ const ARIA_LABELS = {
 };
 
 function borderOf(node: DiagramInputNode): string {
-    return node.stepState === undefined
-        ? 'border-border'
-        : BORDER_CLASSES[node.stepState.state];
+    return BORDER_CLASSES[node.stepState?.state ?? 'upcoming'];
 }
 
 /** 辺をつなぐ点(読み取り専用なので見せない) */
@@ -223,7 +222,7 @@ function FrameNode({ data }: NodeProps<Node<FrameNodeData>>) {
             </div>
             {childCount === 0 && node.awaitingDesignation === true && (
                 <p className="px-4 text-xs text-muted-foreground">
-                    処理対象者はまだ指定されていません
+                    処理担当者はまだ指定されていません
                 </p>
             )}
             {node.consensus !== null && (

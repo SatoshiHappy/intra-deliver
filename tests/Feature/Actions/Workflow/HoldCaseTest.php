@@ -118,7 +118,7 @@ final class HoldCaseTest extends TransactionalTestCase
         $missing = $this->attemptOf(fn () => $this->approve($case, 'chief', 'u0002'));
         $this->approve($case, 'chief', 'u0002', ['line' => ['u0005']]);
 
-        $this->assertSame(['assignments' => '指定するステップの処理対象者を指定してください'], $missing);
+        $this->assertSame(['assignments' => '指定するステップの処理担当者を指定してください'], $missing);
         $after = $this->pick($case, 'chief', 'line', 'line.1');
         $this->assertSame(['chief' => 'done', 'line' => 'running', 'line.1' => 'waiting[u0005]'], $after);
     }

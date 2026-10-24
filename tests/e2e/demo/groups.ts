@@ -21,6 +21,7 @@ export const demoGroups = [
             'tests/e2e/demo/workflow-route.spec.ts',
             'tests/e2e/demo/workflow.spec.ts',
             'tests/e2e/demo/zz-workflow-operations.spec.ts',
+            'tests/e2e/demo/zz-workflow-processing.spec.ts',
         ],
     },
     {

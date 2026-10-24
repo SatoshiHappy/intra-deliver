@@ -4,7 +4,10 @@ import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/StatusBadge';
 import { FlowInfoTable } from '@/components/Workflow/FlowInfoTable';
 import { WorkflowDiagram } from '@/components/Workflow/WorkflowDiagram';
-import { CaseStepBadge } from '@/components/Workflow/WorkflowStatusBadge';
+import {
+    CaseStepBadge,
+    HoldBadge,
+} from '@/components/Workflow/WorkflowStatusBadge';
 import { EMPTY_VALUE, formatDatetime } from '@/lib/recordValues';
 import { personName } from '@/lib/Workflow/workflowLabels';
 import type {
@@ -21,7 +24,10 @@ const VIEWS: { value: View; label: string }[] = [
     { value: 'table', label: '表' },
 ];
 
-/** 図の凡例(設計/ワークフロー/ルートの深さ/画面.md 7 節の 3 つ。図の描き方にそろえ、到達していないは札にせず普通の縁と文字) */
+/**
+ * 図の凡例(処理済み・承認待ち・保留中 = docs の 設計/ワークフロー/案件の運用/画面/案件の画面.md の 4 節)。
+ * 図の描き方にそろえ、到達していないは札にせず普通の縁と文字。
+ */
 function Legend() {
     return (
         <ul aria-label="凡例" className="flex flex-wrap items-center gap-2">
@@ -30,6 +36,9 @@ function Legend() {
             </li>
             <li>
                 <StatusBadge label="承認待ち" tone="pending" />
+            </li>
+            <li>
+                <HoldBadge />
             </li>
             <li>
                 <Badge variant="outline" className="text-muted-foreground">
@@ -72,7 +81,7 @@ function CouncilProgress({ council }: { council: WorkflowCouncil }) {
                     : `未処理 ${council.pending} 人。${council.required} 人が承認すると、合議は完了します。`}
             </p>
             <ul
-                aria-label={`${council.name}の処理対象者`}
+                aria-label={`${council.name}の処理担当者`}
                 className="flex flex-col divide-y"
             >
                 {council.rows.map((row) => (
@@ -115,6 +124,37 @@ function CouncilProgress({ council }: { council: WorkflowCouncil }) {
 }
 
 /**
+ * 図と表の切替のボタン(押している側を secondary にする)。
+ */
+function ViewSwitch({
+    view,
+    onChange,
+}: {
+    view: View;
+    onChange: (view: View) => void;
+}) {
+    return (
+        <div
+            className="flex items-center gap-1"
+            role="group"
+            aria-label="フロー情報の表示"
+        >
+            {VIEWS.map((item) => (
+                <Button
+                    key={item.value}
+                    variant={view === item.value ? 'secondary' : 'ghost'}
+                    size="sm"
+                    aria-pressed={view === item.value}
+                    onClick={() => onChange(item.value)}
+                >
+                    {item.label}
+                </Button>
+            ))}
+        </div>
+    );
+}
+
+/**
  * フロー情報の面(ルートの深さ/画面.md 7 節): 見出しの右に凡例(図のとき)と「図」「表」の切替(既定は図。表は図の文字の代わりで、読み上げとキーボードで
  * 同じ情報を得る)。合議の進み具合は図・表の右に並べる(モック 5)。
  */
@@ -143,25 +183,7 @@ export function CaseFlowInfo({
                 </h2>
                 <div className="flex flex-wrap items-center gap-4">
                     {view === 'diagram' && <Legend />}
-                    <div
-                        className="flex items-center gap-1"
-                        role="group"
-                        aria-label="フロー情報の表示"
-                    >
-                        {VIEWS.map((item) => (
-                            <Button
-                                key={item.value}
-                                variant={
-                                    view === item.value ? 'secondary' : 'ghost'
-                                }
-                                size="sm"
-                                aria-pressed={view === item.value}
-                                onClick={() => setView(item.value)}
-                            >
-                                {item.label}
-                            </Button>
-                        ))}
-                    </div>
+                    <ViewSwitch view={view} onChange={setView} />
                 </div>
             </div>
             <div

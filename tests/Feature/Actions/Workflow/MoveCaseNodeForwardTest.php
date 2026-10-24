@@ -208,7 +208,7 @@ final class MoveCaseNodeForwardTest extends TransactionalTestCase
             [['u0011', $this->departmentIdOf('development')], ['u0001', $this->departmentIdOf('tokyo-sales')]],
             [$this->previousOf($single, 'rel'), $this->previousOf($several, 'rel')],
         );
-        $this->assertSame(['case' => 'relの処理対象者がいないため、この操作はできません'], $error);
+        $this->assertSame(['case' => 'relの処理担当者がいないため、この操作はできません'], $error);
     }
 
     /**

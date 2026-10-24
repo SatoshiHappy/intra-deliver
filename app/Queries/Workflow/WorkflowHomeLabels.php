@@ -51,6 +51,20 @@ final class WorkflowHomeLabels
     }
 
     /**
+     * 案件の詳細(図・表・合議の進み具合)のステップの state と stateLabel。{@see self::step()} の結果のうち、保留中のノードだけ state を `hold` にする
+     * (差戻しの色と一時停止の印の札 = 設計/ワークフロー/案件の運用/画面/README.md の 8.1 節。
+     * ホームの経路は step() のまま current = 設計/ワークフロー/案件の運用/認可と一覧.md の 2 節)。
+     *
+     * @return array{'done'|'current'|'returned'|'upcoming'|'skipped'|'hold', string}
+     */
+    public static function detailStep(WorkflowNodeState $state): array
+    {
+        [$stepState, $label] = self::step($state);
+
+        return [$state === WorkflowNodeState::Hold ? 'hold' : $stepState, $label];
+    }
+
+    /**
      * 件数カードの内訳の 1 行: 語ごとの件数を「<語> <件数>」にして、0 の語を出さずに「・」で繋ぐ(全部 0 なら null)。
      *
      * @param  array<string, array{0: string, 1: string, 2?: string|null}>  $labels  値 → [語, …](並びは内訳の並び)

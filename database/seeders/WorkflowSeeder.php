@@ -119,6 +119,10 @@ class WorkflowSeeder extends Seeder
         'workflow.cases.bulk-approve' => ['一括承認', 'Bulk approve'],
         'workflow.cases.bulk-confirm' => ['一括確認', 'Bulk confirm'],
         'workflow.user-candidates' => ['利用者の候補', 'User candidates'],
+        'workflow.cases.hold' => ['保留', 'Hold'],
+        'workflow.cases.release' => ['保留解除', 'Release hold'],
+        'workflow.cases.transfer' => ['担当変更', 'Transfer'],
+        'workflow.cases.confirm' => ['確認', 'Confirm'],
     ];
 
     /** コンテンツ: コード => [業務モジュールのコード, 名前] */

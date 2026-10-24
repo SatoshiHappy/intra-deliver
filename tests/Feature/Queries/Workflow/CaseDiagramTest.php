@@ -24,11 +24,14 @@ final class CaseDiagramTest extends TransactionalTestCase
 {
     use OperatesOnRoutes;
 
-    /** ノードの状態 → 札・表の語(認可と一覧.md 2 節: 処理済み・通過 = 処理済み、承認待ち・展開中 = 承認待ち、再申請待ち、到達していない、省略) */
+    /**
+     * ノードの状態 → 札・表の語(認可と一覧.md 2 節: 処理済み・通過 = 処理済み、承認待ち・展開中 = 承認待ち、再申請待ち、到達していない、省略。
+     * 保留中は詳細だけ state が hold = 案件の運用/画面/案件の画面.md の 4 節)
+     */
     private const STATE_LABELS = [
         'done' => ['done', '処理済み'], 'passed' => ['done', '処理済み'], 'waiting' => ['current', '承認待ち'], 'running' => ['current', '承認待ち'],
         'reapply' => ['returned', '再申請待ち'], 'unreached' => ['upcoming', '到達していない'], 'skipped' => ['skipped', '省略'],
-        'hold' => ['current', '保留中'],
+        'hold' => ['hold', '保留中'],
     ];
 
     /**
@@ -45,7 +48,7 @@ final class CaseDiagramTest extends TransactionalTestCase
             ['予算', 'branch_start', null, null, 'passed', [], null, null, null],
             ['部長', 'approve', null, null, 'done', ['u0003 0'], 'approve', null, null],
             ['分岐終了', 'branch_end', null, null, 'passed', [], null, null, null],
-            ['関係部署の合議', 'parallel', null, null, 'running', [], null, '処理対象者は課長が指定', '完了の条件 承認 2 人　現在 1 人'],
+            ['関係部署の合議', 'parallel', null, null, 'running', [], null, '処理担当者は課長が指定', '完了の条件 承認 2 人　現在 1 人'],
             ['関係部署の合議 承認 1', 'approve', '関係部署の合議', 1, 'done', ['u0009 0'], 'approve', null, null],
             ['関係部署の合議 承認 2', 'approve', '関係部署の合議', 2, 'waiting', ['u0010 1'], null, null, null],
             ['関係部署の合議 承認 3', 'approve', '関係部署の合議', 3, 'waiting', ['u0016 0'], null, null, null],
@@ -122,7 +125,8 @@ final class CaseDiagramTest extends TransactionalTestCase
     }
 
     /**
-     * 図の札・表の状態の語は写しの表(認可と一覧.md 2 節。保留中 = 設計/ワークフロー/案件の運用/認可と一覧.md の 2.4 節)のとおり: 16 件の見本のすべてのノードで、状態ごとに同じ語。
+     * 図の札・表の状態の語は写しの表(認可と一覧.md 2 節。保留中の state は詳細だけ hold = 案件の画面.md の 4 節)のとおり:
+     * 16 件の見本のすべてのノードで、状態ごとに同じ語。
      */
     public function test_every_node_state_reads_the_one_label_table(): void
     {

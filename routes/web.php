@@ -28,6 +28,7 @@ use App\Http\Controllers\Web\Workflow\ApplicationController;
 use App\Http\Controllers\Web\Workflow\AssigneeCandidateController;
 use App\Http\Controllers\Web\Workflow\BulkActionController;
 use App\Http\Controllers\Web\Workflow\CaseActionController;
+use App\Http\Controllers\Web\Workflow\CaseConfirmationController;
 use App\Http\Controllers\Web\Workflow\CaseController;
 use App\Http\Controllers\Web\Workflow\DraftController;
 use App\Http\Controllers\Web\Workflow\FlowController;
@@ -180,5 +181,13 @@ Route::post('/workflow/cases/{case}/send-back', [CaseActionController::class, 's
 Route::post('/workflow/cases/{case}/pull-back', [CaseActionController::class, 'pullBack'])->name('workflow.cases.pull-back')->where('case', '[0-9]{1,18}');
 Route::get('/workflow/cases/{case}/assignee-candidates', AssigneeCandidateController::class)->name('workflow.cases.assignee-candidates')->where('case', '[0-9]{1,18}');
 Route::post('/workflow/cases/{case}/withdraw', [CaseActionController::class, 'withdraw'])->name('workflow.cases.withdraw')->where('case', '[0-9]{1,18}');
+Route::post('/workflow/cases/{case}/hold', [CaseActionController::class, 'hold'])
+    ->name('workflow.cases.hold')->where('case', '[0-9]{1,18}');
+Route::post('/workflow/cases/{case}/release', [CaseActionController::class, 'release'])
+    ->name('workflow.cases.release')->where('case', '[0-9]{1,18}');
+Route::post('/workflow/cases/{case}/transfer', [CaseActionController::class, 'transfer'])
+    ->name('workflow.cases.transfer')->where('case', '[0-9]{1,18}');
+Route::post('/workflow/cases/{case}/confirm', [CaseConfirmationController::class, 'store'])
+    ->name('workflow.cases.confirm')->where('case', '[0-9]{1,18}');
 Route::get('/workflow/cases/{case}/reapply', [ReapplicationController::class, 'create'])->name('workflow.reapplications.create')->where('case', '[0-9]{1,18}');
 Route::post('/workflow/cases/{case}/reapply', [ReapplicationController::class, 'store'])->name('workflow.reapplications.store')->where('case', '[0-9]{1,18}');
