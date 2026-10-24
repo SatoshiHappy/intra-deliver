@@ -29,7 +29,7 @@ class LiftStaleReset
     }
 
     /**
-     * 鎖錠を持っている呼び手が片付ける。キューの停止を解くのは、落ちた回の行があるときだけ(行が無ければ期限で解ける)。
+     * 鎖錠を持っている呼び手が片付ける(することは 4 節の見張りの表)。
      *
      * @return array{maintenance: bool, runs: list<int>}
      */
@@ -41,11 +41,8 @@ class LiftStaleReset
             $this->stops->leaveMaintenance();
         }
 
+        $this->stops->resumeQueue();
         $runs = ResetRun::query()->whereNull('result')->orderBy('id')->get();
-
-        if ($runs->isNotEmpty()) {
-            $this->stops->resumeQueue();
-        }
 
         foreach ($runs as $run) {
             $run->update(['result' => ResetResult::Failed, 'finished_at' => now()]);

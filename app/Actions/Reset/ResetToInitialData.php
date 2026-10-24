@@ -10,6 +10,7 @@ use App\Models\Reset\ResetRun;
 use App\Queries\Reset\ResetSettings;
 use App\Queries\Reset\ResetTables;
 use Carbon\CarbonImmutable;
+use Closure;
 use Illuminate\Container\Attributes\Tag;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -39,10 +40,12 @@ class ResetToInitialData
     /**
      * 手順 0: 始めるかを決め、始めるなら 1 回を流す
      *
+     * @param  (Closure(int): void)|null  $onStarted  始めるとき、記録の行を書いた時に行の番号を渡して呼ぶ(落ちても番号が残るよう、コマンドが出力する)
+     *
      * @throws ResetFailed 記録の行を書いた後の手順 1〜7 が失敗したとき
      * @throws Throwable 失敗の片付けが投げたとき(その例外の連鎖の中に ResetFailed が入る)
      */
-    public function execute(ResetTrigger $trigger): ResetReport
+    public function execute(ResetTrigger $trigger, ?Closure $onStarted = null): ResetReport
     {
         if (! $this->settings->enabled()) {
             return new ResetReport(ResetOutcome::Disabled);
@@ -56,7 +59,7 @@ class ResetToInitialData
             $this->lift->whileLocked();
             $notStarted = $this->notStartedOutcome($trigger);
 
-            return $notStarted !== null ? new ResetReport($notStarted) : $this->run($trigger);
+            return $notStarted !== null ? new ResetReport($notStarted) : $this->run($trigger, $onStarted);
         } finally {
             $this->lock->release();
         }
@@ -77,10 +80,12 @@ class ResetToInitialData
     /**
      * 記録の行を書いて手順 1〜7 を流す。
      *
+     * @param  (Closure(int): void)|null  $onStarted  行を書いた時に行の番号を渡して呼ぶ
+     *
      * @throws ResetFailed 手順 1〜7 の例外(鎖錠を持っていれば片付けた後に、この回の結果を付けて投げる)
      * @throws Throwable 停止を解く・行を閉じる片付けが投げたとき(その例外の連鎖の中に ResetFailed が入る)
      */
-    private function run(ResetTrigger $trigger): ResetReport
+    private function run(ResetTrigger $trigger, ?Closure $onStarted): ResetReport
     {
         $now = CarbonImmutable::now();
         $run = ResetRun::query()->create([
@@ -92,6 +97,10 @@ class ResetToInitialData
         $closed = false;
 
         try {
+            if ($onStarted !== null) {
+                $onStarted($run->id);
+            }
+
             [$jobs, $waited] = $this->stopNewWork($run->id);
             $files = Storage::disk($this->settings->disk())->allFiles();
             $reload = $this->reload($run);

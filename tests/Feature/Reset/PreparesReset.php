@@ -30,6 +30,7 @@ trait PreparesReset
         $this->travelTo(CarbonImmutable::parse('2026-10-18 09:00', 'Asia/Tokyo'));
         Sleep::fake(syncWithCarbon: true);
         StubInitialSeeder::$calls = [];
+        WritesFileSeeder::$files = [];
 
         if ($stubSeeder) {
             $this->app->bind(DatabaseSeeder::class, StubInitialSeeder::class);

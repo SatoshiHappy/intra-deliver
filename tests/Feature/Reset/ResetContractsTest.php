@@ -12,7 +12,7 @@ use Illuminate\Support\Facades\Schema;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * ほかのモジュールとの約束の 1〜3 項め(docs の 設計/公開の配備/毎日の初期化.md 1 節。4 項めは、本物の初期データで流す {@see ResetSucceedsTest} が確かめる)。
+ * ほかのモジュールとの約束の 1〜3 項め(docs の 設計/公開の配備/毎日の初期化.md 1 節。4・5 項めは、デモユーザー切替がオンの並びの本物の初期データで流すテストが、その持ち物の中で確かめる)。
  */
 final class ResetContractsTest extends TransactionalTestCase
 {

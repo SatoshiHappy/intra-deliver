@@ -18,7 +18,6 @@ use Tests\Support\TransactionalTestCase;
 
 /**
  * 成功の回(docs の 設計/公開の配備/毎日の初期化.md 1 節・2 節の手順 1〜7、7 節の口の表)を、本物の初期データ(DatabaseSeeder)で 1 回流して確かめる。
- * 初期データの seeder は app-storage に書かない(1 節の約束の 4 項め)ことも、ここで確かめる。
  */
 final class ResetSucceedsTest extends TransactionalTestCase
 {
@@ -46,7 +45,9 @@ final class ResetSucceedsTest extends TransactionalTestCase
         $this->assertSame($initial, $this->snapshot());
         $this->assertSame([0, 0], [DB::table('cache')->count(), DB::table('cache_locks')->count()]);
         $this->assertSame([false, false], [App::maintenanceMode()->active(), $this->queuePaused()]);
-        $this->assertSame([WritesFileSeeder::FILE], Storage::disk((string) config('reset.disk'))->allFiles());
+        $files = Storage::disk((string) config('reset.disk'))->allFiles();
+        $this->assertNotContains(self::OLD_FILE, $files);
+        $this->assertSame([], array_diff(WritesFileSeeder::$files, $files));
         $this->assertSame([['default', '2026-10-17', '1.500000']], $this->carryovers());
         $run = ResetRun::query()->sole();
         $this->assertSame(ResetResult::Succeeded, $run->result);

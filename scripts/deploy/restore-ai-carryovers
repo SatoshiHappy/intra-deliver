@@ -3,8 +3,10 @@
 # 数え方の正本 = 設計/AI/実行と費用.md 5.2、式 = app/Queries/Ai/RunSpending.php)。
 #   scripts/deploy/restore-ai-carryovers <compose.env のパス> <退避のファイル>
 # 退避 = 作り直しの 2 で取った pg_dump の出力(既定の平文の形)。出力: 戻した繰り越し(予算の区分ごと)。
-# アプリ用ロールは NOCREATEDB なので、退避の 2 つの表は一時のデータベースでなく pg_temp の表へ入れる。
-# 終了コード: 0 = 成功、2 = 使い方の誤り・退避のファイルが無い、1 = 退避の中身が足りない・繰り越しの表に行が既にある・DB での失敗。
+# アプリ用ロールは NOCREATEDB なので、退避の 2 つの表は一時のデータベースでなく pg_temp の表へ入れる。一時の表は退避の COPY の列の並びから
+# 作る(列はすべて text。戻す先に無い列を持つ退避、つまり新しい版へ戻す前の版の退避も戻せる)。数える式で、数える列の型へ変える。
+# 終了コード: 0 = 成功、2 = 使い方の誤り・退避のファイルが無い、1 = 退避の中身が足りない(数える列が欠けた退避を含む)・繰り越しの表に行が
+# 既にある・DB での失敗。
 set -euo pipefail
 
 if [ "$#" -ne 2 ]; then
@@ -32,14 +34,24 @@ if ! awk '
     exit 1
 fi
 
-# 2 つの表の COPY の段だけを、一時の表への COPY に書き換えて出す(ほかの行は出さない)
+# 2 つの表の COPY の段だけを、一時の表(退避の COPY の列の並びで作る。列はすべて text)と、その表への COPY に書き換えて出す(ほかの行は出さない)
 copy_blocks() {
     awk '
-        copying { print; if ($0 == "\\.") copying = 0; next }
-        /^COPY public\.ai_runs \(/ { sub(/^COPY public\.ai_runs /, "COPY pg_temp.restore_ai_runs "); print; copying = 1; next }
-        /^COPY public\.ai_spending_carryovers \(/ {
-            sub(/^COPY public\.ai_spending_carryovers /, "COPY pg_temp.restore_ai_spending_carryovers "); print; copying = 1; next
+        function open_block(name,   columns, count, parts, definition, i) {
+            columns = $0
+            sub(/^COPY public\.[a-z_]+ \(/, "", columns)
+            sub(/\) FROM stdin;$/, "", columns)
+            count = split(columns, parts, ", ")
+            definition = ""
+            for (i = 1; i <= count; i++) definition = definition (i > 1 ? ", " : "") parts[i] " text"
+            print "CREATE TEMP TABLE restore_" name " (" definition ") ON COMMIT DROP;"
+            sub(/^COPY public\.[a-z_]+ /, "COPY pg_temp.restore_" name " ")
+            print
+            copying = 1
         }
+        copying { print; if ($0 == "\\.") copying = 0; next }
+        /^COPY public\.ai_runs \(/ { open_block("ai_runs"); next }
+        /^COPY public\.ai_spending_carryovers \(/ { open_block("ai_spending_carryovers"); next }
     ' "${dump}"
 }
 
@@ -56,8 +68,6 @@ BEGIN
     END IF;
 END
 $$;
-CREATE TEMP TABLE restore_ai_runs ON COMMIT DROP AS SELECT * FROM public.ai_runs WITH NO DATA;
-CREATE TEMP TABLE restore_ai_spending_carryovers ON COMMIT DROP AS SELECT * FROM public.ai_spending_carryovers WITH NO DATA;
 SQL
     # 書き換えに失敗したら終わりの COMMIT を出さない(psql は COMMIT の無いまま入力が終わり、トランザクションは巻き戻る)
     copy_blocks || return 1
@@ -65,10 +75,14 @@ SQL
 INSERT INTO public.ai_spending_carryovers (budget, spent_on, cost_usd)
 SELECT budget, spent_on, sum(cost_usd)
 FROM (
-    SELECT budget, spent_on, cost_usd FROM pg_temp.restore_ai_spending_carryovers
+    SELECT budget, spent_on::date, cost_usd::numeric FROM pg_temp.restore_ai_spending_carryovers
     UNION ALL
     SELECT budget, (created_at AT TIME ZONE 'Asia/Tokyo')::date, coalesce(cost_usd, reserved_cost_usd)
-    FROM pg_temp.restore_ai_runs WHERE status <> 'queued'
+    FROM (
+        SELECT budget, status, created_at::timestamptz AS created_at, cost_usd::numeric AS cost_usd,
+            reserved_cost_usd::numeric AS reserved_cost_usd
+        FROM pg_temp.restore_ai_runs
+    ) AS runs WHERE status <> 'queued'
 ) AS spent
 GROUP BY budget, spent_on;
 \echo ==> 戻した繰り越し(予算の区分ごと)

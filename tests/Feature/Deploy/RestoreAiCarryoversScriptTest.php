@@ -79,13 +79,81 @@ final class RestoreAiCarryoversScriptTest extends TransactionalTestCase
         $this->assertStringContainsString('何も入っていません', $result->stderr);
     }
 
-    /** 途中の失敗(退避の列が今の表に無い)は全体が巻き戻り、何も入らない */
+    /** 戻す先に無い列(前の版の退避が持つ列)は読み捨てて、残りの列で戻せる */
+    public function test_it_restores_from_a_dump_with_columns_the_new_tables_do_not_have(): void
+    {
+        $dump = $this->writeDump(
+            ["1\tdefault\tsucceeded\t2026-10-17 14:59:59+00\t1.000000\t2.000000\told"],
+            ["default\t2026-10-17\t3.000000\tx"],
+            carryoversHeader: 'COPY public.ai_spending_carryovers (budget, spent_on, cost_usd, gone) FROM stdin;',
+            runsHeader: 'COPY public.ai_runs (id, budget, status, created_at, cost_usd, reserved_cost_usd, "legacy")'
+                .' FROM stdin;',
+        );
+
+        $result = $this->restore($dump);
+
+        $this->assertSame(0, $result->exitCode, $result->describe());
+        $this->assertSame(['default 2026-10-17 4.000000'], $this->carryovers());
+    }
+
+    /**
+     * 数える列(区分・状態・作った時刻・費用・見積もり。繰り越しの区分・日・額)が欠けた退避は、何も入れずに終了 1。
+     *
+     * @return array<string, array{string, string}>
+     */
+    public static function dumpsMissingACountedColumn(): array
+    {
+        $runs = [
+            'id, budget, status, created_at, cost_usd, reserved_cost_usd',
+            "1\tdefault\tsucceeded\t2026-10-17 14:59:59+00\t1.000000\t2.000000",
+        ];
+        $carryovers = ['budget, spent_on, cost_usd', "default\t2026-10-17\t3.000000"];
+        $without = fn (array $block, string $column, int $position): array => [
+            implode(', ', array_diff(explode(', ', $block[0]), [$column])),
+            implode("\t", array_diff_key(explode("\t", $block[1]), [$position => 0])),
+        ];
+
+        return [
+            'runs without budget' => [...$without($runs, 'budget', 1), 'runs'],
+            'runs without status' => [...$without($runs, 'status', 2), 'runs'],
+            'runs without created_at' => [...$without($runs, 'created_at', 3), 'runs'],
+            'runs without cost_usd' => [...$without($runs, 'cost_usd', 4), 'runs'],
+            'runs without reserved_cost_usd' => [...$without($runs, 'reserved_cost_usd', 5), 'runs'],
+            'carryovers without budget' => [...$without($carryovers, 'budget', 0), 'carryovers'],
+            'carryovers without spent_on' => [...$without($carryovers, 'spent_on', 1), 'carryovers'],
+            'carryovers without cost_usd' => [...$without($carryovers, 'cost_usd', 2), 'carryovers'],
+        ];
+    }
+
+    #[DataProvider('dumpsMissingACountedColumn')]
+    public function test_it_adds_nothing_when_a_counted_column_is_missing_from_the_dump(
+        string $columns,
+        string $row,
+        string $table,
+    ): void {
+        $runs = ["1\tdefault\tsucceeded\t2026-10-17 14:59:59+00\t1.000000\t2.000000"];
+        $carryovers = ["default\t2026-10-17\t3.000000"];
+        $dump = $table === 'runs'
+            ? $this->writeDump([$row], $carryovers, runsHeader: "COPY public.ai_runs ({$columns}) FROM stdin;")
+            : $this->writeDump(
+                $runs,
+                [$row],
+                carryoversHeader: "COPY public.ai_spending_carryovers ({$columns}) FROM stdin;",
+            );
+
+        $result = $this->restore($dump);
+
+        $this->assertSame(1, $result->exitCode, $result->describe());
+        $this->assertSame([], $this->carryovers());
+        $this->assertStringContainsString('何も入っていません', $result->stderr);
+    }
+
+    /** 途中の失敗(額が数でない)は全体が巻き戻り、何も入らない */
     public function test_a_failure_in_the_middle_adds_nothing(): void
     {
         $dump = $this->writeDump(
             ["1\tdefault\tsucceeded\t2026-10-17 14:59:59+00\t1.000000\t2.000000"],
-            ["default\t2026-10-17\t3.000000\tx"],
-            carryoversHeader: 'COPY public.ai_spending_carryovers (budget, spent_on, cost_usd, gone) FROM stdin;',
+            ["default\t2026-10-17\tnot-a-number"],
         );
 
         $result = $this->restore($dump);
@@ -163,11 +231,12 @@ final class RestoreAiCarryoversScriptTest extends TransactionalTestCase
         array $runs,
         array $carryovers,
         string $carryoversHeader = self::CARRYOVERS_HEADER,
+        string $runsHeader = self::RUNS_HEADER,
     ): string {
         $lines = [
             '--', '-- PostgreSQL database dump', '--', '\\restrict abc', "SET client_encoding = 'UTF8';",
             'COPY public.users (id, name) FROM stdin;', "1\tx", '\\.',
-            self::RUNS_HEADER, ...$runs, '\\.',
+            $runsHeader, ...$runs, '\\.',
             'COPY public.ai_run_texts (id, ai_run_id) FROM stdin;', "1\t1", '\\.',
             $carryoversHeader, ...$carryovers, '\\.',
             '\\unrestrict abc',

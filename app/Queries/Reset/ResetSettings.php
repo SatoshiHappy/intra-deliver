@@ -99,5 +99,46 @@ class ResetSettings
             throw new LogicException('毎日の初期化がオン(DAILY_RESET_ENABLED)なのに、'
                 .'既定のキューの接続(QUEUE_CONNECTION)が DB の表(database)でない');
         }
+
+        if (Config::get('session.driver') !== 'database') {
+            throw new LogicException('毎日の初期化がオン(DAILY_RESET_ENABLED)なのに、セッションの置き場(SESSION_DRIVER)が DB の表(database)でない');
+        }
+
+        // 表の外の置き場は手順 5 で空にならない。Laravel は表の名前が無いと DB の driver でも記録を捨てる(QueueServiceProvider)
+        $failedInTable = in_array(Config::get('queue.failed.driver'), ['database-uuids', 'database'], true)
+            && is_string(Config::get('queue.failed.table'));
+
+        if (! $failedInTable) {
+            throw new LogicException('毎日の初期化がオン(DAILY_RESET_ENABLED)なのに、'
+                .'失敗した仕事の記録の置き場(QUEUE_FAILED_DRIVER と queue.failed.table)が'
+                .' DB の表(database-uuids か database と表の名前)でない');
+        }
+
+        $this->ensureDefaultConnections($default);
+    }
+
+    /**
+     * キャッシュ・鎖錠・キュー・失敗した仕事の記録・セッションの表が、既定の DB の接続にあること(手順 5 のトランザクションは既定の接続で動き、
+     * 別の接続の表は空にならない)。接続の設定が空(null)なら既定の接続を使う。
+     *
+     * @throws LogicException 既定でない接続を指しているとき
+     */
+    private function ensureDefaultConnections(string $cacheStore): void
+    {
+        $connections = [
+            "cache.stores.{$cacheStore}.connection" => 'DB_CACHE_CONNECTION',
+            "cache.stores.{$cacheStore}.lock_connection" => 'DB_CACHE_LOCK_CONNECTION',
+            "queue.connections.{$this->queueConnection()}.connection" => 'DB_QUEUE_CONNECTION',
+            'queue.failed.database' => 'DB_CONNECTION',
+            'session.connection' => 'SESSION_CONNECTION',
+        ];
+
+        foreach ($connections as $key => $variable) {
+            $connection = Config::get($key);
+
+            if ($connection !== null && $connection !== Config::get('database.default')) {
+                throw new LogicException("毎日の初期化がオン(DAILY_RESET_ENABLED)なのに、設定 {$key}({$variable})が既定の DB の接続でない");
+            }
+        }
     }
 }

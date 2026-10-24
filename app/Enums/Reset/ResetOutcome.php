@@ -19,6 +19,12 @@ enum ResetOutcome: string
 
     case Failed = 'failed';
 
+    /** 始めなかった理由を出すか(「始めるか」の表の出力の列) */
+    public function printsReason(ResetTrigger $trigger): bool
+    {
+        return ! ($this === self::AlreadyTried && $trigger === ResetTrigger::Schedule);
+    }
+
     /** 終了コード(「始めるか」の表の終了コードの列) */
     public function exitCode(ResetTrigger $trigger): int
     {

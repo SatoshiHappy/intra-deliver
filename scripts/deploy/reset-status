@@ -3,6 +3,7 @@
 #   scripts/deploy/reset-status <compose.env のパス>
 # 出力: 初期化の鎖錠を持つセッションと、初期化の記録の表 reset_runs の新しい 10 行(時刻は東京)。
 # 読み取りだけで流す。SQL は psql の引数で渡す(標準入力を使わない)。鎖錠の鍵は config/reset.php の lock_key と同じ値。
+# 勧告ロックは DB ごとだが pg_locks はクラスタのすべての DB の行を見せるので、つないだ DB の行に絞る。
 # 前提: db が起きている。終了コード: 0 = 成功、2 = 使い方の誤り、1 = 問い合わせの失敗。
 set -euo pipefail
 
@@ -13,13 +14,14 @@ fi
 
 env_file="$1"
 dc="$(dirname "$0")/dc"
-lock_key=4400000000000000
+lock_key=4700000000000000
 
 lock_holders="SELECT a.pid AS \"PID\", a.client_addr AS \"接続元\", a.backend_start AS \"接続した時刻\", a.state AS \"状態\",
     a.state_change AS \"状態が変わった時刻\"
 FROM pg_locks AS l JOIN pg_stat_activity AS a ON a.pid = l.pid
 WHERE l.locktype = 'advisory' AND l.granted AND l.objsubid = 1
-    AND ((l.classid::bigint << 32) | l.objid::bigint) = ${lock_key}"
+    AND ((l.classid::bigint << 32) | l.objid::bigint) = ${lock_key}
+    AND l.database = (SELECT oid FROM pg_database WHERE datname = current_database())"
 
 recent_runs="SELECT id AS \"行の番号\", reset_on AS \"その日\", trigger AS \"動かし方\", started_at AS \"始めた時刻\",
     CASE WHEN result IS NULL THEN '閉じていない' WHEN result = 'succeeded' THEN '成功で閉じた' ELSE '失敗で閉じた' END AS \"記録の行\",

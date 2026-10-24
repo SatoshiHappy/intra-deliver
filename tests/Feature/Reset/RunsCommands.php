@@ -4,6 +4,7 @@ namespace Tests\Feature\Reset;
 
 use Illuminate\Support\Facades\Artisan;
 use Symfony\Component\Console\Output\BufferedOutput;
+use Throwable;
 
 /**
  * コマンドを流し、終了コードと出力を確かめる(初期化の出力は docs の 設計/公開の配備/毎日の初期化.md 5 節)。出力は自分の受け口で受ける
@@ -11,6 +12,24 @@ use Symfony\Component\Console\Output\BufferedOutput;
  */
 trait RunsCommands
 {
+    /**
+     * $command を流し、出力と、コマンドが投げた例外(無ければ null)を返す。投げた回も、それまでの出力を読める。
+     *
+     * @return array{string, Throwable|null}
+     */
+    protected function runCommandKeepingOutput(string $command): array
+    {
+        $buffer = new BufferedOutput;
+
+        try {
+            Artisan::call($command, [], $buffer);
+        } catch (Throwable $error) {
+            return [$buffer->fetch(), $error];
+        }
+
+        return [$buffer->fetch(), null];
+    }
+
     /** $command を流し、終了コードが $exitCode で、出力が $contains を含む(null なら見ない)ことを確かめる。出力を返す */
     protected function assertCommand(string $command, int $exitCode, ?string $contains = null): string
     {

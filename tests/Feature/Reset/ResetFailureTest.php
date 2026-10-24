@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Sleep;
+use PHPUnit\Framework\Attributes\TestWith;
 use RuntimeException;
 use Tests\Support\TransactionalTestCase;
 use Throwable;
@@ -56,18 +57,25 @@ final class ResetFailureTest extends TransactionalTestCase
             }
         });
 
-        $this->assertCommand('reset:data', 1, '処理中のジョブが 1 件');
+        $output = $this->assertCommand('reset:data', 1, '処理中のジョブが 1 件');
 
+        $this->assertStringContainsString('初期化の記録の行: '.ResetRun::query()->sole()->id, $output);
         $this->assertClosedWithoutReloading();
     }
 
-    /** 4 節の失敗の表の「手順 5 の途中・持ったまま例外」の行(seeder の失敗) */
-    public function test_a_seeder_failure_rolls_everything_back(): void
+    /** 4 節の失敗の表の「手順 5 の途中・持ったまま例外」の行(seeder の失敗)。予定の回も手で流す回も、終了コードは 0 でない */
+    #[TestWith(['reset:data'])]
+    #[TestWith(['reset:daily'])]
+    public function test_a_seeder_failure_rolls_everything_back(string $command): void
     {
         $this->app->instance(TestResetSeeder::class, new TestResetSeeder(ThrowingSeeder::class));
         $this->app->tag([TestResetSeeder::class], ResetSeeder::TAG);
 
-        $this->assertCommand('reset:data', 1, 'seeder の失敗');
+        $output = $this->assertCommand($command, 1, 'seeder の失敗');
+
+        $this->assertSame(1, substr_count($output, '初期化の記録の行'));
+        $this->assertStringContainsString('初期化の記録の行: '.ResetRun::query()->sole()->id, $output);
+        $this->assertStringContainsString('成否: 失敗', $output);
 
         $this->assertSame([StubInitialSeeder::class, ThrowingSeeder::class], StubInitialSeeder::$calls);
         $this->assertFalse(DB::table('failed_jobs')->where('uuid', 'written-before-failing')->exists());
@@ -192,13 +200,26 @@ final class ResetFailureTest extends TransactionalTestCase
         $this->assertStopsLifted();
     }
 
+    /** 片付けが投げた回も、記録の行を書いた時に出した番号が出力に残っている(運営者が reset-status で行を探せる) */
+    public function test_the_row_number_is_printed_even_when_the_cleanup_throws(): void
+    {
+        $this->useSeederFailure();
+        $this->replaceStops(fn () => throw new RuntimeException('キューの停止を解けなかった'));
+
+        [$output, $error] = $this->runCommandKeepingOutput('reset:data');
+
+        $this->assertInstanceOf(RuntimeException::class, $error);
+        $this->assertSame('キューの停止を解けなかった', $error->getMessage());
+        $this->assertSame('初期化の記録の行: '.ResetRun::query()->sole()->id."\n", $output);
+    }
+
     private function useSeederFailure(): void
     {
         $this->app->instance(TestResetSeeder::class, new TestResetSeeder(ThrowingSeeder::class));
         $this->app->tag([TestResetSeeder::class], ResetSeeder::TAG);
     }
 
-    /** キューの停止を解く操作だけを $onResume に差し替える(それ以外の停止の操作は本物) */
+    /** 記録の行を書いた後のキューの停止を解く操作だけを $onResume に差し替える(手順 0 の片付けと、それ以外の停止の操作は本物) */
     private function replaceStops(callable $onResume): void
     {
         $settings = $this->app->make(ResetSettings::class);
@@ -213,7 +234,7 @@ final class ResetFailureTest extends TransactionalTestCase
 
             public function resumeQueue(): void
             {
-                ($this->onResume)();
+                ResetRun::query()->exists() ? ($this->onResume)() : parent::resumeQueue();
             }
         });
     }

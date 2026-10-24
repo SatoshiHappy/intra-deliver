@@ -16,6 +16,7 @@ trait EnablesDailyResetBeforeBoot
 
     private const RESET_SETTINGS = [
         'DAILY_RESET_ENABLED', 'APP_MAINTENANCE_DRIVER', 'APP_MAINTENANCE_STORE', 'CACHE_STORE', 'QUEUE_CONNECTION',
+        'SESSION_DRIVER',
     ];
 
     /**

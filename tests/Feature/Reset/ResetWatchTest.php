@@ -5,6 +5,7 @@ namespace Tests\Feature\Reset;
 use App\Enums\Reset\ResetResult;
 use App\Models\Reset\ResetRun;
 use Illuminate\Support\Facades\App;
+use PHPUnit\Framework\Attributes\TestWith;
 use Tests\Support\TransactionalTestCase;
 
 /**
@@ -22,15 +23,20 @@ final class ResetWatchTest extends TransactionalTestCase
         $this->prepareReset();
     }
 
-    public function test_does_nothing_while_a_run_holds_the_lock(): void
+    /** 見張りの表の「取れない」の行(初期化の印のメンテナンスの状態 × 記録の終わりの無い行のどの組み合わせでも何もしない) */
+    #[TestWith([true, true])]
+    #[TestWith([true, false])]
+    #[TestWith([false, true])]
+    #[TestWith([false, false])]
+    public function test_does_nothing_while_a_run_holds_the_lock(bool $maintenance, bool $row): void
     {
-        $run = $this->leaveCrashedRun();
+        $run = $this->leaveCrashedRun($maintenance, $row);
         $this->holdLockElsewhere();
 
-        $this->assertCommand('reset:watch', 0);
+        $this->assertStringNotContainsString('片付けた', $this->assertCommand('reset:watch', 0));
 
         $this->assertNull($run?->refresh()->result);
-        $this->assertSame([true, true], [App::maintenanceMode()->active(), $this->queuePaused()]);
+        $this->assertSame([$maintenance, true], [App::maintenanceMode()->active(), $this->queuePaused()]);
     }
 
     public function test_does_nothing_without_leftovers(): void
@@ -42,14 +48,24 @@ final class ResetWatchTest extends TransactionalTestCase
         $this->assertFalse(App::maintenanceMode()->active());
     }
 
-    /** 見張りの表の「取れる・ある・無い」の行 */
-    public function test_lifts_the_marked_maintenance_left_without_a_row(): void
+    /** 見張りの表の「取れる・無い・無い」の行(キューの停止だけが残っている。行が無くても解く。出さない) */
+    public function test_resumes_the_queue_left_paused_without_a_row_or_maintenance(): void
+    {
+        $this->leaveCrashedRun(maintenance: false, row: false);
+
+        $this->assertStringNotContainsString('片付けた', $this->assertCommand('reset:watch', 0));
+
+        $this->assertSame([false, false], [App::maintenanceMode()->active(), $this->queuePaused()]);
+    }
+
+    /** 見張りの表の「取れる・ある・無い」の行(行が無くてもキューの停止を解く) */
+    public function test_lifts_the_marked_maintenance_and_the_queue_left_without_a_row(): void
     {
         $this->leaveCrashedRun(row: false);
 
         $this->assertCommand('reset:watch', 0, 'メンテナンスの状態を解いた');
 
-        $this->assertSame([false, true], [App::maintenanceMode()->active(), $this->queuePaused()]);
+        $this->assertSame([false, false], [App::maintenanceMode()->active(), $this->queuePaused()]);
     }
 
     /** 見張りの表の「取れる・無い・ある」の行 */
@@ -73,15 +89,18 @@ final class ResetWatchTest extends TransactionalTestCase
         $this->assertSame([false, false], [App::maintenanceMode()->active(), $this->queuePaused()]);
     }
 
-    public function test_keeps_the_maintenance_put_by_the_operator(): void
+    /** 印の無いメンテナンスの状態(運営者が手で入れたもの)は、どの行でも解かない。キューの停止は解く */
+    #[TestWith([true])]
+    #[TestWith([false])]
+    public function test_keeps_the_maintenance_put_by_the_operator(bool $row): void
     {
-        $run = $this->leaveCrashedRun(maintenance: false);
+        $run = $this->leaveCrashedRun(maintenance: false, row: $row);
         App::maintenanceMode()->activate(['status' => 503]);
 
         $this->assertCommand('reset:watch', 0);
 
-        $this->assertClosed($run);
-        $this->assertTrue(App::maintenanceMode()->active());
+        $row ? $this->assertClosed($run) : $this->assertNull($run);
+        $this->assertSame([true, false], [App::maintenanceMode()->active(), $this->queuePaused()]);
     }
 
     private function assertClosed(?ResetRun $run): void

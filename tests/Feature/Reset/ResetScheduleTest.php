@@ -45,9 +45,29 @@ final class ResetScheduleTest extends TransactionalTestCase
 
         $stores = [
             config('app.maintenance.driver'), config('app.maintenance.store'),
-            config('cache.default'), config('queue.default'),
+            config('cache.default'), config('queue.default'), config('session.driver'),
         ];
-        $this->assertSame(['cache', 'database', 'database', 'database'], $stores);
+        $this->assertSame(['cache', 'database', 'database', 'database', 'database'], $stores);
+    }
+
+    /**
+     * 接続の設定が空(null)か既定の接続の名前で、失敗した仕事の記録の driver が DB の表のもの(database-uuids か database)なら通る
+     */
+    #[TestWith(['database-uuids'])]
+    #[TestWith(['database'])]
+    public function test_the_boot_passes_when_the_connections_are_the_default_one(string $failedDriver): void
+    {
+        $default = config('database.default');
+        $this->assertIsString($default);
+        config([
+            'cache.stores.database.connection' => null, 'cache.stores.database.lock_connection' => $default,
+            'queue.connections.database.connection' => $default, 'queue.failed.database' => $default,
+            'session.connection' => null, 'queue.failed.driver' => $failedDriver,
+        ]);
+
+        app(ResetSettings::class)->ensureSharedStores();
+
+        $this->addToAssertionCount(1);
     }
 
     /**
@@ -62,6 +82,46 @@ final class ResetScheduleTest extends TransactionalTestCase
         config($settings);
 
         $this->expectException(LogicException::class);
+
+        (new AppServiceProvider($this->app))->boot();
+    }
+
+    /**
+     * セッションの置き場が DB の表でないか、キャッシュ・鎖錠・キュー・失敗した仕事の記録・セッションの表が既定でない接続にあれば、起動が止まる(5 節)。
+     *
+     * @param  array<string, string>  $settings
+     */
+    #[TestWith([['session.driver' => 'array']])]
+    #[TestWith([['session.driver' => 'file']])]
+    #[TestWith([['session.connection' => 'other']])]
+    #[TestWith([['cache.stores.database.connection' => 'other']])]
+    #[TestWith([['cache.stores.database.lock_connection' => 'other']])]
+    #[TestWith([['queue.connections.database.connection' => 'other']])]
+    #[TestWith([['queue.failed.database' => 'other']])]
+    public function test_the_boot_stops_when_the_session_or_a_connection_is_not_the_default(array $settings): void
+    {
+        config($settings);
+
+        $this->expectException(LogicException::class);
+
+        (new AppServiceProvider($this->app))->boot();
+    }
+
+    /**
+     * 失敗した仕事の記録の置き場が DB の表でなければ、起動が止まる(5 節)。
+     *
+     * @param  array<string, string|null>  $settings
+     */
+    #[TestWith([['queue.failed.driver' => 'file']])]
+    #[TestWith([['queue.failed.driver' => 'null']])]
+    #[TestWith([['queue.failed.driver' => 'dynamodb']])]
+    #[TestWith([['queue.failed.driver' => 'database', 'queue.failed.table' => null]])]
+    public function test_the_boot_stops_when_failed_jobs_are_not_kept_in_a_table(array $settings): void
+    {
+        config($settings);
+
+        $this->expectException(LogicException::class);
+        $this->expectExceptionMessage('QUEUE_FAILED_DRIVER');
 
         (new AppServiceProvider($this->app))->boot();
     }

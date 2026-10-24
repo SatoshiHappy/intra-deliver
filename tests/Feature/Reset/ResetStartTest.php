@@ -51,13 +51,38 @@ final class ResetStartTest extends TransactionalTestCase
         $this->assertTrue(App::maintenanceMode()->active());
     }
 
-    public function test_the_scheduled_run_does_nothing_once_the_day_was_tried(): void
+    /** 「始めるか」の表の予定・試し済みの行。毎分動くので出力は空(出力の列) */
+    public function test_the_scheduled_run_does_nothing_and_prints_nothing_once_the_day_was_tried(): void
     {
         $this->tried('2026-10-18', ResetResult::Failed);
 
-        $this->assertCommand('reset:daily', 0, '試し済み');
+        $this->assertSame('', trim($this->assertCommand('reset:daily', 0)));
 
         $this->assertSame(1, ResetRun::query()->count());
+    }
+
+    /** 出力の列: 始めた回は記録の行を書いた時に番号を出し、終わりに結果を出す(番号は 1 回だけ) */
+    #[TestWith(['reset:daily'])]
+    #[TestWith(['reset:data'])]
+    public function test_a_started_run_prints_the_row_number_once_before_the_result(string $command): void
+    {
+        $output = $this->assertCommand($command, 0);
+
+        $run = ResetRun::query()->sole();
+        $this->assertSame(1, substr_count($output, '初期化の記録の行'));
+        $this->assertSame(0, strpos($output, "初期化の記録の行: {$run->id}\n"));
+        $this->assertLessThan(strpos($output, '成否: 成功'), strpos($output, '初期化の記録の行'));
+    }
+
+    /** 手順 0 の片付け: 記録の行が無くても、キューの停止を解いてから決める */
+    public function test_cleans_up_a_queue_pause_left_without_a_row(): void
+    {
+        $this->tried('2026-10-18');
+        $this->leaveCrashedRun(maintenance: false, row: false);
+
+        $this->assertSame('', trim($this->assertCommand('reset:daily', 0)));
+
+        $this->assertFalse($this->queuePaused());
     }
 
     public function test_the_scheduled_run_starts_when_the_day_was_not_tried(): void
@@ -103,7 +128,7 @@ final class ResetStartTest extends TransactionalTestCase
         $this->tried('2026-10-17');
 
         $this->assertCommand('reset:daily', 0);
-        $this->assertCommand('reset:daily', 0, '試し済み');
+        $this->assertSame('', trim($this->assertCommand('reset:daily', 0)));
 
         $this->assertSame(1, ResetRun::query()->where('reset_on', '2026-10-18')->count());
     }

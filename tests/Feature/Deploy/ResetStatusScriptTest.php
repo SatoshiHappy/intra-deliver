@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Deploy;
 
+use Illuminate\Support\Facades\DB;
 use Tests\Support\RunsDeployScripts;
 use Tests\Support\TransactionalTestCase;
 
@@ -52,6 +53,36 @@ final class ResetStatusScriptTest extends TransactionalTestCase
         [$locks, $runs] = $this->sections($result->stdout);
         $this->assertStringContainsString('(0 ', $locks);
         $this->assertSame([], $this->runRows($runs));
+    }
+
+    /**
+     * 同じクラスタのほかの DB(並列のテストのプロセスの DB など)で同じ鍵を持つセッションは出さない(勧告ロックは DB ごとで、
+     * pg_locks はクラスタのすべての DB の行を見せる)。ほかの DB には、どのクラスタにもある postgres を使う。postgres は手元のほかの
+     * 作業木のテストとも同じ DB なので、鎖錠を待つ時間を切り(残った鎖錠で止まり続けない)、終わりに放す。
+     */
+    public function test_it_does_not_show_a_session_holding_the_same_key_in_another_database(): void
+    {
+        $this->installDockerRunningDbOnTestDatabase();
+        $name = 'reset_status_other_database';
+        config(['database.connections.'.$name => [
+            ...(array) config('database.connections.'.config('database.default')),
+            'url' => null,
+            'database' => 'postgres',
+        ]]);
+        $other = DB::connection($name);
+        $other->statement("SET lock_timeout = '10s'");
+        $other->select('SELECT pg_advisory_lock(?)', [config('reset.lock_key')]);
+
+        try {
+            $result = $this->runScript('reset-status', [$this->composeEnv()], $this->testDatabaseEnvironment());
+        } finally {
+            $other->select('SELECT pg_advisory_unlock(?)', [config('reset.lock_key')]);
+            DB::purge($name);
+        }
+
+        $this->assertSame(0, $result->exitCode, $result->describe());
+        [$locks] = $this->sections($result->stdout);
+        $this->assertStringContainsString('(0 ', $locks);
     }
 
     /** 問い合わせは db のコンテナで、アプリ用ロールとアプリの DB(コンテナの環境変数)に流す(SQL は引数。改行を含むので記録は複数の行になる) */
