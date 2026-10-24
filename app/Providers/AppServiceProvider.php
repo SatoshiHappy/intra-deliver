@@ -4,8 +4,10 @@ namespace App\Providers;
 
 use App\Actions\Ai\Api\PromptKind;
 use App\Actions\Ai\Api\TranscriptionKind;
+use App\Actions\Ai\CarryOverSpending;
 use App\Actions\Meeting\MeetingMinutesKind;
 use App\Actions\Meeting\MeetingTranscriptionKind;
+use App\Actions\Reset\Api\ResetParticipant;
 use App\Models\Master\User;
 use App\Queries\Authz\Api\ResourceTypes;
 use App\Queries\Authz\ServiceResourceTypes;
@@ -25,6 +27,7 @@ use App\Queries\Records\Api\RecordShowSections;
 use App\Queries\Records\RecordMenuItemVisibility;
 use App\Queries\Records\RecordModuleResourceTypes;
 use App\Queries\Records\RecordNoticeTargets;
+use App\Queries\Reset\ResetSettings;
 use App\Queries\Workflow\ActiveApplicationsHomeSection;
 use App\Queries\Workflow\CaseTargetTerm;
 use App\Queries\Workflow\OwnCaseTargetTerm;
@@ -73,6 +76,10 @@ class AppServiceProvider extends ServiceProvider
         $this->app->tag([MeetingMinutesKind::class], PromptKind::TAG);
         $this->app->tag([MeetingTranscriptionKind::class], TranscriptionKind::TAG);
 
+        // 依存の逆転: 毎日の初期化が残す表と、表を空にする直前の処理(AI の費用の繰り越し = docs の 設計/公開の配備/毎日の初期化.md 7 節)。
+        // 初期化で消えては困る表を持つモジュールが実装をここに足す
+        $this->app->tag([CarryOverSpending::class], ResetParticipant::TAG);
+
         // 依存の逆転: 通知の行の移り先を、対象の種類を持つモジュールの実装が答える(docs の 設計/ワークフロー/案件の運用/通知.md の 5 節)。
         // 対象の種類を持つモジュールが実装をここに足す(実装の無い対象の種類の行は共通の 1 行になる)
         $this->app->tag([WorkflowNoticeTargets::class, RecordNoticeTargets::class], NoticeTargets::TAG);
@@ -88,8 +95,15 @@ class AppServiceProvider extends ServiceProvider
         // 処理対象者に当たる条件の項(docs の 設計/ワークフロー/ルートの深さ/認可と一覧.md 3 節。代理の項 = 設計/ワークフロー/案件の運用/案件の操作/README.md の 4.2 節)
         $this->app->tag([OwnCaseTargetTerm::class, ProxyTargetTerm::class], CaseTargetTerm::TAG);
 
-        // 依存の逆転: ホームの入口が、各モジュールの足す節を登録の順に出す(docs の 設計/メニュー/ホーム.md 6.2)。
-        // 右列 = 主な操作 → 進行中の申請(主な操作をワークフローの経路の節より前に = ホーム.md 6.5、ワークフローの 5 つはこの順 = 設計/ワークフロー/画面.md 7 節)
+        $this->tagHomeSections();
+    }
+
+    /**
+     * 依存の逆転: ホームの入口が、各モジュールの足す節を登録の順に出す(docs の 設計/メニュー/ホーム.md 6.2)。
+     * 右列 = 主な操作 → 進行中の申請(主な操作をワークフローの経路の節より前に = ホーム.md 6.5、ワークフローの 5 つはこの順 = 設計/ワークフロー/画面.md 7 節)
+     */
+    private function tagHomeSections(): void
+    {
         $this->app->tag([
             QuickActionsHomeSection::class,
             WorkflowLeadHomeSection::class,
@@ -110,6 +124,9 @@ class AppServiceProvider extends ServiceProvider
         // 本番以外(開発・E2E のサーバー・phpunit)では関係の遅延読み込みを例外にする(docs の 設計/コード構成/検査/README.md 6.2)。
         // 2 行以上の結果から作ったモデルの遅延読み込みだけが例外になる(Laravel の仕様)。1 件からの N+1 はレビューで見る
         Model::preventLazyLoading(! $this->app->isProduction());
+
+        // 毎日の初期化がオンのときの置き場の確かめ(docs の 設計/公開の配備/毎日の初期化.md 5 節の「置き場の確かめ」)
+        $this->app->make(ResetSettings::class)->ensureSharedStores();
     }
 
     /**

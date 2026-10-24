@@ -8,6 +8,8 @@ use App\Providers\DemoServiceProvider;
 use App\Queries\Account\UserMenuSections;
 use App\Queries\Demo\SwitchUserMenuSection;
 use App\Queries\Menu\Api\HomeSections;
+use App\Queries\Reset\Api\ResetSeeder;
+use App\Queries\Reset\InitialDataSeeders;
 use Carbon\CarbonImmutable;
 use Database\Seeders\DemoSeeder;
 use Illuminate\Routing\Route as RoutingRoute;
@@ -65,6 +67,19 @@ final class DemoDisabledTest extends TransactionalTestCase
             iterator_to_array($this->app->tagged(HomeSections::TAG), false),
             fn (object $section) => str_starts_with($section::class, 'App\Queries\Demo\\'),
         )));
+    }
+
+    /**
+     * 毎日の初期化の seeder の名前の口のタグに demo の実装が無い(6.4 のオフの 2。オフの間の初期化は切替の初期データを入れない)。
+     */
+    public function test_tags_no_reset_seeder_of_its_own(): void
+    {
+        $this->assertSame([], array_values(array_filter(
+            iterator_to_array($this->app->tagged(ResetSeeder::TAG), false),
+            fn (object $seeder) => str_starts_with($seeder::class, 'App\Queries\Demo\\'),
+        )));
+        $base = ['--force' => true, '--no-interaction' => true];
+        $this->assertSame([$base], app(InitialDataSeeders::class)->seedArguments());
     }
 
     public function test_a_switch_route_left_over_is_not_found_while_disabled(): void

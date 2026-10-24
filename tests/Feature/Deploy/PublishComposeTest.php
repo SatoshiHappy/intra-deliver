@@ -7,7 +7,8 @@ use Tests\TestCase;
 
 /**
  * 公開用の compose.publish.yml の守り(docs の 設計/公開の配備/構成/README.md の 3.1・3.2.2 節、構成/設定.md の 3.4・3.5 節): 強化と再起動・ports: を書かない・
- * 外へ出られるのは tunnel と queue だけ・AI の接続先の鍵は queue だけ・queue と scheduler は app のイメージ・queue の止め方の待ち。
+ * 外へ出られるのは tunnel と queue だけ・AI の接続先の鍵は queue だけ・queue と scheduler は app のイメージ・queue の止め方の待ち・
+ * scheduler のメモリの上限(3.2.3 節)。
  * 本物の docker は呼ばない(起こして確かめるのは実機の検証)。
  */
 final class PublishComposeTest extends TestCase
@@ -74,10 +75,26 @@ final class PublishComposeTest extends TestCase
     public function test_the_queue_waits_for_the_running_job_at_least_as_long_as_the_queue_redelivers(): void
     {
         $queue = (string) file_get_contents(config_path('queue.php'));
-        $grace = $this->seconds('/^(\d+)s$/D', (string) ($this->services()['queue']['stop_grace_period'] ?? ''));
-        $default = $this->seconds("/env\\('DB_QUEUE_RETRY_AFTER', (\\d+)\\)/", $queue);
+        $grace = $this->number('/^(\d+)s$/D', (string) ($this->services()['queue']['stop_grace_period'] ?? ''));
+        $default = $this->number("/env\\('DB_QUEUE_RETRY_AFTER', (\\d+)\\)/", $queue);
 
         $this->assertGreaterThanOrEqual($default, $grace);
+    }
+
+    /**
+     * scheduler のメモリの上限 = 毎日の初期化の間に同時に動くプロセスの最大 5 つ × memory_limit(php.ini の値。scheduler の子のプロセスには
+     * 起動のコマンドの -d が効かない)+ 余白 96MB = 576MB(docs の 設計/公開の配備/構成/README.md 3.2.3)。
+     */
+    public function test_the_scheduler_memory_limit_covers_five_processes_during_the_daily_reset(): void
+    {
+        $phpIni = parse_ini_file(base_path('docker/app/php.ini'), false, INI_SCANNER_RAW);
+        $this->assertIsArray($phpIni);
+        $memoryLimit = $this->number('/^(\d+)M$/D', (string) ($phpIni['memory_limit'] ?? ''));
+        $schedulerLimit = $this->number('/^(\d+)m$/D', (string) ($this->services()['scheduler']['mem_limit'] ?? ''));
+
+        $this->assertSame(96, $memoryLimit);
+        $this->assertSame(576, $schedulerLimit);
+        $this->assertSame(5 * $memoryLimit + 96, $schedulerLimit);
     }
 
     /**
@@ -103,8 +120,8 @@ final class PublishComposeTest extends TestCase
         );
     }
 
-    /** $subject の中の $pattern の 1 つ目の組の秒(一致しなければ落とす) */
-    private function seconds(string $pattern, string $subject): int
+    /** $subject の中の $pattern の 1 つ目の組の数(一致しなければ落とす) */
+    private function number(string $pattern, string $subject): int
     {
         $this->assertSame(1, preg_match($pattern, $subject, $matches), "{$pattern} に一致しない: {$subject}");
 

@@ -3,6 +3,7 @@
 namespace App\Queries\Ai;
 
 use App\Models\Ai\AiRun;
+use App\Models\Ai\AiSpendingCarryover;
 use App\Queries\Ai\Api\RunBudgetQuery;
 use App\Support\AccessContext;
 use Carbon\CarbonImmutable;
@@ -12,10 +13,13 @@ use LogicException;
 
 /**
  * 予算の区分の使った額と上限の比べ方(正本 = docs の 設計/AI/実行と費用.md 5.2)。依頼の口の上限の確認と、区分の状態の読み取りが同じ比べ方を使う。
- * 使った額は coalesce(cost_usd, reserved_cost_usd) の和にする(費用が分からない実行は見積もりで数え、上限をすり抜けない)。
+ * 繰り越しを書く業務処理も、実行ごとの額と東京の日を同じ式({@see self::RUN_COST_SQL}・{@see self::runDaySql()})で数える。
  */
 class RunSpending
 {
+    /** 実行 1 件の使った額(ai_runs の列の式。費用が分からない実行は見積もりで数え、上限をすり抜けない) */
+    public const RUN_COST_SQL = 'coalesce(cost_usd, reserved_cost_usd)';
+
     public function __construct(private AiSettings $settings) {}
 
     /**
@@ -55,15 +59,28 @@ class RunSpending
     }
 
     /**
-     * 期間の中に依頼した実行の額の和(小数 6 桁)。$since が null なら全期間。
+     * 実行を依頼した東京の日(ai_runs の列の式。日の上限の期間と同じ暦 = Asia/Tokyo の 0:00 で切る)。
+     */
+    public static function runDaySql(): string
+    {
+        return "(created_at AT TIME ZONE '".AccessContext::TIMEZONE."')::date";
+    }
+
+    /**
+     * 期間の中に依頼した実行の額の和と、期間の中の日の繰り越しの額の和(小数 6 桁)。$since が null なら全期間。
+     * $since は東京の日の始まり(日と月の期間)なので、繰り越しは東京の日付で比べる。
      */
     private function spentSince(string $budget, ?CarbonImmutable $since): string
     {
-        $sum = AiRun::query()
+        $runs = AiRun::query()
             ->where('budget', $budget)
             ->when($since !== null, fn ($query) => $query->where('created_at', '>=', $since?->utc()))
-            ->sum(DB::raw('coalesce(cost_usd, reserved_cost_usd)'));
+            ->sum(DB::raw(self::RUN_COST_SQL));
+        $carried = AiSpendingCarryover::query()
+            ->where('budget', $budget)
+            ->when($since !== null, fn ($query) => $query->where('spent_on', '>=', $since?->toDateString()))
+            ->sum('cost_usd');
 
-        return RunEstimates::usd((float) $sum);
+        return RunEstimates::usd((float) $runs + (float) $carried);
     }
 }

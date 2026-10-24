@@ -49,6 +49,15 @@ return [
             'report' => false,
         ],
 
+        // ボリューム app-storage(storage/app)の全体。公開の配備の毎日の初期化がファイルを消すのに使う(docs の 設計/公開の配備/毎日の初期化.md 1 節)
+        'app-storage' => [
+            'driver' => 'local',
+            'root' => storage_path('app'),
+            'serve' => false,
+            'throw' => false,
+            'report' => false,
+        ],
+
         's3' => [
             'driver' => 's3',
             'key' => env('AWS_ACCESS_KEY_ID'),

@@ -6,6 +6,7 @@ use App\Actions\Ai\Api\RequestPrompt;
 use App\Actions\Ai\RunBudget;
 use App\Enums\Ai\AiRunStatus;
 use App\Models\Ai\AiRun;
+use App\Models\Ai\AiSpendingCarryover;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Validation\ValidationException;
@@ -14,9 +15,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * 費用の上限の境界(docs の 設計/AI/実行と費用.md 5.2、データと失敗と検査.md 8 節): 区分の期間ごとに「使った額 + この依頼の見積もり(0.000270)」が
- * 上限ちょうどなら通り、超えると 422(キー ai。区分と期間ごとの文)。使った額は同じ区分の coalesce(cost_usd, reserved_cost_usd) の和 =
- * 終わる前の実行と、使用量が分からないまま失敗した実行は見積もりで数え、ほかの区分の実行は数えない。日と月は Asia/Tokyo の暦で切る。
+ * 費用の上限の境界(docs の 設計/AI/実行と費用.md 5.2、データと失敗と検査.md 8 節)。依頼の見積もりは 0.000270。
  */
 final class RequestPromptBudgetTest extends TransactionalTestCase
 {
@@ -48,6 +47,27 @@ final class RequestPromptBudgetTest extends TransactionalTestCase
     public function test_spent_plus_the_estimate_up_to_the_limit_passes_and_beyond_is_rejected(string $period, string $message): void
     {
         $spent = $this->spendWithEveryKindOfRun(now());
+
+        $this->setBudget($period, $spent + self::RESERVED - 0.000001);
+        $this->assertRejectedWith($message);
+
+        $this->setBudget($period, $spent + self::RESERVED);
+        app(RequestPrompt::class)->execute($this->requesterContext(), $this->promptRequest());
+        $this->assertSame(4, AiRun::query()->count());
+    }
+
+    /**
+     * 5.2 の使った額のうち繰り越しの分(今日の分と、ほかの区分の分)。
+     */
+    #[DataProvider('periods')]
+    public function test_the_carryover_is_added_to_the_spent_amount(string $period, string $message): void
+    {
+        $this->travelTo(CarbonImmutable::parse('2026-10-18 09:00', 'Asia/Tokyo'));
+        $spent = $this->spendWithEveryKindOfRun(now()) + 0.5;
+        AiSpendingCarryover::query()->insert([
+            ['budget' => 'default', 'spent_on' => '2026-10-18', 'cost_usd' => '0.500000'],
+            ['budget' => 'transcription', 'spent_on' => '2026-10-18', 'cost_usd' => '9.000000'],
+        ]);
 
         $this->setBudget($period, $spent + self::RESERVED - 0.000001);
         $this->assertRejectedWith($message);

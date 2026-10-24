@@ -442,7 +442,6 @@
     "tests/Architecture/PintFindingsTest.php": 3,
     "tests/Architecture/PlacementTest.php": 3,
     "tests/Architecture/Policy/CodeLayout.php": 2,
-    "tests/Architecture/Policy/DemoFootprint.php": 1,
     "tests/Architecture/Policy/LayerRules.php": 9,
     "tests/Architecture/Policy/LedgerChecks.php": 4,
     "tests/Architecture/Policy/LoopholeChecks.php": 14,

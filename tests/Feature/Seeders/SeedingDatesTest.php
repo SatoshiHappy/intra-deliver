@@ -11,6 +11,7 @@ use Carbon\CarbonImmutable;
 use Database\Seeders\DatabaseSeeder;
 use Database\Seeders\SeedingDates;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use InvalidArgumentException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Support\TransactionalTestCase;
@@ -20,6 +21,7 @@ use Tests\Support\TransactionalTestCase;
  * Feature テストの流す日は基準の日(phpunit.xml)で、別の流す日は TX の中で全部の表を空にして流し直して確かめる
  * (終わりの巻き戻しで元の初期データに戻る)。
  * 処理の日時は、見本が操作ごとに合わせた時計で書く列(SAMPLE_TIME_COLUMNS。時計を合わせる規則は同じ文書の 1.2)を比べる。
+ * id の無い表は、初期データが入らないことを確かめる(比べる鍵が無いため)。
  */
 final class SeedingDatesTest extends TransactionalTestCase
 {
@@ -189,6 +191,13 @@ final class SeedingDatesTest extends TransactionalTestCase
             where table_schema = current_schema() and data_type = 'date'");
 
         foreach ($columns as $column) {
+            if (! Schema::hasColumn($column->table_name, 'id')) {
+                // id の無い表(AI の費用の繰り越し)は初期データが入らない。入るようになったら id の代わりの鍵で比べる
+                $this->assertSame(0, DB::table($column->table_name)->count(), "{$column->table_name} に初期データが入った");
+
+                continue;
+            }
+
             $values = DB::table($column->table_name)->orderBy('id')->pluck($column->column_name, 'id');
 
             foreach ($values as $id => $value) {

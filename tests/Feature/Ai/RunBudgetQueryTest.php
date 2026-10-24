@@ -4,16 +4,14 @@ namespace Tests\Feature\Ai;
 
 use App\Enums\Ai\AiRunStatus;
 use App\Models\Ai\AiRun;
+use App\Models\Ai\AiSpendingCarryover;
 use App\Queries\Ai\Api\RunBudgetQuery;
 use Carbon\CarbonImmutable;
 use LogicException;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * 予算の区分の状態(docs の 設計/AI/公開の口.md 3 節の「予算の区分の状態」、実行と費用.md 5.2): 期間ごとに「使った額 + その区分の種類の見積もりの上限の最大」が
- * 上限を超える期間を返す(複数なら長い方。ちょうど上限は超えない)。日と月は Asia/Tokyo の暦で切る。設定に無い区分は作りの誤り。
- * 種類の無い区分は使った額だけで見る。見積もりの上限は文章の種類の入力の上限の文字数と出力の上限で見積もった額(下の種類では default = 0.000900)と、
- * 文字起こしの種類の 1 本の長さの上限で見積もった額の最大。
+ * 予算の区分の状態(docs の 設計/AI/公開の口.md 3 節の「予算の区分の状態」、実行と費用.md 5.2)。
  */
 final class RunBudgetQueryTest extends TransactionalTestCase
 {
@@ -118,6 +116,32 @@ final class RunBudgetQueryTest extends TransactionalTestCase
         $this->setLimit('daily_usd', 0.5);
 
         $this->assertNull($this->exceededPeriod('default', CarbonImmutable::parse('2026-10-18 00:30', 'Asia/Tokyo')));
+    }
+
+    /**
+     * 5.2 の使った額のうち繰り越しの分(日・月・累計の切り方と、ほかの区分の分)。
+     */
+    public function test_the_carryover_is_counted_by_its_tokyo_day_for_the_day_the_month_and_the_total(): void
+    {
+        $this->carry('2026-09-30', '1.000000');
+        $this->carry('2026-10-01', '0.250000');
+        $this->carry('2026-10-01', '5.000000', 'transcription');
+        $this->spend('0.250000', CarbonImmutable::parse('2026-10-01 07:00', 'Asia/Tokyo'));
+        $at = CarbonImmutable::parse('2026-10-01 08:00', 'Asia/Tokyo');
+        $expected = [
+            ['daily_usd', 0.5, RunBudgetQuery::DAY],
+            ['monthly_usd', 0.5, RunBudgetQuery::MONTH],
+            ['total_usd', 1.5, RunBudgetQuery::TOTAL],
+        ];
+
+        foreach ($expected as [$period, $spent, $exceeded]) {
+            $this->setLimit($period, $spent + self::CEILING);
+            $this->assertNull($this->exceededPeriod('default', $at), $period);
+
+            $this->setLimit($period, $spent + self::CEILING - 0.000001);
+            $this->assertSame($exceeded, $this->exceededPeriod('default', $at), $period);
+            $this->setLimit($period, 10);
+        }
     }
 
     public function test_a_budget_without_kinds_has_a_ceiling_of_zero(): void
@@ -226,6 +250,11 @@ final class RunBudgetQueryTest extends TransactionalTestCase
             'reserved_cost_usd' => '50.000000',
             'created_at' => ($createdAt ?? CarbonImmutable::now())->utc(),
         ]);
+    }
+
+    private function carry(string $day, string $costUsd, string $budget = 'default'): void
+    {
+        AiSpendingCarryover::query()->insert(['budget' => $budget, 'spent_on' => $day, 'cost_usd' => $costUsd]);
     }
 
     /**

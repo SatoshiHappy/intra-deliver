@@ -54,8 +54,8 @@ final class DemoFootprint
             'DemoServiceProvider::class,',
         ],
         'tests/Architecture/Policy/Modules.php' => [
-            '* Demo = 取り外せるデモユーザー切替(既定オフ。ホームの節の口を実装するので Menu に、守るルートの口を実装するので Authz に依存する。',
-            "'Demo' => ['Master', 'Authz', 'Account', 'Menu'],",
+            '* Demo = 取り外せるデモユーザー切替(既定オフ。ホームの節の口を実装するので Menu に、守るルートの口を実装するので Authz に、',
+            "'Demo' => ['Master', 'Authz', 'Account', 'Menu', 'Reset'],",
         ],
         '.env.example' => [
             'DEMO_ENABLED=false',
@@ -73,9 +73,6 @@ final class DemoFootprint
         'playwright.config.ts' => [
             "import { demoGroups } from './tests/e2e/demo/groups';",
             '...demoGroups,',
-        ],
-        'scripts/deploy/migrate-and-seed' => [
-            '"${dc}" "${env_file}" run --rm --no-deps -T app php artisan db:seed --class=DemoSeeder --force --no-interaction',
         ],
     ];
 }

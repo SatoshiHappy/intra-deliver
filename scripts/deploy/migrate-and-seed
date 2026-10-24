@@ -1,13 +1,14 @@
 #!/usr/bin/env bash
-# 公開用の DB にマイグレーションと初期データを流す(docs の 設計/公開の配備/配備と戻し方.md 6.2 の 6〜7。6.7 の 3 の同じ段もこれで流す)。
+# 公開用の DB にマイグレーションと初期データを流す(docs の 設計/公開の配備/配備と戻し方.md 6.2 の 6〜7。6.7 の作り直しの 4 もこれで流す)。
 #   scripts/deploy/migrate-and-seed <compose.env のパス>
 # 対象は空の DB だけ(初回の配備と、db-data を消した作り直し)。更新の配備(6.3 の 2)は scripts/deploy/dc で migrate だけを流す。
 # 空であることは migrations 表が無いことで確かめる(最初に migrate:status を流す)。表が無いと migrate:status は
 # 「Migration table not found」を出して失敗を返す(Illuminate\Database\Console\Migrations\StatusCommand)。接続の失敗なども失敗を返すので、
 # 終了コードだけでは区別できない。そのため進むのは「失敗し、かつ出力にこの文がある」ときだけで、それ以外は止まる(確かめられないときは進まない)。
-# 前提: app のイメージが compose.env の版で作られ(6.2 の 3)、db が起きてヘルスチェックが通っている(6.2 の 5)。
+# 前提: db が起きてヘルスチェックが通っている。
 # どれも配る版のイメージの一回きりのコンテナで流す(依存のコンテナを起こさない = --no-deps。出力に TTY を割り当てない = -T)。
-# 1 つでも失敗したら止まり、以降を流さない。
+# 初期データは reset:seed が入れる(docs の 設計/公開の配備/毎日の初期化.md 7 節)。
+# 1 つでも失敗したら止まり、以降を流さない(止まった後 = 配備と戻し方.md 6.7)。
 set -euo pipefail
 
 if [ "$#" -ne 1 ]; then
@@ -17,12 +18,13 @@ fi
 
 env_file="$1"
 dc="$(dirname "$0")/dc"
+retry_after_failure="配備と戻し方 6.7 の「migrate-and-seed が途中で失敗した後」の手順で DB を空にしてから流し直してください"
 
 echo "==> 空の DB であることの確認(migrations 表が無いこと)"
 status_output=""
 if status_output="$("${dc}" "${env_file}" run --rm --no-deps -T app php artisan migrate:status --no-interaction 2>&1)"; then
     printf '%s\n' "${status_output}"
-    echo "migrations 表が既にあるため流しません。このスクリプトは空の DB(初回・作り直し)だけに流します。更新の配備は scripts/deploy/dc で migrate だけを流してください。途中で失敗した後に流し直すときは、配備と戻し方 6.7 の作り直しで DB を空にしてから流してください" >&2
+    echo "migrations 表が既にあるため流しません。このスクリプトは空の DB(初回・作り直し)だけに流します。更新の配備は scripts/deploy/dc で migrate だけを流してください。このスクリプトが途中で失敗した後なら、${retry_after_failure}" >&2
     exit 1
 fi
 printf '%s\n' "${status_output}"
@@ -32,13 +34,15 @@ if [[ "${status_output}" != *"Migration table not found"* ]]; then
 fi
 
 echo "==> マイグレーション(拡張 btree_gist もアプリ用ロールで作成されます)"
-"${dc}" "${env_file}" run --rm --no-deps -T app php artisan migrate --force --no-interaction
+if ! "${dc}" "${env_file}" run --rm --no-deps -T app php artisan migrate --force --no-interaction; then
+    echo "マイグレーションが失敗しました。${retry_after_failure}" >&2
+    exit 1
+fi
 
-echo "==> 初期データ(DatabaseSeeder)"
-"${dc}" "${env_file}" run --rm --no-deps -T app php artisan db:seed --force --no-interaction
-
-# DatabaseSeeder からは呼ばない初期データ(利用者の切替のルートのリソースとポリシー)。流さないと切替のルートが 403 になる
-echo "==> 初期データ(利用者の切替)"
-"${dc}" "${env_file}" run --rm --no-deps -T app php artisan db:seed --class=DemoSeeder --force --no-interaction
+echo "==> 初期データ(毎日の初期化と同じ並び)"
+if ! "${dc}" "${env_file}" run --rm --no-deps -T app php artisan reset:seed --no-interaction; then
+    echo "初期データを入れられませんでした。${retry_after_failure}" >&2
+    exit 1
+fi
 
 echo "==> 完了しました"

@@ -2,21 +2,29 @@
 
 namespace Tests\Support;
 
+use Illuminate\Database\Connection;
+use Illuminate\Support\Facades\DB;
 use Tests\Architecture\Engine\Process;
 use Tests\Architecture\Engine\ProcessResult;
 use Tests\Architecture\Engine\TempDirectory;
 use UnexpectedValueException;
 
 /**
- * 公開用のスクリプト(scripts/deploy/dc・migrate-and-seed)を、偽の docker で流すテストが使う共通の道具。DB を使わない。
+ * 公開用のスクリプト(scripts/deploy/ の全部)を、偽の docker で流すテストが使う共通の道具。
  *
- * 一時の場所(build/fixtures の下)に、2 本のスクリプトを写して git でコミットした作業木(work)と、作業木の外の道具の置き場(tools)を作る。
+ * 一時の場所(build/fixtures の下)に、scripts/deploy/ のスクリプトを写して git でコミットした作業木(work)と、作業木の外の道具の置き場(tools)を作る。
  * tools には偽の docker(受け取った引数を calls.log に 1 行ずつ書き、決めた終了コードと出力で終わる)・compose.env を置く。作業木の中に置くと
  * 未コミットの変更の検査で止まるため。偽の docker は PATH の先頭に置いて流す。使うクラスは Tests\TestCase を継承する。
+ * db のコンテナで流すコマンド(dc exec -T db …)をテスト DB に流す偽の docker は {@see self::installDockerRunningDbOnTestDatabase()}。
  */
 trait RunsDeployScripts
 {
     protected const PROJECT_ARGUMENTS = 'compose -p intra-deliver-portfolio-publish';
+
+    private const COMMITTED_CONNECTION = 'deploy_committed';
+
+    /** @var list<string> */
+    private array $committedCleanup = [];
 
     protected string $root;
 
@@ -34,9 +42,9 @@ trait RunsDeployScripts
         mkdir($this->work.'/scripts/deploy', 0777, true);
         mkdir($this->tools, 0777, true);
 
-        foreach (['dc', 'migrate-and-seed'] as $script) {
-            $path = $this->work.'/scripts/deploy/'.$script;
-            copy(base_path('scripts/deploy/'.$script), $path);
+        foreach (glob(base_path('scripts/deploy/*')) ?: [] as $script) {
+            $path = $this->work.'/scripts/deploy/'.basename($script);
+            copy($script, $path);
             chmod($path, 0755);
         }
 
@@ -54,6 +62,14 @@ trait RunsDeployScripts
 
     protected function tearDown(): void
     {
+        foreach ($this->committedCleanup as $statement) {
+            $this->committedConnection()->statement($statement);
+        }
+
+        if (config('database.connections.'.self::COMMITTED_CONNECTION) !== null) {
+            DB::purge(self::COMMITTED_CONNECTION);
+        }
+
         TempDirectory::remove($this->root);
 
         parent::tearDown();
@@ -128,6 +144,61 @@ trait RunsDeployScripts
 
         file_put_contents($this->tools.'/docker', $script);
         chmod($this->tools.'/docker', 0755);
+    }
+
+    /**
+     * db のコンテナで流すコマンドを、この機械でテスト DB に流す偽の docker を置く。受け取った引数は calls.log に書き、
+     * `compose -p … -f … --env-file … exec -T db <コマンド…>` の <コマンド…> をそのまま流す(標準入力も渡す)。ほかの呼び出しは終了 90。
+     * 接続先はコンテナの環境変数の代わりに {@see self::testDatabaseEnvironment()} を流すときに渡す。
+     */
+    protected function installDockerRunningDbOnTestDatabase(): void
+    {
+        $script = "#!/bin/sh\n"
+            .sprintf("printf '%%s\\n' \"\$*\" >> %s\n", escapeshellarg($this->tools.'/calls.log'))
+            ."if [ \"\$8\" != exec ] || [ \"\$9\" != -T ] || [ \"\${10}\" != db ]; then exit 90; fi\n"
+            ."shift 10\n"
+            .'exec "$@"'."\n";
+
+        file_put_contents($this->tools.'/docker', $script);
+        chmod($this->tools.'/docker', 0755);
+    }
+
+    /**
+     * db のコンテナの環境変数(APP_DB_USER・APP_DB_NAME)の代わりにテスト DB を指す変数と、psql の接続先(TCP)。
+     *
+     * @return array<string, string>
+     */
+    protected function testDatabaseEnvironment(): array
+    {
+        $connection = (array) config('database.connections.'.config('database.default'));
+
+        return [
+            'APP_DB_USER' => (string) $connection['username'],
+            'APP_DB_NAME' => (string) $connection['database'],
+            'PGHOST' => (string) $connection['host'],
+            'PGPORT' => (string) $connection['port'],
+            'PGPASSWORD' => (string) $connection['password'],
+        ];
+    }
+
+    /**
+     * テストのトランザクションの外でテスト DB に書く接続(スクリプトの psql は別のセッションなので、確定した行しか見えない)。
+     * 書いた行は {@see self::cleanUpCommitted()} で片付けを予約する。終わりに片付けを流してから接続を閉じる(持っていたセッションの鎖錠も解ける)。
+     */
+    protected function committedConnection(): Connection
+    {
+        if (config('database.connections.'.self::COMMITTED_CONNECTION) === null) {
+            $default = config('database.connections.'.config('database.default'));
+            config(['database.connections.'.self::COMMITTED_CONNECTION => $default]);
+        }
+
+        return DB::connection(self::COMMITTED_CONNECTION);
+    }
+
+    /** テストの終わりに、トランザクションの外で流す片付けの文 */
+    protected function cleanUpCommitted(string $statement): void
+    {
+        $this->committedCleanup[] = $statement;
     }
 
     /**

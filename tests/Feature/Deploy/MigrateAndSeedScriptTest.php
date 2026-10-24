@@ -14,8 +14,12 @@ final class MigrateAndSeedScriptTest extends TestCase
 {
     use RunsDeployScripts;
 
+    /** 止まった後の案内(配備と戻し方 6.7 の、途中で失敗した後に DB を空にしてから流し直す項を指す) */
+    private const RETRY_GUIDANCE = '配備と戻し方 6.7 の「migrate-and-seed が途中で失敗した後」';
+
     /**
-     * (f) 表が無い(migrate:status が失敗し、出力に Migration table not found がある)ときは、続く 3 つが順に流れる。
+     * (f) 表が無い(migrate:status が失敗し、出力に Migration table not found がある)ときは、マイグレーションと初期データ
+     * (毎日の初期化と同じ並びで入れる reset:seed の 1 回)が順に流れる。
      */
     public function test_migrate_and_seed_runs_everything_when_the_migrations_table_is_absent(): void
     {
@@ -27,11 +31,11 @@ final class MigrateAndSeedScriptTest extends TestCase
         $this->assertStringContainsString('Migration table not found', $result->stdout);
 
         $subcommands = $this->subcommandsCalled();
-        $this->assertCount(4, $subcommands);
-        $this->assertSame('run --rm --no-deps -T app php artisan migrate:status --no-interaction', $subcommands[0]);
-        $this->assertSame('run --rm --no-deps -T app php artisan migrate --force --no-interaction', $subcommands[1]);
-        $this->assertStringContainsString('db:seed', $subcommands[2]);
-        $this->assertStringContainsString('db:seed', $subcommands[3]);
+        $this->assertSame([
+            'run --rm --no-deps -T app php artisan migrate:status --no-interaction',
+            'run --rm --no-deps -T app php artisan migrate --force --no-interaction',
+            'run --rm --no-deps -T app php artisan reset:seed --no-interaction',
+        ], $subcommands);
     }
 
     /**
@@ -46,6 +50,7 @@ final class MigrateAndSeedScriptTest extends TestCase
         $this->assertSame(1, $result->exitCode, $result->describe());
         $this->assertCount(1, $this->calls());
         $this->assertStringContainsString('migrate:status', $this->calls()[0]);
+        $this->assertStringContainsString(self::RETRY_GUIDANCE, $result->stderr);
     }
 
     /**
@@ -69,13 +74,12 @@ final class MigrateAndSeedScriptTest extends TestCase
     {
         return [
             'migrate' => ['migrate --force', 2],
-            'first seeder' => ['db:seed --force', 3],
-            'second seeder' => ['--class=', 4],
+            'initial data' => ['reset:seed', 3],
         ];
     }
 
     /**
-     * (i) 途中の 1 つが失敗したら、そこで止まり、以降を流さない。
+     * (i) 途中の 1 つが失敗したら、そこで止まり、以降を流さない。DB を空にしてから流し直す案内を出す。
      */
     #[DataProvider('failingStepsAfterTheCheck')]
     public function test_migrate_and_seed_stops_at_the_failing_step(string $failingNeedle, int $expectedCalls): void
@@ -89,5 +93,6 @@ final class MigrateAndSeedScriptTest extends TestCase
 
         $this->assertSame(1, $result->exitCode, $result->describe());
         $this->assertCount($expectedCalls, $this->calls());
+        $this->assertStringContainsString(self::RETRY_GUIDANCE, $result->stderr);
     }
 }

@@ -5,10 +5,13 @@ namespace Tests\Feature\Demo;
 use App\Http\Controllers\Web\Demo\SwitchUserController;
 use App\Models\Master\User;
 use App\Queries\Account\UserMenuSections;
+use App\Queries\Demo\DemoResetSeeder;
 use App\Queries\Demo\LeadHomeSection;
 use App\Queries\Demo\PeopleHomeSection;
 use App\Queries\Demo\SwitchUserMenuSection;
 use App\Queries\Menu\Api\HomeSections;
+use App\Queries\Reset\Api\ResetSeeder;
+use App\Queries\Reset\InitialDataSeeders;
 use Carbon\CarbonImmutable;
 use Database\Seeders\DemoSeeder;
 use Illuminate\Routing\Route as RoutingRoute;
@@ -97,6 +100,31 @@ final class DemoEnabledTest extends TransactionalTestCase
         $registered = array_map(fn (object $section) => $section::class, iterator_to_array($this->app->tagged(HomeSections::TAG), false));
 
         $this->assertSame([LeadHomeSection::class, PeopleHomeSection::class], array_slice($registered, -2));
+    }
+
+    /**
+     * 毎日の初期化の seeder の名前の口(6.3 の 5): タグに DemoResetSeeder が 1 つあり、返す名前を db:seed --class に渡すと DemoSeeder を指す
+     * (名前空間を省いた名前は Database\Seeders の下 = SeedCommand の解決)。
+     */
+    public function test_tags_its_reset_seeder_that_names_the_seeder(): void
+    {
+        $ours = array_values(array_filter(
+            iterator_to_array($this->app->tagged(ResetSeeder::TAG), false),
+            fn (object $seeder) => $seeder instanceof DemoResetSeeder,
+        ));
+
+        $this->assertCount(1, $ours);
+        $this->assertSame(DemoSeeder::class, 'Database\Seeders\\'.$ours[0]->seederName());
+    }
+
+    /** Reset の初期データの並び(6.4 のオンの行): DatabaseSeeder(名前を付けない db:seed)→ DemoSeeder */
+    public function test_the_initial_data_of_the_reset_is_the_database_seeder_then_the_demo_seeder(): void
+    {
+        $base = ['--force' => true, '--no-interaction' => true];
+
+        $expected = [$base, [...$base, '--class' => 'DemoSeeder']];
+
+        $this->assertSame($expected, app(InitialDataSeeders::class)->seedArguments());
     }
 
     /**

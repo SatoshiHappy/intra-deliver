@@ -23,7 +23,11 @@ final class Modules
      * 認可の読み取りと業務処理を呼ぶので Master・Authz に依存する = docs の 設計/メニュー/認可との結び付け.md 2.1)。
      * Account = 土台の今の利用者(ログイン・ログアウト・カレント組織の切替・共有。ユーザーと所属を読むので Master に依存する。
      * どの土台からも使われないので後ろに置く = docs の 設計/デモユーザー切替/今の利用者.md 5.1)。
-     * Demo = 取り外せるデモユーザー切替(既定オフ。ホームの節の口を実装するので Menu に、守るルートの口を実装するので Authz に依存する。
+     * Reset = 公開の配備の毎日の初期化(全表を空にして初期データを入れ直すコマンド・見張り・初期化の記録。ほかのモジュールに依存しない。
+     * 初期化に加わる口と初期データの seeder の名前の口を持ち、ほかのモジュールが実装する。口を実装するモジュールより前に置く
+     * = docs の 設計/公開の配備/毎日の初期化.md 7 節、設計/業務ツール/モジュール境界.md の「一覧の並び」)。
+     * Demo = 取り外せるデモユーザー切替(既定オフ。ホームの節の口を実装するので Menu に、守るルートの口を実装するので Authz に、
+     * 初期データの seeder の名前の口を実装するので Reset に依存する。
      * どのモジュールも依存先に書かない = docs の 設計/デモユーザー切替/デモの取り付け.md 6.1、設計/ワークフロー/申請の周辺/README.md の「コードのモジュール」)。
      * Notice = 画面内通知(通知の行・自分宛の一覧と既読・行の移り先を答える口。宛先と起こした人の名前をユーザーから引くので Master に依存する。
      * ワークフローと業務データの入れ物が送り手と移り先の実装になる基盤なので、それらより前に置く = docs の 設計/ワークフロー/案件の運用/通知.md の 1 節)。
@@ -37,6 +41,7 @@ final class Modules
      * コメントの宛先に通知を送り、レコードの移り先を答えるので Notice にも依存する = 設計/業務データの入れ物/レコードの共通機能/コメント.md の 3 節)。
      * Ai = LLM の呼び出し口・AI の実行の記録・費用の上限・AI の書き込みの口(依頼者の表示名と有効の確かめに Master、閲覧と書き込みの判定に Authz・Records を使う。
      * 文字起こしの音声の実体を読むので Upload にも依存する = 設計/AI/データと失敗と検査.md 8 節。
+     * 毎日の初期化に加わる口を実装する(費用の繰り越しを書く)ので Reset にも依存する = 設計/AI/実行と費用.md 5.2。
      * ワークフローからも AI を使えるよう Workflow より前、使う基盤の Records の後に置く = docs の 設計/業務ツール/モジュール境界.md の「一覧の並び」・設計/AI/README.md)。
      * Workflow = ワークフロー(名前・対象者の判定・ホームの節・申請フォームのレコードを使うので Master・Authz・Menu・Records に依存し、使う基盤の後に置く = docs の 設計/ワークフロー/README.md の「コードのモジュール」。
      * 申請の一時保存の添付が台帳の行を指すので Upload にも依存する = 設計/業務データの入れ物/レコードの共通機能/README.md の「コードのモジュール」。
@@ -55,11 +60,12 @@ final class Modules
         'Authz' => ['Master'],
         'Menu' => ['Master', 'Authz'],
         'Account' => ['Master'],
-        'Demo' => ['Master', 'Authz', 'Account', 'Menu'],
+        'Reset' => [],
+        'Demo' => ['Master', 'Authz', 'Account', 'Menu', 'Reset'],
         'Notice' => ['Master'],
         'Upload' => ['Master'],
         'Records' => ['Master', 'Authz', 'Menu', 'Notice', 'Upload'],
-        'Ai' => ['Master', 'Authz', 'Upload', 'Records'],
+        'Ai' => ['Master', 'Authz', 'Upload', 'Records', 'Reset'],
         'Workflow' => ['Master', 'Authz', 'Menu', 'Notice', 'Records', 'Upload'],
         'Builtin' => [],
         'Meeting' => ['Master', 'Authz', 'Notice', 'Upload', 'Records', 'Ai', 'Builtin'],

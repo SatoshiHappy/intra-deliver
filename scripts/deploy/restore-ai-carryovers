@@ -1,0 +1,84 @@
+#!/usr/bin/env bash
+# DB をボリュームから作り直した後に、退避から AI の費用の繰り越しを戻す(docs の 設計/公開の配備/配備と戻し方.md 6.7 の作り直しの 5。
+# 数え方の正本 = 設計/AI/実行と費用.md 5.2、式 = app/Queries/Ai/RunSpending.php)。
+#   scripts/deploy/restore-ai-carryovers <compose.env のパス> <退避のファイル>
+# 退避 = 作り直しの 2 で取った pg_dump の出力(既定の平文の形)。出力: 戻した繰り越し(予算の区分ごと)。
+# アプリ用ロールは NOCREATEDB なので、退避の 2 つの表は一時のデータベースでなく pg_temp の表へ入れる。
+# 終了コード: 0 = 成功、2 = 使い方の誤り・退避のファイルが無い、1 = 退避の中身が足りない・繰り越しの表に行が既にある・DB での失敗。
+set -euo pipefail
+
+if [ "$#" -ne 2 ]; then
+    echo "使い方: scripts/deploy/restore-ai-carryovers <compose.env のパス> <退避のファイル>" >&2
+    exit 2
+fi
+
+env_file="$1"
+dump="$2"
+dc="$(dirname "$0")/dc"
+
+if [ ! -f "${dump}" ] || [ ! -r "${dump}" ]; then
+    echo "退避のファイルが見つからないか読めません。作り直しの 2 で取った pg_dump の出力のパスを指定してください" >&2
+    exit 2
+fi
+
+# 退避の確かめ: 2 つの表の COPY の段がちょうど 1 つずつあり、どちらも終わりの行(\.)で閉じている
+if ! awk '
+    copying { if ($0 == "\\.") copying = 0; next }
+    /^COPY public\.ai_runs \([a-z0-9_, "]+\) FROM stdin;$/ { runs++; copying = 1; next }
+    /^COPY public\.ai_spending_carryovers \([a-z0-9_, "]+\) FROM stdin;$/ { carryovers++; copying = 1; next }
+    END { exit !(runs == 1 && carryovers == 1 && !copying) }
+' "${dump}"; then
+    echo "退避の中に ai_runs と ai_spending_carryovers の COPY の段が 1 つずつ揃っていません(pg_dump の既定の平文の形で、繰り越しの表がある版の退避を指定してください)。何も入れていません" >&2
+    exit 1
+fi
+
+# 2 つの表の COPY の段だけを、一時の表への COPY に書き換えて出す(ほかの行は出さない)
+copy_blocks() {
+    awk '
+        copying { print; if ($0 == "\\.") copying = 0; next }
+        /^COPY public\.ai_runs \(/ { sub(/^COPY public\.ai_runs /, "COPY pg_temp.restore_ai_runs "); print; copying = 1; next }
+        /^COPY public\.ai_spending_carryovers \(/ {
+            sub(/^COPY public\.ai_spending_carryovers /, "COPY pg_temp.restore_ai_spending_carryovers "); print; copying = 1; next
+        }
+    ' "${dump}"
+}
+
+restore_sql() {
+    cat <<'SQL'
+\set ON_ERROR_STOP on
+\set VERBOSITY terse
+BEGIN;
+LOCK TABLE public.ai_spending_carryovers IN EXCLUSIVE MODE;
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM public.ai_spending_carryovers) THEN
+        RAISE EXCEPTION '新しい DB の繰り越しの表に行が既にあります(戻すのは作り直した直後の空の表にだけ)';
+    END IF;
+END
+$$;
+CREATE TEMP TABLE restore_ai_runs ON COMMIT DROP AS SELECT * FROM public.ai_runs WITH NO DATA;
+CREATE TEMP TABLE restore_ai_spending_carryovers ON COMMIT DROP AS SELECT * FROM public.ai_spending_carryovers WITH NO DATA;
+SQL
+    # 書き換えに失敗したら終わりの COMMIT を出さない(psql は COMMIT の無いまま入力が終わり、トランザクションは巻き戻る)
+    copy_blocks || return 1
+    cat <<'SQL'
+INSERT INTO public.ai_spending_carryovers (budget, spent_on, cost_usd)
+SELECT budget, spent_on, sum(cost_usd)
+FROM (
+    SELECT budget, spent_on, cost_usd FROM pg_temp.restore_ai_spending_carryovers
+    UNION ALL
+    SELECT budget, (created_at AT TIME ZONE 'Asia/Tokyo')::date, coalesce(cost_usd, reserved_cost_usd)
+    FROM pg_temp.restore_ai_runs WHERE status <> 'queued'
+) AS spent
+GROUP BY budget, spent_on;
+\echo ==> 戻した繰り越し(予算の区分ごと)
+SELECT budget AS "予算の区分", count(*) AS "日の数", sum(cost_usd) AS "額の和(米ドル)"
+FROM public.ai_spending_carryovers GROUP BY budget ORDER BY budget;
+COMMIT;
+SQL
+}
+
+if ! restore_sql | "${dc}" "${env_file}" exec -T db sh -c 'exec psql -X -q --no-password --username="$APP_DB_USER" --dbname="$APP_DB_NAME"'; then
+    echo "繰り越しを戻せませんでした(1 つのトランザクションなので何も入っていません)。上の出力を見て原因を直してから流し直してください" >&2
+    exit 1
+fi

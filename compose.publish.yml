@@ -176,8 +176,9 @@ services:
         depends_on:
             db:
                 condition: service_healthy
-        # 同時に動く 3 つ(schedule:work・schedule:run・定期のコマンド)× memory_limit 96MB + 常駐の余白 96MB
-        mem_limit: 384m
+        # 同時に動くプロセスの最大 = 毎日の初期化の間の 5 つ(schedule:work・初期化を起こした schedule:run・初期化のコマンド・
+        # 次の分の schedule:run・その子の短いコマンド 1 つ)× memory_limit 96MB + 余白 96MB(docs の 設計/公開の配備/構成/README.md 3.2.3)
+        mem_limit: 576m
         logging: *logging
 
     tunnel:

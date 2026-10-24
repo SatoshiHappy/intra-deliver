@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+# 公開用の DB の毎日の初期化の様子を見る(docs の 設計/公開の配備/配備と戻し方.md 6.3 の 5 と 6.7。毎日の初期化.md 4 節)。
+#   scripts/deploy/reset-status <compose.env のパス>
+# 出力: 初期化の鎖錠を持つセッションと、初期化の記録の表 reset_runs の新しい 10 行(時刻は東京)。
+# 読み取りだけで流す。SQL は psql の引数で渡す(標準入力を使わない)。鎖錠の鍵は config/reset.php の lock_key と同じ値。
+# 前提: db が起きている。終了コード: 0 = 成功、2 = 使い方の誤り、1 = 問い合わせの失敗。
+set -euo pipefail
+
+if [ "$#" -ne 1 ]; then
+    echo "使い方: scripts/deploy/reset-status <compose.env のパス>" >&2
+    exit 2
+fi
+
+env_file="$1"
+dc="$(dirname "$0")/dc"
+lock_key=4400000000000000
+
+lock_holders="SELECT a.pid AS \"PID\", a.client_addr AS \"接続元\", a.backend_start AS \"接続した時刻\", a.state AS \"状態\",
+    a.state_change AS \"状態が変わった時刻\"
+FROM pg_locks AS l JOIN pg_stat_activity AS a ON a.pid = l.pid
+WHERE l.locktype = 'advisory' AND l.granted AND l.objsubid = 1
+    AND ((l.classid::bigint << 32) | l.objid::bigint) = ${lock_key}"
+
+recent_runs="SELECT id AS \"行の番号\", reset_on AS \"その日\", trigger AS \"動かし方\", started_at AS \"始めた時刻\",
+    CASE WHEN result IS NULL THEN '閉じていない' WHEN result = 'succeeded' THEN '成功で閉じた' ELSE '失敗で閉じた' END AS \"記録の行\",
+    CASE WHEN reloaded_at IS NULL THEN '無い' ELSE 'ある' END AS \"入れ直しの印\",
+    finished_at AS \"終わりの時刻\"
+FROM reset_runs ORDER BY id DESC LIMIT 10"
+
+if ! "${dc}" "${env_file}" exec -T db sh -c 'exec psql -X -q --no-password --username="$APP_DB_USER" --dbname="$APP_DB_NAME" "$@"' psql \
+    -v ON_ERROR_STOP=1 \
+    -c "SET default_transaction_read_only = on" \
+    -c "SET TIME ZONE 'Asia/Tokyo'" \
+    -c '\pset null (なし)' \
+    -c '\echo ==> 初期化の鎖錠を持つセッション(0 行なら、動いている回は無い)' \
+    -c "${lock_holders}" \
+    -c '\echo ==> 初期化の記録の新しい 10 行' \
+    -c "${recent_runs}"; then
+    echo "問い合わせが失敗しました。db が起きているかを dc ps で確かめてから流し直してください" >&2
+    exit 1
+fi
