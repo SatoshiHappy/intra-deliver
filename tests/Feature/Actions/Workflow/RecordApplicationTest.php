@@ -82,12 +82,12 @@ final class RecordApplicationTest extends TransactionalTestCase
     }
 
     /**
-     * create だけの人は既存のデータから申請できず(403)、read と update だけの人はできる(新規の申請はその逆 = 403)。
+     * create だけの人は既存のデータから申請できず(403)、read と update だけの人は自分が作成者のレコードを申請できる(新規の申請はその逆 = 403)。
      */
     public function test_from_a_record_needs_read_and_update_but_not_create(): void
     {
         [$u0001, $u0003] = [$this->seededUser('u0001'), $this->seededUser('u0003')];
-        $record = $this->projectRecord($u0001);
+        $record = $this->projectRecord($u0003);
         $this->allowOnly(self::PROJECT, RecordModuleAction::Create, $u0001);
         $this->allowOnly(self::PROJECT, RecordModuleAction::Read, $u0003);
         $this->allowOnly(self::PROJECT, RecordModuleAction::Update, $u0003);
@@ -177,7 +177,6 @@ final class RecordApplicationTest extends TransactionalTestCase
         $context = $this->contextOf($u0001);
         $day = $context->date->toDateString();
         $rules = app(ApplicationBaseDate::class);
-        $record = $this->projectRecord($u0001);
         $this->allowOnly(self::PROJECT, RecordModuleAction::Create);
 
         $this->assertSame($day, $rules->resolveFromRecord($context, $flowId, $day)[0]->toDateString());
@@ -186,6 +185,9 @@ final class RecordApplicationTest extends TransactionalTestCase
 
         [$principal, $proxy] = [$this->seededUser('u0015'), $this->seededUser('u0002')];
         $this->addProxy($principal, $proxy, WorkflowProxyKind::Apply, $flowId);
+        $record = Record::factory()->create([
+            'record_module_id' => $this->moduleIdOf(self::PROJECT), 'created_by_user_id' => $principal->id,
+        ]);
         $counts = $this->workflowCounts();
         $later = $this->contextOf($proxy, date: '2026-11-02');
         [$input, $version] = [$this->projectInput(), $record->version()];

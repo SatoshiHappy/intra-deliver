@@ -65,9 +65,9 @@ final class RecordApplicationEntryTest extends TransactionalTestCase
     public function test_the_checks_run_in_the_order_403_404_422(): void
     {
         [$u0001, $u0003] = [$this->seededUser('u0001'), $this->seededUser('u0003')];
-        $held = $this->projectRecord($u0001);
-        $this->applyFromRecord($u0001, $held->id);
-        $rowId = $this->detailRowIds($this->projectRecord($u0001)->id)[0];
+        $held = $this->projectRecord($u0003);
+        $this->applyFromRecord($u0003, $held->id);
+        $rowId = $this->detailRowIds($this->projectRecord($u0003)->id)[0];
         $other = Record::factory()->create(['record_module_id' => $this->moduleIdOf('project_issue')]);
         $missing = 999999999;
         $counts = $this->workflowCounts();

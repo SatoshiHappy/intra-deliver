@@ -83,9 +83,10 @@ final class RecordControllerTest extends TransactionalTestCase
         $this->actingAs(User::query()->where('code', 'u0001')->sole());
 
         $this->get('/records/data/project_issue')->assertOk()->assertInertia(fn (Assert $page) => $page->where('can', ['create' => true]));
+        // 申請書を申請できるのは作成者だけ(docs の 設計/ワークフロー/申請の周辺/既存のデータからの申請/README.md の 1 節)。作成者は u0004
         $this->get("/records/data/project_issue/{$issue->id}")->assertOk()->assertInertia(fn (Assert $page) => $page
             ->where('record.values.project.label', '社内ポータル刷新')
-            ->where('can', ['update' => true, 'delete' => true, 'copy' => true, 'attach' => true, 'apply' => true])
+            ->where('can', ['update' => true, 'delete' => true, 'copy' => true, 'attach' => true, 'apply' => false])
         );
         $this->getJson('/records/data/project/candidates?q=社内')->assertOk();
     }

@@ -146,18 +146,17 @@ class ApplicationFormQuery
      * @param  mixed  $baseDate  クエリ base_date(申請基準日を変えたときの部分再読み込み)
      * @return ApplyForm|null
      *
-     * @throws ModelNotFoundException<WorkflowFlow|Record> フローが無い・レコードが無い・その業務モジュールの親の無いレコードでない・行の判定を通らないとき
+     * @throws ModelNotFoundException<WorkflowFlow|Record> フローが無い・レコードが無い・その業務モジュールの親の無いレコードでない・判定を求める者がいないとき
      * @throws AuthorizationException 自分か代理元のどれも既存のデータからの申請をできないとき(ゲストを含む)
      */
     public function fromRecord(AccessContext $context, string $flowCode, int $recordId, mixed $baseDate = null): ?array
     {
         $this->gate->authorizeRecordApply($context, $flowCode);
         $flow = WorkflowFlow::query()->with('workflowContent.recordModule')->where('code', $flowCode)->firstOrFail();
-        $principalId = $this->recordApplicant($context, $flow->id, null);
+        $moduleCode = $this->moduleOf($flow)->code;
+        $principalId = $this->recordApplicant($context, $flow->id, $moduleCode, $recordId);
         $applicant = $principalId === null ? $context : PrincipalContext::of($context, $principalId);
         $requester = Requester::fromAccessContext($applicant);
-        $moduleCode = $this->moduleOf($flow)->code;
-        $this->recordTargets->requireRecord($requester, $moduleCode, $recordId, $context->date);
 
         if ($this->recordTargets->isHeld($recordId)) {
             return null;
@@ -174,29 +173,21 @@ class ApplicationFormQuery
     }
 
     /**
-     * 既存のデータからの申請の画面の既定の申請者(選び方 = 設計/ワークフロー/案件の運用/画面/案件の画面.md の 6.1 節。候補 = 自分と各代理元を
-     * 1 人ずつ {@see RecordApplyFlows::allows()} で判定した残り = 設計/ワークフロー/申請の周辺/既存のデータからの申請/README.md の 1 節)。
+     * 既存のデータからの申請の画面の既定の申請者 = 判定を求める者。候補は作成者に絞られ多くて 1 人なので、クエリ applicant によらずその人になる
+     * (docs の 設計/ワークフロー/申請の周辺/既存のデータからの申請/README.md の 3 節、設計/ワークフロー/案件の運用/画面/案件の画面.md の 6.1 節)。
      *
-     * @param  int|null  $applicantUserId  クエリ applicant(解釈できない値は呼び手が null にする)
      * @return int|null 選ぶ代理元(自分なら null)
      *
-     * @throws AuthorizationException 候補がいないとき(既存のデータからの申請をできない)
+     * @throws ModelNotFoundException<Record> 候補がいない・候補がレコードを閲覧できない・その業務モジュールの親の無いレコードでないとき
      */
-    public function recordApplicant(AccessContext $context, int $flowId, ?int $applicantUserId): ?int
+    public function recordApplicant(AccessContext $context, int $flowId, string $moduleCode, int $recordId): ?int
     {
         $requester = Requester::fromAccessContext($context);
         $candidates = $this->recordApplyFlows->applicantIds($requester, $flowId, $context->date);
-        $others = array_values(array_diff($candidates, [$context->userId]));
+        $applicantId = $this->recordTargets
+            ->requireApplicant($requester, $candidates, $moduleCode, $recordId, $context->date);
 
-        if (in_array($applicantUserId, $others, true)) {
-            return $applicantUserId;
-        }
-
-        if ($others !== $candidates) {
-            return null;
-        }
-
-        return $others[0] ?? throw new AuthorizationException(CaseEntryGate::NOT_APPLICABLE_MESSAGE);
+        return $applicantId === $context->userId ? null : $applicantId;
     }
 
     /**

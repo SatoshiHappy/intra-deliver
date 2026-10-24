@@ -103,12 +103,12 @@ final class RecordApplicationPageTest extends TransactionalTestCase
     }
 
     /**
-     * read と update だけの人は開ける(create は求めない)。無いレコード・ほかのモジュールのレコード・明細の行は 404。
+     * read と update だけの人は自分が作成者のレコードを開ける(create は求めない)。無いレコード・ほかのモジュールのレコード・明細の行は 404。
      */
     public function test_read_and_update_suffice_and_records_out_of_the_module_are_not_found(): void
     {
-        [$u0001, $u0003] = [$this->seededUser('u0001'), $this->seededUser('u0003')];
-        $record = $this->projectRecord($u0001);
+        $u0003 = $this->seededUser('u0003');
+        $record = $this->projectRecord($u0003);
         $rowId = $this->detailRowIds($record->id)[0];
         $other = Record::factory()->create(['record_module_id' => $this->moduleIdOf('project_issue')]);
         $this->allowOnly(self::PROJECT, RecordModuleAction::Create);

@@ -8,6 +8,7 @@ use App\Enums\Authz\SelectionConditionKind;
 use App\Enums\Records\RecordModuleAction;
 use App\Enums\Workflow\WorkflowProxyKind;
 use App\Models\Master\User;
+use App\Models\Records\Record;
 use App\Models\Records\RecordModule;
 use App\Models\Workflow\WorkflowContent;
 use App\Models\Workflow\WorkflowFlow;
@@ -20,7 +21,7 @@ use App\Queries\Workflow\RecordApplyFlow;
 use App\Queries\Workflow\RecordApplyFlows;
 use App\Support\AccessContext;
 use Carbon\CarbonImmutable;
-use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Tests\Support\BuildsRecordModules;
 use Tests\Support\BuildsWorkflowCases;
 use Tests\Support\RegistersProxies;
@@ -164,39 +165,49 @@ final class RecordApplyFlowsTest extends TransactionalTestCase
     }
 
     /**
-     * 既定の申請者(案件の画面.md の 6.1 節): クエリの代理元が候補にあればその人、自分が候補にあれば自分(null)、ほかは候補の先頭の代理元。
-     * 候補が無ければ 403。
+     * 既定の申請者 = 候補(1 人ずつ allows)のうちレコードの作成者(候補は多くて 1 人なので、案件の画面.md の 6.1 節の選び方はその人になる =
+     * 既存のデータからの申請/README.md の 1 節)。作成者が自分なら null、代理元なら代理元。作成者が候補でない(ほかの人・create だけの代理元)・
+     * 作成者が無いレコードは 404。
      */
-    public function test_the_default_applicant_from_a_record(): void
+    public function test_the_default_applicant_from_a_record_is_the_creator_among_the_applicants(): void
     {
         [$a, $b, $proxy, $u0001] = $this->seededUsers('u0003', 'u0009', 'u0002', 'u0001');
         $actions = [RecordModuleAction::Read, RecordModuleAction::Update];
-        $withSelf = $this->flow('with_self', $actions, [$proxy, $a, $b], 'm_default');
-        $principalsOnly = $this->flow('principals_only', $actions, [$a, $b], 'm_default');
-        $none = $this->flow('none', $actions, [$u0001], 'm_default');
-
-        foreach ([$withSelf, $principalsOnly, $none] as $flow) {
-            $this->addProxy($a, $proxy, WorkflowProxyKind::Apply, $flow->id);
-            $this->addProxy($b, $proxy, WorkflowProxyKind::Apply, $flow->id);
-        }
-
+        $flow = $this->flow('with_self', $actions, [$proxy, $a, $b], 'm_default');
+        $createOnly = $this->flow('create_only', [RecordModuleAction::Create], [$u0001], 'm_default_create');
+        $this->addProxy($a, $proxy, WorkflowProxyKind::Apply, $flow->id);
+        $this->addProxy($b, $proxy, WorkflowProxyKind::Apply, $flow->id);
+        $this->addProxy($u0001, $proxy, WorkflowProxyKind::Apply, $createOnly->id);
         $context = new AccessContext($proxy->id, null, null, self::day(), 'ja');
-        $forms = app(ApplicationFormQuery::class);
-        $default = fn (WorkflowFlow $flow, ?int $query) => $forms->recordApplicant($context, $flow->id, $query);
-        $firstPrincipal = min($a->id, $b->id);
-        $secondPrincipal = max($a->id, $b->id);
+        $default = fn (WorkflowFlow $flow, ?User $creator) => $this->defaultApplicant($context, $flow, $creator);
 
-        $this->assertSame([null, $secondPrincipal, null], [
-            $default($withSelf, null), $default($withSelf, $secondPrincipal), $default($withSelf, $u0001->id),
-        ]);
+        $creators = [$proxy, $a, $b, $u0001, null];
         $this->assertSame(
-            [$firstPrincipal, $secondPrincipal],
-            [$default($principalsOnly, null), $default($principalsOnly, $secondPrincipal)],
+            [null, $a->id, $b->id, '404', '404'],
+            array_map(fn (?User $creator) => $default($flow, $creator), $creators),
         );
-        $applicants = $this->flows()->applicantIds($this->requester($proxy), $withSelf->id, self::day());
-        $this->assertSame([$proxy->id, $firstPrincipal, $secondPrincipal], $applicants);
-        $this->expectException(AuthorizationException::class);
-        $default($none, null);
+        $this->assertSame([$proxy->id, min($a->id, $b->id), max($a->id, $b->id)], $this->flows()
+            ->applicantIds($this->requester($proxy), $flow->id, self::day()));
+        $this->assertSame([[], '404'], [
+            $this->flows()->applicantIds($this->requester($proxy), $createOnly->id, self::day()),
+            $default($createOnly, $u0001),
+        ]);
+    }
+
+    /**
+     * 作成者のレコード(フローの業務モジュール)の既定の申請者(404 は '404')。
+     */
+    private function defaultApplicant(AccessContext $context, WorkflowFlow $flow, ?User $creator): int|string|null
+    {
+        $moduleId = WorkflowContent::query()->findOrFail($flow->workflow_content_id)->record_module_id;
+        $record = Record::factory()->create(['record_module_id' => $moduleId, 'created_by_user_id' => $creator?->id]);
+        $moduleCode = RecordModule::query()->findOrFail($moduleId)->code;
+
+        try {
+            return app(ApplicationFormQuery::class)->recordApplicant($context, $flow->id, $moduleCode, $record->id);
+        } catch (ModelNotFoundException) {
+            return '404';
+        }
     }
 
     private function flows(): RecordApplyFlows

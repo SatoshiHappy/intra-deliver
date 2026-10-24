@@ -35,7 +35,9 @@ final class RecordApplyEntriesPropsTest extends TransactionalTestCase
     {
         $u0001 = $this->seededUser('u0001');
         $project = $this->projectRecord($u0001);
-        $issue = Record::factory()->create(['record_module_id' => $this->moduleIdOf('project_issue')]);
+        $issue = Record::factory()->create([
+            'record_module_id' => $this->moduleIdOf('project_issue'), 'created_by_user_id' => $u0001->id,
+        ]);
         $this->actingAs($u0001);
 
         $this->get("/records/data/project/{$project->id}")->assertOk()->assertInertia(fn (Assert $page) => $page

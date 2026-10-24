@@ -40,7 +40,9 @@ final class RecordApplicationRevisionsTest extends TransactionalTestCase
         $u0001 = $this->seededUser('u0001');
         $record = $this->projectRecord($u0001);
         $unchanged = new ApplicationInput(null, null, new RecordInput($this->projectInput()->record->values));
-        $bare = Record::factory()->create(['record_module_id' => $this->moduleIdOf(self::PROJECT)]);
+        $bare = Record::factory()->create([
+            'record_module_id' => $this->moduleIdOf(self::PROJECT), 'created_by_user_id' => $u0001->id,
+        ]);
 
         $case = $this->applyFromRecord($u0001, $record->id, $unchanged);
         $fromBare = $this->applyFromRecord($u0001, $bare->id);
@@ -76,7 +78,9 @@ final class RecordApplicationRevisionsTest extends TransactionalTestCase
         $u0001 = $this->seededUser('u0001');
         $record = $this->projectRecord($u0001);
         $opened = $record->version();
-        $bare = Record::factory()->create(['record_module_id' => $this->moduleIdOf(self::PROJECT)]);
+        $bare = Record::factory()->create([
+            'record_module_id' => $this->moduleIdOf(self::PROJECT), 'created_by_user_id' => $u0001->id,
+        ]);
         Record::query()->whereKey($bare->id)->update(['updated_at' => null]);
         $this->travel(1)->seconds();
         $rows = [
