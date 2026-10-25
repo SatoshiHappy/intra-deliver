@@ -9,6 +9,7 @@ use App\Queries\Authz\Api\Requester;
 use App\Queries\Records\Api\RecordDisplayQuery;
 use App\Queries\Records\Api\RecordFormQuery;
 use App\Queries\Records\Api\RecordViewAccess;
+use App\Support\MixedValues;
 use DateTimeInterface;
 use LogicException;
 
@@ -101,14 +102,26 @@ class ApplicationTargetValues
         DateTimeInterface $date,
         string $localeCode,
     ): ?array {
-        $reference = $values[$applicationTarget['field']] ?? null;
-        $applicationTargetId = is_array($reference) && is_int($reference['id'] ?? null) ? $reference['id'] : null;
+        $applicationTargetId = $this->applicationTargetIdOf($applicationTarget, $values);
 
         return $applicationTargetId === null
             ? null
             : $this->valuesFor(
                 $requester, $applicationTarget, $applicationDefinition, $applicationTargetId, $date, $localeCode,
             );
+    }
+
+    /**
+     * 申請書のレコードの値から読む申請対象のレコードの id(項目が空なら null)。参照の値の `id` だけを読むので、画面の初期値の形と表示の形のどちらでもよい。
+     *
+     * @param  ApplicationTarget  $applicationTarget
+     * @param  array<string, mixed>  $values
+     */
+    public function applicationTargetIdOf(array $applicationTarget, array $values): ?int
+    {
+        $reference = $values[$applicationTarget['field']] ?? null;
+
+        return is_array($reference) && is_int($reference['id'] ?? null) ? $reference['id'] : null;
     }
 
     /**
@@ -125,7 +138,7 @@ class ApplicationTargetValues
         $details = [];
 
         foreach ($snapshot['details'] as $code => $rows) {
-            $childFields = $this->fieldsByCode($this->arrayOf($fields[$code]['childModule'] ?? null));
+            $childFields = $this->fieldsByCode(MixedValues::arrayOf($fields[$code]['childModule'] ?? null));
             $details[$code] = array_map(
                 fn (array $row): array => ['values' => $this->named($row['values'], $childFields)],
                 $rows,
@@ -158,7 +171,7 @@ class ApplicationTargetValues
      */
     private function optionName(array $field, string $optionCode): ?string
     {
-        foreach ($this->arrayOf($field['options'] ?? null) as $option) {
+        foreach (MixedValues::arrayOf($field['options'] ?? null) as $option) {
             if (is_array($option) && ($option['code'] ?? null) === $optionCode && is_string($option['name'] ?? null)) {
                 return $option['name'];
             }
@@ -175,20 +188,12 @@ class ApplicationTargetValues
     {
         $byCode = [];
 
-        foreach ($this->arrayOf($definition['fields'] ?? null) as $field) {
+        foreach (MixedValues::arrayOf($definition['fields'] ?? null) as $field) {
             if (is_array($field) && is_string($field['code'] ?? null)) {
                 $byCode[$field['code']] = $field;
             }
         }
 
         return $byCode;
-    }
-
-    /**
-     * @return array<array-key, mixed>
-     */
-    private function arrayOf(mixed $value): array
-    {
-        return is_array($value) ? $value : [];
     }
 }

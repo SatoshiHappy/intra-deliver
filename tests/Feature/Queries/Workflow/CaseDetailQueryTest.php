@@ -8,7 +8,6 @@ use App\Models\Master\User;
 use App\Models\Records\Record;
 use App\Models\Records\RecordField;
 use App\Models\Records\RecordModule;
-use App\Models\Records\RecordReference;
 use App\Models\Workflow\WorkflowCase;
 use App\Models\Workflow\WorkflowCaseHistory;
 use App\Models\Workflow\WorkflowCaseNodeTarget;
@@ -30,7 +29,7 @@ use Tests\Support\TransactionalTestCase;
 /**
  * 案件の詳細(docs の 設計/ワークフロー/画面/申請と案件.md 5 節、認可と一覧.md 2 節、業務データとの接続/写しとつながる申請.md 5・6・9 節): 閲覧できない・一時保存は 404、
  * 閲覧の判定より前に業務データの入れ物の読み取りの SQL を出さない、組み立ての後にもう 1 回閲覧を判定する(途中で閲覧を失えば 404)、基本情報・ノード・履歴・
- * can・差戻し先、再申請の差分、最後の提出の後の更新(秒の精度)、関連する案件。A = u0001(申請者)、B = u0002(承認 1)、C = u0003・E = u0005(承認 2 の処理対象者)、D = u0004(関わらない)。
+ * can・差戻し先、再申請の差分、最後の提出の後の更新(秒の精度)(つながる申請は CaseDetailRelatedCasesTest)。A = u0001(申請者)、B = u0002(承認 1)、C = u0003・E = u0005(承認 2 の処理対象者)、D = u0004(関わらない)。
  */
 final class CaseDetailQueryTest extends TransactionalTestCase
 {
@@ -222,37 +221,6 @@ final class CaseDetailQueryTest extends TransactionalTestCase
     }
 
     /**
-     * 関連する案件: 同じレコード → 参照先 → 参照元の順で、同じ案件は先の群だけ。見えない案件・一時保存・自分自身は出ない。群ごとに申請日時の新しい順。
-     */
-    public function test_related_cases_are_grouped_and_filtered_by_visibility(): void
-    {
-        $issues = $this->recordModule('wf_issues');
-        $about = $this->referenceField($issues, 'about', RecordModule::query()->where('code', 'wf_detail')->sole());
-        $back = $this->referenceField($this->targets, 'back', RecordModule::query()->where('code', 'wf_detail')->sole());
-        $record = $this->record();
-        $target = Record::factory()->create(['record_module_id' => $this->targets->id]);
-        $issue = Record::factory()->create(['record_module_id' => $issues->id]);
-        $this->reference($record, $this->project, $target);
-        $this->reference($target, $back, $record);
-        $this->reference($issue, $about, $record);
-        $targetFlow = $this->flowOf($this->targets);
-        $case = $this->appliedCase($record, $this->users['a']);
-        $sameRecord = $this->appliedCase($record, $this->users['a'], completed: true);
-        $older = $this->appliedCase($target, $this->users['a'], completed: true, flow: $targetFlow);
-        $older->update(['applied_at' => '2026-10-01 09:00:00']);
-        $newer = $this->appliedCase($target, $this->users['a'], flow: $targetFlow);
-        $this->appliedCase(Record::factory()->create(['record_module_id' => $this->targets->id]), $this->users['a'], flow: $targetFlow);
-        $this->appliedCase($issue, $this->users['d'], flow: $issueFlow = $this->flowOf($issues));
-        $issueCase = $this->appliedCase($issue, $this->users['a'], completed: true, flow: $issueFlow);
-        WorkflowCase::factory()->draft()->create(['workflow_flow_id' => $targetFlow->id, 'user_id' => $this->users['a']->id]);
-
-        $related = $this->show($this->users['a'], $case->id)['related'];
-
-        $this->assertSame([[$sameRecord->id], [$newer->id, $older->id], [$issueCase->id]], [array_column($related['sameRecord'], 'id'), array_column($related['referenced'], 'id'), array_column($related['referencing'], 'id')]);
-        $this->assertSame(['pullBack', 'reapply', 'withdraw', 'editDraft', 'deleteDraft', 'bulkApprove', 'confirm'], array_keys($related['referenced'][0]['can']));
-    }
-
-    /**
      * @return array<string, mixed>
      */
     private function show(?User $viewer, int $caseId): array
@@ -295,11 +263,6 @@ final class CaseDetailQueryTest extends TransactionalTestCase
     private function record(): Record
     {
         return Record::factory()->create(['record_module_id' => RecordModule::query()->where('code', 'wf_detail')->sole()->id, 'field_values' => [$this->title->id => '件名']]);
-    }
-
-    private function reference(Record $from, RecordField $field, Record $to): void
-    {
-        RecordReference::factory()->create(['record_module_id' => $from->record_module_id, 'record_id' => $from->id, 'record_field_id' => $field->id, 'user_id' => null, 'referenced_record_module_id' => $to->record_module_id, 'referenced_record_id' => $to->id]);
     }
 
     /**

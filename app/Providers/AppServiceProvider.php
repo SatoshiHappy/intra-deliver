@@ -34,6 +34,7 @@ use App\Queries\Workflow\OwnCaseTargetTerm;
 use App\Queries\Workflow\PendingCasesHomeSection;
 use App\Queries\Workflow\ProcessedThisMonthHomeSection;
 use App\Queries\Workflow\ProxyTargetTerm;
+use App\Queries\Workflow\WorkflowApplicationTargetSection;
 use App\Queries\Workflow\WorkflowCountersHomeSection;
 use App\Queries\Workflow\WorkflowFlowResourceTypes;
 use App\Queries\Workflow\WorkflowLeadHomeSection;
@@ -86,7 +87,10 @@ class AppServiceProvider extends ServiceProvider
 
         // 依存の逆転: レコードの詳細のサイドパネルに、後ろのモジュールが節を足す(docs の
         // 設計/業務データの入れ物/レコードの共通機能/詳細の画面/節の口.md の 2 節。並び = この配列の順)。節を足すモジュールが実装をここに足す
-        $this->app->tag([MeetingTranscriptSection::class], RecordShowSections::TAG);
+        $this->app->tag(
+            [MeetingTranscriptSection::class, WorkflowApplicationTargetSection::class],
+            RecordShowSections::TAG,
+        );
 
         // 依存の逆転: 業務の一覧とレコードの詳細に、後ろのモジュールがダイアログを開く操作・札・注を足す(docs の
         // 設計/業務データの入れ物/画面/業務の画面.md の 2.5。並び = この配列の順)。足すモジュールが実装をここに足す

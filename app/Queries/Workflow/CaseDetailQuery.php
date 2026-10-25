@@ -28,7 +28,7 @@ use LogicException;
  *
  * @phpstan-import-type Person from WorkflowPeople
  * @phpstan-import-type History from CaseHistories
- * @phpstan-import-type CaseRow from CaseRows
+ * @phpstan-import-type RelatedGroup from RelatedCases
  * @phpstan-import-type DiagramNode from CaseDiagram
  * @phpstan-import-type DiagramEdge from CaseDiagram
  * @phpstan-import-type Council from CaseCouncils
@@ -41,7 +41,7 @@ use LogicException;
  *     proxyNote: string|null, canAttachOnWithdraw: bool, attachmentLimits: AttachmentLimits|null}
  * @phpstan-type Detail array{case: array<string, mixed>, content: array<string, mixed>, nodes: list<DiagramNode>,
  *     edges: list<DiagramEdge>, councils: list<Council>, histories: list<History>,
- *     related: array{sameRecord: list<CaseRow>, referenced: list<CaseRow>, referencing: list<CaseRow>},
+ *     related: list<RelatedGroup>,
  *     can: array{pullBack: bool, reapply: bool, withdraw: bool, confirm: bool},
  *     nodeActions: list<array<string, mixed>>, pullBackNodes: list<DetailPullBackNode>, casePrincipal: int|null,
  *     proxyNote: string|null,
@@ -97,7 +97,7 @@ class CaseDetailQuery
             'councils' => array_values($councils),
             'histories' => $this->histories
                 ->of($requester, $context->date, $context->localeCode, $histories, $nodes->keyBy('id'), $people),
-            'related' => $this->related->of($requester, $context->date, $context->localeCode, $case, $recordId),
+            'related' => $this->related->of($requester, $context->date, $context->localeCode, $case, $content),
             ...$this->processingOf($requester, $context, $situation, $nodes),
             'confirmations' => $this->confirmationPanel
                 ->of($case, $nodes, $context->userId, $context->date, $context->localeCode),

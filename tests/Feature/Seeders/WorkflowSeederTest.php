@@ -113,18 +113,6 @@ final class WorkflowSeederTest extends TransactionalTestCase
     }
 
     /**
-     * WF-000002(課題)のレコードは WF-000001(計画)のレコードを参照する: 詳細の関連する案件に参照先・参照元として出る。
-     */
-    public function test_the_issue_case_and_the_plan_case_are_related(): void
-    {
-        $issue = $this->show('u0001', 'WF-000002')['related'];
-        $plan = $this->show('u0001', 'WF-000001')['related'];
-
-        $this->assertSame([['WF-000001'], []], [array_column($issue['referenced'], 'number'), array_column($issue['referencing'], 'number')]);
-        $this->assertSame([[], ['WF-000002']], [array_column($plan['referenced'], 'number'), array_column($plan['referencing'], 'number')]);
-    }
-
-    /**
      * WF-000005 の再申請の履歴の差分は予算と終了日(モックの例)。
      */
     public function test_the_reapplication_of_the_fifth_case_changes_the_budget_and_the_end_date(): void

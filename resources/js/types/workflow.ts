@@ -283,11 +283,7 @@ export type WorkflowCaseShowProps = {
     edges: WorkflowDiagramEdge[];
     councils: WorkflowCouncil[];
     histories: WorkflowCaseHistory[];
-    related: {
-        sameRecord: WorkflowCaseRow[];
-        referenced: WorkflowCaseRow[];
-        referencing: WorkflowCaseRow[];
-    };
+    related: { heading: string; cases: WorkflowCaseRow[] }[]; // つながる申請の群(並び・見出し = 業務データとの接続の 6 節。空の群は入れない)
     can: WorkflowCaseCan;
     nodeActions: WorkflowNodeAction[]; // 自分が処理対象者の現在のステップごと
     pullBackNodes: WorkflowCasePullBackNode[]; // 自分か代理元として引戻せるステップ(写した並び。未完了だけ)

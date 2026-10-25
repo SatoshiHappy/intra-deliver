@@ -14,6 +14,7 @@ use App\Queries\Records\Api\RecordDisplayQuery;
 use App\Queries\Records\Api\RecordFormQuery;
 use App\Queries\Records\Api\RecordShowPanelQuery;
 use App\Support\AccessContext;
+use App\Support\MixedValues;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use LogicException;
@@ -110,7 +111,7 @@ class ApplicationFormQuery
         $moduleCode = $this->moduleOf($flow)->code;
         $module = $this->forms->definition($requester, $moduleCode, RecordModuleAction::Create, $context->date);
         $input = $case->draft_input ?? [];
-        $read = $this->forms->draftValues($requester, $moduleCode, $this->arrayOf($input['values'] ?? null), $this->arrayOf($input['details'] ?? null), $context->date, $context->localeCode);
+        $read = $this->forms->draftValues($requester, $moduleCode, MixedValues::arrayOf($input['values'] ?? null), MixedValues::arrayOf($input['details'] ?? null), $context->date, $context->localeCode);
         $initial = ['name' => $this->stringOf($input['name'] ?? null), 'comment' => $this->stringOf($input['comment'] ?? null), 'values' => $read['values'], 'details' => $read['details']];
 
         $date = $this->applicationDate($context, $flow, [$baseDate, $input['base_date'] ?? null]);
@@ -273,7 +274,7 @@ class ApplicationFormQuery
      */
     private function titleFieldOf(array $module): ?string
     {
-        foreach (is_array($module['fields'] ?? null) ? $module['fields'] : [] as $field) {
+        foreach (MixedValues::arrayOf($module['fields'] ?? null) as $field) {
             if (is_array($field) && ($field['isTitle'] ?? false) === true && is_string($field['code'] ?? null)) {
                 return $field['code'];
             }
@@ -290,14 +291,6 @@ class ApplicationFormQuery
     private function moduleOf(WorkflowFlow $flow): RecordModule
     {
         return $flow->workflowContent->recordModule ?? throw new LogicException("フロー {$flow->code} のコンテンツの業務モジュールを読み込んでいない");
-    }
-
-    /**
-     * @return array<array-key, mixed>
-     */
-    private function arrayOf(mixed $value): array
-    {
-        return is_array($value) ? $value : [];
     }
 
     private function stringOf(mixed $value): ?string

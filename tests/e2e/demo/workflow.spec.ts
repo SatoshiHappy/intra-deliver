@@ -349,9 +349,7 @@ test('初期データの見本: 申請者のホームの進行中の申請に、
     await expect(routes.getByRole('link', { name: /^再申請/ })).toHaveCount(0);
 });
 
-test('初期データの見本: 課題の案件に関連する案件、部長の承認待ちを上長が引戻せる', async ({
-    page,
-}) => {
+test('初期データの見本: 部長の承認待ちを上長が引戻せる', async ({ page }) => {
     await openAs(page, 'chief', '/workflow/cases?tab=pending');
 
     await expect(page).toHaveURL('/workflow/cases?tab=pending');
@@ -360,20 +358,6 @@ test('初期データの見本: 課題の案件に関連する案件、部長の
         'page',
     );
     await expect(caseTab(page, '未処理')).toHaveText('未処理3');
-
-    await page
-        .getByRole('table', { name: '未処理の申請' })
-        .getByRole('link', {
-            name: '課題の対応の承認 導入先の部署が決定していない',
-            exact: true,
-        })
-        .click();
-
-    await expect(
-        page
-            .getByRole('table', { name: '参照先のレコードの申請' })
-            .getByText('WF-000001', { exact: true }),
-    ).toBeVisible();
 
     // 引戻しは詳細の見出しから行う(成功は同じ詳細へのリダイレクトで、ページの部品が残る。差戻しの既定が開いた時の候補から作られることを後で確かめる)
     await page.goto('/workflow/cases?tab=processed');

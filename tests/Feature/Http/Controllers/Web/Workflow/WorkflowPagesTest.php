@@ -291,19 +291,7 @@ final class WorkflowPagesTest extends TransactionalTestCase
             ->where('proxyNote', null)
             ->has('confirmations', 2)->where('confirmations.0.people.0.status', 'waiting')
             ->where('case.deadline.dueOn', $this->dueOnOf($case))
-            ->has('related', fn (Assert $related) => $related->has('sameRecord')->has('referenced')->has('referencing'))
-        );
-    }
-
-    public function test_the_case_detail_lists_the_related_cases(): void
-    {
-        $this->actingAsUser('u0001');
-
-        $this->get('/workflow/cases/'.$this->caseNumbered(2))->assertOk()->assertInertia(fn (Assert $page) => $page
-            ->where('related.referenced.0.number', 'WF-000001')
-        );
-        $this->get('/workflow/cases/'.$this->caseNumbered(1))->assertOk()->assertInertia(fn (Assert $page) => $page
-            ->where('related.referencing.0.number', 'WF-000002')
+            ->has('related')
         );
     }
 
