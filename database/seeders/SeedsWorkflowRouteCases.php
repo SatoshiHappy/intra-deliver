@@ -18,22 +18,22 @@ trait SeedsWorkflowRouteCases
     private function createRouteCases(): void
     {
         $base = $this->seedingDay()->toDateString();
-        $ninth = $this->applyPlan('2026-10-07 09:00', 'u0001', 9, '新規顧客開拓の計画を申請します。ご確認をお願いします。', $base);
+        ['caseId' => $ninth] = $this->applyPlan('2026-10-07 09:00', 'u0001', 9, '新規顧客開拓の計画を申請します。ご確認をお願いします。', $base);
         $comment = '計画を確認しました。合議は経理部、総務部、第二営業部の 3 人にお願いします。';
         $this->approveAs('2026-10-08 10:00', 'u0002', $ninth, $comment, ['u0009', 'u0010', 'u0016']);
         $this->approveAs('2026-10-09 11:00', 'u0003', $ninth, '予算が 300 万円以上のため、部長として承認します。');
         $this->approveAs('2026-10-10 13:00', 'u0009', $ninth, '総務部として問題ありません。');
 
-        $tenth = $this->applyPlan('2026-10-11 09:00', 'u0001', 10, null, $base);
+        ['caseId' => $tenth] = $this->applyPlan('2026-10-11 09:00', 'u0001', 10, null, $base);
         $this->approveAs('2026-10-12 10:00', 'u0002', $tenth, null, ['u0009', 'u0010']);
 
-        $eleventh = $this->applyPlan('2026-09-30 09:00', 'u0001', 11, null, $base);
+        ['caseId' => $eleventh] = $this->applyPlan('2026-09-30 09:00', 'u0001', 11, null, $base);
         $this->approveAs('2026-10-01 10:00', 'u0002', $eleventh, null, ['u0009', 'u0010', 'u0016']);
         $this->approveAs('2026-10-02 11:00', 'u0003', $eleventh, null);
         $this->rejectAs('2026-10-03 13:00', 'u0009', $eleventh, '費用対効果の根拠が不足しています。');
         $this->rejectAs('2026-10-03 15:00', 'u0010', $eleventh, '予算の再検討が必要です。');
 
-        $twelfth = $this->applyPlan('2026-09-10 09:00', 'u0001', 12, null, $base);
+        ['caseId' => $twelfth] = $this->applyPlan('2026-09-10 09:00', 'u0001', 12, null, $base);
         $this->approveAs('2026-09-11 10:00', 'u0002', $twelfth, null, ['u0009', 'u0010']);
         $this->approveAs('2026-09-12 11:00', 'u0009', $twelfth, null);
         $this->approveAs('2026-09-12 14:00', 'u0010', $twelfth, null);

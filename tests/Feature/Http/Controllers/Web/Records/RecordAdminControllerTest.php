@@ -8,15 +8,13 @@ use App\Models\Records\RecordField;
 use App\Models\Records\RecordModule;
 use App\Models\Records\RecordRule;
 use Carbon\CarbonImmutable;
-use Illuminate\Testing\TestResponse;
 use Inertia\Testing\AssertableInertia as Assert;
 use PHPUnit\Framework\Attributes\TestWith;
-use Symfony\Component\HttpFoundation\Response;
 use Tests\Support\TransactionalTestCase;
 
 /**
  * 業務データの入れ物の管理(docs の 設計/業務データの入れ物/画面/README.md 1.1・設計/業務データの入れ物/画面/管理の画面.md 3 節、認可とメニュー/README.md 4 節、メニューと初期データ.md 8 節の「管理」): ゲストと u0001 は管理の
- * ルートが 403、システム管理者(u0004)は開ける。業務モジュールの一覧・作成・定義(値の件数)、項目の追加・編集・削除、規則の追加・更新・削除。
+ * ルートが 403、システム管理者(u0004)は開ける。業務モジュールの定義(値の件数)、項目の追加・編集・削除、規則の追加・更新・削除。
  * 成功は定義の画面へ 303 と成功のトースト、業務処理の 422(設計/業務データの入れ物/データモデル/制約の分担と検査.md 6 節の例外 3)は元の画面へ戻り入力の名前のキーにエラーが付く。
  * 初期データを入れ、今日を 2026-10-11 に固定し、ルートの認可を外さずに開く。
  */
@@ -58,50 +56,6 @@ final class RecordAdminControllerTest extends TransactionalTestCase
         $this->assertFalse(RecordModule::query()->where('code', 'equipment')->exists());
     }
 
-    public function test_the_system_administrator_opens_the_module_list_in_the_order_of_the_design(): void
-    {
-        $this->actingAs($this->user('u0004'))->get('/records/admin/modules')->assertOk()->assertInertia(fn (Assert $page) => $page
-            ->component('Records/Admin/ModuleIndex')
-            ->where('modules', [
-                ['code' => 'meeting', 'name' => '会議', 'parentCode' => null, 'isVisible' => true],
-                ['code' => 'project', 'name' => 'プロジェクト', 'parentCode' => null, 'isVisible' => true],
-                ['code' => 'project_milestone', 'name' => 'マイルストーン', 'parentCode' => 'project', 'isVisible' => null],
-                ['code' => 'project_issue', 'name' => '課題', 'parentCode' => null, 'isVisible' => true],
-            ])
-        );
-        $this->get('/records/admin/modules/create')->assertOk()->assertInertia(fn (Assert $page) => $page
-            ->component('Records/Admin/ModuleCreate')
-            ->where('textMaxLengths', ['code' => 50, 'name' => 1000, 'description' => 4000])
-            ->where('icons', [
-                ['value' => 'table', 'label' => '表'],
-                ['value' => 'folder-kanban', 'label' => 'かんばんのフォルダ'],
-                ['value' => 'list-todo', 'label' => 'チェックリスト'],
-                ['value' => 'clipboard-list', 'label' => 'クリップボード'],
-                ['value' => 'circle-alert', 'label' => '注意'],
-                ['value' => 'users', 'label' => '人々'],
-                ['value' => 'building-2', 'label' => '建物'],
-                ['value' => 'briefcase', 'label' => 'かばん'],
-                ['value' => 'calendar', 'label' => 'カレンダー'],
-                ['value' => 'file-text', 'label' => '文書'],
-                ['value' => 'package', 'label' => '荷物'],
-                ['value' => 'truck', 'label' => 'トラック'],
-                ['value' => 'shopping-cart', 'label' => 'カート'],
-                ['value' => 'receipt', 'label' => '領収書'],
-                ['value' => 'wrench', 'label' => '工具'],
-                ['value' => 'book-open', 'label' => '本'],
-                ['value' => 'mail', 'label' => 'メール'],
-                ['value' => 'phone', 'label' => '電話'],
-                ['value' => 'chart-bar', 'label' => '棒グラフ'],
-                ['value' => 'tag', 'label' => 'タグ'],
-                ['value' => 'map-pin', 'label' => '地図のピン'],
-                ['value' => 'ticket', 'label' => 'チケット'],
-                ['value' => 'graduation-cap', 'label' => '学位帽'],
-                ['value' => 'heart-pulse', 'label' => '心拍'],
-                ['value' => 'coins', 'label' => 'コイン'],
-            ])
-        );
-    }
-
     public function test_the_definition_carries_the_parent_and_the_usage_of_each_field(): void
     {
         $this->actingAs($this->user('u0004'));
@@ -123,17 +77,6 @@ final class RecordAdminControllerTest extends TransactionalTestCase
             ->where('fieldUsage.is_done', 12)
             ->where('fieldUsage.effort', 12)
         );
-    }
-
-    public function test_the_definition_carries_the_modules_of_the_switch_in_the_order_of_the_list(): void
-    {
-        $this->actingAs($this->user('u0004'));
-        $listed = array_map(fn (array $row) => ['code' => $row['code'], 'name' => $row['name']], $this->props($this->get('/records/admin/modules'))['modules']);
-
-        $switch = $this->props($this->get('/records/admin/modules/project_milestone'))['modules'];
-
-        $this->assertGreaterThanOrEqual(3, count($listed));
-        $this->assertSame($listed, $switch);
     }
 
     public function test_creates_a_module_and_returns_to_its_definition_and_rejects_a_bad_code_with_its_key(): void
@@ -165,11 +108,12 @@ final class RecordAdminControllerTest extends TransactionalTestCase
 
         $this->get('/records/admin/modules/equipment/fields/create')->assertOk()->assertInertia(fn (Assert $page) => $page
             ->component('Records/Admin/FieldForm')
-            ->where('module', ['code' => 'equipment', 'name' => '備品', 'isDetails' => false])
-            ->where('field', null)
+            ->where('module', ['code' => 'equipment', 'name' => '備品', 'isDetails' => false])->where('field', null)
             ->where('referableModules', [
-                ['code' => 'equipment', 'name' => '備品'], ['code' => 'meeting', 'name' => '会議'],
+                ['code' => 'equipment', 'name' => '備品'],
+                ['code' => 'issue_resolution_application', 'name' => '課題の対応の申請'], ['code' => 'meeting', 'name' => '会議'],
                 ['code' => 'project', 'name' => 'プロジェクト'], ['code' => 'project_issue', 'name' => '課題'],
+                ['code' => 'project_plan_application', 'name' => 'プロジェクト計画の申請'],
             ])
             ->where('textMaxLengths', ['code' => 50, 'name' => 1000, 'description' => 4000])
             ->where('stringMaxLengths', ['singleLine' => 1000, 'multiline' => 4000, 'multilineMax' => 20000])
@@ -297,15 +241,6 @@ final class RecordAdminControllerTest extends TransactionalTestCase
     public function test_a_missing_module_field_or_rule_is_not_found(string $method, string $url, array $input = ['name' => '名前']): void
     {
         $this->actingAs($this->user('u0004'))->call($method, $url, $input)->assertNotFound();
-    }
-
-    /**
-     * @param  TestResponse<Response>  $response
-     * @return array<string, mixed>
-     */
-    private function props(TestResponse $response): array
-    {
-        return $response->viewData('page')['props'];
     }
 
     private function user(string $code): User

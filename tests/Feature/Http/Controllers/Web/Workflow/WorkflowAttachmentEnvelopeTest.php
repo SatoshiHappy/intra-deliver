@@ -4,6 +4,7 @@ namespace Tests\Feature\Http\Controllers\Web\Workflow;
 
 use App\Enums\Records\RecordModuleAction;
 use App\Models\Workflow\WorkflowCase;
+use Database\Seeders\WorkflowApplicationModules;
 use Illuminate\Testing\TestResponse;
 use PHPUnit\Framework\Attributes\DataProvider;
 use stdClass;
@@ -121,7 +122,7 @@ final class WorkflowAttachmentEnvelopeTest extends TransactionalTestCase
         $this->multipartFields('POST', '/workflow/cases/999999999/approve', [])->assertNotFound();
 
         $this->actingAsUser('u0001');
-        $this->deny('project_issue', RecordModuleAction::Create);
+        $this->deny(WorkflowApplicationModules::ISSUE, RecordModuleAction::Create);
         $this->multipartFields('PUT', "/workflow/drafts/{$draft}", [])->assertForbidden();
         $this->multipartFields('POST', "/workflow/drafts/{$draft}/apply", [])->assertForbidden();
         $this->multipartFields('POST', '/workflow/cases/'.$this->caseNumbered(4).'/reapply', [])

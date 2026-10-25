@@ -177,6 +177,7 @@ final class CaseAttachabilityTest extends TransactionalTestCase
 
     private function switchModule(bool $enabled): void
     {
-        RecordModule::query()->where('code', 'project')->update(['is_attachment_enabled' => $enabled]);
+        $module = RecordModule::query()->where('code', $this->projectFormModuleCode());
+        $module->update(['is_attachment_enabled' => $enabled]);
     }
 }

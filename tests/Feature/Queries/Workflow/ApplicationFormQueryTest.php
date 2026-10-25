@@ -39,14 +39,17 @@ final class ApplicationFormQueryTest extends TransactionalTestCase
         $form = $this->formQuery()->create($this->contextOf($this->seededUser('u0001')), 'wf_form');
 
         $this->assertSame(
-            ['new', ['code' => 'wf_form', 'name' => 'フォームの見本', 'description' => null], null, 'project', null, 'name'],
+            [
+                'new', ['code' => 'wf_form', 'name' => 'フォームの見本', 'description' => null], null,
+                $this->projectFormModuleCode(), null, 'name',
+            ],
             [$form['mode'], $form['flow'], $form['case'], $form['module']['code'], $form['initial'], $form['titleField']],
         );
         $this->assertSame(['version' => 1, 'noVersionMessage' => null, 'departmentName' => '東京営業課', 'nodes' => [['name' => '承認1', 'targets' => [$this->person('u0002')], 'blockedReason' => null]], 'dependsOnContent' => false], $form['next']);
+        // 申請書の業務モジュールは見出しを持たない(頭に全項目。明細は見出しに属さない)
         $this->assertSame([
-            [null, ['name', 'department', 'manager', 'status']],
-            ['期間と予算', ['start_date', 'end_date', 'budget']],
-            ['説明', ['summary']],
+            [null, ['project', 'name', 'department', 'manager', 'status', 'start_date', 'end_date', 'budget',
+                'summary']],
         ], array_map(fn (array $group) => [$group['name'], $group['fieldCodes']], $form['headings']));
         $this->assertSame([1000, 4000], [$form['nameMaxLength'], $form['commentMaxLength']]);
         $this->assertNull($form['recordId']);
@@ -188,7 +191,7 @@ final class ApplicationFormQueryTest extends TransactionalTestCase
             $this->assertThrows(fn () => $this->formQuery()->reapply($this->contextOf($viewer), $caseId), ModelNotFoundException::class);
         }
 
-        $this->deny('project', RecordModuleAction::Update);
+        $this->deny($this->projectFormModuleCode(), RecordModuleAction::Update);
         $this->assertThrows(fn () => $this->formQuery()->reapply($this->contextOf($u0001), $case->id), AuthorizationException::class);
     }
 
@@ -201,7 +204,7 @@ final class ApplicationFormQueryTest extends TransactionalTestCase
         $this->createFlow('wf_form', 'フォームの見本');
         $u0001 = $this->contextOf($this->seededUser('u0001'));
         $draftId = app(CreateDraft::class)->execute($u0001, 'wf_form', new DraftInput(null, null, [], []));
-        $this->deny('project', RecordModuleAction::Update);
+        $this->deny($this->projectFormModuleCode(), RecordModuleAction::Update);
 
         $this->assertThrows(fn () => app(CaseEntryGate::class)->authorizeReapply($u0001, $draftId), AuthorizationException::class);
         $this->assertThrows(fn () => $this->formQuery()->reapply($u0001, $draftId), ModelNotFoundException::class);

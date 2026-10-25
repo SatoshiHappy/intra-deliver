@@ -33,11 +33,51 @@ final class RecordModuleMenuItemsTest extends TransactionalTestCase
         $response = $this->get(route('menu.sitemap'));
 
         $this->assertSame(
-            ['global-nav-main-records-project_issue', 'global-nav-main-records-meeting'],
+            [
+                'global-nav-main-records-project_issue', 'global-nav-main-records-meeting',
+                'global-nav-main-records-project_plan_application',
+                'global-nav-main-records-issue_resolution_application',
+            ],
             $this->recordItemCodes($response, 'globalNavigation'),
         );
         $this->assertSame(
-            ['sitemap-main-records-project_issue', 'sitemap-main-records-meeting'],
+            [
+                'sitemap-main-records-project_issue', 'sitemap-main-records-meeting',
+                'sitemap-main-records-project_plan_application', 'sitemap-main-records-issue_resolution_application',
+            ],
+            $this->recordItemCodes($response, 'groups'),
+        );
+    }
+
+    /**
+     * グループ「ワークフロー」の申請書の業務モジュールのアイテムも、置き場によらず同じ判定で隠れる(docs の 設計/ワークフロー/認可と一覧.md の 6 節)。
+     */
+    public function test_hides_the_item_of_an_application_module_also_in_the_group_workflow(): void
+    {
+        $this->deny('project_plan_application', RecordModuleAction::Read);
+
+        $response = $this->get(route('menu.sitemap'));
+
+        $this->assertSame(
+            ['global-nav-workflow-records-data-index-issue-resolution-application'],
+            $this->recordItemCodes($response, 'globalNavigation', '-workflow'),
+        );
+        $this->assertSame(
+            ['sitemap-workflow-records-data-index-issue-resolution-application'],
+            $this->recordItemCodes($response, 'groups', '-workflow'),
+        );
+        $this->assertSame(
+            [
+                'global-nav-main-records-project', 'global-nav-main-records-project_issue',
+                'global-nav-main-records-meeting', 'global-nav-main-records-issue_resolution_application',
+            ],
+            $this->recordItemCodes($response, 'globalNavigation'),
+        );
+        $this->assertSame(
+            [
+                'sitemap-main-records-project', 'sitemap-main-records-project_issue', 'sitemap-main-records-meeting',
+                'sitemap-main-records-issue_resolution_application',
+            ],
             $this->recordItemCodes($response, 'groups'),
         );
     }
@@ -51,10 +91,17 @@ final class RecordModuleMenuItemsTest extends TransactionalTestCase
         $this->deny('project_issue', RecordModuleAction::Read);
         $after = $this->get(route('menu.sitemap'));
 
-        $all = ['sitemap-main-records-project', 'sitemap-main-records-project_issue', 'sitemap-main-records-meeting'];
+        $applications = [
+            'sitemap-main-records-project_plan_application',
+            'sitemap-main-records-issue_resolution_application',
+        ];
+        $all = [
+            'sitemap-main-records-project', 'sitemap-main-records-project_issue', 'sitemap-main-records-meeting',
+            ...$applications,
+        ];
         $this->assertSame($all, $this->recordItemCodes($before, 'groups'));
         $this->assertSame(
-            ['sitemap-main-records-project', 'sitemap-main-records-meeting'],
+            ['sitemap-main-records-project', 'sitemap-main-records-meeting', ...$applications],
             $this->recordItemCodes($after, 'groups'),
         );
     }
@@ -87,7 +134,11 @@ final class RecordModuleMenuItemsTest extends TransactionalTestCase
 
         $response->assertOk();
         $this->assertSame(
-            ['global-nav-main-records-project_issue', 'global-nav-main-records-meeting'],
+            [
+                'global-nav-main-records-project_issue', 'global-nav-main-records-meeting',
+                'global-nav-main-records-project_plan_application',
+                'global-nav-main-records-issue_resolution_application',
+            ],
             $this->recordItemCodes($response, 'globalNavigation'),
         );
         $this->assertSame('project_issue', $response->inertiaProps('module.code'));
@@ -105,19 +156,19 @@ final class RecordModuleMenuItemsTest extends TransactionalTestCase
     }
 
     /**
-     * グループ「業務」の、業務の一覧のアイテムのメニュー ID(並びの順)。
+     * グループ(既定は「業務」。メニュー ID の末尾で選ぶ)の、業務の一覧のアイテムのメニュー ID(並びの順)。
      * グループの一覧の prop = globalNavigation(サイドバー)か groups(サイトマップ)。
      *
      * @param  TestResponse<Response>  $response
      * @return list<string>
      */
-    private function recordItemCodes(TestResponse $response, string $prop): array
+    private function recordItemCodes(TestResponse $response, string $prop, string $groupSuffix = '-main'): array
     {
         $groups = $response->inertiaProps($prop);
         $this->assertIsArray($groups);
-        $isMain = fn (mixed $group) => str_ends_with((string) data_get($group, 'code'), '-main');
-        $main = array_values(array_filter($groups, $isMain));
-        $codes = $this->codesOf(data_get($main, '0.children'));
+        $isGroup = fn (mixed $group) => str_ends_with((string) data_get($group, 'code'), $groupSuffix);
+        $group = array_values(array_filter($groups, $isGroup));
+        $codes = $this->codesOf(data_get($group, '0.children'));
 
         return array_values(array_filter($codes, fn (string $code) => str_contains($code, '-records-')));
     }

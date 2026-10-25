@@ -40,7 +40,7 @@ trait SeedsWorkflowOperationSamples
     private function createOperationCases(): void
     {
         $base = $this->seedingDay()->toDateString();
-        $thirteenth = $this->applyPlan('2026-10-06 09:20', 'u0001', 13, '新製品の発売計画を申請します。', $base);
+        ['caseId' => $thirteenth] = $this->applyPlan('2026-10-06 09:20', 'u0001', 13, '新製品の発売計画を申請します。', $base);
         $this->approveAs('2026-10-06 10:30', 'u0002', $thirteenth, '内容を確認しました。', ['u0009', 'u0010', 'u0016']);
         $managerNodeId = $this->targetNodeIdOf($thirteenth, 'u0003');
         $this->hold->execute(
@@ -49,14 +49,14 @@ trait SeedsWorkflowOperationSamples
         );
 
         $contact = new CaseContact([$this->userId('u0012')], '来週から販促の準備を始めます。ご確認ください。');
-        $fourteenth = $this->applyPlan('2026-10-12 09:00', 'u0001', 14, null, $base, $contact);
+        ['caseId' => $fourteenth] = $this->applyPlan('2026-10-12 09:00', 'u0001', 14, null, $base, $contact);
         $this->approveAs('2026-10-13 10:00', 'u0002', $fourteenth, null, ['u0009', 'u0010']);
 
         $issue = $this->issueInput('在庫システムの表示不具合', $this->projectIdOf('経費精算の電子化'), 'u0010', 'high', '2026-10-31');
         $this->applyIssue('2026-10-10 09:00', 'u0009', $issue, '在庫システムの不具合の対応を、山田 恵さんの代理で申請します。', 'u0010');
 
         $issue = $this->issueInput('ログイン画面の文言修正', $this->projectIdOf('社内ポータル刷新'), 'u0011', 'medium', null);
-        $sixteenth = $this->applyIssue('2026-10-09 09:00', 'u0001', $issue);
+        ['caseId' => $sixteenth] = $this->applyIssue('2026-10-09 09:00', 'u0001', $issue);
         $chiefNodeId = $this->targetNodeIdOf($sixteenth, 'u0002');
         $this->transfer->execute(
             $this->contextAt('2026-10-10 15:20', 'u0002'), $sixteenth, $this->revisionOf($sixteenth), $chiefNodeId,

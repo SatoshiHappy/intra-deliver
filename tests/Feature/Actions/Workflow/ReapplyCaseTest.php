@@ -70,7 +70,8 @@ final class ReapplyCaseTest extends TransactionalTestCase
                 $revision->user_id,
             ],
         );
-        $milestones = (string) RecordField::query()->where('code', 'milestones')->sole()->id;
+        $formFields = RecordField::query()->whereRelation('recordModule', 'code', $this->projectFormModuleCode());
+        $milestones = (string) $formFields->where('code', 'milestones')->sole()->id;
         $this->assertSame('object', DB::scalar(
             "select jsonb_typeof(snapshot->'details'->?->0->'references') from record_revisions where id = ?",
             [$milestones, $revision->id],
@@ -123,7 +124,7 @@ final class ReapplyCaseTest extends TransactionalTestCase
         $u0001 = $this->seededUser('u0001');
         $waiting = $this->applyAs($u0001);
         $case = $this->waitingForReapplication();
-        $this->deny('project', RecordModuleAction::Update);
+        $this->deny($this->projectFormModuleCode(), RecordModuleAction::Update);
         $counts = $this->workflowCounts();
 
         foreach ([$waiting, $case] as $target) {
@@ -158,7 +159,7 @@ final class ReapplyCaseTest extends TransactionalTestCase
     {
         $u0001 = $this->seededUser('u0001');
         $case = $this->waitingForReapplication();
-        $update = fn () => app(UpdateRecord::class)->execute($this->contextOf($u0001), 'project', (int) $case->record_id, new RecordInput(['name' => '画面から']), Record::query()->findOrFail($case->record_id)->version());
+        $update = fn () => app(UpdateRecord::class)->execute($this->contextOf($u0001), $this->projectFormModuleCode(), (int) $case->record_id, new RecordInput(['name' => '画面から']), Record::query()->findOrFail($case->record_id)->version());
 
         $this->assertSame(['record' => '申請済みのため変更できません'], $this->validationErrors($update));
 

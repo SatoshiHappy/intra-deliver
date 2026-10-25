@@ -56,13 +56,16 @@ class MenuSeeder extends Seeder
 
     /**
      * グループ(どのカテゴリにも同じものを置く。「業務」main のグループ ID は {@see WorkMenuGroup} の値に限る): グループ ID の接尾辞 => [表示名(ja), 表示名(en)(ルートのメニューの表示名), 並び(ルートの sort_number),
-     * ゲストユーザと認証済みユーザに read を許すか, アイテム(並びの順に、ITEMS のルートの名前)]
+     * ゲストユーザと認証済みユーザに read を許すか, アイテム(並びの順に、ITEMS のルートの名前), その後に並べる申請書の業務モジュールのアイテム(コード)]
      */
     private const GROUPS = [
-        'main' => ['業務', 'Work', 0, true, ['menu.home', 'master.organization-chart', 'menu.sitemap']],
-        'admin' => ['管理', 'Administration', 100, false, ['authz.overview', 'records.admin.modules.index', 'records.admin.categories.index']],
+        'main' => ['業務', 'Work', 0, true, ['menu.home', 'master.organization-chart', 'menu.sitemap'], []],
+        'admin' => ['管理', 'Administration', 100, false, ['authz.overview', 'records.admin.modules.index', 'records.admin.categories.index'], []],
         // ワークフロー(並び 50 = 業務の後・管理の前。ルートのリソースと許可は WorkflowSeeder が作る = docs の 設計/ワークフロー/認可と一覧.md 6 節)
-        'workflow' => ['ワークフロー', 'Workflow', 50, true, ['workflow.flows.index', 'workflow.cases.index']],
+        'workflow' => [
+            'ワークフロー', 'Workflow', 50, true, ['workflow.flows.index', 'workflow.cases.index'],
+            [WorkflowApplicationModules::PLAN, WorkflowApplicationModules::ISSUE],
+        ],
     ];
 
     /**
@@ -79,6 +82,9 @@ class MenuSeeder extends Seeder
         'workflow.flows.index' => ['/workflow/flows', '申請する', 'Apply', 'send'],
         'workflow.cases.index' => ['/workflow/cases', '申請一覧', 'Application list', 'inbox'],
     ];
+
+    /** 申請書の業務モジュールのアイテムが指すルートの名前(業務の一覧) */
+    private const RECORD_LIST_ROUTE = 'records.data.index';
 
     /** ホームの主な操作のカテゴリ・グループ ID・グループの表示名(ja, en)(カテゴリ home_quick_actions_pc にだけ置く。並び 0) */
     private const QUICK_ACTIONS_CATEGORY = 'home_quick_actions_pc';
@@ -185,6 +191,50 @@ class MenuSeeder extends Seeder
     }
 
     /**
+     * グループのアイテム(ITEMS のルートの並びの順に、続けて申請書の業務モジュールのアイテム)。
+     *
+     * @param  list<string>  $routeNames
+     * @param  list<string>  $moduleCodes
+     */
+    private function addItems(int $menuId, string $groupCode, array $routeNames, array $moduleCodes): void
+    {
+        foreach ($routeNames as $sortNumber => $name) {
+            [$path, $itemJa, $itemEn, $icon] = self::ITEMS[$name];
+            $this->addMenu->execute($menuId, new MenuItemInput($groupCode.'-'.str_replace('.', '-', $name), $path, ['ja' => $itemJa, 'en' => $itemEn], sortNumber: $sortNumber, icon32: $icon));
+        }
+
+        $this->addApplicationModuleItems($menuId, $groupCode, $moduleCodes, count($routeNames));
+    }
+
+    /**
+     * 申請書の業務モジュールの一覧へのアイテム。業務モジュールを作る業務処理が足す「業務」のアイテムと別に、ワークフローの持ち物として置く
+     * (docs の 設計/ワークフロー/申請の周辺/メニューと導線.md の 1.1 節)。表示名とアイコンは「業務」のアイテムに合わせる。ID は ITEMS の規則に、
+     * 業務モジュールのコードの _ を - に換えて続ける(ほかのアイテムの ID と同じく - だけで書く = 設計/ワークフロー/認可と一覧.md の 6 節)。
+     *
+     * @param  list<string>  $moduleCodes
+     */
+    private function addApplicationModuleItems(
+        int $menuId,
+        string $groupCode,
+        array $moduleCodes,
+        int $firstSortNumber,
+    ): void {
+        $sortNumber = $firstSortNumber;
+        $routeSegment = str_replace('.', '-', self::RECORD_LIST_ROUTE);
+
+        foreach ($moduleCodes as $moduleCode) {
+            $module = WorkflowApplicationModules::MODULES[$moduleCode];
+            $code = implode('-', [$groupCode, $routeSegment, str_replace('_', '-', $moduleCode)]);
+            $displayNames = ['ja' => $module['name'], 'en' => $module['name']];
+            $item = new MenuItemInput(
+                $code, "/records/data/{$moduleCode}", $displayNames,
+                sortNumber: $sortNumber++, icon32: $module['icon']->value,
+            );
+            $this->addMenu->execute($menuId, $item);
+        }
+    }
+
+    /**
      * グローバルナビ(PC)とサイトマップ(PC)のそれぞれに、グループ「業務」「ワークフロー」「管理」とそのアイテム。
      *
      * @return list<int> ゲストユーザと認証済みユーザに read を許すグループのリソースグループの id
@@ -196,14 +246,11 @@ class MenuSeeder extends Seeder
         foreach (self::GROUP_CATEGORIES as $categoryCode => [$prefix, $workGroup]) {
             $category = MenuGroupCategory::query()->where('code', $categoryCode)->sole();
 
-            foreach (self::GROUPS as $suffix => [$ja, $en, $groupSortNumber, $isForEveryone, $routeNames]) {
+            foreach (self::GROUPS as $suffix => [$ja, $en, $groupSortNumber, $isForEveryone, $routeNames, $modules]) {
                 $groupCode = $suffix === 'main' ? $workGroup->value : "{$prefix}-{$suffix}";
                 $group = $this->createGroup->execute($category->id, new MenuFolderInput($groupCode, ['ja' => $ja, 'en' => $en], sortNumber: $groupSortNumber));
 
-                foreach ($routeNames as $sortNumber => $name) {
-                    [$path, $itemJa, $itemEn, $icon] = self::ITEMS[$name];
-                    $this->addMenu->execute($group->menu_id, new MenuItemInput($groupCode.'-'.str_replace('.', '-', $name), $path, ['ja' => $itemJa, 'en' => $itemEn], sortNumber: $sortNumber, icon32: $icon));
-                }
+                $this->addItems($group->menu_id, $groupCode, $routeNames, $modules);
 
                 if ($isForEveryone) {
                     $ids[] = AuthzResourceGroup::query()->where('code', MenuResourceKind::Group->resourceGroupCode($groupCode))->sole()->id;

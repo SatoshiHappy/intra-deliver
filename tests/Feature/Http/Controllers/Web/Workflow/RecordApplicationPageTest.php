@@ -156,7 +156,7 @@ final class RecordApplicationPageTest extends TransactionalTestCase
         $this->actingAs($u0001);
 
         $this->get($this->formUrl($record->id))
-            ->assertRedirect("/records/data/project/{$record->id}")
+            ->assertRedirect('/records/data/'.self::PROJECT."/{$record->id}")
             ->assertInertiaFlash('toast', ['type' => 'error', 'message' => RecordApplicationSteps::HELD]);
     }
 

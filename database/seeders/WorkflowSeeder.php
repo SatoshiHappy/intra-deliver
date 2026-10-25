@@ -9,6 +9,7 @@ use App\Actions\Authz\CreateRoutePrefixResourceGroup;
 use App\Actions\Authz\CreateRouteResource;
 use App\Actions\Authz\FindOrCreateSingleConditionSubjectGroup;
 use App\Actions\Master\FillsAllLocales;
+use App\Actions\Records\Api\CreateRecord;
 use App\Actions\Workflow\AddRouteVersion;
 use App\Actions\Workflow\ApplyCase;
 use App\Actions\Workflow\ApproveCase;
@@ -40,7 +41,6 @@ use App\Models\Workflow\WorkflowCaseNode;
 use App\Support\AccessContext;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Seeder;
-use LogicException;
 
 /**
  * ワークフローの初期データ(docs の 設計/ワークフロー/ルートの深さ/初期データ.md。中身の正本はこの seeder、設計の値 = 2〜4 節)。RecordsSeeder の後に 1 回入れる前提。
@@ -51,7 +51,8 @@ use LogicException;
  *
  * 見本(代理 4・案件 17・確認)は操作ごとに時計をその操作の時刻に合わせて業務処理を通し、全部の後に時計を戻す({@see SeedingClock}。
  * 設計/ワークフロー/案件の運用/初期データ.md 1.2・4 節)。判定の入力は操作する人ごとの AccessContext(接続元・選んだ組織なし、基準日 = 操作の日、ロケール ja)。
- * 申請の案件名は空で渡して既定にする(docs の 設計/ワークフロー/初期データ.md 4 節)。業務データは RecordsSeeder のプロジェクトを参照する。
+ * 申請の案件名は空で渡して既定にする(docs の 設計/ワークフロー/初期データ.md 4 節)。定義の前に申請書の業務モジュール 2 つを作る({@see WorkflowApplicationModules})。
+ * 見本の申請は申請対象のレコードをデータハブ(プロジェクト・課題)に作り、それを申請対象にした申請書で申請する({@see BuildsWorkflowSampleRecords})。
  *
  * 先頭に、接頭辞のリソースグループ 6・ルートのリソース 22 と、各ルートのゲストユーザ・認証済みユーザへの execute の許可
  * (44 = 設計/ワークフロー/ルートの深さ/初期データ.md 5 節の 38 と、一括承認・一括確認・利用者の候補の 6 =
@@ -126,10 +127,10 @@ class WorkflowSeeder extends Seeder
         'workflow.target-values' => ['申請対象の値', 'Target values'],
     ];
 
-    /** コンテンツ: コード => [業務モジュールのコード, 名前] */
+    /** コンテンツ: コード => [申請書の業務モジュールのコード, 名前](申請対象の項目 = 申請書の業務モジュールの申請対象の項目 = {@see WorkflowApplicationModules}) */
     private const CONTENTS = [
-        'project_plan' => ['project', 'プロジェクト計画'],
-        'issue_resolution' => ['project_issue', '課題の対応'],
+        'project_plan' => [WorkflowApplicationModules::PLAN, 'プロジェクト計画'],
+        'issue_resolution' => [WorkflowApplicationModules::ISSUE, '課題の対応'],
     ];
 
     /** ルートのノード(位置の順): [コード, 名前, 種類, 処理対象者の条件の種類, 相手のコード, 表示名(ja), 表示名(en)] */
@@ -172,12 +173,15 @@ class WorkflowSeeder extends Seeder
         private HoldCase $hold,
         private TransferCase $transfer,
         private ConfirmCase $confirm,
+        private WorkflowApplicationModules $applicationModules,
+        private CreateRecord $createRecord,
     ) {}
 
     public function run(): void
     {
         $this->createRoutes();
         $this->flowResources->createSet();
+        $this->applicationModules->create();
         $this->createDefinitions();
         SeedingClock::restoring(function () {
             $this->createProxies();
@@ -216,7 +220,7 @@ class WorkflowSeeder extends Seeder
     private function createDefinitions(): void
     {
         foreach (self::CONTENTS as $code => [$moduleCode, $name]) {
-            $this->createContent->execute($moduleCode, $code, $name);
+            $this->createContent->execute($moduleCode, $code, $name, WorkflowApplicationModules::applicationTargetFieldOf($moduleCode));
         }
 
         $nodes = array_map(
@@ -273,11 +277,6 @@ class WorkflowSeeder extends Seeder
     private function revisionOf(int $caseId): int
     {
         return WorkflowCase::query()->findOrFail($caseId)->revision;
-    }
-
-    private function recordIdOf(int $caseId): int
-    {
-        return WorkflowCase::query()->findOrFail($caseId)->record_id ?? throw new LogicException("案件 {$caseId} がレコードを指していない");
     }
 
     /**

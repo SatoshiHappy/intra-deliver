@@ -7,6 +7,7 @@ use App\Actions\Workflow\SendBackCase;
 use App\Enums\Workflow\WorkflowAction;
 use App\Enums\Workflow\WorkflowCaseState;
 use App\Models\Records\Record;
+use App\Models\Records\RecordField;
 use App\Models\Workflow\WorkflowCase;
 use App\Models\Workflow\WorkflowCaseEdge;
 use Tests\Support\CatchesValidationErrors;
@@ -41,10 +42,15 @@ final class CaseReapplyOnRoutesTest extends TransactionalTestCase
 
     /**
      * どの辺の条件も偽になる値(予算が空)の再申請は 422 case。業務データの入れ物の更新も巻き戻り、レコードの値・件数・案件の状態・改訂番号・ノードは再申請の前のまま。
+     * 初期データの申請書は予算が必須で、空は必須の誤りが先に返る(docs の 設計/ワークフロー/ルートの深さ/初期データ.md の 3.2 節)。
+     * この検査のためにだけ、テストの中で予算を必須でなくする。
      */
     public function test_a_reapplication_where_no_branch_condition_holds_is_rejected_and_the_record_update_is_rolled_back(): void
     {
         $case = $this->sentBackFromTheManager();
+        RecordField::query()->where('code', 'budget')
+            ->whereRelation('recordModule', 'code', $this->projectFormModuleCode())
+            ->update(['is_required' => false]);
         $record = Record::query()->findOrFail($case->record_id);
         $before = [$record->field_values, $this->workflowCounts(), $case->refresh()->state, $this->revisionOf($case), $this->shape($case), $this->taken($case)];
 

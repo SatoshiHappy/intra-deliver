@@ -60,6 +60,7 @@ final class ShareGlobalNavigationTest extends TransactionalTestCase
 
     /**
      * 初期データのゲストのグローバルナビ(業務・ワークフロー。ワークフローは並び 50 = 業務の後・管理の前)。
+     * 申請書の業務モジュール 2 つは、「業務」の末尾とワークフローの末尾の両方に出る。
      *
      * @return list<array<string, mixed>>
      */
@@ -78,6 +79,16 @@ final class ShareGlobalNavigationTest extends TransactionalTestCase
                     'code' => 'global-nav-main-records-meeting', 'type' => 'item', 'name' => '会議', 'icon' => 'users',
                     'href' => '/records/data/meeting', 'isExternal' => false,
                 ],
+                [
+                    'code' => 'global-nav-main-records-project_plan_application', 'type' => 'item',
+                    'name' => 'プロジェクト計画の申請', 'icon' => 'file-text',
+                    'href' => '/records/data/project_plan_application', 'isExternal' => false,
+                ],
+                [
+                    'code' => 'global-nav-main-records-issue_resolution_application', 'type' => 'item',
+                    'name' => '課題の対応の申請', 'icon' => 'clipboard-list',
+                    'href' => '/records/data/issue_resolution_application', 'isExternal' => false,
+                ],
             ],
         ], [
             'code' => 'global-nav-workflow',
@@ -85,6 +96,16 @@ final class ShareGlobalNavigationTest extends TransactionalTestCase
             'children' => [
                 ['code' => 'global-nav-workflow-workflow-flows-index', 'type' => 'item', 'name' => '申請する', 'icon' => 'send', 'href' => '/workflow/flows', 'isExternal' => false],
                 ['code' => 'global-nav-workflow-workflow-cases-index', 'type' => 'item', 'name' => '申請一覧', 'icon' => 'inbox', 'href' => '/workflow/cases', 'isExternal' => false],
+                [
+                    'code' => 'global-nav-workflow-records-data-index-project-plan-application', 'type' => 'item',
+                    'name' => 'プロジェクト計画の申請', 'icon' => 'file-text',
+                    'href' => '/records/data/project_plan_application', 'isExternal' => false,
+                ],
+                [
+                    'code' => 'global-nav-workflow-records-data-index-issue-resolution-application', 'type' => 'item',
+                    'name' => '課題の対応の申請', 'icon' => 'clipboard-list',
+                    'href' => '/records/data/issue_resolution_application', 'isExternal' => false,
+                ],
             ],
         ]];
     }

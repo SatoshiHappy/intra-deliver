@@ -117,13 +117,13 @@ final class ProxyApplicationTest extends TransactionalTestCase
         $onlyProxy = $this->draftFor($a, null);
         $onlyPrincipal = $this->draftFor($a, null);
 
-        $this->allowOnly('project', RecordModuleAction::Create, $b);
+        $this->allowOnly($this->projectFormModuleCode(), RecordModuleAction::Create, $b);
         $rejected = [
             $this->outcomeOf(fn () => $this->applyDraft($b, $onlyProxy)),
             $this->outcomeOf(fn () => $this->overwrite($b, $onlyProxy)),
         ];
         $this->deleteDraft($b, $onlyProxy);
-        $this->allowOnly('project', RecordModuleAction::Create, $a);
+        $this->allowOnly($this->projectFormModuleCode(), RecordModuleAction::Create, $a);
         $applied = $this->applyDraft($b, $onlyPrincipal);
 
         $this->assertSame(['403', '403'], $rejected);
@@ -139,9 +139,9 @@ final class ProxyApplicationTest extends TransactionalTestCase
         [$a, $b] = $this->users();
         $this->addProxy($a, $b, WorkflowProxyKind::Apply, $this->createFlow());
 
-        $this->allowOnly('project', RecordModuleAction::Create, $a);
+        $this->allowOnly($this->projectFormModuleCode(), RecordModuleAction::Create, $a);
         $applied = $this->applyFor($b, $a);
-        $this->allowOnly('project', RecordModuleAction::Create, $b);
+        $this->allowOnly($this->projectFormModuleCode(), RecordModuleAction::Create, $b);
         $counts = $this->workflowCounts();
         $rejected = $this->outcomeOf(fn () => $this->applyFor($b, $a));
 
@@ -163,9 +163,9 @@ final class ProxyApplicationTest extends TransactionalTestCase
         $reapply = fn () => app(ReapplyCase::class)
             ->execute($this->contextOf($b), $case->id, $this->revisionOf($case), $this->projectInput(), $a->id);
 
-        $this->allowOnly('project', RecordModuleAction::Update, $b);
+        $this->allowOnly($this->projectFormModuleCode(), RecordModuleAction::Update, $b);
         $rejected = $this->outcomeOf($reapply);
-        $this->allowOnly('project', RecordModuleAction::Update, $a);
+        $this->allowOnly($this->projectFormModuleCode(), RecordModuleAction::Update, $a);
         $reapply();
 
         $this->assertSame('403', $rejected);

@@ -24,7 +24,8 @@ use Tests\Support\TransactionalTestCase;
  * 設計/業務データの入れ物/データモデル/制約の分担と検査.md 6 節の例外 3): 同じトランザクションでリソース・8 件のポリシー・「業務」の 2 つのアイテムができる。
  * 業務モジュールの icon に入力のアイコン(無ければ table)が入り、
  * 2 つのアイテムの icon_32 はその写し。アイテムの並びは作った順
- * (グループごとに、業務モジュールのアイテムの最大 + 10。最初は 100。初期データのプロジェクト 100・課題 110 の次は 120)。セット・グループが無ければ拒み、何も残らない。
+ * (グループごとに、業務モジュールのアイテムの最大 + 10。最初は 100。初期データのプロジェクト 100・課題 110・会議 120・申請書の業務モジュール 2 つ
+ * 130・140 の次は 150)。セット・グループが無ければ拒み、何も残らない。
  */
 final class CreateRecordModuleTest extends TransactionalTestCase
 {
@@ -66,10 +67,13 @@ final class CreateRecordModuleTest extends TransactionalTestCase
             'read 認証済みユーザ', 'create 認証済みユーザ', 'update 認証済みユーザ', 'delete 認証済みユーザ',
         ], $this->policiesOn($group->id));
         $this->assertSame([
-            ['global-nav-main-records-equipment', 'global-nav-main', '/records/data/equipment', 'table', 130, ['備品', '備品']],
-            ['sitemap-main-records-equipment', 'sitemap-main', '/records/data/equipment', 'table', 130, ['備品', '備品']],
+            ['global-nav-main-records-equipment', 'global-nav-main', '/records/data/equipment', 'table', 150, ['備品', '備品']],
+            ['sitemap-main-records-equipment', 'sitemap-main', '/records/data/equipment', 'table', 150, ['備品', '備品']],
         ], $this->itemsOf('equipment'));
-        $this->assertSame([100, 100, 110, 110], Menu::query()->where('code', 'like', '%-records-project%')->orderBy('sort_number')->pluck('sort_number')->all());
+        // 前からあるアイテムの並びは変わらない(プロジェクト 100・課題 110・プロジェクト計画の申請 130 の、2 つのグループの分)
+        $items = Menu::query()->where('code', 'like', '%-records-project%');
+        $sortNumbers = $items->orderBy('sort_number')->pluck('sort_number');
+        $this->assertSame([100, 100, 110, 110, 130, 130], $sortNumbers->all());
     }
 
     public function test_the_returned_module_carries_the_column_defaults_without_a_reload(): void

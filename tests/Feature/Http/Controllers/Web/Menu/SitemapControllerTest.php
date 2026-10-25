@@ -33,6 +33,14 @@ final class SitemapControllerTest extends TransactionalTestCase
                         'code' => 'sitemap-main-records-meeting', 'type' => 'item', 'name' => '会議', 'icon' => 'users',
                         'href' => '/records/data/meeting', 'isExternal' => false,
                     ],
+                    $this->applicationItem(
+                        'sitemap-main-records-project_plan_application',
+                        'project_plan_application', 'プロジェクト計画の申請', 'file-text',
+                    ),
+                    $this->applicationItem(
+                        'sitemap-main-records-issue_resolution_application',
+                        'issue_resolution_application', '課題の対応の申請', 'clipboard-list',
+                    ),
                 ],
             ], [
                 'code' => 'sitemap-workflow',
@@ -40,6 +48,14 @@ final class SitemapControllerTest extends TransactionalTestCase
                 'children' => [
                     ['code' => 'sitemap-workflow-workflow-flows-index', 'type' => 'item', 'name' => '申請する', 'icon' => 'send', 'href' => '/workflow/flows', 'isExternal' => false],
                     ['code' => 'sitemap-workflow-workflow-cases-index', 'type' => 'item', 'name' => '申請一覧', 'icon' => 'inbox', 'href' => '/workflow/cases', 'isExternal' => false],
+                    $this->applicationItem(
+                        'sitemap-workflow-records-data-index-project-plan-application',
+                        'project_plan_application', 'プロジェクト計画の申請', 'file-text',
+                    ),
+                    $this->applicationItem(
+                        'sitemap-workflow-records-data-index-issue-resolution-application',
+                        'issue_resolution_application', '課題の対応の申請', 'clipboard-list',
+                    ),
                 ],
             ]])
         );
@@ -65,5 +81,18 @@ final class SitemapControllerTest extends TransactionalTestCase
                 ],
             ])
         );
+    }
+
+    /**
+     * 申請書の業務モジュールの一覧へのアイテム(サイトマップの props の形)。
+     *
+     * @return array<string, mixed>
+     */
+    private function applicationItem(string $code, string $moduleCode, string $name, string $icon): array
+    {
+        return [
+            'code' => $code, 'type' => 'item', 'name' => $name, 'icon' => $icon,
+            'href' => "/records/data/{$moduleCode}", 'isExternal' => false,
+        ];
     }
 }

@@ -17,7 +17,7 @@ use Tests\Support\TransactionalTestCase;
  * ゲストと認証済みに execute を許す(AuthorizationQuery::allowsUri で確かめる = FormRequest の 403 と取り違えない)、このモジュールのポリシーが 54 件
  * (ルートの深さ/認可と一覧.md 4.1 = 処理対象者の候補の 2 件と、設計/ワークフロー/案件の運用/認可と一覧.md の 4 節 = 一括承認・一括確認・利用者の候補・
  * 保留・保留解除・振替・確認の 14 件と、設計/ワークフロー/申請の周辺/初期データ.md の 3 節 = 写しの値の入口の 2 件を足した)、
- * ゲストと u0001 のサイドバーとサイトマップに「ワークフロー」の 2 アイテム(並びは業務の後・管理の前)。初期データを入れ、ルートの認可を外さない。
+ * ゲストと u0001 のサイドバーとサイトマップに「ワークフロー」の 4 アイテム(申請する・申請一覧・申請書の業務モジュール 2 つ。並びは業務の後・管理の前)。初期データを入れ、ルートの認可を外さない。
  */
 final class WorkflowRouteAuthorizationTest extends TransactionalTestCase
 {
@@ -83,12 +83,24 @@ final class WorkflowRouteAuthorizationTest extends TransactionalTestCase
             $this->actingAs(User::query()->where('code', $userCode)->sole());
         }
 
+        $item = fn (string $code, string $name, string $icon, string $href) => [
+            'code' => $code, 'type' => 'item', 'name' => $name, 'icon' => $icon, 'href' => $href, 'isExternal' => false,
+        ];
+        // 申請書の業務モジュール 2 つのアイテムが続く(docs の 設計/ワークフロー/認可と一覧.md の 6 節)
         $workflow = fn (string $prefix) => [
             'code' => "{$prefix}-workflow",
             'name' => 'ワークフロー',
             'children' => [
-                ['code' => "{$prefix}-workflow-workflow-flows-index", 'type' => 'item', 'name' => '申請する', 'icon' => 'send', 'href' => '/workflow/flows', 'isExternal' => false],
-                ['code' => "{$prefix}-workflow-workflow-cases-index", 'type' => 'item', 'name' => '申請一覧', 'icon' => 'inbox', 'href' => '/workflow/cases', 'isExternal' => false],
+                $item("{$prefix}-workflow-workflow-flows-index", '申請する', 'send', '/workflow/flows'),
+                $item("{$prefix}-workflow-workflow-cases-index", '申請一覧', 'inbox', '/workflow/cases'),
+                $item(
+                    "{$prefix}-workflow-records-data-index-project-plan-application", 'プロジェクト計画の申請', 'file-text',
+                    '/records/data/project_plan_application',
+                ),
+                $item(
+                    "{$prefix}-workflow-records-data-index-issue-resolution-application", '課題の対応の申請', 'clipboard-list',
+                    '/records/data/issue_resolution_application',
+                ),
             ],
         ];
 

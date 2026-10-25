@@ -33,9 +33,10 @@ use Tests\Support\TransactionalTestCase;
 
 /**
  * ワークフローの初期データ(docs の 設計/ワークフロー/ルートの深さ/初期データ.md 7 節の検査。見せるもの = 設計/ワークフロー/初期データ.md 4 節を追従させたもの): 定義の件数・版の期間と状態・
- * 一本道 A の版の中身、案件の見本 17 の状態・現在のノード・履歴、関連する案件、再申請の差分、未完了の案件のレコードの持ち主、ルートのリソース。
+ * 一本道 A の版の中身、案件の見本 17 の状態・現在のノード・履歴、再申請の差分、未完了の案件のレコードの持ち主、ルートのリソース。
  * 版 3(分岐 B)の中身と足した見本の細部は {@see WorkflowSeederRouteDepthTest}、案件の運用の見本は {@see WorkflowSeederOperationSamplesTest}、
- * 利用者ごとのタブは {@see WorkflowSeederTabsTest}。初期データは DatabaseSeeder が 1 回入れたもの(流し直さない)。
+ * 利用者ごとのタブは {@see WorkflowSeederTabsTest}、申請書の業務モジュールと見本の申請対象は {@see WorkflowSeederApplicationModulesTest}・
+ * {@see WorkflowSeederApplicationTargetsTest}。初期データは DatabaseSeeder が 1 回入れたもの(流し直さない)。
  */
 final class WorkflowSeederTest extends TransactionalTestCase
 {
@@ -60,8 +61,8 @@ final class WorkflowSeederTest extends TransactionalTestCase
             WorkflowContent::query()->count(), WorkflowFlowVersion::query()->count(), WorkflowRouteNode::query()->count(), WorkflowRouteEdge::query()->count(), WorkflowRouteSendBack::query()->count(),
         ]);
         $this->assertSame([
-            ['project_plan', 'プロジェクト計画の承認', 'project_plan', 'project', 10, 'department accounting', [[1, '2025-04-01', '2026-04-01', true], [2, '2026-04-01', '2026-10-01', false], [3, '2026-10-01', null, false]]],
-            ['issue_resolution', '課題の対応の承認', 'issue_resolution', 'project_issue', 20, 'company_post manager', [[1, '2026-04-01', null, false]]],
+            ['project_plan', 'プロジェクト計画の承認', 'project_plan', 'project_plan_application', 10, 'department accounting', [[1, '2025-04-01', '2026-04-01', true], [2, '2026-04-01', '2026-10-01', false], [3, '2026-10-01', null, false]]],
+            ['issue_resolution', '課題の対応の承認', 'issue_resolution', 'issue_resolution_application', 20, 'company_post manager', [[1, '2026-04-01', null, false]]],
         ], $flows);
         $this->assertSame([WorkflowSeeder::DATES['plan_version_1'], WorkflowSeeder::DATES['plan_version_2'], WorkflowSeeder::DATES['plan_version_3'], WorkflowSeeder::DATES['issue_version_1']], array_map(fn (array $version) => $version[1], [...$flows[0][6], ...$flows[1][6]]));
 

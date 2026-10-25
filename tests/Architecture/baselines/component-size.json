@@ -80,7 +80,7 @@
     "tests/e2e/demo/authz.spec.ts (無名)": 157,
     "tests/e2e/demo/records-admin.spec.ts (ファイル)": 1210,
     "tests/e2e/demo/records-admin.spec.ts (無名)": [
-        93, 92, 90, 84, 65, 57, 55, 51
+        93, 92, 90, 83, 65, 57, 55, 51
     ],
     "tests/e2e/demo/records-corrections.spec.ts (ファイル)": 759,
     "tests/e2e/demo/records-corrections.spec.ts (無名)": [74, 67, 51, 51],

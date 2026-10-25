@@ -112,12 +112,12 @@ async function flowTable(page: Page) {
 }
 
 /**
- * 業務データの入れ物のプロジェクトの一覧から、筋の中で申請したプロジェクトの詳細を開く。
+ * 申請書の業務モジュール「プロジェクト計画の申請」の一覧から、筋で申請した申請書の詳細を開く(docs の 設計/ワークフロー/初期データ.md の 3 節)。
  */
 async function openProjectRecord(page: Page) {
-    await page.goto('/records/data/project');
+    await page.goto('/records/data/project_plan_application');
     await page
-        .getByRole('region', { name: 'プロジェクトの一覧' })
+        .getByRole('region', { name: 'プロジェクト計画の申請の一覧' })
         .getByRole('link', { name: PROJECT_NAME, exact: true })
         .click();
     await expect(
@@ -614,7 +614,7 @@ test('申請者が一時保存すると一時保存のタブの件数が 1 増�
     ).toBeVisible();
     await expect(
         page
-            .getByRole('form', { name: 'プロジェクトの入力' })
+            .getByRole('form', { name: 'プロジェクト計画の申請の入力' })
             .getByRole('button', { name: '更新', exact: true }),
     ).toBeDisabled();
 });

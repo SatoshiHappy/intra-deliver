@@ -88,10 +88,12 @@ final class RecordApplicationCreatorPageTest extends TransactionalTestCase
         $counts = $this->workflowCounts();
         $this->actingAs($u0001);
 
-        $this->get("/records/data/project/{$record->id}")->assertOk()->assertInertia(fn (Assert $page) => $page
+        $detail = '/records/data/'.self::PROJECT."/{$record->id}";
+
+        $this->get($detail)->assertOk()->assertInertia(fn (Assert $page) => $page
             ->where('can.apply', true)->has('applyEntries', 2)->whereNot('hold', null));
         $this->get($this->formUrl($record->id))
-            ->assertRedirect("/records/data/project/{$record->id}")
+            ->assertRedirect('/records/data/'.self::PROJECT."/{$record->id}")
             ->assertInertiaFlash('toast', ['type' => 'error', 'message' => RecordApplicationSteps::HELD]);
         $this->postJson('/workflow/flows/'.self::FLOW_CODE.'/apply', $this->payload($record))->assertStatus(422)
             ->assertJsonPath('errors', ['record' => [RecordApplicationSteps::HELD]]);

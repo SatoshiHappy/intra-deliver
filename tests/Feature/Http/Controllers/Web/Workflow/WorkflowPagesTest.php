@@ -8,6 +8,7 @@ use App\Queries\Workflow\CaseDeadlines;
 use App\Queries\Workflow\WorkflowPeople;
 use App\Support\AccessContext;
 use Carbon\CarbonImmutable;
+use Database\Seeders\WorkflowApplicationModules;
 use Database\Seeders\WorkflowSeeder;
 use Inertia\Testing\AssertableInertia as Assert;
 use LogicException;
@@ -44,8 +45,8 @@ final class WorkflowPagesTest extends TransactionalTestCase
         $this->actingAsUser('u0001');
         $this->get('/workflow/flows')->assertOk()->assertInertia(fn (Assert $page) => $page
             ->where('flows', [
-                ['code' => 'project_plan', 'name' => 'プロジェクト計画の承認', 'description' => 'プロジェクトの担当・期間・予算とマイルストーンの計画を、上長と部長の承認で決めます。', 'moduleName' => 'プロジェクト'],
-                ['code' => 'issue_resolution', 'name' => '課題の対応の承認', 'description' => 'プロジェクトで起きた課題の対応方針を、上長と部長の承認で決めます。', 'moduleName' => '課題'],
+                ['code' => 'project_plan', 'name' => 'プロジェクト計画の承認', 'description' => 'プロジェクトの担当・期間・予算とマイルストーンの計画を、上長と部長の承認で決めます。', 'moduleName' => 'プロジェクト計画の申請'],
+                ['code' => 'issue_resolution', 'name' => '課題の対応の承認', 'description' => 'プロジェクトで起きた課題の対応方針を、上長と部長の承認で決めます。', 'moduleName' => '課題の対応の申請'],
             ])
         );
     }
@@ -60,7 +61,7 @@ final class WorkflowPagesTest extends TransactionalTestCase
             ->where('flow.code', 'project_plan')
             ->where('flow.name', 'プロジェクト計画の承認')
             ->where('case', null)
-            ->where('module.code', 'project')
+            ->where('module.code', 'project_plan_application')
             ->where('initial', null)
             ->where('titleField', 'name')
             ->where('baseDate', CarbonImmutable::today(AccessContext::TIMEZONE)->toDateString())
@@ -135,8 +136,8 @@ final class WorkflowPagesTest extends TransactionalTestCase
     public function test_the_draft_form_is_403_for_who_cannot_apply_before_the_state_is_judged(): void
     {
         $this->actingAsUser('u0001');
-        $this->deny('project_issue', RecordModuleAction::Create);
-        $this->deny('project', RecordModuleAction::Create);
+        $this->deny(WorkflowApplicationModules::ISSUE, RecordModuleAction::Create);
+        $this->deny(WorkflowApplicationModules::PLAN, RecordModuleAction::Create);
 
         $this->get('/workflow/drafts/'.$this->seededDraft().'/edit')->assertForbidden();
         $this->get('/workflow/drafts/'.$this->caseNumbered(4).'/edit')->assertForbidden();
@@ -191,7 +192,7 @@ final class WorkflowPagesTest extends TransactionalTestCase
         $this->actingAsUser('u0001');
         $this->get('/workflow/cases/'.$this->seededDraft().'/reapply')->assertNotFound();
 
-        $this->deny('project', RecordModuleAction::Update);
+        $this->deny(WorkflowApplicationModules::PLAN, RecordModuleAction::Update);
         $this->get('/workflow/cases/'.$this->caseNumbered(4).'/reapply')->assertForbidden();
     }
 
@@ -268,7 +269,7 @@ final class WorkflowPagesTest extends TransactionalTestCase
             ->where('case.currentSummary', ['state' => 'waiting', 'name' => '課長の承認'])
             ->where('case.baseDate', WorkflowSeeder::DATES['stage2_plan_base_date'])
             ->where('case.version', 2)
-            ->where('content.module.code', 'project')
+            ->where('content.module.code', 'project_plan_application')
             ->where('content.record.values.budget', 350)
             ->where('content.updatedAfterSubmission', false)
             ->has('nodes', 3)

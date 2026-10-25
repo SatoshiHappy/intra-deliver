@@ -7,11 +7,12 @@ use App\Actions\Records\Api\RecordInput;
 use App\Models\Records\Record;
 use App\Models\Records\RecordField;
 use App\Models\Records\RecordModule;
+use App\Support\AccessContext;
 use LogicException;
 
 /**
- * {@see WorkflowSeeder} の案件の見本が登録・参照する業務データ(計画の案件のプロジェクトの値と、RecordsSeeder のプロジェクトを名前で引く)。
- * 使う側は departmentId()・userId() を持つ。
+ * {@see WorkflowSeeder} の案件の見本が登録・参照する業務データ(計画の案件のプロジェクトの値、見本の申請対象と申請書の入力、RecordsSeeder のプロジェクトを名前で引く)。
+ * 使う側はレコードの登録の業務処理(createRecord)と departmentId()・userId() を持つ。
  */
 trait BuildsWorkflowSampleRecords
 {
@@ -47,6 +48,40 @@ trait BuildsWorkflowSampleRecords
         ], ['milestones' => array_map(fn (array $row) => new RecordDetailRowInput(values: [
             'name' => $row[0], 'due_date' => SeedingDates::day($row[1]), 'effort' => $row[2], 'is_done' => $row[3],
         ]), $milestones)]);
+    }
+
+    /**
+     * 見本の申請対象のレコードを、申請者(代理のとき代理元)の判定の入力でデータハブに作り(docs の 設計/ワークフロー/初期データ.md の 4 節。
+     * データハブのレコードは後で書かない)、そのレコードの id と、それを申請対象にした申請書の入力を返す。
+     *
+     * @return array{applicationTargetId: int, record: RecordInput}
+     */
+    private function withNewApplicationTarget(
+        AccessContext $principal,
+        string $applicationModule,
+        RecordInput $values,
+    ): array {
+        $applicationTargetModule = WorkflowApplicationModules::applicationTargetModuleOf($applicationModule);
+        $applicationTargetId = $this->createRecord->execute($principal, $applicationTargetModule, $values);
+
+        return [
+            'applicationTargetId' => $applicationTargetId,
+            'record' => $this->applicationInputOf($applicationModule, $values, $applicationTargetId),
+        ];
+    }
+
+    /**
+     * 申請書の入力 = 申請対象と同じ入力(値と明細の行)と申請対象の項目。申請書の業務モジュールは申請対象のすべての項目を同じコード・同じ型で持つので、
+     * 写しの規則(設計/ワークフロー/申請の周辺/既存のデータからの申請/申請対象からの申請.md の 10.1)の結果と同じになる(seeder は読み取りの層に依存できない)。
+     */
+    private function applicationInputOf(
+        string $applicationModule,
+        RecordInput $values,
+        int $applicationTargetId,
+    ): RecordInput {
+        $applicationTargetField = WorkflowApplicationModules::applicationTargetFieldOf($applicationModule);
+
+        return new RecordInput([$applicationTargetField => $applicationTargetId, ...$values->values], $values->details);
     }
 
     /**

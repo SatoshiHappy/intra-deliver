@@ -96,7 +96,7 @@ final class DeleteCaseFormRecordTest extends TransactionalTestCase
     {
         $first = $this->applyWithParts();
         $second = $this->applyWithParts();
-        $field = $this->referenceField(RecordModule::query()->where('code', 'project')->sole());
+        $field = $this->referenceField(RecordModule::query()->where('code', $this->projectFormModuleCode())->sole());
         $this->refer(Record::query()->findOrFail($first->record_id), $field, (int) $second->record_id);
         $this->refer(Record::query()->findOrFail($second->record_id), $field, (int) $first->record_id);
         $before = [$this->snapshot($first), $this->snapshot($second)];
@@ -161,11 +161,11 @@ final class DeleteCaseFormRecordTest extends TransactionalTestCase
     }
 
     /**
-     * 業務モジュールに足す、業務モジュール project を指す他モジュール参照の項目。
+     * 業務モジュールに足す、テストのフローの申請書の業務モジュールを指す他モジュール参照の項目(申請書どうしが互いを指す)。
      */
     private function referenceField(RecordModule $module): RecordField
     {
-        $project = RecordModule::query()->where('code', 'project')->sole();
+        $project = RecordModule::query()->where('code', $this->projectFormModuleCode())->sole();
 
         return RecordField::factory()->reference()->createOne([
             'record_module_id' => $module->id,

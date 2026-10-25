@@ -32,6 +32,7 @@ final class WorkflowContentTargetMigrationTest extends TransactionalTestCase
     public function test_up_on_a_database_with_contents_adds_the_columns_and_constraints_without_targets(): void
     {
         $contents = DB::table('workflow_contents')->count();
+        $this->clearApplicationTargets();
         $this->down();
 
         $this->up();
@@ -47,6 +48,7 @@ final class WorkflowContentTargetMigrationTest extends TransactionalTestCase
 
     public function test_down_removes_the_columns_and_constraints_and_up_runs_again(): void
     {
+        $this->clearApplicationTargets();
         $this->down();
 
         $this->assertSame([], $this->nullability());
@@ -59,6 +61,7 @@ final class WorkflowContentTargetMigrationTest extends TransactionalTestCase
 
     public function test_down_stops_without_changes_while_a_content_has_a_target(): void
     {
+        $this->clearApplicationTargets();
         WorkflowContent::factory()->withTarget()->createOne();
         $ran = DB::table('migrations')->count();
 
@@ -97,6 +100,14 @@ final class WorkflowContentTargetMigrationTest extends TransactionalTestCase
         sort($names);
 
         return $names;
+    }
+
+    /**
+     * 初期データのコンテンツの申請対象を外す(TX の中。申請対象を持つ行があると down が止まるため。初期データ = 設計/ワークフロー/初期データ.md の 3 節)。
+     */
+    private function clearApplicationTargets(): void
+    {
+        DB::table('workflow_contents')->update(['target_record_field_id' => null, 'target_record_module_id' => null]);
     }
 
     private function down(): void

@@ -15,6 +15,7 @@ use App\Models\Upload\Upload;
 use App\Models\Workflow\WorkflowCase;
 use App\Models\Workflow\WorkflowCaseDraftAttachment;
 use App\Models\Workflow\WorkflowFlow;
+use Database\Seeders\WorkflowApplicationModules;
 use Illuminate\Http\UploadedFile;
 
 /**
@@ -26,8 +27,8 @@ trait OperatesCaseAttachments
     use BuildsUploads;
     use RunsWorkflowOperations;
 
-    /** テストのフローのコンテンツの業務モジュール */
-    private const MODULE_CODE = 'project';
+    /** テストのフローのコンテンツの業務モジュール({@see RunsWorkflowOperations::projectFormModuleCode()} と同じ) */
+    private const MODULE_CODE = WorkflowApplicationModules::PLAN;
 
     protected function setUpAttachments(): void
     {

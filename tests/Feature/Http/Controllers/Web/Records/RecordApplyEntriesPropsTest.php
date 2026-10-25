@@ -6,6 +6,7 @@ use App\Enums\Records\RecordModuleAction;
 use App\Models\Records\Record;
 use App\Models\Workflow\WorkflowFlow;
 use Carbon\CarbonImmutable;
+use Database\Seeders\WorkflowApplicationModules;
 use Illuminate\Database\Eloquent\Builder;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\Support\AppliesFromRecords;
@@ -16,7 +17,7 @@ use Tests\Support\TransactionalTestCase;
  * レコードの詳細の申請の入口(docs の 設計/ワークフロー/申請の周辺/既存のデータからの申請/README.md の 2 節、
  * 設計/業務データの入れ物/レコードの共通機能/詳細の画面/README.md の 6.1 節): can.apply = 入口が空でない、applyEntries = 入口の一覧
  * (名前・説明・申請の画面の URL。can.apply が偽なら空)。持ち主の有無は見ない(hold で押せない形にする)。問い合わせの数は入口の数に比例しない。
- * 業務モジュール project の入口 = 初期データのフローとテストのフロー、project_issue の入口 = 初期データのフロー 1 つ。
+ * 計画の申請書の業務モジュールの入口 = 初期データのフローとテストのフロー、課題の対応の申請書の業務モジュールの入口 = 初期データのフロー 1 つ。
  */
 final class RecordApplyEntriesPropsTest extends TransactionalTestCase
 {
@@ -36,17 +37,21 @@ final class RecordApplyEntriesPropsTest extends TransactionalTestCase
         $u0001 = $this->seededUser('u0001');
         $project = $this->projectRecord($u0001);
         $issue = Record::factory()->create([
-            'record_module_id' => $this->moduleIdOf('project_issue'), 'created_by_user_id' => $u0001->id,
+            'record_module_id' => $this->moduleIdOf(WorkflowApplicationModules::ISSUE),
+            'created_by_user_id' => $u0001->id,
         ]);
         $this->actingAs($u0001);
 
-        $this->get("/records/data/project/{$project->id}")->assertOk()->assertInertia(fn (Assert $page) => $page
+        $detail = '/records/data/'.self::PROJECT."/{$project->id}";
+
+        $this->get($detail)->assertOk()->assertInertia(fn (Assert $page) => $page
             ->where('can.apply', true)
-            ->where('applyEntries', $this->entriesOf('project', $project->id))
+            ->where('applyEntries', $this->entriesOf(self::PROJECT, $project->id))
             ->has('applyEntries', 2));
-        $this->get("/records/data/project_issue/{$issue->id}")->assertOk()->assertInertia(fn (Assert $page) => $page
+        $detail = '/records/data/'.WorkflowApplicationModules::ISSUE."/{$issue->id}";
+        $this->get($detail)->assertOk()->assertInertia(fn (Assert $page) => $page
             ->where('can.apply', true)
-            ->where('applyEntries', $this->entriesOf('project_issue', $issue->id))
+            ->where('applyEntries', $this->entriesOf(WorkflowApplicationModules::ISSUE, $issue->id))
             ->has('applyEntries', 1));
     }
 
@@ -60,7 +65,9 @@ final class RecordApplyEntriesPropsTest extends TransactionalTestCase
         $this->applyFromRecord($u0001, $record->id);
         $this->actingAs($u0001);
 
-        $this->get("/records/data/project/{$record->id}")->assertOk()->assertInertia(fn (Assert $page) => $page
+        $detail = '/records/data/'.self::PROJECT."/{$record->id}";
+
+        $this->get($detail)->assertOk()->assertInertia(fn (Assert $page) => $page
             ->where('can.apply', true)
             ->has('applyEntries', 2)
             ->whereNot('hold', null));
@@ -76,7 +83,9 @@ final class RecordApplyEntriesPropsTest extends TransactionalTestCase
         $this->allowOnly(self::PROJECT, RecordModuleAction::Update, $u0003);
         $this->actingAs($u0001);
 
-        $this->get("/records/data/project/{$record->id}")->assertOk()->assertInertia(fn (Assert $page) => $page
+        $detail = '/records/data/'.self::PROJECT."/{$record->id}";
+
+        $this->get($detail)->assertOk()->assertInertia(fn (Assert $page) => $page
             ->where('can.apply', false)
             ->where('can.update', false)
             ->where('applyEntries', []));
@@ -92,7 +101,7 @@ final class RecordApplyEntriesPropsTest extends TransactionalTestCase
         $onlyU0003 = [$this->userCondition('u0003')];
         $this->createFlow('wf_plan_x', 'u0003 だけの計画', applicants: $onlyU0003);
         $this->actingAs($u0001);
-        $url = "/records/data/project/{$record->id}";
+        $url = '/records/data/'.self::PROJECT."/{$record->id}";
         $this->get($url)->assertOk();
 
         $before = count($this->recordedSql(fn () => $this->get($url)->assertOk()->assertInertia(

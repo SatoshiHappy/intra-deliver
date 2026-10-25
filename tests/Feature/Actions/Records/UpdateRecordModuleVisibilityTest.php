@@ -9,6 +9,9 @@ use App\Models\Authz\AuthzResourceGroup;
 use App\Models\Menu\Menu;
 use App\Models\Menu\MenuTranslation;
 use App\Models\Records\Record;
+use App\Queries\Records\ModuleCategoryPageQuery;
+use App\Queries\Records\RecordModuleVisibility;
+use Database\Seeders\WorkflowApplicationModules;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Support\CatchesValidationErrors;
 use Tests\Support\ReadsRecordModuleMenus;
@@ -55,8 +58,11 @@ final class UpdateRecordModuleVisibilityTest extends TransactionalTestCase
             'global-nav-main-records-project' => [['en' => '案件', 'ja' => '案件'], 'truck'],
             'sitemap-main-records-project' => [['en' => '案件', 'ja' => '案件'], 'truck'],
         ], $this->items('project'));
-        // 初期データのアイテムの並びはプロジェクト 100・課題 110・会議 120。戻したプロジェクトは残った会議の後(最大 + 10)
-        $this->assertSame(['global-nav-main-records-project' => 130, 'sitemap-main-records-project' => 130], array_map(fn (array $row) => $row['sort_number'], $this->itemRows('project')));
+        // 初期データのアイテムの並びはプロジェクト 100・課題 110・会議 120・申請書の業務モジュール 2 つ 130・140。戻したプロジェクトは残ったアイテムの後(最大 + 10)
+        $sortNumbers = array_map(fn (array $row) => $row['sort_number'], $this->itemRows('project'));
+        $this->assertSame([
+            'global-nav-main-records-project' => 150, 'sitemap-main-records-project' => 150,
+        ], $sortNumbers);
     }
 
     public function test_showing_and_renaming_in_one_update_creates_the_items_with_the_new_name(): void
@@ -67,6 +73,40 @@ final class UpdateRecordModuleVisibilityTest extends TransactionalTestCase
 
         $this->assertSame([['en' => '案件', 'ja' => '案件'], 'truck'], $this->items('project')['sitemap-main-records-project']);
         $this->assertSame(['en' => '案件', 'ja' => '案件'], $this->resourceGroupNames('project'));
+    }
+
+    /**
+     * 申請書の業務モジュールのグループ「ワークフロー」のアイテム(MenuSeeder が入れる)は、業務モジュールを非表示にしても残り、表示に戻しても増えない。
+     * 表示中の判定(業務モジュールの更新の戻り値・モジュール分類の画面)はグループ「業務」のアイテムだけで決まる
+     * (docs の 設計/ワークフロー/申請の周辺/メニューと導線.md の 1.1 節)。
+     */
+    public function test_the_items_in_the_group_workflow_stay_when_hiding_and_are_not_added_when_showing(): void
+    {
+        $code = WorkflowApplicationModules::PLAN;
+        $workflowItems = [
+            'global-nav-workflow-records-data-index-project-plan-application',
+            'sitemap-workflow-records-data-index-project-plan-application',
+        ];
+        $ids = fn () => Menu::query()->whereIn('code', $workflowItems)->orderBy('code')->pluck('id', 'code')->all();
+        $urlCount = fn () => Menu::query()->where('url', "/records/data/{$code}")->count();
+        $before = $ids();
+        $this->assertCount(2, $before);
+
+        $this->assertSame(RecordModuleVisibilityChange::Hidden, $this->update($code, ['is_visible' => false]));
+
+        $this->assertSame([], $this->items($code));
+        $this->assertSame([$before, 2], [$ids(), $urlCount()]);
+        $this->assertFalse(app(RecordModuleVisibility::class)->isVisible($code));
+        $uncategorized = app(ModuleCategoryPageQuery::class)->props()['uncategorized'];
+        $hidden = array_filter($uncategorized, fn (array $module) => ! $module['isVisible']);
+        $this->assertSame([$code], array_column($hidden, 'code'));
+
+        $this->assertSame(RecordModuleVisibilityChange::Shown, $this->update($code, ['is_visible' => true]));
+
+        $groupItems = ["global-nav-main-records-{$code}", "sitemap-main-records-{$code}"];
+        $this->assertSame($groupItems, array_keys($this->items($code)));
+        $this->assertSame([$before, 4], [$ids(), $urlCount()]);
+        $this->assertTrue(app(RecordModuleVisibility::class)->isVisible($code));
     }
 
     public function test_the_same_visibility_on_both_items_keeps_their_ids_and_order(): void

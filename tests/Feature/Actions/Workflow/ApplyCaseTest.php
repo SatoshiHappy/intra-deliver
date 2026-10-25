@@ -65,7 +65,7 @@ final class ApplyCaseTest extends TransactionalTestCase
         $this->assertNotNull($case->case_number);
         $this->assertNotNull($case->applied_at);
         $record = Record::query()->findOrFail($case->record_id);
-        $this->assertSame(['project', $u0001->id, $u0001->id], [RecordModule::query()->findOrFail($record->record_module_id)->code, $record->created_by_user_id, $record->updated_by_user_id]);
+        $this->assertSame([$this->projectFormModuleCode(), $u0001->id, $u0001->id], [RecordModule::query()->findOrFail($record->record_module_id)->code, $record->created_by_user_id, $record->updated_by_user_id]);
         $this->assertSame(
             [['apply', 'done', 'apply', []], ['approval1', 'waiting', null, [$this->seededUser('u0002')->id]], ['approval2', 'unreached', null, []]],
             $this->nodeStates($case),
@@ -90,7 +90,8 @@ final class ApplyCaseTest extends TransactionalTestCase
     {
         $withRow = $this->applyAs($this->seededUser('u0001'));
         $withoutRows = $this->applyAs($this->seededUser('u0001'), input: new ApplicationInput(null, null, new RecordInput($this->projectInput()->record->values, ['milestones' => []])));
-        $milestones = (string) RecordField::query()->where('code', 'milestones')->sole()->id;
+        $formFields = RecordField::query()->whereRelation('recordModule', 'code', $this->projectFormModuleCode());
+        $milestones = (string) $formFields->where('code', 'milestones')->sole()->id;
 
         $this->assertSame(['object', 'object', 'object', 'array', 'object', 'object'], $this->snapshotTypes($withRow, $milestones));
         $this->assertSame(['object', 'object', 'object', 'array', null, null], $this->snapshotTypes($withoutRows, $milestones));
@@ -198,7 +199,7 @@ final class ApplyCaseTest extends TransactionalTestCase
         $this->assertSame(['values.name'], array_keys($this->validationErrors(fn () => app(ApplyCase::class)->executeFromDraft($this->contextOf($u0001), $draftId, 0, $invalid, $this->operationDay()->toDateString()))));
         $this->assertSame($counts, $this->workflowCounts());
 
-        $this->deny('project', RecordModuleAction::Create);
+        $this->deny($this->projectFormModuleCode(), RecordModuleAction::Create);
 
         $this->assertThrows(fn () => $this->applyAs($u0001), AuthorizationException::class, 'このフローを申請できません');
         $this->assertThrows(fn () => app(ApplyCase::class)->executeFromDraft($this->contextOf($u0001), $draftId, 0, $this->projectInput(), $this->operationDay()->toDateString()), AuthorizationException::class, 'このフローを申請できません');

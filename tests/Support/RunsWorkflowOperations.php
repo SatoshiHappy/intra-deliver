@@ -37,6 +37,7 @@ use App\Queries\Workflow\PullBackableNodes;
 use App\Support\AccessContext;
 use Carbon\CarbonImmutable;
 use Closure;
+use Database\Seeders\WorkflowApplicationModules;
 use Database\Seeders\WorkflowFlowResources;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Facades\DB;
@@ -46,8 +47,8 @@ use LogicException;
  * 案件の操作の業務処理のテストの手助け(docs の 設計/ワークフロー/案件の操作/同時実行と検査.md 7 節)。定義は定義の業務処理で、案件は本物の業務処理で作る。
  * 既定のフロー = 設計/ワークフロー/初期データ.md の 3 節の「プロジェクト計画の承認」と同じ形(申請 = 一般利用者のロール(初期データの全員)、承認 1 = u0002、承認 2 = u0003、
  * 参照者 = 経理部)。人・組織は初期データ(u0001〜)を使う。初期データのワークフローの定義・案件と混ざらないように、フローはテスト用のコード
- * ({@see self::FLOW_CODE})で作る(自分が作った行だけを見る)。コンテンツは初期データの、業務モジュール project を指すもの
- * ({@see self::projectContentCode()})。
+ * ({@see self::FLOW_CODE})で作る(自分が作った行だけを見る)。コンテンツは初期データの、申請書の業務モジュール「プロジェクト計画の申請」を指すもの
+ * ({@see self::projectContentCode()}。その業務モジュール = {@see self::projectFormModuleCode()})。
  */
 trait RunsWorkflowOperations
 {
@@ -78,7 +79,7 @@ trait RunsWorkflowOperations
     }
 
     /**
-     * 業務データの入れ物の業務モジュール project のフロー(版 1 = {@see self::FLOW_START_DATE} から上限なし。ルートはフローごとに作る)。
+     * 初期データの計画の申請書の業務モジュールのフロー(版 1 = {@see self::FLOW_START_DATE} から上限なし。ルートはフローごとに作る)。
      * 初期データのフローと同じく workflow-flow のリソースも作る(初期データのポリシーでシステム管理者が read・operate を許される)。
      *
      * @param  list<list<SelectionCondition>>|null  $approvals  承認のノードごとの処理対象者の条件(null = 承認 1 = u0002、承認 2 = u0003)
@@ -106,12 +107,23 @@ trait RunsWorkflowOperations
     }
 
     /**
-     * テストのフローが使う、業務モジュール project を指す初期データのコンテンツのコード。業務モジュールを指すコンテンツは 1 つまで
+     * テストのフローが使う、初期データの計画の申請書の業務モジュールを指すコンテンツのコード。業務モジュールを指すコンテンツは 1 つまで
      * (docs の 設計/ワークフロー/データモデル/表.md の 2.1 節)なので作らず、無ければ落ちる。
      */
     protected function projectContentCode(): string
     {
-        return WorkflowContent::query()->whereRelation('recordModule', 'code', 'project')->sole()->code;
+        $content = WorkflowContent::query()->whereRelation('recordModule', 'code', $this->projectFormModuleCode());
+
+        return $content->sole()->code;
+    }
+
+    /**
+     * テストのフローの申請書の業務モジュールのコード(初期データの「プロジェクト計画の申請」。項目はプロジェクトと同じコード・同じ型 =
+     * 設計/ワークフロー/初期データ.md の 3 節。申請対象・参照先としてのプロジェクトは業務モジュール project のまま)。
+     */
+    protected function projectFormModuleCode(): string
+    {
+        return WorkflowApplicationModules::PLAN;
     }
 
     /**
@@ -123,7 +135,7 @@ trait RunsWorkflowOperations
     }
 
     /**
-     * 業務モジュール project の正しい入力(マイルストーン 1 行)。
+     * 申請書の業務モジュール({@see self::projectFormModuleCode()})の正しい入力(マイルストーン 1 行。予算は申請書の必須の項目)。
      *
      * @param  array<string, mixed>  $values  上書きする値
      */
@@ -131,7 +143,7 @@ trait RunsWorkflowOperations
     {
         return new ApplicationInput($name, $comment, new RecordInput([
             'name' => '新製品の企画', 'department' => $this->departmentIdOf('tokyo-sales'), 'manager' => $this->seededUser('u0002')->id, 'status' => 'planning',
-            'start_date' => '2026-11-01', ...$values,
+            'start_date' => '2026-11-01', 'budget' => 100, ...$values,
         ], ['milestones' => [new RecordDetailRowInput(values: ['name' => '要件の整理', 'due_date' => '2026-11-30'])]]));
     }
 

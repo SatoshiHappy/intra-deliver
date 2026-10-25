@@ -4,6 +4,7 @@ namespace Tests\Feature\Http\Controllers\Web\Workflow;
 
 use App\Enums\Records\RecordModuleAction;
 use App\Models\Workflow\WorkflowCase;
+use Database\Seeders\WorkflowApplicationModules;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Support\TransactionalTestCase;
 use Tests\Support\UsesSeededRecords;
@@ -96,7 +97,7 @@ final class WorkflowEntryOrderTest extends TransactionalTestCase
     public function test_the_reapplication_is_403_without_update_before_the_envelope(): void
     {
         $this->actingAsUser('u0001');
-        $this->deny('project', RecordModuleAction::Update);
+        $this->deny(WorkflowApplicationModules::PLAN, RecordModuleAction::Update);
 
         $this->postJson('/workflow/cases/'.$this->caseNumbered(4).'/reapply', self::BROKEN)->assertForbidden();
     }
@@ -104,7 +105,7 @@ final class WorkflowEntryOrderTest extends TransactionalTestCase
     public function test_the_draft_writes_are_403_without_applicability_but_the_delete_is_not(): void
     {
         $this->actingAsUser('u0001');
-        $this->deny('project_issue', RecordModuleAction::Create);
+        $this->deny(WorkflowApplicationModules::ISSUE, RecordModuleAction::Create);
         $draft = $this->seededDraft();
 
         $this->putJson("/workflow/drafts/{$draft}", self::BROKEN)->assertForbidden();

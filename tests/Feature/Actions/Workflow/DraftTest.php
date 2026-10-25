@@ -192,7 +192,7 @@ final class DraftTest extends TransactionalTestCase
 
         $this->assertThrowsMessage(fn () => app(CreateDraft::class)->execute($this->contextOf($this->seededUser('u0003')), 'only_u0001', $this->draft()));
 
-        $this->deny('project', RecordModuleAction::Create);
+        $this->deny($this->projectFormModuleCode(), RecordModuleAction::Create);
 
         $this->assertThrowsMessage(fn () => $this->createDraft($u0001));
         $this->assertThrowsMessage(fn () => app(UpdateDraft::class)->execute($this->contextOf($u0001), $caseId, 0, $this->draft()));

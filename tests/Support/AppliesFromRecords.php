@@ -21,20 +21,22 @@ use App\Queries\Records\Api\RecordViewAccess;
 use App\Queries\Workflow\RecordApplyTargets;
 use App\Queries\Workflow\WorkflowRecordHolds;
 use Closure;
+use Database\Seeders\WorkflowApplicationModules;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Validation\ValidationException;
 
 /**
  * 既存のデータからの申請のテストの手助け(docs の 設計/ワークフロー/申請の周辺/既存のデータからの申請/README.md の 8 節)。業務処理は本物を HTTP なしで呼ぶ。
- * フローは {@see RunsWorkflowOperations} の既定(業務モジュール project・承認 1 = u0002・承認 2 = u0003)。レコードは業務の画面と同じ口で作る。
+ * フローは {@see RunsWorkflowOperations} の既定(申請書の業務モジュール = 初期データの「プロジェクト計画の申請」・承認 1 = u0002・承認 2 = u0003)。
+ * レコードは業務の画面と同じ口で作る。
  */
 trait AppliesFromRecords
 {
     use RunsWorkflowOperations;
 
-    /** テストのフローのコンテンツの業務モジュール */
-    private const PROJECT = 'project';
+    /** テストのフローのコンテンツの業務モジュール({@see RunsWorkflowOperations::projectFormModuleCode()} と同じ) */
+    private const PROJECT = WorkflowApplicationModules::PLAN;
 
     /**
      * 業務の画面で登録したレコード(マイルストーン 1 行。版 1 = 登録)。

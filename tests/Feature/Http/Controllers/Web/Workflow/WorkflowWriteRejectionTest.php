@@ -9,6 +9,7 @@ use App\Models\Workflow\WorkflowCase;
 use App\Models\Workflow\WorkflowCaseHistory;
 use App\Models\Workflow\WorkflowCaseNode;
 use App\Models\Workflow\WorkflowCaseNodeTarget;
+use Database\Seeders\WorkflowApplicationModules;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Support\TransactionalTestCase;
 use Tests\Support\UsesSeededRecords;
@@ -40,12 +41,12 @@ final class WorkflowWriteRejectionTest extends TransactionalTestCase
     {
         return [
             'apply by a guest' => [null, 'post', '/workflow/flows/project_plan/apply', null, 'plan', null, 403],
-            'apply without create on the module' => ['u0001', 'post', '/workflow/flows/project_plan/apply', null, 'plan', ['project', RecordModuleAction::Create], 403],
+            'apply without create on the module' => ['u0001', 'post', '/workflow/flows/project_plan/apply', null, 'plan', [WorkflowApplicationModules::PLAN, RecordModuleAction::Create], 403],
             'save a draft by a guest' => [null, 'post', '/workflow/flows/project_plan/drafts', null, 'plan', null, 403],
             'overwrite the draft of another user' => ['u0002', 'put', '/workflow/drafts/%d', 'draft', 'issue', null, 404],
-            'overwrite the own draft without create' => ['u0001', 'put', '/workflow/drafts/%d', 'draft', 'issue', ['project_issue', RecordModuleAction::Create], 403],
+            'overwrite the own draft without create' => ['u0001', 'put', '/workflow/drafts/%d', 'draft', 'issue', [WorkflowApplicationModules::ISSUE, RecordModuleAction::Create], 403],
             'apply the draft of another user' => ['u0002', 'post', '/workflow/drafts/%d/apply', 'draft', 'issue', null, 404],
-            'apply the own draft without create' => ['u0001', 'post', '/workflow/drafts/%d/apply', 'draft', 'issue', ['project_issue', RecordModuleAction::Create], 403],
+            'apply the own draft without create' => ['u0001', 'post', '/workflow/drafts/%d/apply', 'draft', 'issue', [WorkflowApplicationModules::ISSUE, RecordModuleAction::Create], 403],
             'delete the draft of another user' => ['u0002', 'delete', '/workflow/drafts/%d', 'draft', 'revision', null, 404],
             'delete a draft by a guest' => [null, 'delete', '/workflow/drafts/%d', 'draft', 'revision', null, 404],
             'approve by the applicant' => ['u0001', 'post', '/workflow/cases/%d/approve', 2, 'action', null, 422],
@@ -61,7 +62,7 @@ final class WorkflowWriteRejectionTest extends TransactionalTestCase
             'withdraw by the approver who sent back' => ['u0002', 'post', '/workflow/cases/%d/withdraw', 4, 'action', null, 422],
             'withdraw while waiting for an approval' => ['u0001', 'post', '/workflow/cases/%d/withdraw', 2, 'action', null, 422],
             'reapply by the approver who sent back' => ['u0002', 'post', '/workflow/cases/%d/reapply', 4, 'reapply', null, 422],
-            'reapply without update on the module' => ['u0001', 'post', '/workflow/cases/%d/reapply', 4, 'reapply', ['project', RecordModuleAction::Update], 403],
+            'reapply without update on the module' => ['u0001', 'post', '/workflow/cases/%d/reapply', 4, 'reapply', [WorkflowApplicationModules::PLAN, RecordModuleAction::Update], 403],
             'reapply by a guest' => [null, 'post', '/workflow/cases/%d/reapply', 4, 'reapply', null, 404],
         ];
     }

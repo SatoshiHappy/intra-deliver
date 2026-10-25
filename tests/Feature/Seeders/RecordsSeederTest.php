@@ -21,7 +21,8 @@ use Tests\Support\TransactionalTestCase;
 /**
  * 業務データの入れ物の初期データ(docs の 設計/業務データの入れ物/認可とメニュー/メニューと初期データ.md 7 節・8 節の「初期データ」の件数): 業務モジュール 3 つ(明細 1)、
  * 項目 21・規則 2、レコード(プロジェクト 3・マイルストーン 7・課題 5)。型は 11 種すべてが 1 つ以上ある。
- * レコードの件数・参照・作成者は、ワークフローの初期データの案件の見本が申請で作る分(プロジェクト 5・マイルストーン 3・課題 3 = 設計/ワークフロー/初期データ.md 4 節の見本)を含む。
+ * レコードの件数・参照・作成者は、ワークフローの初期データの案件の見本が申請対象として作る分(設計/ワークフロー/初期データ.md 4 節の見本)を含む。
+ * 定義・件数・アイテムは、ワークフローの初期データが作る申請書の業務モジュール 2 つ(明細 1。同じ文書の 3 節)とそのレコードを含む。
  * ポリシーの件数は AuthorizationSeedersTest。定義は組み込みでないもの(この seeder が作るもの)に絞って確かめる(組み込みの会議は BuiltinSeederTest)。
  */
 final class RecordsSeederTest extends TransactionalTestCase
@@ -39,9 +40,19 @@ final class RecordsSeederTest extends TransactionalTestCase
         $fieldCounts = RecordField::query()->join('record_modules', 'record_modules.id', '=', 'record_fields.record_module_id')
             ->where('record_fields.is_builtin', false)->groupBy('record_modules.code')->selectRaw('record_modules.code, count(*) as fields')->pluck('fields', 'code')->all();
 
-        $this->assertSame([['project', 'プロジェクト', null], ['project_issue', '課題', null], ['project_milestone', 'マイルストーン', 'project']], $modules);
-        $this->assertEquals(['project' => 9, 'project_milestone' => 4, 'project_issue' => 8], $fieldCounts);
-        $this->assertSame(2, RecordRule::query()->count());
+        $this->assertSame([
+            ['project', 'プロジェクト', null], ['project_issue', '課題', null], ['project_milestone', 'マイルストーン', 'project'],
+            ['project_plan_application', 'プロジェクト計画の申請', null],
+            ['project_plan_application_milestones', 'マイルストーン', 'project_plan_application'],
+            ['issue_resolution_application', '課題の対応の申請', null],
+        ], $modules);
+        // 申請書の業務モジュールの項目 = 申請対象の項目 1 と申請対象の業務モジュールの項目(明細の行の項目を含む)。規則も同じ
+        $this->assertEquals([
+            'project' => 9, 'project_milestone' => 4, 'project_issue' => 8,
+            'project_plan_application' => 1 + 9, 'project_plan_application_milestones' => 4,
+            'issue_resolution_application' => 1 + 8,
+        ], $fieldCounts);
+        $this->assertSame(2 + 2, RecordRule::query()->count());
         $this->assertEqualsCanonicalizing(
             array_map(fn (RecordFieldType $type) => $type->value, RecordFieldType::cases()),
             RecordField::query()->where('is_builtin', false)->distinct()->pluck('type')->map(fn (RecordFieldType $type) => $type->value)->all(),
@@ -102,10 +113,14 @@ final class RecordsSeederTest extends TransactionalTestCase
             ->orderBy('code')->pluck('icon_32', 'code')->all();
 
         $this->assertSame([
+            'global-nav-main-records-issue_resolution_application' => 'clipboard-list',
             'global-nav-main-records-project' => 'folder-kanban',
             'global-nav-main-records-project_issue' => 'list-todo',
+            'global-nav-main-records-project_plan_application' => 'file-text',
+            'sitemap-main-records-issue_resolution_application' => 'clipboard-list',
             'sitemap-main-records-project' => 'folder-kanban',
             'sitemap-main-records-project_issue' => 'list-todo',
+            'sitemap-main-records-project_plan_application' => 'file-text',
         ], $icons);
     }
 
@@ -116,13 +131,19 @@ final class RecordsSeederTest extends TransactionalTestCase
             ->where('record_modules.is_builtin', false)
             ->groupBy('record_modules.code')->selectRaw('record_modules.code, count(*) as records')->pluck('records', 'code')->all();
 
-        // 業務データの入れ物の分 + ワークフローの案件の見本の分(段 2 の見本 = プロジェクト 5・マイルストーン 3・課題 3、版 3 の見本 = プロジェクト 4・マイルストーン 2
-        // = ルートの深さ/初期データ.md 4 節、案件の運用の見本 = プロジェクト 2・課題 2 = 設計/ワークフロー/案件の運用/初期データ.md 4.3)
-        $this->assertEquals(['project' => 3 + 5 + 4 + 2, 'project_milestone' => 7 + 3 + 2, 'project_issue' => 5 + 3 + 2], $counts);
-        // 参照の値 = プロジェクトの担当部署と責任者 14 × 2、課題のプロジェクト 10 と担当者 9(業務データの入れ物の 1 件は担当者なし)
+        // 業務データの入れ物の分 + ワークフローの案件の見本の申請対象の分(2 段目の見本 = プロジェクト 5・マイルストーン 3・課題 3、版 3 の見本 = プロジェクト 4・
+        // マイルストーン 2 = ルートの深さ/初期データ.md 4 節、案件の運用の見本 = プロジェクト 2・課題 2 = 設計/ワークフロー/案件の運用/初期データ.md 4.3)と、
+        // 見本の申請書(申請対象と同じ行数。一時保存は持たない)
+        $this->assertEquals([
+            'project' => 3 + 5 + 4 + 2, 'project_milestone' => 7 + 3 + 2, 'project_issue' => 5 + 3 + 2,
+            'project_plan_application' => 5 + 4 + 2, 'project_plan_application_milestones' => 3 + 2,
+            'issue_resolution_application' => 3 + 2,
+        ], $counts);
+        // 参照の値 = プロジェクトの担当部署と責任者 14 × 2、課題のプロジェクト 10 と担当者 9(業務データの入れ物の 1 件は担当者なし)、
+        // 計画の申請書の申請対象・担当部署・責任者 11 × 3、課題の対応の申請書の申請対象・プロジェクト・担当者 5 × 3
         $builtinModuleIds = RecordModule::query()->where('is_builtin', true)->select('id');
         $references = RecordReference::query()->whereNotIn('record_module_id', $builtinModuleIds)->count();
-        $this->assertSame(14 * 2 + 10 + 9, $references);
+        $this->assertSame(14 * 2 + 10 + 9 + 11 * 3 + 5 * 3, $references);
     }
 
     /**

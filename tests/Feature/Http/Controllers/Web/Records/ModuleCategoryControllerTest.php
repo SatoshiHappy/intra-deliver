@@ -4,7 +4,6 @@ namespace Tests\Feature\Http\Controllers\Web\Records;
 
 use App\Actions\Records\UpdateRecordModule;
 use App\Models\Master\User;
-use App\Models\Records\RecordModule;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -16,10 +15,10 @@ use Tests\Support\TransactionalTestCase;
 /**
  * モジュール分類の画面と書き込みの口(docs の 設計/業務データの入れ物/モジュール分類/画面と検査.md 4.3・4.4・6 節の「権限の組み合わせ」の入口の分、
  * 画面/README.md 1.1、認可とメニュー/README.md 4 節、メニューと初期データ.md 6 節): ゲストと u0001 は 9 つのルートが 403 で何も変わらない。システム管理者(u0004)は書き込み →
- * 移り先の records.admin.categories.index が 200 で props に結果が出る(作成・名前・削除・分類の中の業務モジュールの更新はトースト、並び替えと
- * 業務モジュールの分類の更新(ドラッグ)はトーストなし)。無い分類は壊れた入力でも
+ * 移り先の records.admin.categories.index が 200 で props に結果が出る(作成・名前・削除はトースト、並び替えはトーストなし)。無い分類は壊れた入力でも
  * 422 より先に 404(無い業務モジュールのコードも同じ)。入れ物の形の誤りと業務処理の 422 は元の画面へ戻り、入力の名前のキーにエラーが付く。ルート reorder は {module}・{category} に取られない。
- * 初期データ(プロジェクト・課題 = 直下 100・110)を入れ、ルートの認可を外さずに開く。
+ * 分類の中の業務モジュールを揃える書き込み(追加の Dialog・ドラッグ)は {@see ModuleCategoryModulesControllerTest}。
+ * 初期データ(プロジェクト・課題・会議・申請書の業務モジュール 2 つ = 直下 100・110・120・130・140)を入れ、ルートの認可を外さずに開く。
  */
 final class ModuleCategoryControllerTest extends TransactionalTestCase
 {
@@ -27,6 +26,12 @@ final class ModuleCategoryControllerTest extends TransactionalTestCase
 
     /** 初期データの組み込みの会議(分類に入れないので「分類なし」に表示中で残る) */
     private const MEETING = ['code' => 'meeting', 'name' => '会議', 'isVisible' => true];
+
+    /** 初期データの申請書の業務モジュール 2 つ(作った順 = 直下 130・140。分類に入れないので「分類なし」に表示中で残る) */
+    private const APPLICATIONS = [
+        ['code' => 'project_plan_application', 'name' => 'プロジェクト計画の申請', 'isVisible' => true],
+        ['code' => 'issue_resolution_application', 'name' => '課題の対応の申請', 'isVisible' => true],
+    ];
 
     protected function setUp(): void
     {
@@ -88,7 +93,9 @@ final class ModuleCategoryControllerTest extends TransactionalTestCase
                 ['id' => $first, 'name' => '営業', 'modules' => [['code' => 'project_issue', 'name' => '課題']]],
                 ['id' => $second, 'name' => '総務', 'modules' => [['code' => 'project_issue', 'name' => '課題']]],
             ])
-            ->where('uncategorized', [self::MEETING, ['code' => 'project', 'name' => 'プロジェクト', 'isVisible' => false]])
+            ->where('uncategorized', [
+                self::MEETING, ...self::APPLICATIONS, ['code' => 'project', 'name' => 'プロジェクト', 'isVisible' => false],
+            ])
             ->where('textMaxLengths', ['code' => 50, 'name' => 1000, 'description' => 4000])
         );
         // 明細のモジュール(マイルストーン)は出ない。表示中の直下は「業務」の直下の並び、続けて非表示
@@ -97,6 +104,7 @@ final class ModuleCategoryControllerTest extends TransactionalTestCase
             ->where('categories.0.modules', [])
             ->where('uncategorized', [
                 self::MEETING,
+                ...self::APPLICATIONS,
                 ['code' => 'project_issue', 'name' => '課題', 'isVisible' => true],
                 ['code' => 'project', 'name' => 'プロジェクト', 'isVisible' => false],
             ])
@@ -128,7 +136,7 @@ final class ModuleCategoryControllerTest extends TransactionalTestCase
         // ほかの分類に属さないプロジェクトは「業務」の直下の末尾へ
         $this->get('/records/admin/categories')->assertInertia(fn (Assert $page) => $page
             ->where('categories', [])
-            ->where('uncategorized.2', ['code' => 'project', 'name' => 'プロジェクト', 'isVisible' => true])
+            ->where('uncategorized.4', ['code' => 'project', 'name' => 'プロジェクト', 'isVisible' => true])
         );
     }
 
@@ -155,7 +163,8 @@ final class ModuleCategoryControllerTest extends TransactionalTestCase
         $this->put('/records/admin/modules/project', ['is_visible' => true, 'categories' => []])->assertStatus(303);
         $this->put('/records/admin/modules/project_issue', ['is_visible' => true, 'categories' => []])->assertStatus(303);
         $this->get('/records/admin/categories')->assertOk();
-        $this->put('/records/admin/modules/reorder', ['codes' => ['project_issue', 'project', 'meeting']])
+        $codes = ['project_issue', 'project', 'meeting', 'project_plan_application', 'issue_resolution_application'];
+        $this->put('/records/admin/modules/reorder', ['codes' => $codes])
             ->assertStatus(303)->assertRedirect('/records/admin/categories')->assertInertiaFlashMissing('toast');
 
         $this->get('/records/admin/categories')->assertInertia(fn (Assert $page) => $page
@@ -165,6 +174,8 @@ final class ModuleCategoryControllerTest extends TransactionalTestCase
         $this->assertSame([
             'global-nav-main-records-project_issue' => 100, 'global-nav-main-records-project' => 110,
             'global-nav-main-records-meeting' => 120,
+            'global-nav-main-records-project_plan_application' => 130,
+            'global-nav-main-records-issue_resolution_application' => 140,
         ], array_filter(
             $this->children('global-nav-main'),
             fn (string $code) => str_starts_with($code, 'global-nav-main-records-'),
@@ -223,90 +234,6 @@ final class ModuleCategoryControllerTest extends TransactionalTestCase
     public function test_a_missing_category_is_not_found_before_the_input_is_checked(string $method, string $url, array $input = []): void
     {
         $this->actingAs($this->user('u0004'))->call($method, $url, $input)->assertNotFound();
-    }
-
-    public function test_the_system_administrator_sets_the_modules_in_a_category_with_the_toast(): void
-    {
-        $this->actingAs($this->user('u0004'));
-        $first = $this->createCategory('営業');
-        $second = $this->createCategory('総務');
-        $this->put('/records/admin/modules/project_issue', ['is_visible' => true, 'categories' => [$second]])->assertStatus(303);
-        $this->get('/records/admin/categories')->assertOk();
-
-        $this->put("/records/admin/categories/{$first}/modules", ['codes' => ['project_issue', 'project']])
-            ->assertStatus(303)->assertRedirect('/records/admin/categories')
-            ->assertInertiaFlash('toast', ['type' => 'success', 'message' => 'モジュール分類の業務モジュールを更新しました']);
-        $this->get('/records/admin/categories')->assertOk()->assertInertia(fn (Assert $page) => $page
-            ->where('categories', [
-                ['id' => $first, 'name' => '営業', 'modules' => [['code' => 'project_issue', 'name' => '課題'], ['code' => 'project', 'name' => 'プロジェクト']]],
-                ['id' => $second, 'name' => '総務', 'modules' => [['code' => 'project_issue', 'name' => '課題']]],
-            ])
-            ->where('uncategorized', [self::MEETING])
-        );
-
-        // 外したものは、ほかの分類に属さなければ直下の末尾に、属せばそちらに残る
-        $this->put("/records/admin/categories/{$first}/modules", ['codes' => []])->assertStatus(303);
-        $this->get('/records/admin/categories')->assertInertia(fn (Assert $page) => $page
-            ->where('categories.0.modules', [])
-            ->where('categories.1.modules', [['code' => 'project_issue', 'name' => '課題']])
-            ->where('uncategorized', [self::MEETING, ['code' => 'project', 'name' => 'プロジェクト', 'isVisible' => true]])
-        );
-    }
-
-    public function test_the_drag_moves_copies_adds_and_removes_the_categories_of_a_module_without_a_toast(): void
-    {
-        $this->actingAs($this->user('u0004'));
-        $first = $this->createCategory('営業');
-        $second = $this->createCategory('総務');
-        $this->put('/records/admin/modules/project', ['is_visible' => true, 'categories' => [$first]])->assertStatus(303);
-        $this->get('/records/admin/categories')->assertOk();
-        $module = [RecordModule::query()->where('code', 'project')->sole()->only(['name', 'description', 'icon'])];
-
-        // 移動 = [B]: A から消え B の末尾に
-        $this->put('/records/admin/modules/project/categories', ['categories' => [$second]])
-            ->assertStatus(303)->assertRedirect('/records/admin/categories')->assertInertiaFlashMissing('toast');
-        $this->assertSame(["global-nav-main-cat-{$second}-project", "sitemap-main-cat-{$second}-project"], $this->placements('project'));
-
-        // コピー = [B, A]: B に残り A の末尾に
-        $this->put('/records/admin/modules/project/categories', ['categories' => [$second, $first]])->assertStatus(303)->assertInertiaFlashMissing('toast');
-        $this->assertEqualsCanonicalizing([
-            "global-nav-main-cat-{$first}-project", "global-nav-main-cat-{$second}-project", "sitemap-main-cat-{$first}-project", "sitemap-main-cat-{$second}-project",
-        ], $this->placements('project'));
-
-        // 所属が空の業務モジュールに [B]: 直下から消え B の末尾に(プロジェクトの後)
-        $this->put('/records/admin/modules/project_issue/categories', ['categories' => [$second]])->assertStatus(303);
-        $this->assertSame(["global-nav-main-cat-{$second}-project_issue", "sitemap-main-cat-{$second}-project_issue"], $this->placements('project_issue'));
-        $this->assertSame(["global-nav-main-cat-{$second}-project" => 100, "global-nav-main-cat-{$second}-project_issue" => 110], $this->children("global-nav-main-cat-{$second}"));
-
-        // [] = 直下の末尾に
-        $this->put('/records/admin/modules/project/categories', ['categories' => []])->assertStatus(303);
-        $this->assertSame(['global-nav-main-records-project', 'sitemap-main-records-project'], $this->placements('project'));
-
-        $this->assertSame($module, [RecordModule::query()->where('code', 'project')->sole()->only(['name', 'description', 'icon'])]);
-        $this->get('/records/admin/categories')->assertOk()->assertInertia(fn (Assert $page) => $page
-            ->where('categories', [
-                ['id' => $first, 'name' => '営業', 'modules' => []],
-                ['id' => $second, 'name' => '総務', 'modules' => [['code' => 'project_issue', 'name' => '課題']]],
-            ])
-            ->where('uncategorized', [self::MEETING, ['code' => 'project', 'name' => 'プロジェクト', 'isVisible' => true]])
-        );
-    }
-
-    public function test_the_drag_of_a_hidden_module_into_a_category_is_rejected_with_the_key_categories_and_nothing_changes(): void
-    {
-        $this->actingAs($this->user('u0004'));
-        $categoryId = $this->createCategory('営業');
-        $this->put('/records/admin/modules/project', ['is_visible' => false])->assertStatus(303);
-        $before = [$this->children('global-nav-main'), $this->children('sitemap-main'), $this->placements('project')];
-
-        $this->from('/records/admin/categories')->put('/records/admin/modules/project/categories', ['categories' => [$categoryId]])
-            ->assertRedirect('/records/admin/categories')
-            ->assertSessionHasErrors(['categories' => 'サイドバーに表示しない業務モジュールにはモジュール分類を設定できません']);
-        $this->from('/records/admin/categories')->put("/records/admin/categories/{$categoryId}/modules", ['codes' => ['project']])
-            ->assertRedirect('/records/admin/categories')
-            ->assertSessionHasErrors(['codes' => 'サイドバーに表示しない業務モジュールにはモジュール分類を設定できません']);
-
-        $this->assertSame($before, [$this->children('global-nav-main'), $this->children('sitemap-main'), $this->placements('project')]);
     }
 
     #[TestWith(['/records/admin/modules/reorder', 'records.admin.modules.reorder'])]

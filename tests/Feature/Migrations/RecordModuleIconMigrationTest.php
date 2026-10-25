@@ -42,10 +42,13 @@ final class RecordModuleIconMigrationTest extends TransactionalTestCase
             'icon_null' => 'table',
             'icon_outside' => 'table',
             'icon_sitemap_only' => 'table',
+            'issue_resolution_application' => 'clipboard-list',
             'meeting' => 'users',
             'project' => 'folder-kanban',
             'project_issue' => 'list-todo',
             'project_milestone' => null,
+            'project_plan_application' => 'file-text',
+            'project_plan_application_milestones' => null,
         ], DB::table('record_modules')->orderBy('code')->pluck('icon', 'code')->all());
         $this->assertSame(['CHECK (((parent_record_module_id IS NULL) = (icon IS NOT NULL)))'], $this->iconCheckDefinitions());
     }

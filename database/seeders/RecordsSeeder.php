@@ -118,8 +118,8 @@ class RecordsSeeder extends Seeder
     /** 一覧に出す(束ねる印は一覧だけ。検索条件は run で全項目に付ける) */
     private const LISTED = ['is_listed' => true];
 
-    /** 業務モジュールのコード => 項目の入力(並びの順) */
-    private const FIELDS = [
+    /** 業務モジュールのコード => 項目の入力(並びの順)。申請書の業務モジュールも同じ宣言で作る({@see WorkflowApplicationModules}) */
+    public const FIELDS = [
         'project' => [
             ['code' => 'name', 'name' => 'プロジェクト名', 'type' => 'string', 'is_required' => true, 'is_title' => true, ...self::LISTED],
             ['code' => 'department', 'name' => '担当部署', 'type' => 'department', 'is_required' => true, ...self::LISTED],
@@ -155,8 +155,8 @@ class RecordsSeeder extends Seeder
         ],
     ];
 
-    /** 業務モジュールのコード => 規則の入力 */
-    private const RULES = [
+    /** 業務モジュールのコード => 規則の入力(申請書の業務モジュールも同じ規則を持つ) */
+    public const RULES = [
         'project' => [['kind' => 'compare', 'target' => 'end_date', 'operator' => 'ge', 'compared' => 'start_date', 'message' => '終了日は開始日以後の日にしてください']],
         'project_issue' => [['kind' => 'required_when', 'target' => 'resolution', 'condition' => ['all' => [['field' => 'status', 'op' => 'eq', 'value' => 'done']]], 'message' => '状態が完了のときは解決内容を入力してください']],
     ];

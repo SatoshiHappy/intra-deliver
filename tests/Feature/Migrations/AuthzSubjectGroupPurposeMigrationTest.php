@@ -77,6 +77,9 @@ final class AuthzSubjectGroupPurposeMigrationTest extends TransactionalTestCase
         DB::table('record_fields')->whereRaw("jsonb_typeof(default_value) = 'object'")
             ->update(['default_value' => null]);
         DB::table('record_fields')->where('max_length', '>', 4000)->update(['max_length' => null]);
+        // 後のマイグレーションの申請対象の列の down は、申請対象を持つコンテンツの行があると止まる(初期データのコンテンツ)。
+        // TX の中で申請対象を外してから戻す(docs の 設計/ワークフロー/初期データ.md の 3 節)。
+        DB::table('workflow_contents')->update(['target_record_field_id' => null, 'target_record_module_id' => null]);
         // 組み込みの旗の down は、旗の付いた行があると止まる。TX の中で旗を外してから戻す
         foreach (['record_modules', 'record_fields', 'record_field_options'] as $table) {
             DB::table($table)->update(['is_builtin' => false]);

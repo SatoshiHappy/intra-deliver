@@ -25,6 +25,9 @@ use Tests\Support\TransactionalTestCase;
  * 認可・メニュー・今の利用者の初期データ(docs の 設計/メニュー/初期データ.md 4 節、設計/デモユーザー切替/今の利用者.md 5.8)と、初期データを入れた後の付け忘れ・登録もれの検査
  * (認可との結び付け.md 2.3 の検査 2・3、初期データ.md の全部を許すロールの検査)。検査 2 は、ルートのリソースのリソースグループ ID と親も、
  * 名前から決まるもの(2.3 の表)であることを確かめる(判定は {@see FindsAppRouteViolations})。
+ * メニューのアイテムとポリシーの件数は、ワークフローの申請書の業務モジュール 2 つ(設計/ワークフロー/初期データ.md の 3 節)の分を含む:
+ * 業務モジュールを作る業務処理が足すアイテム 2 × 2 と初期ポリシー 8 × 2、グループ「ワークフロー」に MenuSeeder が足すアイテム 2 × 2
+ * (設計/ワークフロー/認可と一覧.md の 6 節)。
  */
 final class AuthorizationSeedersTest extends TransactionalTestCase
 {
@@ -50,7 +53,7 @@ final class AuthorizationSeedersTest extends TransactionalTestCase
         });
 
         $this->assertSame([], $invalid->pluck('code')->all());
-        $this->assertSame(26, Menu::query()->where('type', MenuType::Item)->count());
+        $this->assertSame(26 + 4 + 4, Menu::query()->where('type', MenuType::Item)->count());
     }
 
     public function test_the_system_administrator_is_permitted_every_action_of_the_types_in_each_set(): void
@@ -158,12 +161,12 @@ final class AuthorizationSeedersTest extends TransactionalTestCase
      * 54 = ルートの深さ/初期データ.md 6 節と案件の運用の 7 本の 14・写しの値の入口 2。通知のルート 8・ワークフローのフローのセット 2 = 設計/ワークフロー/案件の運用/認可と一覧.md の 4 節・3 節。
      * 業務モジュールの全件の参照 1 = 設計/業務データの入れ物/認可とメニュー/README.md の 3 節。添付と外した時点のファイルのルート 6 × 2 = 12、コメントのルート 3 × 2 = 6 =
      * 設計/業務データの入れ物/レコードの共通機能/認可と初期データ.md の 2.3 節。組み込みの会議の業務モジュール 8 = 設計/業務ツール/モジュール境界.md の「組み込みの業務モジュールの置き場」。
-     * 会議のルート 2 × 2 = 4 = 設計/業務ツール/会議/処理.md の 3.2・3.7。定義の管理はポリシーなし)。
+     * 会議のルート 2 × 2 = 4 = 設計/業務ツール/会議/処理.md の 3.2・3.7。定義の管理はポリシーなし)と、申請書の業務モジュールの 16(クラスの注)。
      */
     public function test_the_seeders_reuse_the_subjects(): void
     {
         $this->assertEquals(['policy' => 3, 'selection' => 6], AuthzSubjectGroup::query()->groupBy('purpose')->orderBy('purpose')->selectRaw('purpose, count(*) as subject_groups')->pluck('subject_groups', 'purpose')->all());
-        $this->assertCount(154, $this->policySummaries());
+        $this->assertCount(154 + 16, $this->policySummaries());
     }
 
     public function test_a_guest_sees_the_home_and_the_sitemap(): void
@@ -209,9 +212,9 @@ final class AuthorizationSeedersTest extends TransactionalTestCase
                 $dataRoutes,
             )),
             ...$this->permits('record-modules', $allModuleActions, ['システム管理者']),
-            ...$this->permits('record-module-project', $moduleActions, $everyone),
-            ...$this->permits('record-module-project_issue', $moduleActions, $everyone),
-            ...$this->permits('record-module-meeting', $moduleActions, $everyone),
+            ...array_merge(...array_map(fn ($m) => $this->permits("record-module-{$m}", $moduleActions, $everyone), [
+                'project', 'project_issue', 'meeting', 'project_plan_application', 'issue_resolution_application',
+            ])),
         ];
     }
 

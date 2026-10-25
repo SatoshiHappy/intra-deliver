@@ -64,7 +64,6 @@
     "tests/Feature/Queries/Workflow/CaseReadingOnRoutesTest.php": 1,
     "tests/Feature/Queries/Workflow/PreviousProcessorsTest.php": 1,
     "tests/Feature/Queries/Workflow/WorkflowHomeOnRoutesTest.php": 2,
-    "tests/Feature/Seeders/RecordsSeederTest.php": 1,
     "tests/Support/BuildsRouteVersions.php": 1,
     "tests/Support/BuildsWorkflowCases.php": 1,
     "tests/Support/DelegatedCaseTargetTerm.php": 1,

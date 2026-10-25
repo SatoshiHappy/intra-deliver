@@ -314,7 +314,7 @@ final class MoveCaseNodeForwardTest extends TransactionalTestCase
      */
     private function clearBudgetOf(WorkflowCase $case): void
     {
-        $module = RecordModule::query()->with('recordFields')->where('code', 'project')->sole();
+        $module = RecordModule::query()->with('recordFields')->where('code', $this->projectFormModuleCode())->sole();
         $budgetId = $module->recordFields->firstOrFail('code', 'budget')->id;
         $record = Record::query()->findOrFail($case->record_id);
         $values = $record->field_values;

@@ -149,13 +149,13 @@ trait BuildsRouteVersions
     }
 
     /**
-     * 業務モジュール project のレコード(項目のコードで値を渡す)。
+     * テストのフローの申請書の業務モジュール({@see self::projectFormModuleCode()})のレコード(項目のコードで値を渡す)。
      *
      * @param  array<string, mixed>  $values
      */
     protected function projectRecord(array $values): Record
     {
-        $module = RecordModule::query()->with('recordFields')->where('code', 'project')->sole();
+        $module = RecordModule::query()->with('recordFields')->where('code', $this->projectFormModuleCode())->sole();
         $fieldValues = [];
 
         foreach ($values as $code => $value) {
