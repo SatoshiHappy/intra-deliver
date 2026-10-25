@@ -15,7 +15,6 @@ use App\Queries\Meeting\MeetingLimits;
 use App\Queries\Meeting\MeetingProcessingQuery;
 use App\Queries\Meeting\MeetingRegenerableQuery;
 use App\Queries\Meeting\MeetingTitleQuery;
-use App\Queries\Records\Api\RecordHoldQuery;
 use App\Support\AccessContext;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
@@ -42,8 +41,6 @@ class RegenerateMinutes
 
     public const NOT_FROM_AUDIO = '音声から作成した会議でないため、再作成できません';
 
-    public const HELD = '申請中のため再作成できません。';
-
     public const PROCESSING = '処理中のため再作成できません。完了してからお試しください';
 
     public const INSTRUCTIONS_WITHOUT_TRANSCRIPT = '書き起こしが無いため、追加の指示は付けられません';
@@ -54,7 +51,6 @@ class RegenerateMinutes
     public function __construct(
         private MeetingLock $lock,
         private MeetingAudioRequest $audioRequest,
-        private RecordHoldQuery $holds,
         private MeetingProcessingQuery $states,
         private MeetingRegenerableQuery $regenerables,
         private MeetingFieldsQuery $fields,
@@ -68,7 +64,7 @@ class RegenerateMinutes
      * @return int 依頼した実行の id
      *
      * @throws ValidationException 追加の指示の誤り・書き起こしが無く音声から作り直すのに追加の指示があるとき(キー instructions)・
-     *                             押せる会議でない・申請中・処理中・書き起こしと音声が無いとき(キー meeting)
+     *                             押せる会議でない・処理中・書き起こしと音声が無いとき(キー meeting)
      * @throws RunRequestDeclined 依頼が上限を超える・長すぎる・音声を読み取れない・音声が削除されたとき(キー ai)
      * @throws ModelNotFoundException 依頼者が会議を閲覧できない・会議が無いとき
      */
@@ -140,7 +136,7 @@ class RegenerateMinutes
     }
 
     /**
-     * 押せる会議と押せる時(申請中でない・処理中でない)を確かめ、書き起こしの id を返す(無ければ null)。
+     * 押せる会議と押せる時(処理中でない)を確かめ、書き起こしの id を返す(無ければ null)。会議は申請書にならないので申請中は起きない(処理.md の 3.7)。
      *
      * @throws ValidationException
      */
@@ -150,10 +146,6 @@ class RegenerateMinutes
 
         if (! $found['regenerable']) {
             throw self::notRegenerable(self::NOT_FROM_AUDIO);
-        }
-
-        if ($this->holds->isHeld($recordId)) {
-            throw self::notRegenerable(self::HELD);
         }
 
         if (($this->states->statesOf([$recordId])[$recordId] ?? null) === MeetingProcessingState::Processing) {

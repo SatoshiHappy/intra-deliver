@@ -18,11 +18,13 @@ use Illuminate\Support\Facades\DB;
 use LogicException;
 
 /**
- * AI の実行を依頼する(docs の 設計/AI/README.md 1 節・3 節・5.2)。上限を確かめて実行(queued)と送る文を書き、コミットの後にジョブを投入する。
+ * AI の実行を依頼する(docs の 設計/AI/README.md 1 節・3 節・5.2)。上限を確かめて実行(queued)と送る文を書き、
+ * 同じトランザクションでジョブを入れる(実行と費用.md 4 節の「ジョブの入れ方」)。
  * LLM の応答は種類の実装({@see PromptKind::complete()})が受け取る。送るデータを読む権限の判定は呼び手(依頼者の Requester で読む)。
  *
  * Ai の公開の口(主体・認可・ロック・原子性・結果・失敗の正本 = 同 3 節の表)。自分のトランザクションを持ち、外側のトランザクションの中では
- * savepoint で外側に含まれる(ジョブは外側のコミットの後に出る。外側が巻き戻れば出ない)。上限の確認と行の追加は AI の費用の勧告ロックで直列にする。
+ * savepoint で外側に含まれる(ジョブの行も既定の DB 接続の表に入るので、外側のコミットまで worker から見えず、外側が巻き戻れば一緒に消える)。
+ * 上限の確認と行の追加は AI の費用の勧告ロックで直列にする。
  */
 class RequestPrompt
 {
@@ -83,7 +85,7 @@ class RequestPrompt
             $run = AiRun::query()->create($attributes);
             AiRunText::query()->create(['ai_run_id' => $run->id, 'system_text' => $request->systemText, 'user_text' => $request->userText]);
             $jobTimeout = AiSettings::jobTimeout($kind['timeout_seconds']);
-            RunPromptJob::dispatch($run->id, $jobTimeout)->afterCommit();
+            RunPromptJob::dispatch($run->id, $jobTimeout);
 
             return $run->id;
         });

@@ -25,10 +25,11 @@ use LogicException;
 
 /**
  * AI の文字起こしを依頼する(docs の 設計/AI/公開の口.md 3 節の文字起こしの依頼の行、実行と費用.md 4.2・5.2)。音声の長さを測り、上限を確かめて
- * 実行(queued)と空の送る文を書き、コミットの後にジョブを投入する。区間の一覧は種類の実装({@see TranscriptionKind::complete()})が受け取る。
- * 対象のレコードの閲覧と、音声がそのレコードの添付であることの判定は呼び手。
+ * 実行(queued)と空の送る文を書き、同じトランザクションでジョブを入れる(実行と費用.md 4 節の「ジョブの入れ方」)。
+ * 区間の一覧は種類の実装({@see TranscriptionKind::complete()})が受け取る。対象のレコードの閲覧と、音声がそのレコードの添付であることの判定は呼び手。
  *
- * Ai の公開の口。自分のトランザクションを持ち、外側のトランザクションの中では savepoint で外側に含まれる(ジョブは外側のコミットの後に出る)。
+ * Ai の公開の口。自分のトランザクションを持ち、外側のトランザクションの中では savepoint で外側に含まれる
+ * (ジョブの行も同じトランザクションに入り、外側が巻き戻れば一緒に消える)。
  * 長さは勧告ロックの外で測り(外部のプロセスを待つ間、ほかの依頼を止めない)、上限の確認と行の追加は文章の依頼と同じ鍵で直列にする。
  */
 class RequestTranscription
@@ -99,7 +100,7 @@ class RequestTranscription
 
             $run = AiRun::query()->create($attributes);
             AiRunText::query()->create(['ai_run_id' => $run->id, 'system_text' => '', 'user_text' => '']);
-            RunTranscriptionJob::dispatch($run->id, $jobTimeout)->afterCommit();
+            RunTranscriptionJob::dispatch($run->id, $jobTimeout);
 
             return $run->id;
         });

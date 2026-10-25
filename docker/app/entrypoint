@@ -12,7 +12,7 @@ mkdir -p storage/framework/cache storage/framework/sessions storage/framework/vi
 # 設定・ルート・ビュー・イベントのキャッシュを起動のたびに作る(設定の値をイメージに焼かない)
 php artisan optimize >&2
 
-# AI の設定の食い違い(種類・単価・予算の区分・ジョブの時間とキューが配り直すまでの時間)を起動の時に確かめる
+# AI の設定の食い違い(キューの接続・種類・単価・予算の区分・ジョブの時間とキューが配り直すまでの時間・区分ごとの守る条件)を起動の時に確かめる
 # (docs の 設計/AI/データと失敗と検査.md の 8 節)。食い違いがあれば終了コード 1 で起動が止まる(set -e)。DB には触れない
 php artisan ai:check-settings >&2
 

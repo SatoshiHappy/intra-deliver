@@ -19,8 +19,8 @@ class KindLimitChecks
     /** 文字起こしの 1 本の長さの上限の刻み(超えたときの文が「<N> 時間まで」なので時間の倍数) */
     private const SECONDS_PER_HOUR = 3600;
 
-    /** 予算の区分の期間(config/ai_runs.php の budget の鍵) */
-    private const BUDGET_PERIODS = ['daily_usd', 'monthly_usd', 'total_usd'];
+    /** 予算の区分の期間(config/ai_runs.php の budget の鍵 → 文の名前。短い順) */
+    private const BUDGET_PERIODS = ['daily_usd' => '日', 'monthly_usd' => '月', 'total_usd' => '累計'];
 
     public function __construct(
         private AiSettings $settings,
@@ -87,7 +87,7 @@ class KindLimitChecks
 
     /**
      * 区分ごとの食い違い(守る条件 = 実行と費用.md 5.2)。見積もりの上限は単価が要るので、単価の食い違いが無いときだけ呼ぶ。
-     * 期間の上限(日・月・累計)はどれも数として読む(数でない値は作りの誤りとして起動で止める = 実行と費用.md 5 節)。
+     * 期間の上限(日・月・累計)はどれも数として読む(数でない値は作りの誤りとして起動で止める = 実行と費用.md 5 節。読むのは {@see self::exceededLimit()})。
      *
      * @return list<string>
      *
@@ -98,17 +98,15 @@ class KindLimitChecks
         $problems = [];
 
         foreach ($this->settings->budgetNames() as $budget) {
-            foreach (self::BUDGET_PERIODS as $period) {
-                $this->settings->budget($budget, $period);
-            }
-
             if (! RunBudget::hasMessages($budget)) {
                 $problems[] = "予算の区分 {$budget} に超えたときの文が無い(RunBudget)";
             }
 
-            if ($this->exceedsDailyLimit($budget)) {
-                $limit = RunEstimates::usd((float) $this->settings->budget($budget, 'daily_usd'));
-                $problems[] = "予算の区分 {$budget} の守る条件を破る: 1 依頼の見積もりの上限の最大が日の上限 {$limit} ドル以上";
+            $exceeded = $this->exceededLimit($budget);
+
+            if ($exceeded !== null) {
+                [$label, $limit] = $exceeded;
+                $problems[] = "予算の区分 {$budget} の守る条件を破る: 1 依頼の見積もりの上限の最大が{$label}の上限 {$limit} ドル以上";
             }
         }
 
@@ -134,12 +132,35 @@ class KindLimitChecks
         return [$this->transcription->jobTimeout($kind), $problems];
     }
 
-    /** 1 依頼の見積もりの上限の最大が日の上限以上か(その日の最初の依頼でも断られる。日の上限が無い区分は守る必要が無い) */
-    private function exceedsDailyLimit(string $budget): bool
+    /**
+     * 1 依頼の見積もりの上限の最大が、区分の日・月・累計の上限のうち空でない最も小さいもの以上なら、その期間の名前と上限(その日の最初の依頼でも
+     * 断られる)。3 つとも空なら確かめない(null)。同じ額の期間が 2 つ以上あれば、短い期間(日 → 月 → 累計)の名前を出す。
+     *
+     * @return array{string, string}|null
+     */
+    private function exceededLimit(string $budget): ?array
     {
-        $daily = $this->settings->budget($budget, 'daily_usd');
+        $smallest = null;
+        $smallestMicros = null;
+
+        foreach (self::BUDGET_PERIODS as $period => $label) {
+            $limit = $this->settings->budget($budget, $period);
+
+            if ($limit === null) {
+                continue;
+            }
+
+            $usd = RunEstimates::usd($limit);
+            $micros = RunEstimates::micros($usd);
+
+            if ($smallestMicros === null || $micros < $smallestMicros) {
+                $smallest = [$label, $usd];
+                $smallestMicros = $micros;
+            }
+        }
+
         $worst = RunEstimates::micros($this->estimates->ceilingOf($budget));
 
-        return $daily !== null && $worst >= RunEstimates::micros(RunEstimates::usd($daily));
+        return $smallestMicros !== null && $worst >= $smallestMicros ? $smallest : null;
     }
 }

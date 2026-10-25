@@ -22,12 +22,14 @@ use Tests\Support\TransactionalTestCase;
 
 /**
  * AI の実行の依頼(docs の 設計/AI/公開の口.md 3 節の「依頼(文章の種類)」の行、実行と費用.md 5.2、データと失敗と検査.md 8 節): ゲストは 403、未登録の種類は作りの誤り、
- * 入力が長すぎると 422(キー ai)、実行(queued)と送る文を書き、対象のレコードの業務モジュールのコードを引いて写し、ジョブはコミットの後に出る。
+ * 入力が長すぎると 422(キー ai)、実行(queued)と送る文を書き、対象のレコードの業務モジュールのコードを引いて写し、ジョブの行は
+ * 実行の記録と同じトランザクションで入る(巻き戻れば残らない)。
  * 上限の境界は RequestPromptBudgetTest。
  */
 final class RequestPromptTest extends TransactionalTestCase
 {
     use BuildsRecordModules;
+    use RunsQueuedJobs;
     use UsesTestPromptKinds;
 
     protected function setUp(): void
@@ -138,24 +140,33 @@ final class RequestPromptTest extends TransactionalTestCase
         app(RequestPrompt::class)->execute($this->requesterContext(), $this->promptRequest(recordId: 999_999));
     }
 
-    public function test_the_job_runs_only_after_the_callers_transaction_commits(): void
+    /**
+     * ジョブの行は実行の記録と同じトランザクションで表に入り、依頼の中では走らない。確定した後に流すと実行が終わる。
+     */
+    public function test_the_job_row_is_written_with_the_run_and_runs_only_when_the_queue_is_worked(): void
     {
         PromptAgent::fake([['summary' => '要約']]);
 
         $runId = DB::transaction(function (): int {
             $runId = app(RequestPrompt::class)->execute($this->requesterContext(), $this->promptRequest());
 
-            PromptAgent::assertNeverPrompted();
-            $this->assertSame(AiRunStatus::Queued, AiRun::query()->findOrFail($runId)->status);
+            $this->assertSame([$runId], $this->queuedRunIds(RunPromptJob::class));
 
             return $runId;
         });
 
+        $this->assertSame([$runId], $this->queuedRunIds(RunPromptJob::class));
+        PromptAgent::assertNeverPrompted();
+        $this->assertSame(AiRunStatus::Queued, AiRun::query()->findOrFail($runId)->status);
+
+        $this->runNextQueuedJob();
+
         PromptAgent::assertPromptedTimes(1);
         $this->assertSame(AiRunStatus::Succeeded, AiRun::query()->findOrFail($runId)->status);
+        $this->assertSame([], $this->queuedRunIds(RunPromptJob::class));
     }
 
-    public function test_no_job_runs_when_the_callers_transaction_rolls_back(): void
+    public function test_no_job_row_is_left_when_the_callers_transaction_rolls_back(): void
     {
         PromptAgent::fake([['summary' => '要約']]);
 
@@ -170,6 +181,6 @@ final class RequestPromptTest extends TransactionalTestCase
         }
 
         PromptAgent::assertNeverPrompted();
-        $this->assertSame(0, AiRun::query()->count());
+        $this->assertSame([0, []], [AiRun::query()->count(), $this->queuedRunIds(RunPromptJob::class)]);
     }
 }

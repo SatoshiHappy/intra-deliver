@@ -51,18 +51,20 @@ final class ResetScheduleTest extends TransactionalTestCase
     }
 
     /**
-     * 接続の設定が空(null)か既定の接続の名前で、失敗した仕事の記録の driver が DB の表のもの(database-uuids か database)なら通る
+     * 接続の設定が空(null・空文字)か既定の接続の名前で、失敗した仕事の記録の driver が DB の表のもの(database-uuids か database)なら通る
      */
-    #[TestWith(['database-uuids'])]
-    #[TestWith(['database'])]
-    public function test_the_boot_passes_when_the_connections_are_the_default_one(string $failedDriver): void
-    {
+    #[TestWith(['database-uuids', null])]
+    #[TestWith(['database', ''])]
+    public function test_the_boot_passes_when_the_connections_are_the_default_one(
+        string $failedDriver,
+        ?string $empty,
+    ): void {
         $default = config('database.default');
         $this->assertIsString($default);
         config([
-            'cache.stores.database.connection' => null, 'cache.stores.database.lock_connection' => $default,
+            'cache.stores.database.connection' => $empty, 'cache.stores.database.lock_connection' => $default,
             'queue.connections.database.connection' => $default, 'queue.failed.database' => $default,
-            'session.connection' => null, 'queue.failed.driver' => $failedDriver,
+            'session.connection' => $empty, 'queue.failed.driver' => $failedDriver,
         ]);
 
         app(ResetSettings::class)->ensureSharedStores();

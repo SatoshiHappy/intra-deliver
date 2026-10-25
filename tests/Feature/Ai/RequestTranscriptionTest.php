@@ -36,11 +36,12 @@ use Tests\Support\TransactionalTestCase;
 /**
  * 文字起こしの依頼(docs の 設計/AI/公開の口.md 3 節の文字起こしの依頼の行、実行と費用.md 4.2・5.2): ゲストは 403、登録の無い種類と音声の形式でない添付は
  * 作りの誤り、実体が無い・読み取れない・長すぎるは理由のコードつきの 422(測りの時間切れは 422 にしない)、区分の上限は文字起こしの文の 422(見積もり = 長さ ÷ 60 × 0.005 ドルで数え、
- * 終わる前の実行は見積もりで数え、区分をまたいで数えない)、実行(queued)と空の送る文を書き、ジョブはコミットの後に出る。長さは勧告ロックの外で測る。
+ * 終わる前の実行は見積もりで数え、区分をまたいで数えない)、実行(queued)と空の送る文を書き、ジョブの行は同じトランザクションで入る。長さは勧告ロックの外で測る。
  */
 final class RequestTranscriptionTest extends TransactionalTestCase
 {
     use BuildsRecordModules;
+    use RunsQueuedJobs;
     use UsesTestTranscriptionKinds;
 
     /** 6 秒の音声の見積もり(6 ÷ 60 × 0.005) */
@@ -246,7 +247,10 @@ final class RequestTranscriptionTest extends TransactionalTestCase
         $this->assertLessThan(array_search('lock', $events, true), $measured);
     }
 
-    public function test_the_job_runs_only_after_the_callers_transaction_commits(): void
+    /**
+     * ジョブの行は実行の記録と同じトランザクションで表に入り、依頼の中では走らない。確定した後に流すと実行が終わる。
+     */
+    public function test_the_job_row_is_written_with_the_run_and_runs_only_when_the_queue_is_worked(): void
     {
         $uploadId = $this->sine();
         Transcription::fake([$this->transcriptionResponse([['こんにちは', 'A', 0, 5.5]])]);
@@ -254,17 +258,23 @@ final class RequestTranscriptionTest extends TransactionalTestCase
         $runId = DB::transaction(function () use ($uploadId): int {
             $runId = $this->execute($this->request($uploadId));
 
-            Transcription::assertNothingGenerated();
-            $this->assertSame(AiRunStatus::Queued, AiRun::query()->findOrFail($runId)->status);
+            $this->assertSame([$runId], $this->queuedRunIds(RunTranscriptionJob::class));
 
             return $runId;
         });
 
+        $this->assertSame([$runId], $this->queuedRunIds(RunTranscriptionJob::class));
+        Transcription::assertNothingGenerated();
+        $this->assertSame(AiRunStatus::Queued, AiRun::query()->findOrFail($runId)->status);
+
+        $this->runNextQueuedJob();
+
         $this->assertSame(AiRunStatus::Succeeded, AiRun::query()->findOrFail($runId)->status);
         $this->assertCount(1, $this->transcriptionKind->completed);
+        $this->assertSame([], $this->queuedRunIds(RunTranscriptionJob::class));
     }
 
-    public function test_no_job_runs_when_the_callers_transaction_rolls_back(): void
+    public function test_no_job_row_is_left_when_the_callers_transaction_rolls_back(): void
     {
         $uploadId = $this->sine();
         Transcription::fake([$this->transcriptionResponse([['こんにちは', 'A', 0, 5.5]])]);
@@ -280,7 +290,7 @@ final class RequestTranscriptionTest extends TransactionalTestCase
         }
 
         Transcription::assertNothingGenerated();
-        $this->assertSame(0, AiRun::query()->count());
+        $this->assertSame([0, []], [AiRun::query()->count(), $this->queuedRunIds(RunTranscriptionJob::class)]);
     }
 
     /** 6 秒の正弦波の音声 */

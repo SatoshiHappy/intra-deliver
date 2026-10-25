@@ -25,7 +25,6 @@ use Illuminate\Testing\TestResponse;
 use LogicException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Component\HttpFoundation\Response;
-use Tests\Support\RegistersRecordHolds;
 use Tests\Support\TransactionalTestCase;
 
 /**
@@ -36,7 +35,6 @@ use Tests\Support\TransactionalTestCase;
  */
 final class RegenerateFromAudioTest extends TransactionalTestCase
 {
-    use RegistersRecordHolds;
     use RemovesMeetingAudio;
     use UsesMeetings;
 
@@ -163,7 +161,7 @@ final class RegenerateFromAudioTest extends TransactionalTestCase
      */
     public static function refusalsBeforeTheAudio(): array
     {
-        return ['処理中' => ['processing'], '申請中' => ['held'], '手で作った会議' => ['manual']];
+        return ['処理中' => ['processing'], '手で作った会議' => ['manual']];
     }
 
     /**
@@ -174,17 +172,12 @@ final class RegenerateFromAudioTest extends TransactionalTestCase
     {
         $recordId = match ($case) {
             'processing' => $this->audioMeeting($this->creator),
-            'held' => $this->failedAudioMeeting(),
             default => app(CreateRecord::class)->execute(
                 $this->contextOf($this->creator),
                 'meeting',
                 new RecordInput(['title' => '手で作った']),
             ),
         };
-
-        if ($case === 'held') {
-            $this->registerRecordHolds([$recordId => 'workflow-case:1']);
-        }
 
         $audio = $this->spy(MeetingAudioQuery::class);
 

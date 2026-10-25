@@ -198,7 +198,7 @@ final class MeetingMinutesKindTest extends TransactionalTestCase
             '応答を断った' => ['incomplete', FailedRun::CONTENT_REFUSED, MeetingNoticeReason::Other],
             '権限が無い' => ['completion', FailedRun::RECORD_FORBIDDEN, MeetingNoticeReason::RecordUnavailable],
             '読めない' => ['completion', FailedRun::RECORD_NOT_FOUND, MeetingNoticeReason::RecordUnavailable],
-            '申請中' => ['completion', FailedRun::RECORD_REJECTED, MeetingNoticeReason::RecordUnavailable],
+            '入れ物の検証で断られた' => ['completion', FailedRun::RECORD_REJECTED, MeetingNoticeReason::RecordUnavailable],
             '依頼者が無効' => ['completion', FailedRun::REQUESTER_INACTIVE, MeetingNoticeReason::RecordUnavailable],
             '形の外れ' => ['completion', MeetingMinutesKind::MALFORMED, MeetingNoticeReason::Other],
             '接続先の誤り' => ['provider', null, MeetingNoticeReason::Other],

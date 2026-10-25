@@ -13,7 +13,7 @@ use Throwable;
 
 /**
  * テストの種類(コード test.summary)。complete と failed に渡された値と、そのときの実行の状態・トランザクションの深さを覚える
- * (同じトランザクションで見えるか・別のトランザクションか)。complete の中身と書いてよい業務モジュール・failed の例外はテストが差し替える。
+ * (同じトランザクションで見えるか・別のトランザクションか)。complete と failed の中身・書いてよい業務モジュール・failed の例外はテストが差し替える。
  */
 final class RecordingPromptKind implements PromptKind
 {
@@ -25,7 +25,10 @@ final class RecordingPromptKind implements PromptKind
     /** @var (Closure(CompletedRun): void)|null complete の中で走らせる処理(書き込みの口を呼ぶ・例外を投げる) */
     public ?Closure $onComplete = null;
 
-    /** failed が投げる例外(テストが置く) */
+    /** @var (Closure(FailedRun): void)|null failed の中で走らせる処理(通知を書く・ほかの経路を真似る) */
+    public ?Closure $onFailed = null;
+
+    /** failed が投げる例外(テストが置く。onFailed の後に投げる) */
     public ?Throwable $failedThrows = null;
 
     /** @var list<CompletedRun> */
@@ -69,6 +72,10 @@ final class RecordingPromptKind implements PromptKind
     {
         $this->failed[] = $run;
         $this->failedSeen[] = [AiRun::query()->findOrFail($run->runId)->status->value, DB::transactionLevel()];
+
+        if ($this->onFailed !== null) {
+            ($this->onFailed)($run);
+        }
 
         if ($this->failedThrows !== null) {
             throw $this->failedThrows;

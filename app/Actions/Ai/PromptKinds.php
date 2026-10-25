@@ -4,6 +4,7 @@ namespace App\Actions\Ai;
 
 use App\Actions\Ai\Api\PromptKind;
 use App\Queries\Ai\KindSettings;
+use App\Support\DefaultDatabaseQueue;
 use Illuminate\Container\Attributes\Tag;
 use LogicException;
 
@@ -54,6 +55,7 @@ class PromptKinds
     /**
      * 登録と設定の食い違い(起動の時に確かめるもの = 設計/AI/データと失敗と検査.md 8 節。文章と文字起こしの 2 つの型をまたいで見る。
      * 種類と区分の分は {@see KindLimitChecks})。無ければ空。設定の形が合わない種類があれば、単価と区分は見ない(形が無いと計算できない)。
+     * キューの置き場({@see DefaultDatabaseQueue})はどの環境も同じに見る(ジョブを実行の記録と同じトランザクションで入れる前提 = 実行と費用.md 4 節)。
      *
      * @return list<string>
      */
@@ -65,11 +67,13 @@ class PromptKinds
             $shape = [...$shape, ...$this->kindSettings->problems($code)];
         }
 
+        $queue = [...DefaultDatabaseQueue::storeProblems(), ...DefaultDatabaseQueue::afterCommitProblems()];
+
         if ($shape !== []) {
-            return [...$this->registrationProblems(), ...$shape];
+            return [...$queue, ...$this->registrationProblems(), ...$shape];
         }
 
-        $problems = $this->registrationProblems();
+        $problems = [...$queue, ...$this->registrationProblems()];
         $pricing = [];
 
         foreach ($this->kindSettings->codes() as $code) {

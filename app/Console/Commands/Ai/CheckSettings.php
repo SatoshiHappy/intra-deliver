@@ -13,7 +13,7 @@ final class CheckSettings extends Command
 {
     protected $signature = 'ai:check-settings';
 
-    protected $description = 'AI の種類・単価・予算の区分・ジョブの時間の設定の食い違いを確かめる(食い違いがあれば終了コード 1)';
+    protected $description = 'AI の種類・単価・予算の区分・ジョブの時間・キューの置き場の設定の食い違いを確かめる(食い違いがあれば終了コード 1)';
 
     public function handle(PromptKinds $kinds): int
     {

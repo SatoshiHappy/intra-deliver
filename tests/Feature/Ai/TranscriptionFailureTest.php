@@ -21,7 +21,7 @@ use Tests\Support\TransactionalTestCase;
  * 文字起こしの実行の失敗(docs の 設計/AI/実行と費用.md 4 節・4.2・5.1、データと失敗と検査.md 7 節): 接続先の誤り = provider・時間切れ = timeout
  * (費用は失敗した区切りまでの秒で数え、トークンは分からない)、応答が区切りの終わりまで届かない = incomplete(output_truncated)、実体が無い = conversion
  * (費用 0)、受け手の例外 = completion(受け手の書き込みは残らない)、依頼者が無効 = completion(requester_inactive。受け手を呼ばない)、worker が落ちた =
- * worker_lost。どの失敗でも受け手の failed は 1 回だけ別のトランザクションで呼ばれ、一時ファイルは残らない。
+ * worker_lost。どの失敗でも受け手の failed は 1 回だけ、失敗を書くトランザクションの中で書く前に呼ばれ、一時ファイルは残らない。
  */
 final class TranscriptionFailureTest extends TransactionalTestCase
 {
@@ -44,6 +44,9 @@ final class TranscriptionFailureTest extends TransactionalTestCase
         parent::tearDown();
     }
 
+    /**
+     * 失敗の受け手は、失敗を書く前(処理中のまま)に、失敗を書くトランザクションの中で呼ばれる(docs の 設計/AI/実行と費用.md 4 節の「失敗の書き方」)。
+     */
     public function test_a_provider_error_at_the_second_chunk_counts_the_called_chunks(): void
     {
         $runId = $this->queuedTranscription($this->audioUpload(self::PAUSED_SPEECH, 25));
@@ -60,7 +63,7 @@ final class TranscriptionFailureTest extends TransactionalTestCase
         $output = json_decode((string) AiRunText::query()->findOrFail($runId)->output_text, true);
         $this->assertSame(['一つ目', '1-A'], [$output[0]['text'], $output[0]['speaker_label']]);
         $this->assertCount(1, $output);
-        $this->assertSame([['failed', $level + 1]], $this->transcriptionKind->failedSeen);
+        $this->assertSame([['running', $level + 1]], $this->transcriptionKind->failedSeen);
     }
 
     public function test_a_timeout_of_the_provider_is_a_timeout(): void

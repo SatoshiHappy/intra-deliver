@@ -20,7 +20,7 @@ enum MeetingNoticeReason: string
     /** 音声から書き起こせなかった */
     case AudioUnusable = 'audio_unusable';
 
-    /** 会議を読めない・更新できなかった(依頼者の権限・行の判定・申請中・依頼者が無効) */
+    /** 会議を読めない・更新できなかった(依頼者の権限・行の判定・依頼者が無効) */
     case RecordUnavailable = 'record_unavailable';
 
     /** ほか(時間をおいて再作成する) */

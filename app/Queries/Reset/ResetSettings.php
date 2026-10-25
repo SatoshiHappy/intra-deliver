@@ -3,6 +3,8 @@
 namespace App\Queries\Reset;
 
 use App\Support\AccessContext;
+use App\Support\DefaultDatabaseConnection;
+use App\Support\DefaultDatabaseQueue;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Config;
 use LogicException;
@@ -39,7 +41,7 @@ class ResetSettings
     /** キューの停止と処理中のジョブを見る接続(既定の接続)と、その名前のキュー */
     public function queueConnection(): string
     {
-        return Config::string('queue.default');
+        return DefaultDatabaseQueue::connection();
     }
 
     public function queueName(): string
@@ -95,9 +97,10 @@ class ResetSettings
                 .'(APP_MAINTENANCE_DRIVER=cache・APP_MAINTENANCE_STORE)と既定のキャッシュの置き場(CACHE_STORE)が同じ DB のキャッシュでない');
         }
 
-        if (Config::get("queue.connections.{$this->queueConnection()}.driver") !== 'database') {
-            throw new LogicException('毎日の初期化がオン(DAILY_RESET_ENABLED)なのに、'
-                .'既定のキューの接続(QUEUE_CONNECTION)が DB の表(database)でない');
+        $queueProblems = DefaultDatabaseQueue::storeProblems();
+
+        if ($queueProblems !== []) {
+            throw new LogicException("毎日の初期化がオン(DAILY_RESET_ENABLED)なのに、{$queueProblems[0]}");
         }
 
         if (Config::get('session.driver') !== 'database') {
@@ -118,8 +121,8 @@ class ResetSettings
     }
 
     /**
-     * キャッシュ・鎖錠・キュー・失敗した仕事の記録・セッションの表が、既定の DB の接続にあること(手順 5 のトランザクションは既定の接続で動き、
-     * 別の接続の表は空にならない)。接続の設定が空(null)なら既定の接続を使う。
+     * キャッシュ・鎖錠・失敗した仕事の記録・セッションの表が、既定の DB の接続にあること(手順 5 のトランザクションは既定の接続で動き、
+     * 別の接続の表は空にならない)。比べ方 = {@see DefaultDatabaseConnection}。キューの表は {@see DefaultDatabaseQueue::storeProblems()} が見る。
      *
      * @throws LogicException 既定でない接続を指しているとき
      */
@@ -128,15 +131,12 @@ class ResetSettings
         $connections = [
             "cache.stores.{$cacheStore}.connection" => 'DB_CACHE_CONNECTION',
             "cache.stores.{$cacheStore}.lock_connection" => 'DB_CACHE_LOCK_CONNECTION',
-            "queue.connections.{$this->queueConnection()}.connection" => 'DB_QUEUE_CONNECTION',
             'queue.failed.database' => 'DB_CONNECTION',
             'session.connection' => 'SESSION_CONNECTION',
         ];
 
         foreach ($connections as $key => $variable) {
-            $connection = Config::get($key);
-
-            if ($connection !== null && $connection !== Config::get('database.default')) {
+            if (! DefaultDatabaseConnection::is(Config::get($key))) {
                 throw new LogicException("毎日の初期化がオン(DAILY_RESET_ENABLED)なのに、設定 {$key}({$variable})が既定の DB の接続でない");
             }
         }
