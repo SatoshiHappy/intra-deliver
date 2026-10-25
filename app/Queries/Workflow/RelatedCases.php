@@ -48,13 +48,14 @@ class RelatedCases
         array $content,
     ): array {
         $recordId = $case->record_id ?? throw new LogicException("申請した案件 {$case->id} がレコードを指していない");
-        $codes = RecordModule::query()->whereNull('parent_record_module_id')->pluck('code', 'id')->all();
-        $moduleCodes = array_map(strval(...), $codes);
+        $modules = RecordModule::query()->whereNull('parent_record_module_id')->get(['id', 'code', 'name']);
+        $moduleCodes = array_map(strval(...), $modules->pluck('code', 'id')->all());
+        $moduleNames = array_map(strval(...), $modules->pluck('name', 'code')->all());
         $moduleCode = MixedValues::stringOf($content['module']['code'] ?? null);
         $recordAccess = $this->viewAccess->canView($requester, $moduleCode, $recordId, $date);
         $application = $recordAccess ? $this->origins->ofApplication($content, $moduleCodes) : null;
         $applicationTargetOrigin = $this->applicationTargetOrigin(
-            $requester, $date, $localeCode, $case, $content, $moduleCodes,
+            $requester, $date, $case, $content, $moduleCodes, $moduleNames,
         );
         $groups = $this->groups->of($requester, $date, $applicationTargetOrigin, $application);
 
@@ -66,16 +67,17 @@ class RelatedCases
      * (申請書は申請の後に変わらないので、最後の申請の写しと同じ値)。
      *
      * @param  array{module: array<string, mixed>, record: array<string, mixed>}  $content
-     * @param  array<int, string>  $moduleCodes
+     * @param  array<int, string>  $moduleCodes  業務モジュールの id → コード
+     * @param  array<string, string>  $moduleNames  業務モジュールのコード → 名前
      * @return RelatedOrigin|null
      */
     private function applicationTargetOrigin(
         Requester $requester,
         DateTimeInterface $date,
-        string $localeCode,
         WorkflowCase $case,
         array $content,
         array $moduleCodes,
+        array $moduleNames,
     ): ?array {
         $applicationTarget = $this->applicationTargetValues->applicationTargetOf(CaseRows::flowOf($case));
         if ($applicationTarget === null) {
@@ -90,11 +92,11 @@ class RelatedCases
         }
 
         $moduleCode = $applicationTarget['module'];
+        $moduleName = $moduleNames[$moduleCode]
+            ?? throw new LogicException("申請対象の業務モジュール {$moduleCode} が親の無い業務モジュールに無い");
 
         return $this->viewAccess->canView($requester, $moduleCode, $applicationTargetId, $date)
-            ? $this->origins->ofApplicationTarget(
-                $requester, $moduleCode, $applicationTargetId, $date, $localeCode, $moduleCodes,
-            )
+            ? $this->origins->ofApplicationTarget($applicationTargetId, $moduleCode, $moduleName, $moduleCodes)
             : null;
     }
 

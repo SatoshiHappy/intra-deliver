@@ -229,6 +229,7 @@ final class WorkflowApplicationTargetSectionTest extends TransactionalTestCase
 
     private function queriesOf(callable $read): int
     {
+        $this->resetRequestScope();
         $this->app['db']->enableQueryLog();
         $this->app['db']->flushQueryLog();
         $read();

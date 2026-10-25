@@ -240,6 +240,7 @@ final class CaseOperationDeciderTest extends TransactionalTestCase
      */
     private function statements(Closure $action): array
     {
+        $this->resetRequestScope();
         DB::flushQueryLog();
         DB::enableQueryLog();
         $action();

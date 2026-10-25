@@ -11,6 +11,7 @@ use App\Queries\Authz\Api\Requester;
 use App\Queries\Master\DepartmentTreeQuery;
 use App\Queries\Master\MembershipQuery;
 use DateTimeInterface;
+use Illuminate\Container\Attributes\Scoped;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Relations\Relation;
 use LogicException;
@@ -22,11 +23,12 @@ use LogicException;
  * 事実の組み立ては 1 人の判定と対象者の展開で 1 か所({@see self::requesterFactsFor()})。
  * 子の対象者・除外と式の組み方・「対象者に合う」は {@see SubjectGroupMatcher}。
  */
+#[Scoped]
 class SubjectQuery
 {
     /**
      * 組み立てた判定を求める者の d の事実(キー = ユーザー ID・選んだ組織 ID・接続元の IPv4 アドレス・基準日の値)。
-     * インスタンスの中だけで覚える。singleton・scoped に束縛しない(要求をまたいで覚えない = docs の 設計/メニュー/表示.md 3.1 の 8)。
+     * 判定のたびに作り直さないよう要求(キューのジョブ)の中で使い回し、要求をまたいで覚えない(docs の 設計/共通マスタ/ロールと認可/認可の確認/README.md 3.2)。
      *
      * @var array<string, Subject>
      */

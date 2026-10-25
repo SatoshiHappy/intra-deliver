@@ -152,7 +152,11 @@ final class BulkApprovalsTest extends TransactionalTestCase
         [$applicant, $approver] = $this->seededUsers('u0001', 'u0002');
         $this->addProxy($this->seededUser('u0003'), $approver);
         $cases = array_map(fn () => $this->applyAs($applicant), range(1, 20));
-        $count = fn (array $some) => count($this->recordedSql(fn () => $this->bulkApprovalsOf($approver, ...$some)));
+        $count = function (array $some) use ($approver): int {
+            $this->resetRequestScope();
+
+            return count($this->recordedSql(fn () => $this->bulkApprovalsOf($approver, ...$some)));
+        };
 
         $this->assertSame($count(array_slice($cases, 0, 2)), $count($cases));
         $this->assertNotContains(null, $this->bulkApprovalsOf($approver, ...$cases));

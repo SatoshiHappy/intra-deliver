@@ -4,8 +4,12 @@ namespace Tests;
 
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Testing\TestCase as BaseTestCase;
+use Illuminate\Routing\Router;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Uri;
+use Illuminate\Testing\TestResponse;
 use RuntimeException;
+use Symfony\Component\HttpFoundation\Response;
 
 /**
  * Laravel を起動するテストの基底クラス。DB を使うテストはこのクラスを直接継承せず、
@@ -47,6 +51,44 @@ abstract class TestCase extends BaseTestCase
 
         foreach (array_keys((array) config('ai.providers')) as $provider) {
             config(["ai.providers.{$provider}.key" => null]);
+        }
+
+        $this->resetRequestScope();
+    }
+
+    /**
+     * テストが送る要求の前と後に、要求の寿命を区切る({@see self::resetRequestScope()})。
+     *
+     * @param  string  $method
+     * @param  Uri|string  $uri
+     * @param  array<array-key, mixed>  $parameters
+     * @param  array<array-key, mixed>  $cookies
+     * @param  array<array-key, mixed>  $files
+     * @param  array<array-key, mixed>  $server
+     * @param  string|null  $content
+     * @return TestResponse<Response>
+     */
+    public function call($method, $uri, $parameters = [], $cookies = [], $files = [], $server = [], $content = null)
+    {
+        $this->resetRequestScope();
+
+        try {
+            return parent::call($method, $uri, $parameters, $cookies, $files, $server, $content);
+        } finally {
+            $this->resetRequestScope();
+        }
+    }
+
+    /**
+     * 要求の寿命を区切る: scoped の実体(判定を求める者の事実など)と、ルートが覚えたコントローラ(注入した実体ごと)を捨てる。本番は要求ごとに
+     * 新しい寿命になるが、1 つのテストの中の準備・要求・数える処理は同じアプリを使うため(docs の 設計/共通マスタ/ロールと認可/認可の確認/README.md 3.2)。
+     */
+    protected function resetRequestScope(): void
+    {
+        $this->app->forgetScopedInstances();
+
+        foreach ($this->app->make(Router::class)->getRoutes()->getRoutes() as $route) {
+            $route->flushController();
         }
     }
 

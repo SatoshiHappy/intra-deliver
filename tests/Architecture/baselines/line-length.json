@@ -673,7 +673,6 @@
     "tests/Feature/Queries/Records/RecordListQueryTest.php": 18,
     "tests/Feature/Queries/Records/RecordModuleVisibilityTest.php": 12,
     "tests/Feature/Queries/Records/RecordQueryTest.php": 17,
-    "tests/Feature/Queries/Records/RecordRelationsTest.php": 4,
     "tests/Feature/Queries/Workflow/ApplicableFlowsTest.php": 9,
     "tests/Feature/Queries/Workflow/ApplicationFormQueryTest.php": 31,
     "tests/Feature/Queries/Workflow/ApplicationNextTest.php": 24,

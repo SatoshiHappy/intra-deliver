@@ -126,6 +126,7 @@ final class AuthorizationQueryExplainEachCountTest extends TransactionalTestCase
 
     private function queriesOf(callable $call): int
     {
+        $this->resetRequestScope();
         DB::flushQueryLog();
         DB::enableQueryLog();
         $call();

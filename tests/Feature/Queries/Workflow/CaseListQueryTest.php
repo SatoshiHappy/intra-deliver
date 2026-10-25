@@ -252,6 +252,7 @@ final class CaseListQueryTest extends TransactionalTestCase
 
     private function countQueries(): int
     {
+        $this->resetRequestScope();
         DB::flushQueryLog();
         DB::enableQueryLog();
         $this->listFor($this->a, 'pending');

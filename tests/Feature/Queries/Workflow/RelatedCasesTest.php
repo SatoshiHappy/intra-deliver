@@ -299,6 +299,7 @@ final class RelatedCasesTest extends TransactionalTestCase
 
     private function queryCount(): int
     {
+        $this->resetRequestScope();
         $queries = 0;
         DB::listen(function () use (&$queries) {
             $queries++;
