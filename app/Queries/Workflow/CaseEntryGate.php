@@ -58,6 +58,23 @@ class CaseEntryGate
     }
 
     /**
+     * 申請対象からの申請の画面の GET: フローが無い 404 → 自分か代理元のどれもこの経路で申請できない 403(レコードの有無を漏らさない
+     * = 設計/ワークフロー/申請の周辺/既存のデータからの申請/申請対象からの申請.md の 9.3 節)。
+     *
+     * @throws ModelNotFoundException<WorkflowFlow> フローが無いとき
+     * @throws AuthorizationException 申請対象からの申請をできないとき(ゲストを含む)
+     */
+    public function authorizeApplicationTargetApply(AccessContext $context, string $flowCode): void
+    {
+        $flow = WorkflowFlow::query()->where('code', $flowCode)->firstOrFail();
+        $requester = Requester::fromAccessContext($context);
+
+        if (! $this->recordApplyFlows->allowsAnyForTarget($requester, $flow->id, $context->date)) {
+            throw new AuthorizationException(self::NOT_APPLICABLE_MESSAGE);
+        }
+    }
+
+    /**
      * 既にある案件の書き込みのうち、403 を求めないもの(処理 6 つと一時保存の削除): 案件が無い・閲覧できない 404。
      *
      * @throws ModelNotFoundException<WorkflowCase> 案件が無い・閲覧できないとき

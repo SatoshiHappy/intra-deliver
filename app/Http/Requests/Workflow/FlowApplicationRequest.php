@@ -4,6 +4,7 @@ namespace App\Http\Requests\Workflow;
 
 use App\Queries\Workflow\CaseEntryGate;
 use App\Support\AccessContext;
+use App\Support\PositiveIds;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Http\FormRequest;
 
@@ -22,7 +23,7 @@ class FlowApplicationRequest extends FormRequest
     private const APPLY_ROUTE = 'workflow.applications.store';
 
     /** レコードの id の桁の上限(レコードの詳細のルートの {record} と同じ。申請の画面のクエリ record も同じ上限で読む) */
-    public const RECORD_ID_MAX_DIGITS = 18;
+    public const RECORD_ID_MAX_DIGITS = PositiveIds::MAX_DIGITS;
 
     private const RECORD_ID_RULES = ['nullable', 'integer', 'min:1', 'max_digits:'.self::RECORD_ID_MAX_DIGITS];
 

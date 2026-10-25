@@ -123,6 +123,7 @@ class WorkflowSeeder extends Seeder
         'workflow.cases.release' => ['保留解除', 'Release hold'],
         'workflow.cases.transfer' => ['担当変更', 'Transfer'],
         'workflow.cases.confirm' => ['確認', 'Confirm'],
+        'workflow.target-values' => ['申請対象の値', 'Target values'],
     ];
 
     /** コンテンツ: コード => [業務モジュールのコード, 名前] */

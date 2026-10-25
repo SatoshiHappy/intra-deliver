@@ -13,15 +13,18 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * ワークフローのルートの認可とメニュー(docs の 設計/ワークフロー/認可と一覧.md 4 節・6 節・7 節の HTTP の Feature テスト): 26 のルートのルートの認可が
- * ゲストと認証済みに execute を許す(AuthorizationQuery::allowsUri で確かめる = FormRequest の 403 と取り違えない)、このモジュールのポリシーが 52 件
+ * ワークフローのルートの認可とメニュー(docs の 設計/ワークフロー/認可と一覧.md 4 節・6 節・7 節の HTTP の Feature テスト): 27 のルートのルートの認可が
+ * ゲストと認証済みに execute を許す(AuthorizationQuery::allowsUri で確かめる = FormRequest の 403 と取り違えない)、このモジュールのポリシーが 54 件
  * (ルートの深さ/認可と一覧.md 4.1 = 処理対象者の候補の 2 件と、設計/ワークフロー/案件の運用/認可と一覧.md の 4 節 = 一括承認・一括確認・利用者の候補・
- * 保留・保留解除・振替・確認の 14 件を足した)、
+ * 保留・保留解除・振替・確認の 14 件と、設計/ワークフロー/申請の周辺/初期データ.md の 3 節 = 写しの値の入口の 2 件を足した)、
  * ゲストと u0001 のサイドバーとサイトマップに「ワークフロー」の 2 アイテム(並びは業務の後・管理の前)。初期データを入れ、ルートの認可を外さない。
  */
 final class WorkflowRouteAuthorizationTest extends TransactionalTestCase
 {
-    /** ワークフローのルート 26 本(設計/ワークフロー/画面/README.md 1.1 の表の順と、ルートの深さ/画面.md 1.1 の処理対象者の候補、案件の運用/画面/README.md の 1.1 節の 7 本) */
+    /**
+     * ワークフローのルート 27 本(設計/ワークフロー/画面/README.md 1.1 の表の順と、ルートの深さ/画面.md 1.1 の処理対象者の候補、
+     * 案件の運用/画面/README.md の 1.1 節の 7 本、写しの値の入口)
+     */
     private const ROUTES = [
         'workflow.flows.index', 'workflow.applications.create', 'workflow.applications.store', 'workflow.drafts.store', 'workflow.drafts.edit',
         'workflow.drafts.update', 'workflow.drafts.apply', 'workflow.drafts.destroy', 'workflow.cases.index', 'workflow.cases.show',
@@ -29,6 +32,7 @@ final class WorkflowRouteAuthorizationTest extends TransactionalTestCase
         'workflow.cases.withdraw', 'workflow.reapplications.create', 'workflow.reapplications.store', 'workflow.cases.assignee-candidates',
         'workflow.cases.bulk-approve', 'workflow.cases.bulk-confirm', 'workflow.user-candidates',
         'workflow.cases.hold', 'workflow.cases.release', 'workflow.cases.transfer', 'workflow.cases.confirm',
+        'workflow.target-values',
     ];
 
     protected function setUp(): void
@@ -60,7 +64,7 @@ final class WorkflowRouteAuthorizationTest extends TransactionalTestCase
         }
     }
 
-    public function test_the_module_has_52_policies_permitting_execute_to_the_guest_and_the_authenticated(): void
+    public function test_the_module_has_54_policies_permitting_execute_to_the_guest_and_the_authenticated(): void
     {
         $summaries = AuthzPolicy::query()->with('authzResourceGroup')->get()
             ->filter(fn (AuthzPolicy $policy) => str_starts_with((string) $policy->authzResourceGroup?->code, 'http-services.workflow'))
@@ -68,7 +72,7 @@ final class WorkflowRouteAuthorizationTest extends TransactionalTestCase
             ->all();
         $expected = array_merge(...array_map(fn (string $name) => array_fill(0, 2, "http-services.{$name} service:execute permit"), self::ROUTES));
 
-        $this->assertCount(52, $summaries);
+        $this->assertCount(54, $summaries);
         $this->assertEqualsCanonicalizing($expected, array_values($summaries));
     }
 

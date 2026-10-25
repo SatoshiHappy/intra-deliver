@@ -26,9 +26,11 @@ use LogicException;
  *
  * @phpstan-import-type Next from ApplicationNext
  * @phpstan-import-type ApplyAttachment from ApplyAttachments
+ * @phpstan-import-type ApplicationTargetValueSet from ApplicationTargetValues
  *
  * @phpstan-type ApplyForm array{mode: string, flow: array{code: string, name: string, description: string|null}, case: array{id: int, number: string|null, revision: int}|null, module: array<string, mixed>, headings: list<array{id: int|null, name: string|null, fieldCodes: list<string>}>, initial: array{name: string|null, comment: string|null, values: array<string, mixed>, details: array<string, list<array<string, mixed>>>}|null, titleField: string|null, recordId: int|null, baseDate: string, baseDateRange: array{min: string|null, max: string|null}, next: Next, nameMaxLength: int, commentMaxLength: int, attachment: ApplyAttachment,
- *     recordVersion: string|null, recordTitle: string|null}
+ *     recordVersion: string|null, recordTitle: string|null, targetField: string|null,
+ *     targetValues: ApplicationTargetValueSet|null, targetEntry: array{module: string, record: int}|null}
  */
 class ApplicationFormQuery
 {
@@ -43,6 +45,7 @@ class ApplicationFormQuery
         private ApplyAttachments $attachments,
         private RecordApplyTargets $recordTargets,
         private RecordDisplayQuery $display,
+        private ApplicationTargetValues $applicationTargetValues,
     ) {}
 
     /**
@@ -61,7 +64,24 @@ class ApplicationFormQuery
         $flow = WorkflowFlow::query()->with('workflowContent.recordModule')->where('code', $flowCode)->firstOrFail();
         $module = $this->forms->definition($requester, $this->moduleOf($flow)->code, RecordModuleAction::Create, $context->date);
 
-        $date = $this->applicationDate($context, $flow, [$baseDate]);
+        return $this->newForm($context, $context, $flow, $module, $baseDate);
+    }
+
+    /**
+     * 新規の申請の画面の形(申請対象からの申請の画面 {@see ApplicationTargetForm} も使う)。申請基準日と次の処理対象者は申請者で引く。
+     *
+     * @param  AccessContext  $applicant  申請者(代理のときは代理元)
+     * @param  array<string, mixed>  $module  申請者で create を判定して引いた定義
+     * @return ApplyForm
+     */
+    public function newForm(
+        AccessContext $context,
+        AccessContext $applicant,
+        WorkflowFlow $flow,
+        array $module,
+        mixed $baseDate,
+    ): array {
+        $date = $this->applicationDate($applicant, $flow, [$baseDate]);
 
         return $this->form('new', $flow, null, $module, null, null, $date, $context, $this->attachments->forNew($flow));
     }
@@ -168,8 +188,13 @@ class ApplicationFormQuery
         $date = $this->applicationDate($applicant, $flow, [$baseDate]);
         $attachment = $this->attachments->forRecord($applicant, $flow, $moduleCode, $recordId);
         $form = $this->form('record', $flow, null, $module, $initial, $recordId, $date, $context, $attachment);
+        $applicationTarget = $this->applicationTargetValues->applicationTargetOf($flow);
+        $copied = $applicationTarget === null ? null : $this->applicationTargetValues->valuesOfRecord(
+            $requester, $applicationTarget, $module, $read['values'], $context->date, $context->localeCode,
+        );
 
-        return [...$form, 'recordVersion' => $read['version'], 'recordTitle' => $this->display->titleOf($recordId)];
+        return [...$form, 'recordVersion' => $read['version'], 'recordTitle' => $this->display->titleOf($recordId),
+            'targetValues' => $copied];
     }
 
     /**
@@ -215,6 +240,9 @@ class ApplicationFormQuery
             'attachment' => $attachment,
             'recordVersion' => null,
             'recordTitle' => null,
+            'targetField' => $this->applicationTargetValues->applicationTargetOf($flow)['field'] ?? null,
+            'targetValues' => null,
+            'targetEntry' => null,
             ...$date,
         ];
     }
