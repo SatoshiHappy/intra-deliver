@@ -1,5 +1,5 @@
-// 入口の Worker の要求の扱いの表(docs の 設計/公開の配備/入口/ログイン.md 5.9.1)の行 1〜5(secret の欠け・/_entry/ の道)の単体テスト。
-// 行 6〜10 は entry-table-session.test.mjs、入口の cookie の確かめ(5.9.3)は entry-cookie.test.mjs。
+// 入口の Worker の要求の扱いの表(docs の 設計/公開の配備/入口/ログイン.md 5.9.1)のうち、secret の欠けと /_entry/ の道の単体テスト。
+// app への中継と入口の cookie が無効・無い要求は entry-table-session.test.mjs、入口の cookie の確かめ(5.9.3)は entry-cookie.test.mjs。
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import worker from './index.js';
@@ -29,7 +29,7 @@ async function assertUnavailablePage(response) {
     assert.match(await response.text(), /ただいま準備中です/);
 }
 
-await test('行 1: secret のどれかが無いか空なら、どの道・メソッドも 503 の案内ページで、app へ中継せず、欠けた名前だけをログに出す', async (t) => {
+await test('secret のどれかが無いか空なら、どの道・メソッドも 503 の案内ページで、app へ中継せず、欠けた名前だけをログに出す', async (t) => {
     const full = fakeApp(() => new Response('ok'));
     const validCookie = await logIn(full.env);
 
@@ -74,7 +74,7 @@ await test('行 1: secret のどれかが無いか空なら、どの道・メソ
     }
 });
 
-await test('行 2: /_entry/login の GET・HEAD は、入口の cookie と画面の通信によらずログイン画面(200)', async () => {
+await test('/_entry/login の GET・HEAD は、入口の cookie と画面の通信によらずログイン画面(200)', async () => {
     const app = fakeApp(() => new Response('ok'));
     const states = await cookieStates(app.env);
 
@@ -101,7 +101,7 @@ await test('行 2: /_entry/login の GET・HEAD は、入口の cookie と画面
     assert.equal(app.received.length, 0);
 });
 
-await test('行 3: /_entry/login の POST は、入口の cookie によらず確かめる(合えば 303、合わなければ 401)', async () => {
+await test('/_entry/login の POST は、入口の cookie によらず確かめる(合えば 303、合わなければ 401)', async () => {
     const app = fakeApp(() => new Response('ok'));
     const states = await cookieStates(app.env);
 
@@ -129,7 +129,7 @@ await test('行 3: /_entry/login の POST は、入口の cookie によらず確
     assert.equal(app.received.length, 0);
 });
 
-await test('行 4: /_entry/login のほかのメソッドは、入口の cookie によらず 405', async () => {
+await test('/_entry/login のほかのメソッドは、入口の cookie によらず 405', async () => {
     const app = fakeApp(() => new Response('ok'));
     const states = await cookieStates(app.env);
 
@@ -148,7 +148,7 @@ await test('行 4: /_entry/login のほかのメソッドは、入口の cookie 
     assert.equal(app.received.length, 0);
 });
 
-await test('行 5: /_entry/ で始まるほかの道は、入口の cookie が有効でも 404 で、app へ中継しない', async () => {
+await test('/_entry/ で始まるほかの道は、入口の cookie が有効でも 404 で、app へ中継しない', async () => {
     const app = fakeApp(() => new Response('ok'));
     const states = await cookieStates(app.env);
 

@@ -1,5 +1,5 @@
-// 入口の Worker の要求の扱いの表(docs の 設計/公開の配備/入口/ログイン.md 5.9.1)の行 6〜10(app への中継と入口の cookie が無効・無い要求)の単体テスト。
-// 行 1〜5 は entry-table.test.mjs、入口の cookie の確かめ(5.9.3)は entry-cookie.test.mjs。
+// 入口の Worker の要求の扱いの表(docs の 設計/公開の配備/入口/ログイン.md 5.9.1)のうち、app への中継と入口の cookie が無効・無い要求の単体テスト。
+// secret の欠けと /_entry/ の道は entry-table.test.mjs、入口の cookie の確かめ(5.9.3)は entry-cookie.test.mjs。
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import worker from './index.js';
@@ -10,7 +10,7 @@ import {
     request,
 } from './test-support.mjs';
 
-await test('行 6: ほかの道は、入口の cookie が有効なら画面の通信とメソッドによらず app へ中継する', async () => {
+await test('ほかの道は、入口の cookie が有効なら画面の通信とメソッドによらず app へ中継する', async () => {
     const app = fakeApp(() => new Response('from-app'));
     const { valid } = await cookieStates(app.env);
 
@@ -35,7 +35,7 @@ await test('行 6: ほかの道は、入口の cookie が有効なら画面の�
     assert.equal(app.received.length, 6);
 });
 
-await test('行 7: 入口の cookie が無効・無い Inertia の訪問は 409 と X-Inertia-Location(GET・HEAD だけ next つき)', async () => {
+await test('入口の cookie が無効・無い Inertia の訪問は 409 と X-Inertia-Location(GET・HEAD だけ next つき)', async () => {
     const app = fakeApp(() => new Response('ok'));
     const { invalid, none } = await cookieStates(app.env);
 
@@ -71,7 +71,7 @@ await test('行 7: 入口の cookie が無効・無い Inertia の訪問は 409 
     assert.equal(app.received.length, 0);
 });
 
-await test('行 8: 入口の cookie が無効・無く X-Inertia が無い XMLHttpRequest の取得は、GET でも 401', async () => {
+await test('入口の cookie が無効・無く X-Inertia が無い XMLHttpRequest の取得は、GET でも 401', async () => {
     const app = fakeApp(() => new Response('ok'));
     const { invalid, none } = await cookieStates(app.env);
 
@@ -98,7 +98,7 @@ await test('行 8: 入口の cookie が無効・無く X-Inertia が無い XMLHt
     assert.equal(app.received.length, 0);
 });
 
-await test('行 9: 入口の cookie が無効・無いほかの GET・HEAD は 302 でログイン画面へ(X-Requested-With がほかの値でも)', async () => {
+await test('入口の cookie が無効・無いほかの GET・HEAD は 302 でログイン画面へ(X-Requested-With がほかの値でも)', async () => {
     const app = fakeApp(() => new Response('ok'));
     const { invalid, none } = await cookieStates(app.env);
 
@@ -125,7 +125,7 @@ await test('行 9: 入口の cookie が無効・無いほかの GET・HEAD は 3
     assert.equal(app.received.length, 0);
 });
 
-await test('行 10: 入口の cookie が無効・無いほかのメソッドは 401(本文を読まない)', async () => {
+await test('入口の cookie が無効・無いほかのメソッドは 401(本文を読まない)', async () => {
     const app = fakeApp(() => new Response('ok'));
     const { invalid, none } = await cookieStates(app.env);
 

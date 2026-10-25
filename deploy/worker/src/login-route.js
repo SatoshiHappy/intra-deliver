@@ -5,7 +5,7 @@ import { NO_STORE, plainText } from './responses.js';
 
 const LOGIN_PATH = '/_entry/login';
 
-// 戻り先(`next`)を持たせるメソッド。ほかのメソッドの要求へは入った後に戻さない(入口/ログイン.md 5.9.1)
+// 戻り先(`next`)を持たせるメソッド(入口/ログイン.md 5.9.1)
 export const METHODS_WITH_NEXT = new Set(['GET', 'HEAD']);
 
 const LOGIN_PAGE_HEADERS = {
@@ -21,8 +21,7 @@ const NOT_FOUND_TEXT = 'ページが見つかりません。';
 const METHOD_NOT_ALLOWED_TEXT = 'この操作は受け付けていません。';
 
 /**
- * 戻り先を要求の origin で解き、同じ origin のときだけその絶対 URL を、ほかは `/` の絶対 URL を返す。
- * パスだけを返すと `/.//evil.example` が解けた `//evil.example` がよその宛先になるので、origin を含めて返す(入口/ログイン.md 5.9.1)。
+ * 確かめを通した戻り先の絶対 URL(origin まで含める理由 = 入口/ログイン.md 5.9.1 の `next`)。
  * @param {unknown} next
  * @param {string} origin
  * @returns {string}
@@ -36,14 +35,13 @@ function safeNext(next, origin) {
     try {
         resolved = new URL(next, origin);
     } catch {
-        // 解けない値は、よその宛先と同じく `/` へ戻す(入口/ログイン.md 5.9.1)
         return fallback;
     }
     return resolved.origin === origin ? resolved.href : fallback;
 }
 
 /**
- * ログイン画面への道。GET・HEAD の要求だけ、そのパスとクエリを `next` に入れる(入口/ログイン.md 5.9.1)。
+ * ログイン画面への道(`next` の付け方 = 入口/ログイン.md 5.9.1)。
  * @param {Request} request
  * @param {URL} url
  */
@@ -70,7 +68,7 @@ function loginPageResponse(request, next, failed) {
 }
 
 /**
- * ログインの POST。合えば入口の cookie を置いて `next` へ 303、合わなければ 401 とログイン画面(入口/ログイン.md 5.9.1・5.9.3)。
+ * ログインの POST(入口/ログイン.md 5.9.1・5.9.3)。
  * @param {Request} request
  * @param {URL} url
  * @param {import('./index.js').Secrets} secrets
@@ -82,7 +80,7 @@ async function login(request, url, secrets) {
     try {
         form = await request.formData();
     } catch {
-        // 形の読めない本文は、欄が欠けた要求と同じく合わないとして扱う(入口/ログイン.md 5.9.3)
+        // 入口/ログイン.md 5.9.3 の比べ方(形の読めない本文)
     }
     const next = safeNext(form?.get('next'), url.origin);
     const matches = await credentialsMatch(
@@ -104,7 +102,7 @@ async function login(request, url, secrets) {
 }
 
 /**
- * Worker の道(`/_entry/` で始まる)の要求。app へは中継しない(入口/ログイン.md 5.9.1)。
+ * Worker の道(`/_entry/` で始まる)の要求(入口/ログイン.md 5.9.1)。
  * @param {Request} request
  * @param {URL} url
  * @param {import('./index.js').Secrets} secrets
