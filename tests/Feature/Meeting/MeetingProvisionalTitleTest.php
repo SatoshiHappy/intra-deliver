@@ -22,7 +22,7 @@ final class MeetingProvisionalTitleTest extends TransactionalTestCase
 
     private const SEGMENTS = [['はじめます', 'A', 0.5, 1.0], ['了解です', 'B', 1.25, 2.0]];
 
-    private const UNTITLED = "会議の情報:\n件名: (未入力)\n";
+    private const UNTITLED = "<資料>\n会議の情報:\n件名: (未入力)\n";
 
     private User $creator;
 
@@ -73,7 +73,7 @@ final class MeetingProvisionalTitleTest extends TransactionalTestCase
         app(RegenerateMinutes::class)->execute($this->contextOf($this->creator), $recordId, null);
 
         $this->assertStringStartsWith(
-            "会議の情報:\n件名: 10 月の定例会\n",
+            "<資料>\n会議の情報:\n件名: 10 月の定例会\n",
             $this->userTextOf($this->lastRunIdOf($recordId)),
         );
     }
@@ -105,7 +105,7 @@ final class MeetingProvisionalTitleTest extends TransactionalTestCase
         $this->regenerateFromAudio($recordId);
 
         $this->assertStringStartsWith(
-            "会議の情報:\n件名: 10 月の定例会\n",
+            "<資料>\n会議の情報:\n件名: 10 月の定例会\n",
             $this->userTextOf($this->lastRunIdOf($recordId)),
         );
     }

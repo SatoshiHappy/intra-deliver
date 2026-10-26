@@ -7,7 +7,6 @@ use App\Actions\Ai\Api\RunCompletionFailed;
 use App\Actions\Ai\Api\RunRequestDeclined;
 use App\Enums\Ai\AiRunErrorCode;
 use App\Models\Ai\AiRun;
-use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -23,6 +22,7 @@ class FailRun
         private MarkRunFailed $markRunFailed,
         private PromptKinds $kinds,
         private TranscriptionKinds $transcriptionKinds,
+        private FailingRun $failing,
     ) {}
 
     /**
@@ -39,10 +39,8 @@ class FailRun
         ?RunResult $result = null,
     ): void {
         try {
-            $receiverError = $this->failWithReceiver($runId, $errorCode, $exception, $result);
-
-            if ($receiverError !== null) {
-                $this->failWithoutReceiver($runId, $errorCode, $exception, $result, $receiverError);
+            if (! $this->failWithReceiver($runId, $errorCode, $exception, $result)) {
+                $this->markRunFailed->execute($runId, $errorCode, $exception, $result);
             }
         } catch (Throwable $writeError) {
             if ($exception !== null) {
@@ -54,7 +52,7 @@ class FailRun
     }
 
     /**
-     * @return Throwable|null 受け手の例外(巻き戻した後。失敗は呼び手が書く)
+     * @return bool 受け手が投げずに終わった(か、実行がもう終わっていた)= true。受け手が投げた = false(巻き戻した後。失敗は呼び手が書く)
      *
      * @throws Throwable 読み書きの失敗(巻き戻す)
      */
@@ -63,7 +61,7 @@ class FailRun
         AiRunErrorCode $errorCode,
         ?Throwable $exception,
         ?RunResult $result,
-    ): ?Throwable {
+    ): bool {
         DB::beginTransaction();
 
         try {
@@ -72,21 +70,13 @@ class FailRun
             if ($run->status->isFinished()) {
                 DB::commit();
 
-                return null;
+                return true;
             }
 
-            $receiverError = $this->callReceiver($run, $errorCode, $exception, $result);
+            if (! $this->callReceiver($run, $errorCode, $exception, $result)) {
+                DB::rollBack();
 
-            if ($receiverError !== null) {
-                try {
-                    DB::rollBack();
-                } catch (Throwable $rollbackError) {
-                    report($receiverError);
-
-                    throw $rollbackError;
-                }
-
-                return $receiverError;
+                return false;
             }
 
             if ($this->markRunFailed->execute($runId, $errorCode, $exception, $result)) {
@@ -95,9 +85,9 @@ class FailRun
                 DB::rollBack();
             }
 
-            return null;
+            return true;
         } catch (Throwable $writeError) {
-            DB::rollBack();
+            rescue(fn () => DB::rollBack());
 
             throw $writeError;
         }
@@ -105,47 +95,36 @@ class FailRun
 
     /**
      * 実装が引けなければ呼ばない(作りの誤りの報告は呼び手の経路 = データと失敗と検査.md 7 節)。準備(実装を引く・渡す値を作る)の例外も受け手の例外と
-     * 同じに返す(準備で投げても、失敗だけは書けるように)。
+     * 同じに返す(準備で投げても、失敗だけは書けるように)。受け手の例外は捕まえた所で報告する(後の書き込みが失敗しても残るように)。
+     * 受け手を呼ぶ間は失敗を書いている実行の印を付ける(受け手の中からの依頼を依頼の口が断る = 設計/AI/公開の口.md 3 節の表の B7)。
+     *
+     * @return bool 投げずに終わった = true
      */
     private function callReceiver(
         AiRun $run,
         AiRunErrorCode $errorCode,
         ?Throwable $exception,
         ?RunResult $result,
-    ): ?Throwable {
-        return rescue(function () use ($run, $errorCode, $exception, $result): null {
+    ): bool {
+        return rescue(function () use ($run, $errorCode, $exception, $result): bool {
             $kind = $this->kinds->find($run->kind) ?? $this->transcriptionKinds->find($run->kind);
 
-            $kind?->failed(new FailedRun(
+            if ($kind === null) {
+                return true;
+            }
+
+            $failed = new FailedRun(
                 $run->id,
                 $run->kind,
                 $run->record_id,
                 $run->requester_user_id,
                 $errorCode->value,
                 self::reasonOf($errorCode, $exception, $result),
-            ));
+            );
+            $this->failing->during($run->id, fn () => $kind->failed($failed));
 
-            return null;
-        }, fn (Throwable $receiverError): Throwable => $receiverError, report: false);
-    }
-
-    /**
-     * 受け手の例外は、書き込みが失敗しても報告する。
-     *
-     * @throws Throwable 書き込みに失敗したとき
-     */
-    private function failWithoutReceiver(
-        int $runId,
-        AiRunErrorCode $errorCode,
-        ?Throwable $exception,
-        ?RunResult $result,
-        Throwable $receiverError,
-    ): void {
-        try {
-            $this->markRunFailed->execute($runId, $errorCode, $exception, $result);
-        } finally {
-            report($receiverError);
-        }
+            return true;
+        }, false);
     }
 
     /**
@@ -165,7 +144,6 @@ class FailRun
         return match (true) {
             $exception instanceof RunCompletionFailed => $exception->reason,
             $exception instanceof RunRequestDeclined => $exception->reason,
-            $exception instanceof AuthorizationException => FailedRun::RECORD_FORBIDDEN,
             $exception instanceof ModelNotFoundException => FailedRun::RECORD_NOT_FOUND,
             $exception instanceof ValidationException => FailedRun::RECORD_REJECTED,
             default => null,

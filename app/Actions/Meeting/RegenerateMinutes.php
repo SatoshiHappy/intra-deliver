@@ -16,6 +16,7 @@ use App\Queries\Meeting\MeetingProcessingQuery;
 use App\Queries\Meeting\MeetingRegenerableQuery;
 use App\Queries\Meeting\MeetingTitleQuery;
 use App\Support\AccessContext;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\LazyCollection;
@@ -25,7 +26,8 @@ use Illuminate\Validation\ValidationException;
  * 議事録を作り直す(docs の 設計/業務ツール/会議/処理.md の 3.7、材料 = 文字起こしと議事録.md の 5.3・5.4)。会議ごとの勧告ロックの中で
  * 押せる会議と押せる時を確かめてから依頼する(鍵の順 = 会議ごとの鍵 → AI の費用の鍵 = 設計/業務データの入れ物/レコードの共通機能/データモデル/README.md の 4 節)。
  * 書き起こしがあれば書き起こしから議事録を、無ければ会議の今の添付のうち受ける形式で実体のある最も新しい音声から文字起こしを依頼する
- * (完了の後に続けて議事録を作る)。再作成は件名を書かない。入口の判定は {@see MeetingRequestGate::ensureCanRegenerate()}。
+ * (完了の後に続けて議事録を作る)。再作成は件名を書かない。最初に入口の判定 {@see MeetingRequestGate::ensureCanRegenerate()} を呼ぶ
+ * (業務処理を直接呼ぶ場所にも依頼の時点の確かめを掛ける = 処理.md の 3.11。HTTP の入口も FormRequest で同じ判定を先に呼ぶ)。
  */
 class RegenerateMinutes
 {
@@ -57,6 +59,7 @@ class RegenerateMinutes
         private MeetingTitleQuery $titles,
         private MinutesPrompt $prompts,
         private RequestPrompt $requestPrompt,
+        private MeetingRequestGate $gate,
     ) {}
 
     /**
@@ -66,10 +69,12 @@ class RegenerateMinutes
      * @throws ValidationException 追加の指示の誤り・書き起こしが無く音声から作り直すのに追加の指示があるとき(キー instructions)・
      *                             押せる会議でない・処理中・書き起こしと音声が無いとき(キー meeting)
      * @throws RunRequestDeclined 依頼が上限を超える・長すぎる・音声を読み取れない・音声が削除されたとき(キー ai)
-     * @throws ModelNotFoundException 依頼者が会議を閲覧できない・会議が無いとき
+     * @throws AuthorizationException ゲスト・会議の業務モジュールの read・update のどちらかを許されないとき(入口の判定)
+     * @throws ModelNotFoundException 依頼者が会議を閲覧できない・会議が無い・会議の業務モジュールが無いとき
      */
     public function execute(AccessContext $context, int $recordId, ?string $instructions): int
     {
+        $this->gate->ensureCanRegenerate($context, $recordId);
         $instructions = $instructions === '' ? null : $instructions;
         self::ensureInstructions($instructions);
 

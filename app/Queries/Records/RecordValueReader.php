@@ -3,7 +3,6 @@
 namespace App\Queries\Records;
 
 use App\Enums\Records\RecordFieldType;
-use App\Enums\Records\RecordModuleAction;
 use App\Models\Master\Department;
 use App\Models\Master\DepartmentTerm;
 use App\Models\Master\User;
@@ -11,14 +10,12 @@ use App\Models\Master\UserTerm;
 use App\Models\Records\Record;
 use App\Models\Records\RecordField;
 use App\Models\Records\RecordFieldOption;
-use App\Models\Records\RecordModule;
 use App\Models\Records\RecordReference;
 use App\Queries\Authz\Api\Requester;
 use App\Queries\Master\Api\MasterNames;
 use App\Queries\Master\TermQuery;
 use DateTimeInterface;
 use Illuminate\Database\Eloquent\Collection;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 use UnexpectedValueException;
 
 /**
@@ -42,19 +39,18 @@ class RecordValueReader
 {
     public function __construct(
         private TermQuery $terms,
-        private RecordModuleGate $gate,
         private FieldValueParser $parser,
-        private RecordDefinitionQuery $definitions,
         private MasterNames $names,
-        private RecordRowAccess $rows,
+        private ReferencedRecordLabels $recordLabels,
     ) {}
 
     /**
      * @param  Collection<int, Record>  $records  同じ業務モジュールのレコード
      * @param  Collection<int, RecordField>  $fields  返す項目(明細を除く。選択肢を読み込んでおく)
+     * @param  Requester|null  $requester  参照先の表示名を判定する者(null = 判定できる主体が無い = 他モジュール参照の表示名を引かない)
      * @return array<int, array<string, mixed>> レコードの id → 項目のコード → 値
      */
-    public function values(Collection $records, Collection $fields, Requester $requester, DateTimeInterface $date, string $localeCode): array
+    public function values(Collection $records, Collection $fields, ?Requester $requester, DateTimeInterface $date, string $localeCode): array
     {
         $references = RecordReference::query()->whereIn('record_id', $records->modelKeys())->whereIn('record_field_id', $fields->modelKeys())->orderBy('sort_key')->get();
         $labels = $this->targetValues(array_values($references->map(fn (RecordReference $reference) => $this->target($reference))->all()), $requester, $date, $localeCode);
@@ -219,9 +215,10 @@ class RecordValueReader
      * 相手ごとの値(鍵 = {@see self::targetKey()} → 値)。今は無い相手は鍵を持たない。
      *
      * @param  list<ReferenceTarget>  $targets
+     * @param  Requester|null  $requester  null = 他モジュール参照の表示名を引かない({@see self::values()})
      * @return array<string, ReferenceValue>
      */
-    public function targetValues(array $targets, Requester $requester, DateTimeInterface $date, string $localeCode): array
+    public function targetValues(array $targets, ?Requester $requester, DateTimeInterface $date, string $localeCode): array
     {
         $idsOf = fn (RecordFieldType $type): array => array_values(array_unique(array_column(array_filter($targets, fn (array $target) => $target['type'] === $type->value), 'id')));
         $userIds = $idsOf(RecordFieldType::User);
@@ -237,7 +234,7 @@ class RecordValueReader
             $labels["department:{$id}"] = $value;
         }
 
-        foreach ($this->records($recordIds, $requester, $date) as $id => $value) {
+        foreach ($this->recordLabels->of($recordIds, $requester, $date) as $id => $value) {
             $labels["record:{$id}"] = $value;
         }
 
@@ -249,9 +246,7 @@ class RecordValueReader
      */
     public function title(Record $record, ?RecordField $titleField): ?string
     {
-        $value = $titleField === null ? null : $this->parser->stored($titleField, $record->field_values ?? []);
-
-        return is_string($value) ? $value : null;
+        return $this->recordLabels->title($record, $titleField);
     }
 
     /**
@@ -270,49 +265,5 @@ class RecordValueReader
                 'affiliation' => null,
             ]])
             ->all();
-    }
-
-    /**
-     * 参照先のレコードの値(表示の項目の値。参照先の業務モジュールの参照を許されていないか、レコードが行の判定を通らなければ null)。
-     *
-     * @param  list<int>  $recordIds
-     * @return array<int, ReferenceValue>
-     */
-    private function records(array $recordIds, Requester $requester, DateTimeInterface $date): array
-    {
-        $values = [];
-
-        $grouped = Record::query()->whereKey($recordIds)->get()->groupBy('record_module_id');
-        $modules = RecordModule::query()->with(['recordFields' => fn ($fields) => $fields->where('is_title', true)])->whereKey($grouped->keys()->all())->get()->keyBy('id');
-
-        foreach ($grouped as $moduleId => $moduleRecords) {
-            $module = $modules->get($moduleId) ?? throw (new ModelNotFoundException)->setModel(RecordModule::class, [$moduleId]);
-            $title = $this->gate->allows($requester, $module, RecordModuleAction::Read, $date) ? $this->definitions->titleFieldOf($module->recordFields) : null;
-            $accessible = $title === null ? [] : $this->rowAccessibleIds($requester, $module, $moduleRecords, $date);
-
-            foreach ($moduleRecords as $record) {
-                $label = isset($accessible[$record->id]) ? $this->title($record, $title) : null;
-                $values[$record->id] = ['id' => $record->id, 'code' => null, 'label' => $label, 'affiliation' => null];
-            }
-        }
-
-        return $values;
-    }
-
-    /**
-     * 参照先の業務モジュールのレコードのうち、行の判定を通るもの(id → 真)。
-     *
-     * @param  Collection<int, Record>  $records
-     * @return array<int, true>
-     */
-    private function rowAccessibleIds(
-        Requester $requester,
-        RecordModule $module,
-        Collection $records,
-        DateTimeInterface $date,
-    ): array {
-        $query = Record::query()->where('record_module_id', $module->id)->whereKey($records->modelKeys());
-
-        return array_fill_keys($this->rows->constrain($query, $requester, $module, $date)->pluck('id')->all(), true);
     }
 }

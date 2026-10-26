@@ -2,7 +2,7 @@
 
 namespace App\Actions\Meeting;
 
-use App\Actions\Ai\Api\RequestPrompt;
+use App\Actions\Ai\Api\RunRequestMessages;
 use App\Enums\Builtin\Meeting;
 use App\Queries\Authz\Api\Requester;
 use App\Queries\Meeting\MeetingPermissions;
@@ -58,7 +58,7 @@ class MeetingRequestGate
     private static function ensureNotGuest(AccessContext $context): void
     {
         if ($context->userId === null) {
-            throw new AuthorizationException(RequestPrompt::GUEST);
+            throw new AuthorizationException(RunRequestMessages::GUEST);
         }
     }
 }

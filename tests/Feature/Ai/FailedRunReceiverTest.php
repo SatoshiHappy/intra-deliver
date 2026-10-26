@@ -54,7 +54,6 @@ final class FailedRunReceiverTest extends TransactionalTestCase
     {
         parent::setUp();
         $this->registerTestPromptKinds();
-        config(['ai.providers.anthropic.key' => 'fake-key-for-tests']);
     }
 
     /**
@@ -179,7 +178,10 @@ final class FailedRunReceiverTest extends TransactionalTestCase
     public static function completionExceptions(): array
     {
         return [
-            '権限が無い(403)' => [fn () => new AuthorizationException('更新を許されない'), FailedRun::RECORD_FORBIDDEN],
+            '権限が無い(403。完了の処理の中では起きない作りの誤りで、細かい理由は無し)' => [
+                fn () => new AuthorizationException('更新を許されない'),
+                null,
+            ],
             'レコードが無い(404)' => [fn () => new ModelNotFoundException('レコードが無い'), FailedRun::RECORD_NOT_FOUND],
             '更新が断られた(422)' => [
                 fn () => ValidationException::withMessages(['record' => '申請中']),

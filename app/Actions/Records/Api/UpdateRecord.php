@@ -2,19 +2,16 @@
 
 namespace App\Actions\Records\Api;
 
+use App\Actions\Records\LockedRecordUpdate;
 use App\Actions\Records\LocksRecordModule;
-use App\Actions\Records\RecordAttachmentGate;
 use App\Actions\Records\RecordAttachmentWriter;
 use App\Actions\Records\RecordRevisionWriter;
-use App\Actions\Records\RecordSaver;
 use App\Actions\Records\RecordWriteTransaction;
 use App\Enums\Records\RecordModuleAction;
-use App\Enums\Records\RecordRevisionAction;
 use App\Models\Records\Record;
 use App\Models\Records\RecordModule;
 use App\Queries\Authz\Api\Requester;
 use App\Queries\Records\RecordDefinitionQuery;
-use App\Queries\Records\RecordHoldCatalog;
 use App\Queries\Records\RecordModuleGate;
 use App\Queries\Records\RecordRowAccess;
 use App\Support\AccessContext;
@@ -36,6 +33,7 @@ use InvalidArgumentException;
  *
  * 業務データの入れ物の公開の口(主体・認可・検証の範囲・ロック・原子性・結果・失敗の正本 = docs の
  * 設計/ワークフロー/業務データとの接続/公開の口.md 7 節の表)。自分のトランザクションを持ち、外側のトランザクションの中では savepoint で外側に含まれる。
+ * 行の鍵より後ろ(持ち主の規則・3〜9・添付・版)は、判定しない更新 {@see UpdateRecordUnchecked} と同じ {@see LockedRecordUpdate} を通る。
  */
 class UpdateRecord
 {
@@ -48,11 +46,8 @@ class UpdateRecord
     public function __construct(
         private RecordModuleGate $gate,
         private RecordDefinitionQuery $definitions,
-        private RecordSaver $saver,
-        private RecordHoldCatalog $holds,
         private RecordRowAccess $rows,
-        private RecordAttachmentGate $attachmentGate,
-        private RecordAttachmentWriter $attachments,
+        private LockedRecordUpdate $update,
         private RecordRevisionWriter $revisions,
     ) {}
 
@@ -98,22 +93,13 @@ class UpdateRecord
             }
 
             $record = $records->lock('for no key update')->findOrFail($recordId);
-            $hold = $this->holds->blockingHold($record->id, $holder);
-
-            if ($hold !== null) {
-                throw ValidationException::withMessages(['record' => [$hold->reason]]);
-            }
+            $this->update->throwIfHeld($record, $holder);
 
             if ($version !== null && $version !== $record->version()) {
                 throw ValidationException::withMessages(['record' => [self::STALE]]);
             }
 
-            $this->attachmentGate->ensureEnabledFor($module, $input);
-            $record->load('recordReferences');
-
-            $this->saver->save($requester, $context->date, $context->userId, $this->definitions->load($module), $record, $input);
-            $this->attachments->attachInput($record, $origin->executorUserId ?? $context->userId, $input);
-            $this->revisions->write($record->id, RecordRevisionAction::Update, $context->userId, $origin);
+            $this->update->write($requester, $context, $this->definitions->load($module), $record, $input, $origin);
         });
     }
 }

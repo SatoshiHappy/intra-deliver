@@ -170,7 +170,10 @@ final class MeetingMinutesKindTest extends TransactionalTestCase
         ]], $this->meetingNotices($recordId));
     }
 
-    public function test_a_requester_without_update_fails_and_is_notified_as_record_unavailable(): void
+    /**
+     * 処理中に依頼者の会議の update が外れても議事録を書き、操作した人と通知の起こした人は依頼者のまま(ADR 0029 の決定 6・9)。
+     */
+    public function test_a_requester_whose_update_was_removed_during_processing_still_gets_the_minutes(): void
     {
         $creator = $this->user();
         $recordId = $this->pastedMeeting($creator);
@@ -178,12 +181,11 @@ final class MeetingMinutesKindTest extends TransactionalTestCase
 
         $run = $this->completeMinutes($this->lastRunIdOf($recordId));
 
-        $this->assertSame(AiRunStatus::Failed, $run->status);
+        $this->assertSame(AiRunStatus::Succeeded, $run->status);
+        $this->assertSame('AI の要約', $this->valuesOf($recordId)['summary'] ?? null);
+        $this->assertSame(['AI(議事録の作成)', $creator->id], $this->lastRevisionOf($recordId));
         $this->assertSame(
-            [[
-                MeetingNoticeType::MinutesFailed->value, $creator->id, $creator->id,
-                ['title' => '貼り付けたテキスト', 'reason' => 'record_unavailable'],
-            ]],
+            [[MeetingNoticeType::MinutesCreated->value, $creator->id, $creator->id, ['title' => 'AI の件名']]],
             $this->meetingNotices($recordId),
         );
     }
@@ -196,10 +198,12 @@ final class MeetingMinutesKindTest extends TransactionalTestCase
         return [
             '出力が切れた' => ['incomplete', FailedRun::OUTPUT_TRUNCATED, MeetingNoticeReason::Truncated],
             '応答を断った' => ['incomplete', FailedRun::CONTENT_REFUSED, MeetingNoticeReason::Other],
-            '権限が無い' => ['completion', FailedRun::RECORD_FORBIDDEN, MeetingNoticeReason::RecordUnavailable],
-            '読めない' => ['completion', FailedRun::RECORD_NOT_FOUND, MeetingNoticeReason::RecordUnavailable],
+            'レコードが見つからない(会議が無ければ通知は出ない。写すのはほか)' => [
+                'completion',
+                FailedRun::RECORD_NOT_FOUND,
+                MeetingNoticeReason::Other,
+            ],
             '入れ物の検証で断られた' => ['completion', FailedRun::RECORD_REJECTED, MeetingNoticeReason::RecordUnavailable],
-            '依頼者が無効' => ['completion', FailedRun::REQUESTER_INACTIVE, MeetingNoticeReason::RecordUnavailable],
             '形の外れ' => ['completion', MeetingMinutesKind::MALFORMED, MeetingNoticeReason::Other],
             '接続先の誤り' => ['provider', null, MeetingNoticeReason::Other],
             '時間切れ' => ['timeout', null, MeetingNoticeReason::Other],

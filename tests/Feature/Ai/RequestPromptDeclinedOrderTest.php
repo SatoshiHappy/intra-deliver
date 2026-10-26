@@ -4,9 +4,11 @@ namespace Tests\Feature\Ai;
 
 use App\Actions\Ai\Api\RequestPrompt;
 use App\Actions\Ai\Api\RunRequestDeclined;
+use App\Actions\Ai\Api\RunRequestMessages;
 use App\Actions\Ai\PromptKinds;
 use App\Models\Ai\AiRun;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\Queue;
 use LogicException;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -14,12 +16,14 @@ use Tests\Support\TransactionalTestCase;
 use Throwable;
 
 /**
- * 文章の依頼を断る理由が重なったときは、最初に当たった理由だけを返す(順 = docs の 設計/AI/公開の口.md 3 節の「依頼(文章の種類)」の行)。
+ * 文章の依頼を断る理由が重なったときは、最初に当たった理由だけを返す(順 = docs の 設計/AI/公開の口.md 3 節の「断る理由が重なったとき」)。
  * 順の行ごとに、後ろの理由を立てられるだけ立てた 1 ケース。設定に無い種類は長さ・上限と組まない(起きない: 設定が無いと入力の上限と
- * 予算の区分を引けない)。実行の行もジョブも作らない。
+ * 予算の区分を引けない)。失敗の受け手の中(failing)と完了中の実行との違い(mismatch)は印をテストで付けて作る(2 つの印は実際には同時に
+ * 付かないが、順を確かめるために重ねる)。断ったときは実行の行もジョブも増えない。
  */
 final class RequestPromptDeclinedOrderTest extends TransactionalTestCase
 {
+    use DeclinesUnderRunMarks;
     use UsesTestPromptKinds;
 
     /** 無いレコードの id */
@@ -33,28 +37,36 @@ final class RequestPromptDeclinedOrderTest extends TransactionalTestCase
     }
 
     /**
-     * 重なる理由(guest・unregistered・unconfigured・long・norecord・budget)、投げられる例外、その理由の文(の一部)。
+     * 重なる理由(guest・unregistered・unconfigured・failing・mismatch・norecord・long・budget)、投げられる例外、その理由の文(の一部)。
      * 登録の無い種類は unregistered、設定に無い種類は unconfigured(両方 = どちらにも無いコード)。
      *
      * @return array<string, array{list<string>, class-string<Throwable>, string}>
      */
     public static function overlaps(): array
     {
-        $guest = [AuthorizationException::class, RequestPrompt::GUEST];
+        $guest = [AuthorizationException::class, RunRequestMessages::GUEST];
         $unregistered = [LogicException::class, PromptKinds::notRegistered(self::UNREGISTERED_KIND)];
         $noSetting = 'AI の実行の種類 '.RecordingPromptKind::CODE.' が設定(config/ai_runs.php の kinds)に無い';
         $unconfigured = [LogicException::class, $noSetting];
+        $failing = [LogicException::class, '失敗の受け手の中'];
+        $mismatch = [LogicException::class, '完了中の実行'];
+        $noRecord = [ModelNotFoundException::class, 'AI の実行の対象のレコード '.self::MISSING_RECORD.' が無い'];
         $tooLong = [RunRequestDeclined::class, RunRequestDeclined::TOO_LONG];
-        $noRecord = [LogicException::class, 'AI の実行の対象のレコード '.self::MISSING_RECORD.' が無い'];
+        $all = ['failing', 'mismatch', 'norecord', 'long', 'budget'];
 
         return [
-            'ゲスト' => [['guest', 'unregistered', 'long', 'norecord', 'budget'], ...$guest],
-            'ゲストと設定に無い未登録の種類' => [['guest', 'unregistered', 'unconfigured', 'norecord'], ...$guest],
-            '未登録の種類' => [['unregistered', 'long', 'norecord', 'budget'], ...$unregistered],
-            '設定に無い未登録の種類' => [['unregistered', 'unconfigured', 'norecord'], ...$unregistered],
-            '設定に無い種類' => [['unconfigured', 'norecord'], ...$unconfigured],
-            '入力の長さ' => [['long', 'norecord', 'budget'], ...$tooLong],
-            '無いレコード' => [['norecord', 'budget'], ...$noRecord],
+            'ゲスト' => [['guest', 'unregistered', ...$all], ...$guest],
+            'ゲストと設定に無い未登録の種類' => [
+                ['guest', 'unregistered', 'unconfigured', 'failing', 'mismatch', 'norecord'],
+                ...$guest,
+            ],
+            '未登録の種類' => [['unregistered', ...$all], ...$unregistered],
+            '設定に無い未登録の種類' => [['unregistered', 'unconfigured', 'failing', 'mismatch', 'norecord'], ...$unregistered],
+            '設定に無い種類' => [['unconfigured', 'failing', 'mismatch', 'norecord'], ...$unconfigured],
+            '失敗の受け手の中' => [$all, ...$failing],
+            '完了中の実行との違い' => [['mismatch', 'norecord', 'long', 'budget'], ...$mismatch],
+            '無いレコード' => [['norecord', 'long', 'budget'], ...$noRecord],
+            '入力の長さ' => [['long', 'budget'], ...$tooLong],
         ];
     }
 
@@ -71,22 +83,18 @@ final class RequestPromptDeclinedOrderTest extends TransactionalTestCase
         $recordId = in_array('norecord', $overlapping, true) ? self::MISSING_RECORD : null;
 
         $this->applySettings($overlapping, $kindCode);
+        $receivingRunId = AiRun::factory()->running()->create()->id;
+        $runs = AiRun::query()->count();
 
-        $thrown = null;
+        $thrown = $this->thrownUnderMarks(
+            in_array('failing', $overlapping, true),
+            in_array('mismatch', $overlapping, true),
+            $receivingRunId,
+            fn () => app(RequestPrompt::class)
+                ->execute($context, $this->promptRequest($kindCode, $recordId, userText: $userText)),
+        );
 
-        try {
-            $request = $this->promptRequest($kindCode, $recordId, userText: $userText);
-            app(RequestPrompt::class)->execute($context, $request);
-        } catch (Throwable $caught) {
-            $thrown = $caught;
-        }
-
-        $this->assertNotNull($thrown, '断られるはずの依頼が通った');
-        $this->assertSame($exception, $thrown::class);
-        $actual = $thrown instanceof RunRequestDeclined ? $thrown->reason : $thrown->getMessage();
-        $this->assertStringContainsString($reason, $actual);
-        $this->assertSame(0, AiRun::query()->count());
-        Queue::assertNothingPushed();
+        $this->assertDeclinedWith($thrown, $exception, $reason, $runs);
     }
 
     /**

@@ -34,7 +34,6 @@ final class ExecutePromptTest extends TransactionalTestCase
     {
         parent::setUp();
         $this->registerTestPromptKinds();
-        config(['ai.providers.anthropic.key' => 'fake-key-for-tests']);
     }
 
     public function test_sends_the_max_output_tokens_of_the_run_and_writes_usage_pricing_cost_and_texts(): void

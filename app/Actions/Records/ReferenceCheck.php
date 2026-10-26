@@ -20,10 +20,23 @@ final class ReferenceCheck
     /** @var array<string, array<int, true>> 相手の種類 → 受ける相手の id */
     private array $accepted = [];
 
+    /**
+     * @param  Requester|null  $requester  判定を求める者(null = 判定しない更新。判定の要る確かめに届けば作りの誤り)
+     */
     public function __construct(
-        public readonly Requester $requester,
+        private readonly ?Requester $requester,
         public readonly DateTimeInterface $date,
     ) {}
+
+    /**
+     * 参照先の判定に使う、判定を求める者。
+     *
+     * @throws LogicException 判定しない更新の保存で、判定の要る確かめ(他モジュール参照の相手)に届いたとき
+     */
+    public function requester(): Requester
+    {
+        return $this->requester ?? throw new LogicException('判定しない更新の保存で、参照先の判定に届いた');
+    }
 
     /**
      * 確かめた結果を入れる(前の結果に足す)。

@@ -9,26 +9,22 @@ use App\Actions\Ai\Api\WriteRecordFromRun;
 use App\Actions\Ai\CompletingRun;
 use App\Actions\Ai\ExecutePrompt;
 use App\Actions\Ai\PromptAgent;
-use App\Actions\Authz\CreatePolicy;
-use App\Actions\Authz\FindOrCreateSingleConditionSubjectGroup;
-use App\Actions\Authz\SubjectConditionInput;
 use App\Actions\Records\Api\RecordInput;
 use App\Actions\Records\Api\RecordRevisionOrigin;
 use App\Actions\Records\Api\UpdateRecord;
 use App\Enums\Ai\AiRunErrorCode;
 use App\Enums\Ai\AiRunStatus;
-use App\Enums\Authz\PolicyEffect;
 use App\Enums\Records\RecordModuleAction;
+use App\Enums\Records\RowAccessScope;
 use App\Models\Ai\AiRun;
-use App\Models\Authz\AuthzResourceGroup;
-use App\Models\Master\Department;
-use App\Models\Master\User;
 use App\Models\Records\Record;
 use App\Models\Records\RecordField;
+use App\Models\Records\RecordModule;
 use App\Models\Records\RecordRevision;
 use App\Queries\Records\Api\RecordDisplayQuery;
 use InvalidArgumentException;
 use LogicException;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Support\BuildsCommonMaster;
 use Tests\Support\BuildsRecordModules;
 use Tests\Support\TransactionalTestCase;
@@ -129,13 +125,46 @@ final class WriteRecordFromRunTest extends TransactionalTestCase
         $this->assertSame(AiRunStatus::Succeeded, AiRun::query()->findOrFail($runId)->status);
     }
 
-    public function test_the_requester_without_the_update_permission_fails_the_run_as_record_forbidden(): void
+    /**
+     * 判定する更新なら断られる依頼者(業務モジュールの update を持たない・行の判定で見えない・書く時の当日に有効でない)の実行でも書き、
+     * 更新者と版の操作した人が依頼者になる(依頼者を判定しない = docs の 設計/AI/公開の口.md 3.2、ADR 0029 の決定 6)。
+     *
+     * @param  'no-update'|'hidden-row'|'inactive'  $case
+     */
+    #[DataProvider('requestersTheCheckedUpdateDenies')]
+    public function test_writes_for_a_requester_the_checked_update_denies(string $case): void
     {
-        $record = $this->noteRecord([RecordModuleAction::Read, RecordModuleAction::Create, RecordModuleAction::Delete]);
-        PromptAgent::fake([['summary' => 'AI の要約']]);
+        $withoutUpdate = [RecordModuleAction::Read, RecordModuleAction::Create];
+        $record = $this->noteRecord($case === 'no-update' ? $withoutUpdate : null);
 
-        $this->assertFailedWith($this->queuedRun(recordId: $record->id), FailedRun::RECORD_FORBIDDEN);
-        $this->assertSame(['summary' => '元の要約'], $this->values($record));
+        if ($case === 'hidden-row') {
+            RecordModule::query()->whereKey($record->record_module_id)
+                ->update(['row_access_scope' => RowAccessScope::Related]);
+        }
+
+        $requester = $case === 'inactive' ? $this->user([['2020-01-01', '2021-01-01']]) : $this->user();
+        PromptAgent::fake([['summary' => 'AI の要約']]);
+        $runId = $this->queuedRun(recordId: $record->id, context: $this->requesterContext($requester->id));
+
+        app(ExecutePrompt::class)->execute($runId);
+
+        $this->assertSame(AiRunStatus::Succeeded, AiRun::query()->findOrFail($runId)->status);
+        $this->assertSame(['summary' => 'AI の要約'], $this->values($record));
+        $this->assertSame($requester->id, $record->refresh()->updated_by_user_id);
+        $latest = RecordRevision::query()->where('record_id', $record->id)->orderByDesc('revision')->firstOrFail();
+        $this->assertSame([self::OPERATION, $requester->id], [$latest->origin_operation, $latest->user_id]);
+    }
+
+    /**
+     * @return array<string, array{'no-update'|'hidden-row'|'inactive'}>
+     */
+    public static function requestersTheCheckedUpdateDenies(): array
+    {
+        return [
+            '業務モジュールの update を持たない' => ['no-update'],
+            '行の判定で見えない(関係する人だけの業務モジュールで関係しない)' => ['hidden-row'],
+            '書く時の当日に有効でない' => ['inactive'],
+        ];
     }
 
     public function test_a_value_rejected_by_the_container_fails_the_run_as_record_rejected(): void
@@ -160,37 +189,16 @@ final class WriteRecordFromRunTest extends TransactionalTestCase
         $this->assertFailedWith($this->queuedRun(recordId: $record->id), FailedRun::RECORD_NOT_FOUND);
     }
 
-    public function test_a_requester_inactive_on_the_day_of_the_write_fails_before_the_update(): void
-    {
-        $record = $this->noteRecord();
-        $retired = $this->user([['2020-01-01', '2021-01-01']]);
-        PromptAgent::fake([['summary' => 'AI の要約']]);
-
-        $runId = $this->queuedRun(recordId: $record->id, context: $this->requesterContext($retired->id));
-
-        $this->assertFailedWith($runId, FailedRun::REQUESTER_INACTIVE);
-        $this->assertSame(['summary' => '元の要約'], $this->values($record));
-    }
-
     /**
-     * 更新を兼務先の組織(人事部)にだけ許す。兼務の利用者(初期データの u0009。主所属 = 総務部)が人事部を選んで依頼した実行は書け、
-     * 選ばずに依頼した実行(主所属で判定される)は書けない。
+     * 判定しない更新が受けない入力(明細の入力)を渡すと作りの誤り(docs の 設計/ワークフロー/業務データとの接続/公開の口.md 7 節)。
      */
-    public function test_judges_with_the_department_selected_at_the_request(): void
+    public function test_an_input_the_unchecked_update_does_not_accept_is_a_logic_error(): void
     {
-        $record = $this->noteRecord([RecordModuleAction::Read, RecordModuleAction::Create, RecordModuleAction::Delete]);
-        $humanResources = Department::query()->where('code', 'human-resources')->sole()->id;
-        $this->permitUpdateTo($humanResources);
-        $member = User::query()->where('code', 'u0009')->sole()->id;
-        PromptAgent::fake([['summary' => 'AI の要約'], ['summary' => '主所属の要約']]);
+        $runId = $this->runningRun($this->noteRecord()->id);
 
-        $selected = $this->queuedRun(recordId: $record->id, context: $this->requesterContext($member, $humanResources));
-        $notSelected = $this->queuedRun(recordId: $record->id, context: $this->requesterContext($member));
-
-        app(ExecutePrompt::class)->execute($selected);
-        $this->assertFailedWith($notSelected, FailedRun::RECORD_FORBIDDEN);
-
-        $this->assertSame(['summary' => 'AI の要約'], $this->values($record));
+        $this->assertThrows(fn () => app(CompletingRun::class)->during($runId, function () use ($runId): void {
+            app(WriteRecordFromRun::class)->execute($runId, new RecordInput([], ['rows' => []]), self::OPERATION);
+        }), LogicException::class, '明細の入力を受けない');
     }
 
     public function test_cannot_be_called_outside_complete(): void
@@ -322,15 +330,5 @@ final class WriteRecordFromRunTest extends TransactionalTestCase
         $this->assertSame([AiRunStatus::Failed, AiRunErrorCode::Completion], [$run->status, $run->error_code]);
         $failed = array_map(fn (FailedRun $run): array => [$run->runId, $run->reason], $this->recordingKind->failed);
         $this->assertSame([[$runId, $reason]], $failed);
-    }
-
-    private function permitUpdateTo(int $departmentId): void
-    {
-        $groupCode = RecordModuleAction::resourceGroupCode(self::MODULE);
-        $groupId = AuthzResourceGroup::query()->where('code', $groupCode)->sole()->id;
-        $condition = new SubjectConditionInput(departmentId: $departmentId);
-        $subject = app(FindOrCreateSingleConditionSubjectGroup::class)->execute($condition, []);
-        [$action, $permit] = [RecordModuleAction::Update->value, PolicyEffect::Permit];
-        app(CreatePolicy::class)->execute($groupId, $subject->id, RecordModuleAction::RESOURCE_TYPE, $action, $permit);
     }
 }

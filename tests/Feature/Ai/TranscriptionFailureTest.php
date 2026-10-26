@@ -2,7 +2,9 @@
 
 namespace Tests\Feature\Ai;
 
+use App\Actions\Ai\Api\CompletedTranscription;
 use App\Actions\Ai\Api\FailedRun;
+use App\Actions\Ai\ExecuteTranscription;
 use App\Enums\Ai\AiRunErrorCode;
 use App\Enums\Ai\AiRunStatus;
 use App\Jobs\Ai\RunTranscriptionJob;
@@ -128,17 +130,24 @@ final class TranscriptionFailureTest extends TransactionalTestCase
         $this->assertSame('', AiRunText::query()->findOrFail($runId)->system_text);
     }
 
-    public function test_a_requester_inactive_on_the_day_fails_before_the_receiver(): void
+    /**
+     * 依頼者が書く時の当日に有効でなくても、受け手を呼ぶ(依頼者の有効は確かめない = docs の 設計/AI/公開の口.md 3.2 の「依頼者の文脈」、
+     * ADR 0029)。
+     */
+    public function test_a_requester_inactive_on_the_day_still_reaches_the_receiver(): void
     {
         $retired = $this->user([['2020-01-01', '2021-01-01']]);
         $context = $this->transcriberContext($retired->id);
         $runId = $this->queuedTranscription($this->audioUpload('sin(2*PI*440*t)', 6), context: $context);
         Transcription::fake([$this->transcriptionResponse([['発言', 'A', 0, 5.9]])]);
 
-        $run = $this->executeTranscriptionFailing($runId);
+        app(ExecuteTranscription::class)->execute($runId);
 
-        $this->assertFailed($run, AiRunErrorCode::Completion, FailedRun::REQUESTER_INACTIVE, '0.000500');
-        $this->assertSame([], $this->transcriptionKind->completed);
+        $this->assertSame(AiRunStatus::Succeeded, AiRun::query()->findOrFail($runId)->status);
+        $this->assertSame([$retired->id], array_map(
+            fn (CompletedTranscription $run): ?int => $run->requester->userId,
+            $this->transcriptionKind->completed,
+        ));
     }
 
     public function test_a_lost_worker_fails_the_run_once_and_a_later_call_changes_nothing(): void

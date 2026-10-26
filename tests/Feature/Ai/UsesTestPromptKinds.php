@@ -17,10 +17,14 @@ use Throwable;
 /**
  * Ai のテストの種類を登録する手助け(種類の実装はテストの中だけに置く)。test.summary・test.throwing を Haiku 5.5(公開デモの単価)・
  * 予算の区分 default・呼び出しの時間の上限 100 秒・出力の上限 100・入力の上限 1,000 文字・思考の量 low で設定に足し、上限は既定で無しにする(上限のテストが値を置く)。
+ * Anthropic の鍵は偽の値にする({@see self::FAKE_PROVIDER_KEY})。
  * 実装の登録が無い種類 {@see self::UNREGISTERED_KIND} も設定に足す(本物の種類のコードは、登録が変わると意味が変わるので使わない)。
  */
 trait UsesTestPromptKinds
 {
+    /** 接続先の偽の鍵(接続先は Http::fake か PromptAgent::fake で作り、本物を呼ばない) */
+    protected const FAKE_PROVIDER_KEY = 'fake-key-for-tests';
+
     /** 設定にあり、実装の登録が無いテストだけの種類 */
     protected const UNREGISTERED_KIND = 'test.unregistered';
 
@@ -51,6 +55,7 @@ trait UsesTestPromptKinds
                 self::UNREGISTERED_KIND => $settings,
             ],
             'ai_runs.budget' => ['default' => $unlimited, 'transcription' => $unlimited],
+            'ai.providers.anthropic.key' => self::FAKE_PROVIDER_KEY,
         ]);
     }
 

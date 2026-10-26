@@ -2,7 +2,7 @@
 
 namespace Tests\Feature\Meeting;
 
-use App\Actions\Ai\Api\RequestPrompt;
+use App\Actions\Ai\Api\RunRequestMessages;
 use App\Actions\Meeting\TextImportReader;
 use App\Enums\Meeting\MeetingRunOrigin;
 use App\Enums\Meeting\MeetingRunStage;
@@ -182,7 +182,7 @@ final class CreateMeetingFromAudioTest extends TransactionalTestCase
         $counts = $this->counts();
 
         $this->postJson('/meetings', ['file' => $this->audioFile('定例.mp3')])
-            ->assertForbidden()->assertJsonPath('message', RequestPrompt::GUEST);
+            ->assertForbidden()->assertJsonPath('message', RunRequestMessages::GUEST);
 
         $this->assertSame($counts, $this->counts());
     }

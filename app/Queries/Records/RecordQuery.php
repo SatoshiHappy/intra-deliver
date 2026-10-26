@@ -27,12 +27,13 @@ class RecordQuery
     ) {}
 
     /**
+     * @param  Requester|null  $requester  参照先の表示名を判定する者(null = 判定できる主体が無い = 他モジュール参照の表示名を引かない)
      * @param  RecordModule  $module  定義を読み込んだ業務モジュール(判定は呼び手の責任。入口 = read を通した後、ワークフローの口 = 閲覧の判定の後)
      * @return array{id: int, values: array<string, mixed>, details: array<string, list<DetailRow>>, createdAt: string|null, updatedAt: string|null, createdBy: ReferenceValue|null, updatedBy: ReferenceValue|null}
      *
      * @throws ModelNotFoundException<Record> レコードがその業務モジュールに無いとき(判定の後に見る)
      */
-    public function show(Requester $requester, RecordModule $module, int $recordId, DateTimeInterface $date, string $localeCode): array
+    public function show(?Requester $requester, RecordModule $module, int $recordId, DateTimeInterface $date, string $localeCode): array
     {
         ['record' => $record, 'values' => $values, 'details' => $details] = $this->read($requester, $module, $recordId, $date, $localeCode);
         $users = $this->reader->users(array_values(array_filter([$record->created_by_user_id, $record->updated_by_user_id])), $date, $localeCode);
@@ -122,7 +123,7 @@ class RecordQuery
      *
      * @return array{record: Record, values: array<string, mixed>, details: array<string, list<DetailRow>>}
      */
-    private function read(Requester $requester, RecordModule $module, int $recordId, DateTimeInterface $date, string $localeCode): array
+    private function read(?Requester $requester, RecordModule $module, int $recordId, DateTimeInterface $date, string $localeCode): array
     {
         $record = Record::query()->where('record_module_id', $module->id)->findOrFail($recordId);
         $values = $this->reader->values(new Collection([$record]), $this->definitions->valueFields($module), $requester, $date, $localeCode)[$record->id];
@@ -135,7 +136,7 @@ class RecordQuery
      *
      * @return array<string, list<DetailRow>>
      */
-    private function details(RecordModule $module, Record $record, Requester $requester, DateTimeInterface $date, string $localeCode): array
+    private function details(RecordModule $module, Record $record, ?Requester $requester, DateTimeInterface $date, string $localeCode): array
     {
         $details = [];
 

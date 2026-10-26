@@ -10,8 +10,9 @@ use DateTimeInterface;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 /**
- * 議事録の材料にする会議の欄を読む 1 か所(作成・再作成・文字起こしの完了が使う = docs の 設計/業務ツール/会議/文字起こしと議事録.md の 5.3)。
- * 依頼者の判定(業務モジュールの read と行の判定)を通してから、判定をしない入れ物の読み取りで表示名つきの値を読む。
+ * 議事録の材料にする会議の欄を作る 1 か所(docs の 設計/業務ツール/会議/文字起こしと議事録.md の 5.3)。作成・再作成は {@see self::read()} で
+ * 依頼者の判定(業務モジュールの read と行の判定)を通してから読む。文字起こしの完了の中(worker)は依頼者を判定せず、AI の読む口の値から
+ * {@see self::fromValues()} で作る(依頼の時点に確かめた = 設計/業務ツール/会議/処理.md の 3.11)。
  */
 class MeetingFieldsQuery
 {
@@ -19,7 +20,7 @@ class MeetingFieldsQuery
 
     /**
      * @param  Requester  $requester  依頼者
-     * @param  DateTimeInterface  $date  基準日(作成・再作成は要求の値、worker の中は書く時の当日 = 処理.md の 3.11)
+     * @param  DateTimeInterface  $date  基準日(要求の値)
      *
      * @throws ModelNotFoundException 会議が無い・依頼者が閲覧できないとき(存在を漏らさない)
      */
@@ -33,8 +34,16 @@ class MeetingFieldsQuery
             throw new ModelNotFoundException("会議 {$recordId} が無いか、依頼者が閲覧できない");
         }
 
-        $values = $this->records->show($requester, $recordId, $date, $localeCode)['record']['values'];
+        return self::fromValues($this->records->show($requester, $recordId, $date, $localeCode)['record']['values']);
+    }
 
+    /**
+     * 会議の値(入れ物の詳細の record.values の形 = コード → 値)から材料の欄を作る。
+     *
+     * @param  array<string, mixed>  $values
+     */
+    public static function fromValues(array $values): MeetingFields
+    {
         return new MeetingFields(
             self::text($values[Meeting::Title->value] ?? null),
             self::text($values[Meeting::HeldAt->value] ?? null),

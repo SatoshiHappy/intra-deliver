@@ -10,6 +10,7 @@ use App\Support\AccessContext;
 use Carbon\CarbonImmutable;
 use DateTimeInterface;
 use Illuminate\Validation\ValidationException;
+use LogicException;
 
 /**
  * レコードの登録・更新の 3〜9(docs の 設計/業務データの入れ物/項目と規則/規則と業務処理/README.md 9.2)。呼び手(登録・更新の業務処理)がトランザクションと 1・2 を持つ。
@@ -30,13 +31,15 @@ class RecordSaver
     ) {}
 
     /**
+     * @param  Requester|null  $requester  参照先の判定を求める者(null = 判定しない更新)
      * @param  RecordModule  $module  定義を読み込んだ親の無い業務モジュール
      * @param  Record|null  $record  更新する今のレコード(参照の行を読み込んでおく。null = 登録)
      * @param  int|null  $userId  作成者・更新者(null = ゲスト)
      *
      * @throws ValidationException 検証に失敗したとき
+     * @throws LogicException 判定を求める者が null で、他モジュール参照の相手の確かめに届いたとき(作りの誤り)
      */
-    public function save(Requester $requester, DateTimeInterface $date, ?int $userId, RecordModule $module, ?Record $record, RecordInput $input): Record
+    public function save(?Requester $requester, DateTimeInterface $date, ?int $userId, RecordModule $module, ?Record $record, RecordInput $input): Record
     {
         $errors = [];
         $values = $this->normalizeInput($input->values);

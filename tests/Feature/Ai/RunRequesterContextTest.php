@@ -4,6 +4,9 @@ namespace Tests\Feature\Ai;
 
 use App\Actions\Ai\RunRequesterContext;
 use App\Models\Ai\AiRun;
+use App\Support\AccessContext;
+use Carbon\CarbonImmutable;
+use Tests\Support\BuildsCommonMaster;
 use Tests\Support\TransactionalTestCase;
 
 /**
@@ -12,6 +15,7 @@ use Tests\Support\TransactionalTestCase;
  */
 final class RunRequesterContextTest extends TransactionalTestCase
 {
+    use BuildsCommonMaster;
     use UsesTestPromptKinds;
 
     private const VISITOR_ID = '0b9e8f3a-6c2d-4d1e-9a7b-3f5c1e2d4a6b';
@@ -28,6 +32,20 @@ final class RunRequesterContextTest extends TransactionalTestCase
         $run = AiRun::query()->findOrFail($this->queuedRun(context: $context));
 
         $this->assertSame(self::VISITOR_ID, app(RunRequesterContext::class)->of($run)->visitorId);
+    }
+
+    /**
+     * 依頼者が当日に有効でなくても断らず、依頼者の文脈を作る(依頼者の有効は確かめない = ADR 0029 の決定 1・8)。
+     */
+    public function test_the_context_of_a_requester_inactive_today_is_the_requester(): void
+    {
+        $retired = $this->user([['2020-01-01', '2021-01-01']]);
+        $run = AiRun::factory()->running()->create(['requester_user_id' => $retired->id]);
+
+        $context = app(RunRequesterContext::class)->of($run);
+
+        $today = CarbonImmutable::today(AccessContext::TIMEZONE)->toDateString();
+        $this->assertSame([$retired->id, $today], [$context->userId, $context->date->toDateString()]);
     }
 
     public function test_the_context_of_a_run_without_a_visitor_id_has_none(): void

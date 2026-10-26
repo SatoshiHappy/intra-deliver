@@ -10,9 +10,16 @@ use Carbon\CarbonImmutable;
 /**
  * 議事録の依頼の材料を組む(利用者の文の形 = docs の 設計/業務ツール/会議/文字起こしと議事録.md の 5.3・5.4)。システムの文は種類の実装
  * {@see MeetingMinutesKind::SYSTEM_TEXT} に置く。出典は読んだ会議だけ。
+ * 材料は囲みに入れ、材料の中で囲みの印が働かないようにする(材料の中の指示に AI を従わせないため = 同じ文書の 5.5)。
  */
 class MinutesPrompt
 {
+    /** 材料の囲みの始まりの印 */
+    public const MATERIAL_OPEN = '<資料>';
+
+    /** 材料の囲みの終わりの印 */
+    public const MATERIAL_CLOSE = '</資料>';
+
     /** 件名を渡さないとき(仮の件名のまま)の値 */
     public const UNTITLED = '(未入力)';
 
@@ -34,21 +41,22 @@ class MinutesPrompt
         iterable $lines,
         ?string $instructions = null,
     ): PromptRequest {
-        $sections = [
+        $material = implode("\n\n", [
             implode("\n", [
                 '会議の情報:',
-                '件名: '.($title ?? self::UNTITLED),
+                '件名: '.($title === null ? self::UNTITLED : self::inert($title)),
                 '日時: '.self::heldAt($fields->heldAt),
                 '閲覧者: '.self::names($fields->viewerNames),
                 '閲覧組織: '.self::names($fields->departmentNames),
             ]),
-            "アジェンダ:\n".($fields->agenda ?? self::NONE),
-            "議事メモ:\n".($fields->notes ?? self::NONE),
+            "アジェンダ:\n".($fields->agenda === null ? self::NONE : self::inert($fields->agenda)),
+            "議事メモ:\n".($fields->notes === null ? self::NONE : self::inert($fields->notes)),
             "書き起こし:\n".self::transcript($lines),
-        ];
+        ]);
+        $sections = [self::MATERIAL_OPEN."\n".$material."\n".self::MATERIAL_CLOSE];
 
         if ($instructions !== null) {
-            $sections[] = "追加の指示:\n{$instructions}";
+            $sections[] = "追加の指示:\n".$instructions;
         }
 
         $userText = implode("\n\n", $sections);
@@ -73,7 +81,15 @@ class MinutesPrompt
      */
     private static function names(array $names): string
     {
-        return $names === [] ? self::NONE : implode(self::NAME_SEPARATOR, $names);
+        return $names === [] ? self::NONE : self::inert(implode(self::NAME_SEPARATOR, $names));
+    }
+
+    /**
+     * 材料の半角の < を全角にする(囲みの印はどちらも < で始まるので、印を作れなくなる。字数は変わらない)。
+     */
+    private static function inert(string $text): string
+    {
+        return strtr($text, ['<' => '＜']);
     }
 
     /**
@@ -87,8 +103,8 @@ class MinutesPrompt
 
         foreach ($lines as $line) {
             $time = $line->startedAtSec === null ? '' : '['.self::clock($line->startedAtSec).'] ';
-            $speaker = $line->speakerLabel === null ? '' : "話者 {$line->speakerLabel}: ";
-            $texts[] = $time.$speaker.$line->text;
+            $speaker = $line->speakerLabel === null ? '' : '話者 '.self::inert($line->speakerLabel).': ';
+            $texts[] = $time.$speaker.self::inert($line->text);
         }
 
         return implode("\n", $texts);

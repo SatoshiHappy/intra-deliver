@@ -2,7 +2,7 @@
 
 namespace Tests\Feature\Meeting;
 
-use App\Actions\Ai\Api\RequestPrompt;
+use App\Actions\Ai\Api\RunRequestMessages;
 use App\Actions\Meeting\MeetingMinutesKind;
 use App\Enums\Meeting\MeetingRunOrigin;
 use App\Enums\Meeting\MeetingRunStage;
@@ -98,8 +98,8 @@ final class CreateMeetingTest extends TransactionalTestCase
             [MeetingMinutesKind::CODE, $recordId, [$recordId], $user->id],
             [$aiRun->kind, $aiRun->record_id, $aiRun->source_record_ids, $aiRun->requester_user_id],
         );
-        $this->assertStringStartsWith("会議の情報:\n件名: (未入力)\n", $this->userTextOf($aiRun->id));
-        $this->assertStringEndsWith($transcriptText, $this->userTextOf($aiRun->id));
+        $this->assertStringStartsWith("<資料>\n会議の情報:\n件名: (未入力)\n", $this->userTextOf($aiRun->id));
+        $this->assertStringEndsWith($transcriptText."\n</資料>", $this->userTextOf($aiRun->id));
     }
 
     /**
@@ -128,6 +128,7 @@ final class CreateMeetingTest extends TransactionalTestCase
         $this->assertSame('週次の定例', $this->valuesOf($recordId)['title']);
         $this->assertArrayNotHasKey('summary', $this->valuesOf($recordId));
         $this->assertSame(implode("\n", [
+            '<資料>',
             '会議の情報:',
             '件名: 週次の定例',
             '日時: 2026-10-21 10:30',
@@ -142,6 +143,7 @@ final class CreateMeetingTest extends TransactionalTestCase
             '',
             '書き起こし:',
             '[10:00] 佐藤: はじめます',
+            '</資料>',
         ]), $this->userTextOf($this->lastRunIdOf($recordId)));
     }
 
@@ -150,6 +152,7 @@ final class CreateMeetingTest extends TransactionalTestCase
         $recordId = $this->pastedMeeting($this->user(), '発言', ['held_at' => '2026-10-21T00:00Z']);
 
         $this->assertStringStartsWith(implode("\n", [
+            '<資料>',
             '会議の情報:',
             '件名: (未入力)',
             '日時: 2026-10-21 09:00',
@@ -242,7 +245,7 @@ final class CreateMeetingTest extends TransactionalTestCase
     public function test_the_forbidden_message_tells_a_guest_from_a_user_without_the_actions(): void
     {
         $this->postJson('/meetings', ['text' => '発言'])
-            ->assertForbidden()->assertJsonPath('message', RequestPrompt::GUEST);
+            ->assertForbidden()->assertJsonPath('message', RunRequestMessages::GUEST);
 
         $this->denyMeeting(RecordModuleAction::Update);
 

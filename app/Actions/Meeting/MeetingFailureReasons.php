@@ -13,13 +13,11 @@ use App\Enums\Meeting\MeetingRunStage;
  */
 final class MeetingFailureReasons
 {
-    /** 書き込みの口が断った・依頼者が会議を読めない細かい理由 */
-    private const RECORD_REASONS = [
-        FailedRun::RECORD_FORBIDDEN,
-        FailedRun::RECORD_NOT_FOUND,
-        FailedRun::RECORD_REJECTED,
-        FailedRun::REQUESTER_INACTIVE,
-    ];
+    /**
+     * 会議に書けない細かい理由(入れ物の検証が会議の更新を断った)。レコードが見つからない(404)は会議が無いので通知が出ない
+     * (docs の 設計/業務ツール/会議/処理.md の 3.6)ため写さず、ほかの理由と同じに扱う。
+     */
+    private const RECORD_REASONS = [FailedRun::RECORD_REJECTED];
 
     /**
      * 段は、同じ失敗(出力が切れた)でも文字起こしと議事録で理由が分かれるため受け取る(分け方の正本 = 6.4)。

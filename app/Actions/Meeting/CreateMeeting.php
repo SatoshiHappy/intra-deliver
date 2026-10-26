@@ -14,6 +14,7 @@ use App\Queries\Meeting\MeetingFieldsQuery;
 use App\Queries\Meeting\MeetingTitleQuery;
 use App\Support\AccessContext;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -24,7 +25,8 @@ use LogicException;
  * 音声 = 会議のレコード(同じ登録で音声を添付に付ける)→ 文字起こしの依頼と会議と実行の対応({@see MeetingAudioRequest})。
  * テキスト = 会議のレコード → 材料の読み取りと議事録の依頼 → 書き起こしと発言の行 → 会議と実行の対応(鍵の順 = 入れ物の登録の鍵 → AI の費用の鍵)。
  * 書き起こしを依頼の後に書くのは、依頼の口の入力の上限の確かめを、発言の行を書く前に済ませるため。依頼が 422 なら全体が巻き戻る(付けた音声の実体も消える)。
- * テキストのファイルは添付に残さない(書き起こしが同じ中身を持つ)。入口の判定は {@see MeetingRequestGate::ensureCanCreate()}。
+ * テキストのファイルは添付に残さない(書き起こしが同じ中身を持つ)。最初に入口の判定 {@see MeetingRequestGate::ensureCanCreate()} を呼ぶ
+ * (業務処理を直接呼ぶ場所にも依頼の時点の確かめを掛ける = 処理.md の 3.11。HTTP の入口も FormRequest で同じ判定を先に呼ぶ)。
  */
 class CreateMeeting
 {
@@ -40,6 +42,7 @@ class CreateMeeting
         private TranscriptionFormats $formats,
         private MeetingAudioQuery $audio,
         private MeetingAudioRequest $audioRequest,
+        private MeetingRequestGate $gate,
     ) {}
 
     /**
@@ -51,10 +54,12 @@ class CreateMeeting
      * @throws ValidationException 入力のテキストの誤り(キー file・text)・欄の検証の失敗(キー values.<コード>)・音声を添付に付けられないとき
      *                             (キー attachments)
      * @throws RunRequestDeclined 依頼が上限を超える・長すぎる・音声を読み取れない・音声が削除されたとき(キー ai)
-     * @throws AuthorizationException 登録を許されない・ゲストのとき
+     * @throws AuthorizationException ゲスト・会議の業務モジュールの create・read・update のどれかを許されないとき(入口の判定)
+     * @throws ModelNotFoundException 会議の業務モジュールが無いとき
      */
     public function execute(AccessContext $context, ?UploadedFile $file, ?string $text, array $values): int
     {
+        $this->gate->ensureCanCreate($context);
         $withoutText = $text === null || $text === '';
 
         if ($file !== null && $withoutText && $this->formats->isAudioName($file->getClientOriginalName())) {

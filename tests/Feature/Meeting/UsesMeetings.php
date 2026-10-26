@@ -88,7 +88,7 @@ trait UsesMeetings
     }
 
     /**
-     * 業務処理で音声の会議を作る(入口の判定を通さない)。
+     * 業務処理で音声の会議を作る(HTTP の入口を通さない。入口の判定は業務処理が呼ぶ)。
      *
      * @param  array<string, mixed>  $values
      */
@@ -171,7 +171,7 @@ trait UsesMeetings
     }
 
     /**
-     * 業務処理で貼り付けの会議を作る(入口の判定を通さない)。
+     * 業務処理で貼り付けの会議を作る(HTTP の入口を通さない。入口の判定は業務処理が呼ぶ)。
      *
      * @param  array<string, mixed>  $values
      */

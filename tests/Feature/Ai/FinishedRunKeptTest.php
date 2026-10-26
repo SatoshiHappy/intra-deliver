@@ -41,7 +41,6 @@ final class FinishedRunKeptTest extends TransactionalTestCase
     {
         parent::setUp();
         $this->registerTestPromptKinds();
-        config(['ai.providers.anthropic.key' => 'fake-key-for-tests']);
     }
 
     /**

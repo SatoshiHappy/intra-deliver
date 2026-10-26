@@ -53,7 +53,7 @@ final class RegenerateMinutesTest extends TransactionalTestCase
             [MeetingRunStage::Minutes, MeetingRunOrigin::Regenerate, false],
             [$run->stage, $run->origin, $run->writes_title],
         );
-        $expected = "書き起こし:\n最初の発言\n次の発言\n\n追加の指示:\n短くまとめてください";
+        $expected = "書き起こし:\n最初の発言\n次の発言\n</資料>\n\n追加の指示:\n短くまとめてください";
         $this->assertStringEndsWith($expected, $this->userTextOf((int) $run->ai_run_id));
     }
 
@@ -63,7 +63,7 @@ final class RegenerateMinutesTest extends TransactionalTestCase
 
         $this->regenerate($recordId, [])->assertSessionHasNoErrors();
 
-        $this->assertStringEndsWith("書き起こし:\n最初の発言\n次の発言", $this->userTextOf($this->lastRunIdOf($recordId)));
+        $this->assertStringEndsWith("書き起こし:\n最初の発言\n次の発言\n</資料>", $this->userTextOf($this->lastRunIdOf($recordId)));
     }
 
     /**
@@ -185,7 +185,7 @@ final class RegenerateMinutesTest extends TransactionalTestCase
         $this->assertSame(
             ['件名: AI の件名', '件名: (未入力)', '件名: 直した件名', '件名: (未入力)'],
             array_map(
-                fn (int $recordId) => explode("\n", $this->userTextOf($this->lastRunIdOf($recordId)))[1],
+                fn (int $recordId) => explode("\n", $this->userTextOf($this->lastRunIdOf($recordId)))[2],
                 [$succeeded, $failed, $edited, $regenerated],
             ),
         );

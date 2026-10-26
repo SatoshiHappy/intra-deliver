@@ -12,6 +12,7 @@ use App\Models\Ai\AiRunText;
 use App\Models\Master\Department;
 use App\Models\Records\Record;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Validation\ValidationException;
@@ -133,9 +134,12 @@ final class RequestPromptTest extends TransactionalTestCase
         Queue::assertPushed(RunPromptJob::class, fn (RunPromptJob $job): bool => $job->timeout === 620);
     }
 
-    public function test_a_missing_target_record_is_a_logic_error(): void
+    /**
+     * 対象のレコードが無い(呼び手が確かめた後に消された)のは 404(docs の 設計/AI/公開の口.md 3 節の表の B2)。
+     */
+    public function test_a_missing_target_record_is_not_found(): void
     {
-        $this->expectException(LogicException::class);
+        $this->expectException(ModelNotFoundException::class);
 
         app(RequestPrompt::class)->execute($this->requesterContext(), $this->promptRequest(recordId: 999_999));
     }

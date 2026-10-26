@@ -14,17 +14,11 @@ final readonly class FailedRun
     /** incomplete: 接続先が応答を断った */
     public const CONTENT_REFUSED = 'content_refused';
 
-    /** completion: 完了の処理の中でレコードの判定が断った(403。書き込みの口の更新か、受け手の材料の読み取りかによらない) */
-    public const RECORD_FORBIDDEN = 'record_forbidden';
-
     /** completion: 完了の処理の中でレコードが見つからなかった(404。出どころによらない) */
     public const RECORD_NOT_FOUND = 'record_not_found';
 
     /** completion: 完了の処理の中でレコードの更新が断られた(422。持ち主の鍵と入れ物の検証を分けない) */
     public const RECORD_REJECTED = 'record_rejected';
-
-    /** completion: 依頼者が書く時の当日に有効でない(完了の受け手を呼ぶ前か、書き込みの口が更新の前に止めた) */
-    public const REQUESTER_INACTIVE = 'requester_inactive';
 
     /**
      * @param  int  $runId  実行(ai_runs.id)

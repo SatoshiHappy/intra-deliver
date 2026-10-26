@@ -4,6 +4,7 @@ namespace Tests\Feature\Meeting;
 
 use App\Actions\Ai\Api\CompletedTranscription;
 use App\Actions\Ai\Api\TranscribedSegment;
+use App\Actions\Ai\CompletingRun;
 use App\Actions\Meeting\MeetingMinutesKind;
 use App\Actions\Meeting\MeetingTranscriptionKind;
 use App\Actions\Meeting\RegenerateMinutes;
@@ -16,7 +17,6 @@ use App\Enums\Meeting\MeetingRunDecline;
 use App\Enums\Meeting\MeetingRunOrigin;
 use App\Enums\Meeting\MeetingRunStage;
 use App\Enums\Meeting\TranscriptSource;
-use App\Enums\Records\RecordModuleAction;
 use App\Models\Ai\AiRun;
 use App\Models\Master\User;
 use App\Models\Meeting\MeetingRun;
@@ -77,8 +77,8 @@ final class MeetingTranscriptionKindTest extends TransactionalTestCase
             [$minutesRun->kind, $minutesRun->record_id, $minutesRun->requester_user_id],
         );
         $userText = $this->userTextOf($minutesRun->id);
-        $this->assertStringStartsWith("会議の情報:\n件名: (未入力)\n", $userText);
-        $this->assertStringEndsWith("書き起こし:\n[00:00:00] 話者 A: はじめます\n[00:00:01] 話者 B: 了解です", $userText);
+        $this->assertStringStartsWith("<資料>\n会議の情報:\n件名: (未入力)\n", $userText);
+        $this->assertStringEndsWith("書き起こし:\n[00:00:00] 話者 A: はじめます\n[00:00:01] 話者 B: 了解です\n</資料>", $userText);
     }
 
     public function test_a_title_given_by_a_person_is_passed_and_kept_unwritten(): void
@@ -88,7 +88,7 @@ final class MeetingTranscriptionKindTest extends TransactionalTestCase
         $this->completeTranscription($this->lastRunIdOf($recordId), self::SEGMENTS);
 
         $this->assertFalse($this->lastRunOf($recordId)->writes_title);
-        $this->assertStringStartsWith("会議の情報:\n件名: 週次の定例\n", $this->userTextOf($this->lastRunIdOf($recordId)));
+        $this->assertStringStartsWith("<資料>\n会議の情報:\n件名: 週次の定例\n", $this->userTextOf($this->lastRunIdOf($recordId)));
     }
 
     /**
@@ -110,7 +110,7 @@ final class MeetingTranscriptionKindTest extends TransactionalTestCase
             $this->contextOf($this->creator),
         );
 
-        app(MeetingTranscriptionKind::class)->complete($completed);
+        $this->completeDirectly($completed);
 
         $transcript = Transcript::query()->where('record_id', $recordId)->sole();
         $this->assertSame(3, $transcript->chunk_count);
@@ -157,7 +157,7 @@ final class MeetingTranscriptionKindTest extends TransactionalTestCase
             $this->contextOf($this->creator),
         );
 
-        app(MeetingTranscriptionKind::class)->complete($completed);
+        $this->completeDirectly($completed);
 
         $transcript = Transcript::query()->where('record_id', $recordId)->sole();
         $this->assertSame(
@@ -228,19 +228,15 @@ final class MeetingTranscriptionKindTest extends TransactionalTestCase
     }
 
     /**
-     * 依頼者が会議を読めなくなったら、材料の読み取りが断り、実行は失敗(書き起こしも巻き戻る)。
+     * 完了の受け手を直に呼ぶ(実行を処理中にし、完了中の実行の印を付ける = 読む口の呼べる時)。
      */
-    public function test_a_requester_who_can_no_longer_read_the_meeting_fails_without_the_transcript(): void
+    private function completeDirectly(CompletedTranscription $completed): void
     {
-        $recordId = $this->audioMeeting($this->creator);
-        $runId = $this->lastRunIdOf($recordId);
-        $this->denyMeeting(RecordModuleAction::Read);
-
-        $run = $this->completeTranscription($runId, self::SEGMENTS);
-
-        $this->assertSame([AiRunStatus::Failed, AiRunErrorCode::Completion], [$run->status, $run->error_code]);
-        $this->assertFalse(Transcript::query()->where('record_id', $recordId)->exists());
-        $this->assertSame(MeetingRunStage::Transcription, $this->lastRunOf($recordId)->stage);
+        AiRun::query()->whereKey($completed->runId)->update(['status' => AiRunStatus::Running, 'started_at' => now()]);
+        app(CompletingRun::class)->during(
+            $completed->runId,
+            fn () => app(MeetingTranscriptionKind::class)->complete($completed),
+        );
     }
 
     /**
@@ -307,7 +303,7 @@ final class MeetingTranscriptionKindTest extends TransactionalTestCase
             [MeetingRunStage::Minutes, MeetingRunOrigin::Regenerate, false],
             [$minutes->stage, $minutes->origin, $minutes->writes_title],
         );
-        $this->assertStringStartsWith("会議の情報:\n件名: (未入力)\n", $this->userTextOf((int) $minutes->ai_run_id));
+        $this->assertStringStartsWith("<資料>\n会議の情報:\n件名: (未入力)\n", $this->userTextOf((int) $minutes->ai_run_id));
     }
 
     /**

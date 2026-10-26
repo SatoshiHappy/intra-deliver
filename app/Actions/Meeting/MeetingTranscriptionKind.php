@@ -4,6 +4,7 @@ namespace App\Actions\Meeting;
 
 use App\Actions\Ai\Api\CompletedTranscription;
 use App\Actions\Ai\Api\FailedRun;
+use App\Actions\Ai\Api\ReadRecordForRun;
 use App\Actions\Ai\Api\RequestPrompt;
 use App\Actions\Ai\Api\RunCompletionFailed;
 use App\Actions\Ai\Api\RunRequestDeclined;
@@ -16,12 +17,10 @@ use App\Enums\Meeting\MeetingRunDecline;
 use App\Enums\Meeting\MeetingRunStage;
 use App\Enums\Meeting\TranscriptSource;
 use App\Models\Meeting\MeetingRun;
-use App\Queries\Authz\Api\Requester;
 use App\Queries\Meeting\MeetingAudioQuery;
 use App\Queries\Meeting\MeetingFieldsQuery;
 use App\Queries\Meeting\MeetingTitleQuery;
 use App\Queries\Records\Api\RecordDisplayQuery;
-use Illuminate\Database\Eloquent\ModelNotFoundException;
 use LogicException;
 
 /**
@@ -46,7 +45,7 @@ class MeetingTranscriptionKind implements TranscriptionKind
         private RecordDisplayQuery $records,
         private MeetingAudioQuery $audio,
         private MeetingTranscriptWriter $transcripts,
-        private MeetingFieldsQuery $fields,
+        private ReadRecordForRun $readRecord,
         private MeetingTitleQuery $titles,
         private MinutesPrompt $prompts,
         private RequestPrompt $requestPrompt,
@@ -66,9 +65,10 @@ class MeetingTranscriptionKind implements TranscriptionKind
     /**
      * 対応の行は会議ごとの鍵の後に引く。無ければ会議が消えたので何もしない(通知も送らない)。
      *
+     * 材料の会議の欄は AI の読む口で読む(依頼者を判定しない = 処理.md の 3.11、文字起こしと議事録.md の 5.3)。
+     *
      * @throws RunCompletionFailed 区間が空のとき
-     * @throws ModelNotFoundException 依頼者が会議を読めないとき
-     * @throws LogicException 会議があるのに対応の行が無いとき(整合の誤り)
+     * @throws LogicException 会議があるのに対応の行が無い・対応の行があるのに会議を読めないとき(整合の誤り)
      */
     public function complete(CompletedTranscription $run): void
     {
@@ -90,8 +90,9 @@ class MeetingTranscriptionKind implements TranscriptionKind
         $this->transcripts->write($recordId, TranscriptSource::Audio, $fileName, $lines, $run->runId, $run->chunkCount);
 
         $context = $run->requester;
-        $requester = Requester::fromAccessContext($context);
-        $fields = $this->fields->read($requester, $recordId, $context->date, $context->localeCode);
+        $meeting = $this->readRecord->execute($run->runId)
+            ?? throw new LogicException("文字起こしの実行 {$run->runId} の会議 {$recordId} を、対応の行があるのに読めない");
+        $fields = MeetingFieldsQuery::fromValues($meeting['record']['values']);
         $provisional = $meetingRun->writes_title || $this->titles->isProvisional($recordId, $fields->title);
         $title = $provisional ? null : $fields->title;
         $request = $this->prompts->request($recordId, $fields, $title, $lines);

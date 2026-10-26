@@ -27,8 +27,7 @@ final class VisitorIdToProviderTest extends TransactionalTestCase
     {
         parent::setUp();
         $this->registerTestPromptKinds();
-        config(['ai.providers.anthropic.key' => 'fake-key-for-tests']);
-        config(['ai.providers.openai.key' => 'fake-key-for-tests']);
+        config(['ai.providers.openai.key' => self::FAKE_PROVIDER_KEY]);
     }
 
     public function test_anthropic_with_a_visitor_id_sends_it_as_the_metadata_user_id(): void

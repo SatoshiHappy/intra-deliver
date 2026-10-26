@@ -6,6 +6,7 @@ use App\Actions\Ai\AudioConversionFailed;
 use App\Actions\Ai\AudioConverter;
 use App\Actions\Ai\AudioUnreadable;
 use App\Actions\Ai\RunBudget;
+use App\Actions\Ai\RunRequestChecks;
 use App\Actions\Ai\TranscriptionKinds;
 use App\Enums\Ai\AiRunStatus;
 use App\Jobs\Ai\RunTranscriptionJob;
@@ -15,10 +16,10 @@ use App\Queries\Ai\Api\TranscriptionFormats;
 use App\Queries\Ai\KindSettings;
 use App\Queries\Ai\RunEstimates;
 use App\Queries\Ai\TranscriptionSettings;
-use App\Queries\Records\Api\RecordDisplayQuery;
 use App\Queries\Upload\Api\UploadQuery;
 use App\Support\AccessContext;
 use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use LogicException;
@@ -48,29 +49,34 @@ class RequestTranscription
         private TranscriptionSettings $transcription,
         private RunEstimates $estimates,
         private RunBudget $budget,
-        private RecordDisplayQuery $records,
+        private RunRequestChecks $checks,
         private UploadQuery $uploads,
         private TranscriptionFormats $formats,
         private AudioConverter $converter,
     ) {}
 
     /**
+     * 断る理由が重なったときは、設計/AI/公開の口.md 3 節の「断る理由が重なったとき」の順で先の 1 つを返す(同じ入力にいつも同じ結果を返すため)。
+     *
      * @return int 実行の id(ai_runs.id)
      *
      * @throws AuthorizationException ゲストのとき(403)
-     * @throws LogicException 未登録・設定に無い種類、音声の形式でない添付、無い対象のレコードのとき(呼び手の誤り)
+     * @throws LogicException 未登録・設定に無い種類、音声の形式でない添付、種類の失敗の受け手の中からの依頼、完了の受け手の中で
+     *                        依頼者か対象のレコードが完了中の実行と違うとき(呼び手の誤り)
+     * @throws ModelNotFoundException 対象のレコードが無いとき(404)
      * @throws RunRequestDeclined 音声の実体が無い・読み取れない・長すぎる・上限を超えるとき(422。キー ai)
      * @throws AudioConversionFailed 測りの時間切れ・外部のプロセスの起動の失敗のとき(500。呼び手は受け止めない = 設計/AI/実行と費用.md 4.2)
      */
     public function execute(AccessContext $context, TranscriptionRequest $request): int
     {
-        $requesterUserId = $context->userId ?? throw new AuthorizationException(RequestPrompt::GUEST);
+        $requesterUserId = $this->checks->requesterOf($context);
         $this->kinds->of($request->kindCode);
         $kind = $this->settings->transcription($request->kindCode)
             ?? throw new LogicException("AI の文字起こしの種類 {$request->kindCode} が設定(config/ai_runs.php の kinds)に無い");
+        $this->throwIfNotAudio($request->uploadId);
+        $this->checks->throwIfInFailureReceiver();
+        $moduleCode = $this->checks->targetModuleCode($requesterUserId, $request->recordId);
         $audioSeconds = $this->measure($this->audioPath($request->uploadId), $kind['max_audio_seconds']);
-        $moduleCode = $this->records->topLevelModuleCodeOf($request->recordId)
-            ?? throw new LogicException("AI の実行の対象のレコード {$request->recordId} が無い");
         $reserved = $this->estimates->transcriptionEstimate($kind['provider'], $kind['model'], $audioSeconds);
 
         $attributes = [
@@ -107,19 +113,26 @@ class RequestTranscription
     }
 
     /**
-     * 音声の実体のパス。添付が音声の形式でなければ呼び手の誤り。
+     * 添付が音声の形式でなければ呼び手の誤り(台帳の行が無ければ、{@see self::audioPath()} の 422 に任せる)。
      *
      * @throws LogicException 添付の型が音声の形式でないとき
-     * @throws RunRequestDeclined 台帳の行・実体が無いとき(422)
      */
-    private function audioPath(int $uploadId): string
+    private function throwIfNotAudio(int $uploadId): void
     {
         $file = $this->uploads->find([$uploadId])[$uploadId] ?? null;
 
         if ($file !== null && ! in_array($file->mime, $this->formats->mimes(), true)) {
             throw new LogicException("添付 {$uploadId} の型 {$file->mime} は音声の形式でない");
         }
+    }
 
+    /**
+     * 音声の実体のパス。
+     *
+     * @throws RunRequestDeclined 台帳の行・実体が無いとき(422)
+     */
+    private function audioPath(int $uploadId): string
+    {
         $path = $this->uploads->pathOf($uploadId);
 
         return $path !== null && is_file($path)

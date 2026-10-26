@@ -94,14 +94,15 @@ class ReferenceTargets
      */
     private function readableRecordIds(RecordField $field, array $ids, ReferenceCheck $check): array
     {
+        $requester = $check->requester();
         $module = $field->referencedRecordModule;
 
-        if ($module === null || ! $this->gate->allows($check->requester, $module, RecordModuleAction::Read, $check->date)) {
+        if ($module === null || ! $this->gate->allows($requester, $module, RecordModuleAction::Read, $check->date)) {
             return [];
         }
 
         $records = Record::query()->where('record_module_id', $module->id)->whereKey($ids)->lock('for key share');
 
-        return array_values($this->rows->constrain($records, $check->requester, $module, $check->date)->pluck('id')->all());
+        return array_values($this->rows->constrain($records, $requester, $module, $check->date)->pluck('id')->all());
     }
 }
