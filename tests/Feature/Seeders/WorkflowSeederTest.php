@@ -33,10 +33,13 @@ use Tests\Support\TransactionalTestCase;
 
 /**
  * ワークフローの初期データ(docs の 設計/ワークフロー/ルートの深さ/初期データ.md 7 節の検査。見せるもの = 設計/ワークフロー/初期データ.md 4 節を追従させたもの): 定義の件数・版の期間と状態・
- * 一本道 A の版の中身、案件の見本 17 の状態・現在のノード・履歴、再申請の差分、未完了の案件のレコードの持ち主、ルートのリソース。
+ * 一本道 A の版の中身、案件の見本 17 の状態・現在のノード・履歴、再申請の差分、つながる申請、未完了の案件のレコードの持ち主、ルートのリソース。
  * 版 3(分岐 B)の中身と足した見本の細部は {@see WorkflowSeederRouteDepthTest}、案件の運用の見本は {@see WorkflowSeederOperationSamplesTest}、
- * 利用者ごとのタブは {@see WorkflowSeederTabsTest}、申請書の業務モジュールと見本の申請対象は {@see WorkflowSeederApplicationModulesTest}・
- * {@see WorkflowSeederApplicationTargetsTest}。初期データは DatabaseSeeder が 1 回入れたもの(流し直さない)。
+ * 利用者ごとのタブは {@see WorkflowSeederTabsTest}、申請書の業務モジュールは {@see WorkflowSeederApplicationModulesTest}、
+ * 見本の申請対象(つながる申請の前提 = 課題が指すプロジェクトを含む)は {@see WorkflowSeederApplicationTargetsTest}。
+ * 初期データは DatabaseSeeder が 1 回入れたもの(流し直さない)。
+ *
+ * @phpstan-import-type Detail from CaseDetailQuery
  */
 final class WorkflowSeederTest extends TransactionalTestCase
 {
@@ -111,6 +114,22 @@ final class WorkflowSeederTest extends TransactionalTestCase
             ['WF-000016', 'issue_resolution', 'u0001', '課題の対応の承認 ログイン画面の文言修正', 'active', null, [['課長の承認', 'waiting', ['u0009']]], ['apply u0001', 'transfer u0002']],
             [null, 'issue_resolution', 'u0001', null, 'draft', null, [], []],
         ], $cases);
+    }
+
+    /**
+     * 課題の対応の申請と、その課題が指すプロジェクトのプロジェクト計画の申請は、詳細のつながる申請に互いに出る
+     * (docs の 設計/ワークフロー/業務データとの接続/写しとつながる申請.md 6 節の例)。
+     */
+    public function test_the_issue_case_and_the_plan_case_are_connected(): void
+    {
+        $this->assertSame(
+            [['課題の「プロジェクト」を申請対象にする申請', ['WF-000001']]],
+            $this->relatedOf('u0001', 'WF-000002'),
+        );
+        $this->assertSame(
+            [['「プロジェクト」でプロジェクトを指す課題を申請対象にする申請', ['WF-000002']]],
+            $this->relatedOf('u0001', 'WF-000001'),
+        );
     }
 
     /**
@@ -271,11 +290,24 @@ final class WorkflowSeederTest extends TransactionalTestCase
     }
 
     /**
-     * @return array<string, mixed>
+     * @return Detail
      */
     private function show(string $userCode, string $number): array
     {
         return app(CaseDetailQuery::class)->show($this->contextOf($userCode), $this->caseOf($number)->id);
+    }
+
+    /**
+     * 詳細の related を (群の見出し, 申請番号の並び) の配列にしたもの。
+     *
+     * @return list<array{string, list<string|null>}>
+     */
+    private function relatedOf(string $userCode, string $number): array
+    {
+        return array_map(
+            fn (array $group) => [$group['heading'], array_column($group['cases'], 'number')],
+            $this->show($userCode, $number)['related'],
+        );
     }
 
     private function caseOf(string $number): WorkflowCase
