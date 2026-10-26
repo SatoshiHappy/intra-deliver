@@ -19,10 +19,10 @@ use Tests\Support\CatchesValidationErrors;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * 行の権限と他モジュール参照(docs の 設計/業務データの入れ物/認可とメニュー/README.md 2.2 の「参照の項目」・2.4 の「参照の表示名」、メニューと初期データ.md 8 節):
+ * 行の権限と他モジュール参照(docs の 設計/業務データの入れ物/認可とメニュー/README.md 2.2 の「参照の項目」・行の権限.md 2.4 の「参照の表示名」、メニューと初期データ.md 8 節):
  * 参照先のレコードが行の判定を通らない人には、表示名を返さない(画面は #<id>)。一覧・詳細・編集の画面の初期値・申請内容の表示・一時保存と再申請の初期値・
  * 更新履歴の版の差分のどれも同じ。見えないレコードを新しく書くと 422、今の値に残す見えない参照は確かめ直さない。
- * 参照元の業務モジュール notes は全員に見え、参照先の meetings は関係する人だけに見える。
+ * 参照元の業務モジュール notes は全員に見え、参照先の meetings は関係者だけに見える。
  */
 final class RecordRowAccessReferenceTest extends TransactionalTestCase
 {

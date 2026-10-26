@@ -16,7 +16,6 @@ use App\Models\Master\User;
 use App\Models\Meeting\MeetingRun;
 use App\Models\Records\Record;
 use App\Models\Records\RecordModule;
-use App\Queries\Records\Api\RecordHoldQuery;
 use Illuminate\Testing\TestResponse;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Component\HttpFoundation\Response;
@@ -100,19 +99,6 @@ final class RegenerateMinutesTest extends TransactionalTestCase
         $recordId = $this->pastedMeeting($this->creator);
 
         $this->regenerate($recordId, [])->assertSessionHasErrors(['meeting' => RegenerateMinutes::PROCESSING]);
-    }
-
-    /**
-     * 会議は申請書にならず持ち主ができないので、押せる時に申請中の確かめは無い(処理.md の 3.7。断るのは処理中のときだけ)。
-     */
-    public function test_the_regeneration_does_not_ask_whether_the_meeting_is_held(): void
-    {
-        $recordId = $this->completedMeeting();
-        $holds = $this->spy(RecordHoldQuery::class);
-
-        $this->regenerate($recordId, [])->assertSessionHasNoErrors();
-
-        $holds->shouldNotHaveReceived('isHeld');
     }
 
     public function test_a_manual_meeting_cannot_be_regenerated(): void

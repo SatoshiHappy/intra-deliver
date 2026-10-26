@@ -12,8 +12,8 @@ use Tests\Support\BuildsRecordModules;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * 行の判定の 1 か所(docs の 設計/業務データの入れ物/認可とメニュー/README.md 2.4)に渡す業務モジュールの確かめ: 見える範囲か親の列を読んでいない
- * 業務モジュールと明細のモジュールは、絞らない側に倒さず作りの誤りとして止める。関係する人を返す口は、ほかの業務モジュールのレコードに空を返す。
+ * 行の判定の 1 か所(docs の 設計/業務データの入れ物/認可とメニュー/行の権限.md 2.4)に渡す業務モジュールの確かめ: 見える範囲か親の列を読んでいない
+ * 業務モジュールと明細のモジュールは、絞らない側に倒さず作りの誤りとして止める。関係者を返す口は、ほかの業務モジュールのレコードに空を返す。
  */
 final class RecordRowAccessTest extends TransactionalTestCase
 {

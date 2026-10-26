@@ -6,8 +6,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * 行の権限(docs の 設計/業務データの入れ物/データモデル/表.md 2.1・2.2・2.6 の最後、認可とメニュー/README.md 2.4)。
- * 業務モジュールの見える範囲 row_access_scope と、項目の関係する人の旗 grants_row_access と、その検査制約を足す。
+ * 行の権限(docs の 設計/業務データの入れ物/データモデル/表.md 2.1・2.2・2.6 の最後、ADR 0018 の決定 2・3)。
+ * 業務モジュールの見える範囲 row_access_scope と、項目の関係者の印 grants_row_access と、その検査制約を足す。
  * 今の業務モジュールはどれも全員(all)、今の項目はどれも旗なしになり、振る舞いは変わらない。索引は足さない(データモデル/表.md 2.6 の最後)。
  */
 return new class extends Migration

@@ -20,9 +20,9 @@ use Illuminate\Database\Query\Builder as QueryBuilder;
 use LogicException;
 
 /**
- * 行の権限の判定の 1 か所(docs の 設計/業務データの入れ物/認可とメニュー/README.md 2.4、ADR 0018)。
+ * 行の権限の判定の 1 か所(docs の 設計/業務データの入れ物/認可とメニュー/行の権限.md 2.4、ADR 0018)。
  * 口は 3 つ: 問い合わせに条件を足す {@see self::constrain()} と、1 件の可否 {@see self::allows()} は、判定を求める者と d を受ける。
- * 関係する人の式の右辺を満たすユーザーを返す {@see self::relatedUserIds()} は、判定を求める者を受けない(Records の中だけで使う。2.4 の「通知」の宛先の候補)。
+ * 関係者の式の右辺を満たすユーザーを返す {@see self::relatedUserIds()} は、判定を求める者を受けない(Records の中だけで使う。2.4 の「通知」の宛先の候補)。
  * 業務モジュールの read の判定は呼び手が先に済ませる(2.2)。
  *
  * 所属の組織は Master の公開の口で先に引き、条件は department_id IN (…) にする(Master の表を SQL に書かないため)。
@@ -93,7 +93,7 @@ class RecordRowAccess
     }
 
     /**
-     * 2.4 の「関係する人」の式の右辺を満たすユーザー。d に有効なユーザーへの絞り込みは呼び手が行う(所属する人だけは、所属が d に成り立つ人)。
+     * 2.4 の「関係者」の式の右辺を満たすユーザー。d に有効なユーザーへの絞り込みは呼び手が行う(所属する人だけは、所属が d に成り立つ人)。
      * {@see self::constrain()} と同じ旗の付いた項目と明細の行の結び方で引く(定義を 1 か所にする)。通知の宛先の候補({@see RecordAudience})が使う。
      *
      * @param  RecordModule  $module  親の無い業務モジュール(表から全部の列を読んだもの)
@@ -136,7 +136,7 @@ class RecordRowAccess
     }
 
     /**
-     * 絞るか(認可とメニュー/README.md 2.4)。
+     * 絞るか(業務モジュールの見える範囲と全件の参照 = ADR 0018 の決定 2・4)。
      */
     private function restricts(Requester $requester, RecordModule $module, DateTimeInterface $date): bool
     {

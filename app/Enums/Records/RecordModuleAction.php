@@ -29,7 +29,7 @@ enum RecordModuleAction: string
     /** 削除 */
     case Delete = 'delete';
 
-    /** 全件の参照(見える範囲が「関係する人だけ」の業務モジュールで、関係しないレコードも参照する = 認可とメニュー/README.md 2.4) */
+    /** 全件の参照(見える範囲「関係者だけ」の業務モジュールで、自分が関係者でないレコードも参照する = ADR 0018 の決定 4) */
     case ReadAll = 'read-all';
 
     /**

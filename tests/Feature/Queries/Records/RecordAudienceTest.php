@@ -23,7 +23,7 @@ use Tests\Support\BuildsRowAccessRecords;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * 関係する人のうち閲覧できる人(docs の 設計/業務データの入れ物/認可とメニュー/README.md の 2.4 節の「通知」): 候補は行の判定の「関係する人」と
+ * 関係者のうち閲覧できる人(docs の 設計/業務データの入れ物/認可とメニュー/行の権限.md の 2.4 節の「通知」): 候補は行の判定の「関係者」と
  * 同じ定義で、d に有効で read のある人だけ。重ねず昇順。レコードが無い・明細の行は空。
  *
  * @phpstan-import-type RowAccessFixture from BuildsRowAccessRecords

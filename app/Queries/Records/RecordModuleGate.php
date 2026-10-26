@@ -42,7 +42,7 @@ class RecordModuleGate
 
     /**
      * 業務モジュールと行の判定({@see RecordRowAccess})を、入力の検証より前に確かめる(FormRequest の authorize から呼ぶ)。
-     * 404・403 を検証の 422 より先に返すため(認可とメニュー/README.md 2.2・2.4)。業務処理・読み取りもあとで同じ判定をする。
+     * 404・403 を検証の 422 より先に返すため(認可とメニュー/README.md 2.2・行の権限.md 2.4)。業務処理・読み取りもあとで同じ判定をする。
      *
      * @throws ModelNotFoundException<RecordModule|Record> 業務モジュール・レコードが無い・行の判定を通らないとき
      * @throws AuthorizationException 許されないとき

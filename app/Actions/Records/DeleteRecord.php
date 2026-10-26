@@ -16,7 +16,7 @@ use Illuminate\Validation\ValidationException;
 /**
  * レコードを削除する(判定する削除。docs の 設計/業務データの入れ物/項目と規則/規則と業務処理/README.md 9.2 の 2。業務データの入れ物の画面の口)。
  * 業務モジュールの勧告ロックを共有で取り({@see LocksRecordModule})、判定は業務モジュールの delete の後に、レコードの行を FOR UPDATE で引く
- * (行の判定 {@see RecordRowAccess} の条件で引き、通らなければ 404 = 認可とメニュー/README.md 2.4)。行の鍵より後ろ(持ち主・添付・
+ * (行の判定 {@see RecordRowAccess} の条件で引き、通らなければ 404 = docs の 設計/業務データの入れ物/認可とメニュー/行の権限.md 2.4)。行の鍵より後ろ(持ち主・添付・
  * 参照されているときの 422・実体)は判定しない削除と同じ {@see LockedRecordDeletion}。
  */
 class DeleteRecord

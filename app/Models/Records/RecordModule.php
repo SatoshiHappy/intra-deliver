@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 /**
  * 業務モジュール(業務データの表 1 つの定義。期間なしのマスタ)。表 record_modules(docs の 設計/業務データの入れ物/データモデル/表.md 2.1、
  * 添付ファイルの使用の列 = 設計/業務データの入れ物/レコードの共通機能/データモデル/表.md の 2.8 節)。
- * 見える範囲 row_access_scope = 認可とメニュー/README.md 2.4。
+ * 見える範囲 row_access_scope = ADR 0018 の決定 2(参照制限への移行 = docs の 設計/業務データの入れ物/データモデル/表.md 2.1)。
  * 組み込みの旗 is_builtin = 設計/業務ツール/共通データ.md の「入れ物の拡張」(入力から立てないので fillable に入れない)。
  */
 #[Fillable([

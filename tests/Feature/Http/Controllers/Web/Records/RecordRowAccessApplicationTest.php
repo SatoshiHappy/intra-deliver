@@ -19,8 +19,8 @@ use Tests\Support\TransactionalTestCase;
 use Tests\Support\UsesSeededRecords;
 
 /**
- * 申請の経路は行の判定を見ない(docs の 設計/業務データの入れ物/認可とメニュー/README.md 2.2 の「ワークフローの経路の例外」・2.4 の「申請の経路は行の判定を
- * 見ない」、ADR 0018 の 7): 業務モジュールの read も行の判定も通らない申請の関係者が、未完了の申請の詳細でレコードの中身を見る。持ち主の鍵を渡す更新
+ * 申請の経路は行の判定を見ない(docs の 設計/業務データの入れ物/認可とメニュー/README.md 2.2 の「ワークフローの経路の例外」・行の権限.md 2.4 の「申請の経路は行の判定を
+ * 見ない」、ADR 0018 の決定 7): 業務モジュールの read も行の判定も通らない申請の関係者が、未完了の申請の詳細でレコードの中身を見る。持ち主の鍵を渡す更新
  * (ワークフローの再申請の呼び方)は行の判定を見ずに通り、業務データの入れ物の入口の更新(鍵 null)は同じレコードが 404。
  */
 final class RecordRowAccessApplicationTest extends TransactionalTestCase
