@@ -36,6 +36,7 @@ class CaseProcessorChoices
         private FlowPermissions $flowPermissions,
         private SubjectGroupMembership $membership,
         private WorkflowPeople $people,
+        private ReapplyPrincipals $reapplyPrincipals,
     ) {}
 
     /**
@@ -57,13 +58,18 @@ class CaseProcessorChoices
         $attach = $this->attachEntries->of([$own], [$own->case->id => $canWithdraw])[$own->case->id];
         $pullBackNodes = $this->pullBackNodesOf($requester, $context, $own, $candidates, $kinds, $attach['pullBack']);
         $hasOwnCaseOperation = $ownCan['withdraw'] || $ownCan['reapply'];
+        $reapplyAs = $this->reapplyPrincipals->of($requester, $date, [$own])[$own->case->id] ?? null;
+        $caseOperationAs = $withdrawAs ?? $reapplyAs;
+        $canReapply = $ownCan['reapply'] || $reapplyAs !== null;
 
         return [
             'nodeActions' => $nodeActions,
             'pullBackNodes' => $pullBackNodes,
-            'can' => ['pullBack' => $pullBackNodes !== [], 'reapply' => $ownCan['reapply'], 'withdraw' => $canWithdraw],
+            'can' => ['pullBack' => $pullBackNodes !== [], 'reapply' => $canReapply, 'withdraw' => $canWithdraw],
             'casePrincipal' => $own->case->user_id === $candidates?->userId ? null : $own->case->user_id,
-            'proxyNote' => self::proxyNoteOf($nodeActions, $pullBackNodes, $hasOwnCaseOperation, $withdrawAs, $people),
+            'proxyNote' => self::proxyNoteOf(
+                $nodeActions, $pullBackNodes, $hasOwnCaseOperation, $caseOperationAs, $people,
+            ),
             'canAttachOnWithdraw' => $attach['withdraw'],
         ];
     }
@@ -238,7 +244,7 @@ class CaseProcessorChoices
      * @param  list<NodeAction>  $nodeActions
      * @param  list<DetailPullBackNode>  $pullBackNodes
      * @param  bool  $hasOwnCaseOperation  本人として取止め・再申請できる
-     * @param  int|null  $withdrawPrincipal  代理元として取止めできるときの申請者
+     * @param  int|null  $withdrawPrincipal  代理元として取止め・再申請できるときの申請者
      * @param  array<int, Person>  $people
      */
     private static function proxyNoteOf(

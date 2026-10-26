@@ -8,6 +8,7 @@ use App\Enums\Workflow\WorkflowProxyKind;
 use App\Models\Records\Record;
 use App\Models\Records\RecordModule;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Collection;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\Support\AppliesFromRecords;
 use Tests\Support\RegistersProxies;
@@ -35,7 +36,8 @@ final class RecordApplicationCreatorPageTest extends TransactionalTestCase
     }
 
     /**
-     * 自分が作成者なら自分で、代理元が作成者なら代理元で開く(初期値はそのレコード)。ほかの人の・作成者なしのレコードは 404。
+     * 自分が作成者なら自分で、代理元が作成者なら代理元で開く(初期値はそのレコード。applicants = 作成者だけ、クエリ applicant が無くても
+     * 代理元が作成者なら既定の申請者は代理元)。ほかの人の・作成者なしのレコードは 404。
      */
     public function test_the_form_opens_for_the_creator_who_is_the_requester_or_a_principal(): void
     {
@@ -47,9 +49,11 @@ final class RecordApplicationCreatorPageTest extends TransactionalTestCase
         $nobodys = Record::factory()->create(['record_module_id' => $this->moduleIdOf(self::PROJECT)]);
         $this->actingAs($proxy);
 
-        foreach ([[$own, '自分の計画'], [$principals, '代理元の計画']] as [$record, $name]) {
+        foreach ([[$own, '自分の計画', $proxy], [$principals, '代理元の計画', $principal]] as [$record, $name, $applicant]) {
             $this->get($this->formUrl($record->id))->assertOk()->assertInertia(fn (Assert $page) => $page
-                ->where('mode', 'record')->where('recordId', $record->id)->where('initial.values.name', $name));
+                ->where('mode', 'record')->where('recordId', $record->id)->where('initial.values.name', $name)
+                ->where('applicants', fn (Collection $rows) => array_column($rows->all(), 'id') === [$applicant->id])
+                ->where('applicant', $applicant->is($proxy) ? null : $applicant->id));
         }
 
         $this->get($this->formUrl($others->id))->assertNotFound();

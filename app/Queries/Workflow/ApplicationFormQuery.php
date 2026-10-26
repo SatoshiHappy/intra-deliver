@@ -24,14 +24,18 @@ use LogicException;
  * 開けないときの判定の順 = 画面/README.md 1.1、申請基準日 = ルートの深さ/画面.md 5 節)。
  * 403 の判定は書き込みの入口と同じ {@see CaseEntryGate} の口を使う(画面と書き込みで食い違わない)。再申請の一時保存の 404 は画面だけが持つ条件なので、
  * 状態つきの閲覧を口より先に引く。業務データの入れ物の主体の判定をしない口(初期値)は、これらの判定の後にだけ呼ぶ(業務データとの接続/写しとつながる申請.md 9 節)。
+ * 申請者 = {@see ApplicationApplicants}。
  *
  * @phpstan-import-type Next from ApplicationNext
  * @phpstan-import-type ApplyAttachment from ApplyAttachments
  * @phpstan-import-type ApplicationTargetValueSet from ApplicationTargetValues
+ * @phpstan-import-type Applicant from ApplicationApplicants
+ * @phpstan-import-type ApplicantProps from ApplicationApplicants
  *
  * @phpstan-type ApplyForm array{mode: string, flow: array{code: string, name: string, description: string|null}, case: array{id: int, number: string|null, revision: int}|null, module: array<string, mixed>, headings: list<array{id: int|null, name: string|null, fieldCodes: list<string>}>, initial: array{name: string|null, comment: string|null, values: array<string, mixed>, details: array<string, list<array<string, mixed>>>}|null, titleField: string|null, recordId: int|null, baseDate: string, baseDateRange: array{min: string|null, max: string|null}, next: Next, nameMaxLength: int, commentMaxLength: int, attachment: ApplyAttachment,
  *     recordVersion: string|null, recordTitle: string|null, targetField: string|null,
- *     targetValues: ApplicationTargetValueSet|null, targetEntry: array{module: string, record: int}|null}
+ *     targetValues: ApplicationTargetValueSet|null, targetEntry: array{module: string, record: int}|null,
+ *     applicants: list<Applicant>, applicant: int|null}
  */
 class ApplicationFormQuery
 {
@@ -47,25 +51,36 @@ class ApplicationFormQuery
         private RecordApplyTargets $recordTargets,
         private RecordDisplayQuery $display,
         private ApplicationTargetValues $applicationTargetValues,
+        private ApplicableFlows $applicableFlows,
+        private ApplicationApplicants $applicants,
+        private ReapplyPrincipals $reapplyPrincipals,
     ) {}
 
     /**
-     * 新規の申請の画面(initial は null = 既定値で始める)。
+     * 新規の申請の画面(initial は null = 既定値で始める)。定義・申請基準日・次の処理担当者は既定の申請者で引く。
      *
      * @param  mixed  $baseDate  クエリ base_date(申請基準日を変えたときの部分再読み込み)
+     * @param  mixed  $applicantId  クエリ applicant(選ぶ代理元)
      * @return ApplyForm
      *
      * @throws ModelNotFoundException<WorkflowFlow> フローが無いとき
      * @throws AuthorizationException 申請できる人でないとき(ゲストを含む)
      */
-    public function create(AccessContext $context, string $flowCode, mixed $baseDate = null): array
-    {
+    public function create(
+        AccessContext $context,
+        string $flowCode,
+        mixed $baseDate = null,
+        mixed $applicantId = null,
+    ): array {
         $this->gate->authorizeFlow($context, $flowCode);
         $requester = Requester::fromAccessContext($context);
         $flow = WorkflowFlow::query()->with('workflowContent.recordModule')->where('code', $flowCode)->firstOrFail();
+        $candidates = $this->applicableFlows->applicantIds($requester, $flow->id, $context->date);
+        [$applicant, $applicants] = $this->applicants->choose($context, $candidates, $applicantId);
+        $requester = Requester::fromAccessContext($applicant);
         $module = $this->forms->definition($requester, $this->moduleOf($flow)->code, RecordModuleAction::Create, $context->date);
 
-        return $this->newForm($context, $context, $flow, $module, $baseDate);
+        return $this->newForm($context, $applicant, $flow, $module, $baseDate, $applicants);
     }
 
     /**
@@ -73,6 +88,7 @@ class ApplicationFormQuery
      *
      * @param  AccessContext  $applicant  申請者(代理のときは代理元)
      * @param  array<string, mixed>  $module  申請者で create を判定して引いた定義
+     * @param  ApplicantProps  $applicants
      * @return ApplyForm
      */
     public function newForm(
@@ -81,15 +97,18 @@ class ApplicationFormQuery
         WorkflowFlow $flow,
         array $module,
         mixed $baseDate,
+        array $applicants,
     ): array {
         $date = $this->applicationDate($applicant, $flow, [$baseDate]);
 
-        return $this->form('new', $flow, null, $module, null, null, $date, $context, $this->attachments->forNew($flow));
+        $attachment = $this->attachments->forNew($flow);
+
+        return $this->form('new', $flow, null, $module, null, null, $date, $context, $attachment, $applicants);
     }
 
     /**
      * 一時保存の画面(initial = 一時保存の入力を今の定義で読んだ値 = RecordFormQuery::draftValues と、案件名・コメント)。見えるが一時保存でない案件なら null
-     * (別のタブで申請した後など。入口が詳細へ移してトーストを出す = 画面/README.md 1.1)。
+     * (別のタブで申請した後など。入口が詳細へ移してトーストを出す = 画面/README.md 1.1)。定義・初期値・申請基準日は判定する人(代理元の一時保存は持ち主)で引く。
      *
      * @param  mixed  $baseDate  クエリ base_date(申請基準日を変えたときの部分再読み込み)
      * @return ApplyForm|null
@@ -101,7 +120,8 @@ class ApplicationFormQuery
     {
         $requester = Requester::fromAccessContext($context);
         $case = $this->visibility->visible(WorkflowCase::query()->whereKey($caseId), $requester, $context->date)->firstOrFail();
-        $this->gate->authorizeDraftWrite($context, $case->id);
+        $judge = $this->gate->authorizeDraftWrite($context, $case->id);
+        $requester = Requester::fromAccessContext($judge);
 
         if ($case->state !== WorkflowCaseState::Draft) {
             return null;
@@ -114,16 +134,17 @@ class ApplicationFormQuery
         $read = $this->forms->draftValues($requester, $moduleCode, MixedValues::arrayOf($input['values'] ?? null), MixedValues::arrayOf($input['details'] ?? null), $context->date, $context->localeCode);
         $initial = ['name' => $this->stringOf($input['name'] ?? null), 'comment' => $this->stringOf($input['comment'] ?? null), 'values' => $read['values'], 'details' => $read['details']];
 
-        $date = $this->applicationDate($context, $flow, [$baseDate, $input['base_date'] ?? null]);
+        $date = $this->applicationDate($judge, $flow, [$baseDate, $input['base_date'] ?? null]);
 
         $attachment = $this->attachments->forDraft($flow, $case, $context->userId);
+        $applicants = $this->applicants->propsOf($context, [$case->user_id], $case->user_id);
 
-        return $this->form('draft', $flow, ['id' => $case->id, 'number' => null, 'revision' => $case->revision], $module, $initial, null, $date, $context, $attachment);
+        return $this->form('draft', $flow, ['id' => $case->id, 'number' => null, 'revision' => $case->revision], $module, $initial, null, $date, $context, $attachment, $applicants);
     }
 
     /**
      * 再申請の画面(initial = 今のレコードの値 = RecordFormQuery::editValues と、今の案件名。コメントは空)。再申請ができない状態・役割なら null
-     * (判定 = 詳細の can の reapply。古いリンクから来た人を行き止まりにしない = 画面/README.md 1.1)。
+     * (判定 = 詳細の can の reapply。古いリンクから来た人を行き止まりにしない = 画面/README.md 1.1)。定義と初期値は判定する人(代理元の案件は申請者)で引く。
      *
      * @return ApplyForm|null
      *
@@ -134,18 +155,19 @@ class ApplicationFormQuery
     {
         $requester = Requester::fromAccessContext($context);
         $case = $this->visibility->visible(WorkflowCase::query()->whereKey($caseId)->where('state', '<>', WorkflowCaseState::Draft), $requester, $context->date)->firstOrFail();
-        $this->gate->authorizeReapply($context, $case->id);
+        $judge = Requester::fromAccessContext($this->gate->authorizeReapply($context, $case->id));
         $flow = WorkflowFlow::query()->with('workflowContent.recordModule')->findOrFail($case->workflow_flow_id);
         $moduleCode = $this->moduleOf($flow)->code;
-        $module = $this->forms->definition($requester, $moduleCode, RecordModuleAction::Update, $context->date);
+        $module = $this->forms->definition($judge, $moduleCode, RecordModuleAction::Update, $context->date);
         $situation = $this->decider->situationsOf($requester, $context->date, [$case])[$case->id];
+        $asProxy = $this->reapplyPrincipals->of($requester, $context->date, [$situation]) !== [];
 
-        if (! $this->decider->detailCanOf($requester, $context->date, $situation)['reapply']) {
+        if (! $asProxy && ! $this->decider->detailCanOf($requester, $context->date, $situation)['reapply']) {
             return null;
         }
 
         $recordId = $case->record_id ?? throw new LogicException("申請した案件 {$case->id} がレコードを指していない");
-        $read = $this->forms->editValues($requester, $moduleCode, $recordId, $context->date, $context->localeCode);
+        $read = $this->forms->editValues($judge, $moduleCode, $recordId, $context->date, $context->localeCode);
         $initial = ['name' => $case->name, 'comment' => null, 'values' => $read['values'], 'details' => $read['details']];
         $number = CaseNumbers::format($case->case_number ?? throw new LogicException("申請した案件 {$case->id} に案件番号が無い"));
 
@@ -156,8 +178,9 @@ class ApplicationFormQuery
         ];
 
         $attachment = $this->attachments->forReapply($context, $flow, $case, $moduleCode, $recordId);
+        $applicants = $this->applicants->propsOf($context, [$case->user_id], $case->user_id);
 
-        return $this->form('reapply', $flow, ['id' => $case->id, 'number' => $number, 'revision' => $case->revision], $module, $initial, $recordId, $date, $context, $attachment);
+        return $this->form('reapply', $flow, ['id' => $case->id, 'number' => $number, 'revision' => $case->revision], $module, $initial, $recordId, $date, $context, $attachment, $applicants);
     }
 
     /**
@@ -165,18 +188,24 @@ class ApplicationFormQuery
      * recordVersion)。持ち主があれば null(入口がレコードの詳細へ戻す)。定義・初期値・申請基準日は既定の申請者({@see self::recordApplicant()})で引く。
      *
      * @param  mixed  $baseDate  クエリ base_date(申請基準日を変えたときの部分再読み込み)
+     * @param  mixed  $applicantId  クエリ applicant(候補は作成者だけなので既定の申請者は変わらない)
      * @return ApplyForm|null
      *
      * @throws ModelNotFoundException<WorkflowFlow|Record> フローが無い・レコードが無い・その業務モジュールの親の無いレコードでない・判定を求める者がいないとき
      * @throws AuthorizationException 自分か代理元のどれも既存のデータからの申請をできないとき(ゲストを含む)
      */
-    public function fromRecord(AccessContext $context, string $flowCode, int $recordId, mixed $baseDate = null): ?array
-    {
+    public function fromRecord(
+        AccessContext $context,
+        string $flowCode,
+        int $recordId,
+        mixed $baseDate = null,
+        mixed $applicantId = null,
+    ): ?array {
         $this->gate->authorizeRecordApply($context, $flowCode);
         $flow = WorkflowFlow::query()->with('workflowContent.recordModule')->where('code', $flowCode)->firstOrFail();
         $moduleCode = $this->moduleOf($flow)->code;
-        $principalId = $this->recordApplicant($context, $flow->id, $moduleCode, $recordId);
-        $applicant = $principalId === null ? $context : PrincipalContext::of($context, $principalId);
+        $creatorId = $this->recordApplicant($context, $flow->id, $moduleCode, $recordId) ?? $context->userId;
+        [$applicant, $applicants] = $this->applicants->choose($context, [(int) $creatorId], $applicantId);
         $requester = Requester::fromAccessContext($applicant);
 
         if ($this->recordTargets->isHeld($recordId)) {
@@ -188,7 +217,9 @@ class ApplicationFormQuery
         $initial = ['name' => null, 'comment' => null, 'values' => $read['values'], 'details' => $read['details']];
         $date = $this->applicationDate($applicant, $flow, [$baseDate]);
         $attachment = $this->attachments->forRecord($applicant, $flow, $moduleCode, $recordId);
-        $form = $this->form('record', $flow, null, $module, $initial, $recordId, $date, $context, $attachment);
+        $form = $this->form(
+            'record', $flow, null, $module, $initial, $recordId, $date, $context, $attachment, $applicants,
+        );
         $applicationTarget = $this->applicationTargetValues->applicationTargetOf($flow);
         $copied = $applicationTarget === null ? null : $this->applicationTargetValues->valuesOfRecord(
             $requester, $applicationTarget, $module, $read['values'], $context->date, $context->localeCode,
@@ -223,9 +254,10 @@ class ApplicationFormQuery
      * @param  int|null  $recordId  書くレコード(再申請・既存のデータからの申請。参照の候補から除く = 設計/業務データの入れ物/画面/README.md 4 節)
      * @param  array{baseDate: string, baseDateRange: array{min: string|null, max: string|null}, next: Next}  $date  申請基準日と次の処理対象者
      * @param  ApplyAttachment  $attachment  添付の欄(設計/ワークフロー/申請の周辺/添付/README.md の 5 節)
+     * @param  ApplicantProps  $applicants  申請者({@see ApplicationApplicants})
      * @return ApplyForm
      */
-    private function form(string $mode, WorkflowFlow $flow, ?array $case, array $module, ?array $initial, ?int $recordId, array $date, AccessContext $context, array $attachment): array
+    private function form(string $mode, WorkflowFlow $flow, ?array $case, array $module, ?array $initial, ?int $recordId, array $date, AccessContext $context, array $attachment, array $applicants): array
     {
         return [
             'mode' => $mode,
@@ -245,6 +277,7 @@ class ApplicationFormQuery
             'targetValues' => null,
             'targetEntry' => null,
             ...$date,
+            ...$applicants,
         ];
     }
 

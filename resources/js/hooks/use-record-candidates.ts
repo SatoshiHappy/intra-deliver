@@ -1,5 +1,12 @@
 import { useHttp } from '@inertiajs/react';
-import { useEffect, useEffectEvent, useRef, useState } from 'react';
+import {
+    createContext,
+    useContext,
+    useEffect,
+    useEffectEvent,
+    useRef,
+    useState,
+} from 'react';
 import { candidates } from '@/routes/records/data';
 import type { RecordCandidates } from '@/types';
 
@@ -11,6 +18,23 @@ export const CANDIDATE_QUERY_MAX_LENGTH = 100;
 
 /** 最後の入力から要求を送るまでの待ち(共通マスタの検索と同じ = docs の 設計/業務データの入れ物/画面/README.md 4 節) */
 const DEBOUNCE_MS = 200;
+
+/** 候補の口に送る語と、除くレコードの id(どちらも無ければ付けない) */
+type RecordCandidateQuery = { q?: string; exclude?: number };
+
+/** 候補の引き先(口の URL を作る。業務データの入れ物の画面は records.data.candidates、ワークフローの申請の画面は workflow.record-candidates) */
+export type RecordCandidateSource = (
+    moduleCode: string,
+    query: RecordCandidateQuery,
+) => string;
+
+/** 既定の引き先 records.data.candidates(業務データの入れ物の画面。docs の 設計/業務データの入れ物/画面/README.md 4 節) */
+export const RECORDS_DATA_SOURCE: RecordCandidateSource = (moduleCode, query) =>
+    candidates.url({ module: moduleCode }, { query });
+
+/** 引き先の差し替え口。Provider が無ければ既定(参照の選択欄はどの画面でもこの口から引き先を読む) */
+export const RecordCandidateSourceContext =
+    createContext<RecordCandidateSource>(RECORDS_DATA_SOURCE);
 
 /** 候補の状態(形と意味は use-master-search の MasterSearchState と同じ) */
 export type RecordCandidatesState = {
@@ -36,6 +60,7 @@ export function useRecordCandidates(
     excludedId: number | null,
     searchesEmpty = false,
 ): RecordCandidatesState {
+    const source = useContext(RecordCandidateSourceContext);
     const http = useHttp<Record<string, never>, RecordCandidates>({});
     const latestRequest = useRef(0);
     const [state, setState] = useState<RecordCandidatesState>(INITIAL_STATE);
@@ -59,15 +84,10 @@ export function useRecordCandidates(
         };
 
         http.get(
-            candidates.url(
-                { module: moduleCode },
-                {
-                    query: {
-                        ...(keyword === '' ? {} : { q: keyword }),
-                        ...(excludedId === null ? {} : { exclude: excludedId }),
-                    },
-                },
-            ),
+            source(moduleCode, {
+                ...(keyword === '' ? {} : { q: keyword }),
+                ...(excludedId === null ? {} : { exclude: excludedId }),
+            }),
             {
                 onSuccess: (result) => {
                     if (isLatest()) {
@@ -106,7 +126,7 @@ export function useRecordCandidates(
         const timer = window.setTimeout(() => send(request), DEBOUNCE_MS);
 
         return () => window.clearTimeout(timer);
-    }, [keyword, moduleCode, excludedId, searchesEmpty]);
+    }, [keyword, moduleCode, excludedId, searchesEmpty, source]);
 
     return state;
 }

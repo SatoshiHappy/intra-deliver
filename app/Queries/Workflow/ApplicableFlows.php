@@ -3,6 +3,7 @@
 namespace App\Queries\Workflow;
 
 use App\Enums\Records\RecordModuleAction;
+use App\Enums\Workflow\WorkflowProxyKind;
 use App\Models\Records\RecordModule;
 use App\Models\Workflow\WorkflowFlow;
 use App\Models\Workflow\WorkflowRouteNode;
@@ -10,6 +11,7 @@ use App\Queries\Authz\Api\Requester;
 use App\Queries\Authz\Api\SubjectGroupMembership;
 use App\Queries\Records\Api\RecordFormQuery;
 use App\Support\AccessContext;
+use Closure;
 use DateTimeInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -21,6 +23,8 @@ use LogicException;
  * 申請できる = 判定を求める者のユーザーが d に有効で、d に有効なフローの版(ルートの深さ/データモデル/定義の表.md 2.1)の申請のノード(位置 1)の
  * 処理対象者の指定に本人の判定で合い、かつコンテンツの業務モジュールの create を許される。d に有効な版の無いフローは申請できない。ゲスト・d に有効でないユーザーはどのフローも申請できない。
  * 鍵を取らない(定義の表は鍵を取らずに読む = 設計/ワークフロー/データモデル/直列化と検査.md 3.1)。
+ *
+ * @phpstan-type FlowCheck Closure(Requester, list<int>, DateTimeInterface): list<int>
  */
 class ApplicableFlows
 {
@@ -31,16 +35,23 @@ class ApplicableFlows
         private SubjectGroupMembership $membership,
         private RecordFormQuery $forms,
         private EffectiveFlowVersions $versions,
+        private WorkflowProxies $proxies,
     ) {}
 
     /**
-     * フローの一覧(設計/ワークフロー/ルートの深さ/画面.md 2 節の flows。並び = sort_key・code。ページングしない)。業務モジュールの名前はモデルの name をそのまま出す。
+     * フローの一覧(設計/ワークフロー/ルートの深さ/画面.md 2 節の flows。並び = sort_key・code。ページングしない)。自分か、申請の代理元のだれかが申請できるフロー
+     * (設計/ワークフロー/案件の運用/案件の操作/README.md の 3.1 節。判定は {@see self::applicableIdsByAny()})。業務モジュールの名前はモデルの name をそのまま出す。
      *
      * @return list<array{code: string, name: string, description: string|null, moduleName: string}>
      */
     public function flows(AccessContext $context): array
     {
-        $flows = $this->applicable(Requester::fromAccessContext($context), $context->date, WorkflowFlow::query()->orderBy('sort_key')->orderBy('code'));
+        $requester = Requester::fromAccessContext($context);
+        $allIds = array_values(WorkflowFlow::query()->pluck('id')->all());
+        $flows = WorkflowFlow::query()
+            ->whereKey($this->applicableIdsByAny($requester, $context->date, $allIds))
+            ->with('workflowContent.recordModule')
+            ->orderBy('sort_key')->orderBy('code')->get();
 
         return array_values($flows->map(fn (WorkflowFlow $flow) => [
             'code' => $flow->code,
@@ -56,6 +67,40 @@ class ApplicableFlows
     public function isApplicable(Requester $requester, DateTimeInterface $date, int $flowId): bool
     {
         return $this->applicableIds($requester, $date, [$flowId]) === [$flowId];
+    }
+
+    /**
+     * 新規の申請の申請者の候補(設計/ワークフロー/案件の運用/案件の操作/README.md の 3.1 節・4.5 節)。入口の 403 とフローの一覧と同じ式で求め、
+     * 入口が通ることと候補が空でないことを揃える。
+     *
+     * @return list<int> ユーザーの id(自分を先頭に、代理元は昇順)
+     */
+    public function applicantIds(Requester $requester, int $flowId, DateTimeInterface $date): array
+    {
+        return $this->applicantsByFlow($requester, [$flowId], $date, $this->newApplicationIds(...), true)[$flowId];
+    }
+
+    /**
+     * 自分か申請の代理元のだれかが d にそのフローを申請できるか(申請の系統の入口の 403 = 3.1 節)。
+     */
+    public function isApplicableByAny(Requester $requester, int $flowId, DateTimeInterface $date): bool
+    {
+        return $this->applicableIdsByAny($requester, $date, [$flowId]) === [$flowId];
+    }
+
+    /**
+     * 渡したフローのうち、自分か申請の代理元のだれかが申請できるものの id(id の昇順)。候補の全員は要らないので、代理元は自分が申請できないフローだけで判定する。
+     *
+     * @param  list<int>  $flowIds
+     * @return list<int>
+     */
+    public function applicableIdsByAny(Requester $requester, DateTimeInterface $date, array $flowIds): array
+    {
+        $byFlow = $this->applicantsByFlow($requester, $flowIds, $date, $this->newApplicationIds(...), false);
+        $ids = array_keys(array_filter($byFlow, fn (array $userIds): bool => $userIds !== []));
+        sort($ids);
+
+        return $ids;
     }
 
     /**
@@ -81,6 +126,79 @@ class ApplicableFlows
         $flows = $this->applicable($requester, $date, $candidates, $actions);
 
         return array_values($flows->map(fn (WorkflowFlow $flow) => $flow->id)->all());
+    }
+
+    /**
+     * 申請できる人(設計/ワークフロー/案件の運用/案件の操作/README.md の 3.1 節)を求める 1 つの式。入口・選択肢・一覧がここを通り、答えを揃える。
+     * 代理は 1 回で引いて代理元ごとにまとめて判定する(問い合わせをフローの数に比例させない)。
+     *
+     * @param  list<int>  $flowIds
+     * @param  FlowCheck  $check
+     * @param  bool  $everyone  偽なら、自分が申請できるフローの代理元を判定しない(空かどうかだけを使う呼び手のため。空かどうかは変わらない)
+     * @return array<int, list<int>> フローの id → ユーザーの id(自分を先頭に、代理元は昇順。だれもいなければ空)
+     */
+    private function applicantsByFlow(
+        Requester $requester,
+        array $flowIds,
+        DateTimeInterface $date,
+        Closure $check,
+        bool $everyone,
+    ): array {
+        $byFlow = array_fill_keys($flowIds, []);
+        $userId = $requester->userId;
+
+        if ($userId === null) {
+            return $byFlow;
+        }
+
+        $own = $check($requester, $flowIds, $date);
+
+        foreach ($own as $flowId) {
+            $byFlow[$flowId][] = $userId;
+        }
+
+        $principalFlowIds = $everyone ? $flowIds : array_values(array_diff($flowIds, $own));
+
+        foreach ($this->flowsByPrincipal($userId, $principalFlowIds, $date) as $principalId => $ids) {
+            foreach ($check(RecordApplyFlows::requesterAs($requester, $principalId), $ids, $date) as $flowId) {
+                $byFlow[$flowId][] = $principalId;
+            }
+        }
+
+        return $byFlow;
+    }
+
+    /**
+     * 自分を申請の代理先とする d に有効な代理の代理元ごとの、その代理が効くフロー(代理元の昇順。自分は入れない)。
+     *
+     * @param  list<int>  $flowIds
+     * @return array<int, list<int>>
+     */
+    private function flowsByPrincipal(int $userId, array $flowIds, DateTimeInterface $date): array
+    {
+        $flowsByPrincipal = [];
+        $principalsByFlow = $this->proxies->principalIdsByFlow($userId, $flowIds, WorkflowProxyKind::Apply, $date);
+
+        foreach ($principalsByFlow as $flowId => $principalIds) {
+            foreach (array_diff($principalIds, [$userId]) as $principalId) {
+                $flowsByPrincipal[$principalId][] = $flowId;
+            }
+        }
+
+        ksort($flowsByPrincipal);
+
+        return $flowsByPrincipal;
+    }
+
+    /**
+     * 新規の申請の判定(コンテンツの業務モジュールの create)。
+     *
+     * @param  list<int>  $flowIds
+     * @return list<int>
+     */
+    private function newApplicationIds(Requester $requester, array $flowIds, DateTimeInterface $date): array
+    {
+        return $this->applicableIds($requester, $date, $flowIds);
     }
 
     /**

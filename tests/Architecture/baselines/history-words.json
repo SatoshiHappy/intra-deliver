@@ -9,7 +9,6 @@
     "app/Enums/Workflow/WorkflowAction.php": 3,
     "app/Queries/Records/RecordConditionEvaluator.php": 1,
     "app/Queries/Workflow/ActiveApplicationsHomeSection.php": 2,
-    "app/Queries/Workflow/CaseEntryGate.php": 3,
     "app/Queries/Workflow/CaseTargetTerm.php": 3,
     "app/Queries/Workflow/CaseTargetTerms.php": 1,
     "app/Queries/Workflow/OwnCaseTargetTerm.php": 2,

@@ -20,7 +20,7 @@ import {
 // - 担当変更 = INVENTORY_BUG(u0002 が課長で承認待ち。前の spec は読むだけ)
 // - 確認 = SECOND_QUARTER(zz-workflow-operations.spec.ts の一括承認で部長が処理済みになり、課長・部長の確認が u0010 に開いている)。
 //   NEW_PRODUCT は同じ spec の一括確認で確認済みになった
-// 連絡と申請の代理の筋は、申請の画面の作り直しの後。
+// 連絡と申請の代理の筋(申請の画面)は zz-workflow-proxy.spec.ts。
 test.use({ viewport: { width: 1280, height: 720 } });
 test.describe.configure({ mode: 'serial' });
 

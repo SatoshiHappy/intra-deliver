@@ -27,10 +27,11 @@ class CaseEntryGate
         private CaseVisibility $visibility,
         private CaseOperationDecider $decider,
         private RecordApplyFlows $recordApplyFlows,
+        private ApplicantRequester $applicantRequester,
     ) {}
 
     /**
-     * 新規の申請・一時保存: フローが無い 404 → 申請できる人でない 403。
+     * 新規の申請・一時保存: フローが無い 404 → 自分か代理元のどれもこのフローを申請できない 403(設計/ワークフロー/案件の運用/案件の操作/README.md の 3.1 節)。
      *
      * @throws ModelNotFoundException<WorkflowFlow> フローが無いとき
      * @throws AuthorizationException 申請できる人でないとき(ゲストを含む)
@@ -38,7 +39,12 @@ class CaseEntryGate
     public function authorizeFlow(AccessContext $context, string $flowCode): void
     {
         $flow = WorkflowFlow::query()->where('code', $flowCode)->firstOrFail();
-        $this->requireApplicable($context, $flow->id);
+
+        $requester = Requester::fromAccessContext($context);
+
+        if (! $this->applicableFlows->isApplicableByAny($requester, $flow->id, $context->date)) {
+            throw new AuthorizationException(self::NOT_APPLICABLE_MESSAGE);
+        }
     }
 
     /**
@@ -85,30 +91,44 @@ class CaseEntryGate
     }
 
     /**
-     * 一時保存の上書き・一時保存からの申請: 案件が無い・閲覧できない 404 → 申請できる人でない 403。
+     * 一時保存の上書き・一時保存からの申請: 案件が無い・閲覧できない 404 → 判定する人(持ち主で {@see ApplicantRequester})が申請できる人でない 403。
+     *
+     * @return AccessContext 判定する人
      *
      * @throws ModelNotFoundException<WorkflowCase> 案件が無い・閲覧できないとき
      * @throws AuthorizationException 申請できる人でないとき
      */
-    public function authorizeDraftWrite(AccessContext $context, int $caseId): void
+    public function authorizeDraftWrite(AccessContext $context, int $caseId): AccessContext
     {
-        $this->requireApplicable($context, $this->visibleCase($context, $caseId)->workflow_flow_id);
+        $case = $this->visibleCase($context, $caseId);
+        $requesterContext = $this->applicantRequester->of($context, $case->user_id, $case->workflow_flow_id);
+        $this->requireApplicable($requesterContext, $case->workflow_flow_id);
+
+        return $requesterContext;
     }
 
     /**
-     * 再申請: 案件が無い・閲覧できない 404 → コンテンツの業務モジュールの update を許されない 403。
+     * 再申請: 案件が無い・閲覧できない 404 → 判定する人(案件の申請者で {@see ApplicantRequester})がコンテンツの業務モジュールの
+     * update を許されない 403。
+     *
+     * @return AccessContext 判定する人
      *
      * @throws ModelNotFoundException<WorkflowCase> 案件が無い・閲覧できないとき
      * @throws AuthorizationException update を許されないとき
      */
-    public function authorizeReapply(AccessContext $context, int $caseId): void
+    public function authorizeReapply(AccessContext $context, int $caseId): AccessContext
     {
-        $this->requireUpdatable(Requester::fromAccessContext($context), $context->date, $this->visibleCase($context, $caseId)->workflow_flow_id);
+        $case = $this->visibleCase($context, $caseId);
+        $requesterContext = $this->applicantRequester->of($context, $case->user_id, $case->workflow_flow_id);
+        $requester = Requester::fromAccessContext($requesterContext);
+        $this->requireUpdatable($requester, $context->date, $case->workflow_flow_id);
+
+        return $requesterContext;
     }
 
     /**
      * 再申請の 403 の 1 か所(入口・再申請の画面の GET・業務処理が呼ぶ): 判定する人がそのフローのコンテンツの業務モジュールの update を許されるか。判定する人は
-     * 呼び手が渡す(3a = 今の利用者。3b の代理は代理元 = 3a の動きは変えない)。
+     * 呼び手が渡す(設計/ワークフロー/案件の運用/案件の操作/操作.md の 10.8 節の判定する人)。
      *
      * @throws AuthorizationException 許されないとき
      */

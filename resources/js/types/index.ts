@@ -10,6 +10,7 @@ export * from './recordShow';
 export * from './status';
 export * from './ui';
 export * from './workflow';
+export * from './workflowApplicant';
 export * from './workflowAttachments';
 export * from './workflowRows';
 export * from './workflowValues';

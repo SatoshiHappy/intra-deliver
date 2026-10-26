@@ -50,11 +50,26 @@ class RecordApplyTargets
         int $recordId,
         DateTimeInterface $date,
     ): int {
-        $applicantId = $this->moduleCodeOf($recordId) === $moduleCode
+        return $this->creatorAmong($requester, $candidateIds, $moduleCode, $recordId, $date)
+            ?? throw (new ModelNotFoundException)->setModel(Record::class, [$recordId]);
+    }
+
+    /**
+     * {@see self::requireApplicant()} と同じ判定で、判定を求める者がいなければ null(参照項目の候補の入口の「代理元としてフォームを開ける」が、
+     * 開けないときに自分で判定するため = docs の 設計/ワークフロー/申請の周辺/既存のデータからの申請/README.md の 1 節)。
+     *
+     * @param  list<int>  $candidateIds
+     */
+    public function creatorAmong(
+        Requester $requester,
+        array $candidateIds,
+        string $moduleCode,
+        int $recordId,
+        DateTimeInterface $date,
+    ): ?int {
+        return $this->moduleCodeOf($recordId) === $moduleCode
             ? $this->viewingCreator($requester, $candidateIds, $moduleCode, $recordId, $date)
             : null;
-
-        return $applicantId ?? throw (new ModelNotFoundException)->setModel(Record::class, [$recordId]);
     }
 
     /**

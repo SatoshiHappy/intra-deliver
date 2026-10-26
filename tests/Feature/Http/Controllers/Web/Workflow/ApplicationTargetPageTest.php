@@ -17,7 +17,7 @@ use Tests\Support\TransactionalTestCase;
 /**
  * 申請対象からの申請の画面の GET(docs の 設計/ワークフロー/申請の周辺/既存のデータからの申請/申請対象からの申請.md の 9.3 節・11 節):
  * 判定の表の各行(403 → 404)、開いた画面の初期値が写しの値で申請対象の欄にそのレコードが入る、target が正の整数でなければ新規の申請、
- * record があれば record の経路、クエリ applicant の代理元が既定の申請者になる。
+ * record があれば record の経路、クエリ applicant の代理元が既定の申請者になる(applicants = この経路で申請できる自分と代理元)。
  */
 final class ApplicationTargetPageTest extends TransactionalTestCase
 {
@@ -119,9 +119,14 @@ final class ApplicationTargetPageTest extends TransactionalTestCase
         $this->assertSame(404, $this->statusAs($u0001, $principals));
         $props = $this->props($this->get($this->formUrl(['target' => (string) $principals, ...$asPrincipal])));
         $this->assertSame($principals, $props['targetValues']['values'][self::TARGET_FIELD]['id'] ?? null);
+        $both = [array_column($props['applicants'], 'id'), $props['applicant']];
+        $this->assertSame([[$u0001->id, $principal->id], $principal->id], $both);
 
         $this->allowOnly(self::HUB, RecordModuleAction::Read, $principal);
         $this->assertSame(200, $this->statusAs($u0001, $principals));
+        $props = $this->props($this->get($this->formUrl(['target' => (string) $principals])));
+        $onlyPrincipal = [array_column($props['applicants'], 'id'), $props['applicant']];
+        $this->assertSame([[$principal->id], $principal->id], $onlyPrincipal);
     }
 
     /**

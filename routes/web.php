@@ -33,6 +33,7 @@ use App\Http\Controllers\Web\Workflow\CaseController;
 use App\Http\Controllers\Web\Workflow\DraftController;
 use App\Http\Controllers\Web\Workflow\FlowController;
 use App\Http\Controllers\Web\Workflow\ReapplicationController;
+use App\Http\Controllers\Web\Workflow\RecordCandidateController;
 use App\Http\Controllers\Web\Workflow\TargetValueController;
 use App\Http\Controllers\Web\Workflow\UserCandidateController;
 use Illuminate\Support\Facades\Route;
@@ -176,6 +177,8 @@ Route::post('/workflow/cases/bulk-confirm', [BulkActionController::class, 'confi
 Route::get('/workflow/user-candidates', UserCandidateController::class)->name('workflow.user-candidates');
 Route::get('/workflow/target-values/{target}', TargetValueController::class)
     ->name('workflow.target-values')->where('target', '[0-9]{1,18}');
+Route::get('/workflow/record-candidates/{module}', RecordCandidateController::class)
+    ->name('workflow.record-candidates')->where('module', '[a-z][a-z0-9_]{0,49}');
 Route::get('/workflow/cases/{case}', [CaseController::class, 'show'])->name('workflow.cases.show')->where('case', '[0-9]{1,18}');
 Route::post('/workflow/cases/{case}/approve', [CaseActionController::class, 'approve'])->name('workflow.cases.approve')->where('case', '[0-9]{1,18}');
 Route::post('/workflow/cases/{case}/approve-early', [CaseActionController::class, 'approveEarly'])->name('workflow.cases.approve-early')->where('case', '[0-9]{1,18}');

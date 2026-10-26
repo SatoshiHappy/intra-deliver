@@ -125,6 +125,7 @@ class WorkflowSeeder extends Seeder
         'workflow.cases.transfer' => ['担当変更', 'Transfer'],
         'workflow.cases.confirm' => ['確認', 'Confirm'],
         'workflow.target-values' => ['申請対象の値', 'Target values'],
+        'workflow.record-candidates' => ['参照項目の候補', 'Record candidates'],
     ];
 
     /** コンテンツ: コード => [申請書の業務モジュールのコード, 名前](申請対象の項目 = 申請書の業務モジュールの申請対象の項目 = {@see WorkflowApplicationModules}) */

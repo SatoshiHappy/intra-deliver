@@ -14,7 +14,8 @@ use LogicException;
 /**
  * 一覧の行・関連する案件の行(docs の 設計/ワークフロー/画面/README.md 1.2 の WorkflowCaseRow、認可と一覧.md 3.2 の行の項目、足した項目 =
  * 設計/ワークフロー/案件の運用/認可と一覧.md の 2.2 節)。閲覧の判定は呼び手が済ませた案件を渡す。
- * 問い合わせの回数は行の数に依らない(フロー・状況({@see CaseOperationDecider::situationsOf()}。現在のノードを含む)・申請者の名前・行の can をまとめて引く)。
+ * 問い合わせの回数は行の数に依らない(フロー・状況({@see CaseOperationDecider::situationsOf()}。現在のノードを含む)・申請者の名前・行の can をまとめて引く。
+ * 代理元として再申請できる行 = {@see ReapplyPrincipals} は代理元の数だけ)。
  * 引戻し・取止めの入口の canAttach は、処理のダイアログを開く行(一覧)だけ求め、ほかの行(関連する案件・ホームの節)は偽
  * (docs の 設計/ワークフロー/申請の周辺/添付/README.md の 5 節)。期限・代理元・確認・一括の項目は呼び手が求めた行だけ({@see CaseRowExtras})。
  *
@@ -44,6 +45,7 @@ class CaseRows
         private WorkflowPeople $people,
         private CaseAttachEntries $attachEntries,
         private CaseRowExtras $extras,
+        private ReapplyPrincipals $reapplyPrincipals,
     ) {}
 
     /**
@@ -70,6 +72,7 @@ class CaseRows
         $situations = $this->decider->situationsOf($requester, $date, array_values($cases->all()));
         $applicants = $this->people->users(array_values($cases->map(fn (WorkflowCase $case) => $case->user_id)->all()), $date, $localeCode);
         $cans = $this->decider->rowCansOf($requester, $date, array_values($situations));
+        $reapplyAs = $this->reapplyPrincipals->of($requester, $date, array_values($situations));
         $withdrawable = array_map(fn (array $can) => $can['withdraw'], $cans);
         $attach = $opensDialogs ? $this->attachEntries->of(array_values($situations), $withdrawable) : [];
         $extras = $this->extras->of($requester, $date, $localeCode, $situations, $fields);
@@ -88,6 +91,7 @@ class CaseRows
             'revision' => $case->revision,
             'can' => [
                 ...$cans[$case->id],
+                'reapply' => $cans[$case->id]['reapply'] || isset($reapplyAs[$case->id]),
                 'bulkApprove' => $extras[$case->id]['canBulkApprove'],
                 'confirm' => $extras[$case->id]['canConfirm'],
             ],

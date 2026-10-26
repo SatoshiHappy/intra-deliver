@@ -3,6 +3,7 @@ import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog';
 import { FormActions } from '@/components/FormLayout';
 import { Button } from '@/components/ui/button';
 import { ApplyConfirmDialog } from '@/components/Workflow/ApplyConfirmDialog';
+import { showsSaveDraft } from '@/lib/Workflow/applyScreen';
 import { cn } from '@/lib/utils';
 import { destroy as draftDestroy } from '@/routes/workflow/drafts';
 import type { WorkflowApplyProps } from '@/types';
@@ -10,7 +11,7 @@ import type { RouteDefinition } from '@/wayfinder';
 
 /**
  * 申請の画面のボタン列(キャンセル・一時保存の削除・一時保存・申請/再申請の確認)。送信中はまとめて押せない。
- * 一時保存は新規と一時保存の画面だけ、削除は一時保存の画面だけに出す。
+ * 一時保存のボタンは {@link showsSaveDraft} が出す画面だけ、削除は一時保存の画面だけに出す。
  */
 export function ApplyActions({
     mode,
@@ -57,7 +58,7 @@ export function ApplyActions({
                         data={{ revision: workflowCase.revision }}
                     />
                 )}
-                {mode !== 'reapply' && (
+                {showsSaveDraft(mode) && (
                     <Button
                         type="button"
                         variant="outline"

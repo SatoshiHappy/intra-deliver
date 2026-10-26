@@ -7,9 +7,9 @@ use Closure;
 use Illuminate\Validation\Validator;
 
 /**
- * 処理の操作が送る処理担当者 principal_user_id と連絡 contact: { user_ids, message }(docs の
- * 設計/ワークフロー/案件の運用/画面/README.md の 1.1 節、案件の運用/案件の操作/操作.md の 10.5 節)。入口は形だけを見て、
- * 人数・文字数・有効でない人などの中身は業務処理が 422 にする。連絡する人は整数に変えてから {@see CaseContact} を作る。
+ * 処理の操作が送る処理担当者 principal_user_id、新規の申請・新規の一時保存が送る申請者 applicant_user_id と、連絡 contact: { user_ids, message }(docs の
+ * 設計/ワークフロー/案件の運用/画面/README.md の 1.1 節、案件の運用/案件の操作/操作.md の 10.5 節・10.8 節)。入口は形だけを見て、
+ * 代理元でない・人数・文字数・有効でない人などの中身は業務処理が 422 にする。連絡する人は整数に変えてから {@see CaseContact} を作る。
  */
 trait ReadsPrincipalAndContact
 {
@@ -21,10 +21,7 @@ trait ReadsPrincipalAndContact
      */
     private function principalAndContactRules(): array
     {
-        return [
-            'principal_user_id' => ['nullable', 'integer'],
-            'contact.message' => ['nullable', 'string'],
-        ];
+        return ['principal_user_id' => ['nullable', 'integer'], ...$this->contactRules()];
     }
 
     /**
@@ -32,10 +29,43 @@ trait ReadsPrincipalAndContact
      */
     private function principalAndContactMessages(): array
     {
-        return [
-            'principal_user_id.integer' => '処理担当者の指定が正しくありません',
-            'contact.message.string' => 'ひと言の形が正しくありません',
-        ];
+        return ['principal_user_id.integer' => '処理担当者の指定が正しくありません', ...$this->contactMessages()];
+    }
+
+    /**
+     * 連絡だけの規則(連絡する人の形は {@see self::contactShapeCheck()})。
+     *
+     * @return array<string, list<string>>
+     */
+    private function contactRules(): array
+    {
+        return ['contact.message' => ['nullable', 'string']];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function contactMessages(): array
+    {
+        return ['contact.message.string' => 'ひと言の形が正しくありません'];
+    }
+
+    /**
+     * 申請者の規則(新規の申請・新規の一時保存だけ)。
+     *
+     * @return array<string, list<string>>
+     */
+    private function applicantRules(): array
+    {
+        return ['applicant_user_id' => ['nullable', 'integer']];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    private function applicantMessages(): array
+    {
+        return ['applicant_user_id.integer' => '申請者の指定が正しくありません'];
     }
 
     /**
@@ -60,6 +90,14 @@ trait ReadsPrincipalAndContact
     public function principalUserId(): ?int
     {
         return $this->input('principal_user_id') === null ? null : $this->integer('principal_user_id');
+    }
+
+    /**
+     * 申請者(null = 自分として。規則が形を確かめた後に呼ぶ)。
+     */
+    public function applicantUserId(): ?int
+    {
+        return $this->input('applicant_user_id') === null ? null : $this->integer('applicant_user_id');
     }
 
     /**

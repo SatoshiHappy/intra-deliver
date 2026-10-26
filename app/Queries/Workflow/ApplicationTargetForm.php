@@ -8,7 +8,6 @@ use App\Models\Workflow\WorkflowFlow;
 use App\Queries\Authz\Api\Requester;
 use App\Queries\Records\Api\RecordFormQuery;
 use App\Support\AccessContext;
-use App\Support\PositiveIds;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use LogicException;
@@ -27,6 +26,7 @@ class ApplicationTargetForm
         private RecordFormQuery $forms,
         private ApplicationFormQuery $applicationForms,
         private ApplicationTargetValues $applicationTargetValues,
+        private ApplicationApplicants $applicants,
     ) {}
 
     /**
@@ -48,7 +48,9 @@ class ApplicationTargetForm
         $flow = WorkflowFlow::query()->with('workflowContent.recordModule')->where('code', $flowCode)->firstOrFail();
         $applicationTarget = $this->applicationTargetValues->applicationTargetOf($flow)
             ?? throw new LogicException("申請対象からの申請をできるフロー {$flow->code} に申請対象の項目が無い");
-        $applicant = $this->applicantOf($context, $flow->id, $applicantId);
+        $candidates = $this->recordApplyFlows
+            ->applicantIdsForTarget(Requester::fromAccessContext($context), $flow->id, $context->date);
+        [$applicant, $applicants] = $this->applicants->choose($context, $candidates, $applicantId);
         $requester = Requester::fromAccessContext($applicant);
         $moduleCode = $flow->workflowContent->recordModule->code
             ?? throw new LogicException("フロー {$flow->code} のコンテンツの業務モジュールを読み込んでいない");
@@ -56,24 +58,9 @@ class ApplicationTargetForm
         $values = $this->applicationTargetValues->valuesFor(
             $requester, $applicationTarget, $module, $applicationTargetId, $context->date, $context->localeCode,
         ) ?? throw (new ModelNotFoundException)->setModel(Record::class, [$applicationTargetId]);
-        $form = $this->applicationForms->newForm($context, $applicant, $flow, $module, $baseDate);
+        $form = $this->applicationForms->newForm($context, $applicant, $flow, $module, $baseDate, $applicants);
         $entry = ['module' => $applicationTarget['module'], 'record' => $applicationTargetId];
 
         return [...$form, 'targetValues' => $values, 'targetEntry' => $entry];
-    }
-
-    /**
-     * 既定の申請者(docs の 設計/ワークフロー/案件の運用/画面/案件の画面.md の 6.1 節)。候補は自分が先頭なので、選ぶ代理元が候補に無ければ先頭になる。
-     */
-    private function applicantOf(AccessContext $context, int $flowId, mixed $applicantId): AccessContext
-    {
-        $requester = Requester::fromAccessContext($context);
-        $candidates = $this->recordApplyFlows->applicantIdsForTarget($requester, $flowId, $context->date);
-        $chosen = PositiveIds::of($applicantId);
-        $applicantUserId = in_array($chosen, $candidates, true)
-            ? $chosen
-            : ($candidates[0] ?? throw new LogicException("フロー {$flowId} で申請できる人を確かめた後に候補が無い"));
-
-        return PrincipalContext::of($context, (int) $applicantUserId);
     }
 }

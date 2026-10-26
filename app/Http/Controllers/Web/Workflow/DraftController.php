@@ -36,7 +36,8 @@ class DraftController extends Controller
 
     public function store(FlowApplicationRequest $request, string $flow): RedirectResponse
     {
-        $caseId = $this->createDraft->execute(AccessContext::of($request), $flow, $request->draftInput());
+        $context = AccessContext::of($request);
+        $caseId = $this->createDraft->execute($context, $flow, $request->draftInput(), $request->applicantUserId());
         Inertia::flash('toast', ['type' => 'success', 'message' => '一時保存しました']);
 
         return redirect()->route('workflow.drafts.edit', ['case' => $caseId]);
@@ -65,7 +66,10 @@ class DraftController extends Controller
 
     public function apply(DraftApplicationRequest $request): RedirectResponse
     {
-        $result = $this->applyCase->executeFromDraft(AccessContext::of($request), $request->caseId(), $request->revision(), $request->applicationInput(), $request->baseDate());
+        $result = $this->applyCase->executeFromDraft(
+            AccessContext::of($request), $request->caseId(), $request->revision(), $request->applicationInput(),
+            $request->baseDate(), $request->contact(),
+        );
         Inertia::flash('toast', ['type' => 'success', 'message' => '申請しました']);
 
         return redirect()->route('workflow.cases.show', ['case' => $result->caseId]);

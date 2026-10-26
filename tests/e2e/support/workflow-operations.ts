@@ -1,6 +1,11 @@
 import { expect } from './test';
-import type { Page } from '@playwright/test';
-import { seededDate, todayInTokyo } from './seed-dates';
+import type { Locator, Page } from '@playwright/test';
+import {
+    addedProjectStart,
+    fillVersionTwoBaseDate,
+    seededDate,
+    todayInTokyo,
+} from './seed-dates';
 import { submitAndExpectUrl } from './submit';
 
 // 案件の運用の画面の筋(zz-workflow-operations.spec.ts・zz-workflow-processing.spec.ts。docs の
@@ -9,7 +14,9 @@ import { submitAndExpectUrl } from './submit';
 
 /** デモユーザー切替の候補: 役どころ(切替の項目)と、切り替えた後の利用者メニューの表示 */
 const USERS = {
+    applicant: ['申請者', '佐々木 陽太（東京営業課）'],
     chief: ['上長(課長)', '中村 美咲（東京営業課）'],
+    manager: ['部長', '高橋 誠（第一営業部）'],
     concurrent: ['兼務(総務・人事)', '吉田 達也（総務部）'],
     accounting: ['経理', '山田 恵（経理部）'],
 } as const;
@@ -70,4 +77,66 @@ export function daysSince(written: string): number {
         (Date.parse(todayInTokyo()) - Date.parse(seededDate(written))) /
         86_400_000
     );
+}
+
+/**
+ * 参照の選択欄で、検索する語を打って候補を選び、候補の欄が閉じるのを待つ(閉じる途中の欄が残ったまま次の選択欄を開くと、検索の入力欄が 2 つになる)。
+ */
+async function pickReference(
+    page: Page,
+    combobox: string,
+    query: string,
+    option: string,
+) {
+    await page.getByRole('combobox', { name: combobox, exact: true }).click();
+    await page.getByPlaceholder('検索する語').fill(query);
+    await page.getByRole('option', { name: option, exact: true }).click();
+    await expect(page.getByPlaceholder('検索する語')).toHaveCount(0);
+}
+
+/**
+ * 計画の申請の画面(フロー project_plan。申請基準日は版 2 の日 = 課長の承認・部長の承認)の入力を埋める。プロジェクト名がそのまま案件名の後ろに付く。
+ */
+export async function fillPlanApplication(
+    page: Page,
+    form: Locator,
+    projectName: string,
+) {
+    await form
+        .getByRole('textbox', { name: 'プロジェクト名', exact: true })
+        .fill(projectName);
+    await pickReference(page, '担当部署', '東京営業', '東京営業課');
+    await pickReference(page, '責任者', '中村', '中村 美咲');
+    await form
+        .getByRole('group', { name: '開始日', exact: true })
+        .locator('input')
+        .fill(addedProjectStart());
+    await form
+        .getByRole('textbox', { name: '予算(万円)', exact: true })
+        .fill('100');
+    await fillVersionTwoBaseDate(form);
+}
+
+/**
+ * 申請の画面の「申請」を押し、確かめのダイアログの「決定」で申請して、詳細へ移るまで待つ。
+ */
+export async function submitApplication(page: Page, form: Locator) {
+    await form.getByRole('button', { name: '申請', exact: true }).click();
+    await submitAndExpectUrl(
+        page,
+        page
+            .getByRole('dialog', { name: '申請しますか？' })
+            .getByRole('button', { name: '決定', exact: true }),
+        /\/workflow\/cases\/\d+$/,
+    );
+}
+
+/**
+ * 申請の詳細の基本情報の 1 項目の値(項目名の dt の次の dd)。
+ */
+export function basicItem(page: Page, label: string) {
+    return page
+        .getByRole('region', { name: '基本情報' })
+        .getByText(label, { exact: true })
+        .locator('xpath=following-sibling::dd');
 }

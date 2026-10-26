@@ -5,19 +5,25 @@ namespace App\Http\Requests\Workflow;
 use App\Queries\Workflow\CaseEntryGate;
 use App\Support\AccessContext;
 use App\Support\PositiveIds;
+use Closure;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Validator;
 
 /**
  * フローを指す書き込み(新規の申請 workflow.applications.store・新規の一時保存 workflow.drafts.store)の入力
  * (docs の 設計/ワークフロー/画面/README.md 1.1・画面/申請と案件.md 3 節)。
  * 封筒は {@see ReadsApplicationEnvelope}。改訂番号は無い(案件がまだ無い)。添付は受け、外す指定は外す相手が無いので捨てる。
  * 申請のルートだけが record_id・record_version を受け(既存のデータからの申請 = 設計/ワークフロー/申請の周辺/既存のデータからの申請/README.md の 4 節)、
- * 一時保存のルートは捨てる(一時保存はレコードを持てない)。
+ * 一時保存のルートは捨てる(一時保存はレコードを持てない)。申請者 applicant_user_id は両方のルートが受け、連絡 contact は申請のルートだけが受ける
+ * ({@see ReadsPrincipalAndContact}。一時保存は連絡を持たない)。
  */
 class FlowApplicationRequest extends FormRequest
 {
-    use ReadsApplicationEnvelope;
+    use ReadsApplicationEnvelope {
+        after as private envelopeAfter;
+    }
+    use ReadsPrincipalAndContact;
 
     /** 既存のデータからの申請を受けるルート */
     private const APPLY_ROUTE = 'workflow.applications.store';
@@ -55,7 +61,9 @@ class FlowApplicationRequest extends FormRequest
         return $this->withAttachmentRules([
             ...$this->applicationEnvelopeRules(),
             ...$this->baseDateEnvelope()['rules'],
-            ...($this->routeIs(self::APPLY_ROUTE) ? ['record_id' => self::RECORD_ID_RULES] : []),
+            ...$this->applicantRules(),
+            ...($this->routeIs(self::APPLY_ROUTE)
+                ? ['record_id' => self::RECORD_ID_RULES, ...$this->contactRules()] : []),
             // 版の形は業務データの入れ物の更新の入口と同じ(updated_at の無い行の版 = 空文字は null で届く)
             ...($this->fromRecord() ? ['record_version' => ['present', 'nullable', 'string']] : []),
         ]);
@@ -69,12 +77,24 @@ class FlowApplicationRequest extends FormRequest
         return $this->withAttachmentMessages([
             ...$this->applicationEnvelopeMessages(),
             ...$this->baseDateEnvelope()['messages'],
+            ...$this->applicantMessages(),
+            ...$this->contactMessages(),
             'record_id.integer' => 'レコードの指定が正しくありません',
             'record_id.min' => 'レコードの指定が正しくありません',
             'record_id.max_digits' => 'レコードの指定が正しくありません',
             'record_version.present' => '版の指定がありません',
             'record_version.string' => '版の指定が正しくありません',
         ]);
+    }
+
+    /**
+     * 検証の後のフック(封筒の印の誤りと、申請のルートの連絡する人の形)。
+     *
+     * @return array<Closure(Validator): void>
+     */
+    public function after(): array
+    {
+        return [...$this->envelopeAfter(), ...($this->routeIs(self::APPLY_ROUTE) ? [$this->contactShapeCheck()] : [])];
     }
 
     /**

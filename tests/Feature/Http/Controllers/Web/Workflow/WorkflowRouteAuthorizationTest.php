@@ -22,8 +22,8 @@ use Tests\Support\TransactionalTestCase;
 final class WorkflowRouteAuthorizationTest extends TransactionalTestCase
 {
     /**
-     * ワークフローのルート 27 本(設計/ワークフロー/画面/README.md 1.1 の表の順と、ルートの深さ/画面.md 1.1 の処理対象者の候補、
-     * 案件の運用/画面/README.md の 1.1 節の 7 本、写しの値の入口)
+     * ワークフローのルート 28 本(設計/ワークフロー/画面/README.md 1.1 の表の順と、ルートの深さ/画面.md 1.1 の処理対象者の候補、
+     * 案件の運用/画面/README.md の 1.1 節の 8 本、写しの値の入口)
      */
     private const ROUTES = [
         'workflow.flows.index', 'workflow.applications.create', 'workflow.applications.store', 'workflow.drafts.store', 'workflow.drafts.edit',
@@ -32,7 +32,7 @@ final class WorkflowRouteAuthorizationTest extends TransactionalTestCase
         'workflow.cases.withdraw', 'workflow.reapplications.create', 'workflow.reapplications.store', 'workflow.cases.assignee-candidates',
         'workflow.cases.bulk-approve', 'workflow.cases.bulk-confirm', 'workflow.user-candidates',
         'workflow.cases.hold', 'workflow.cases.release', 'workflow.cases.transfer', 'workflow.cases.confirm',
-        'workflow.target-values',
+        'workflow.target-values', 'workflow.record-candidates',
     ];
 
     protected function setUp(): void
@@ -64,7 +64,7 @@ final class WorkflowRouteAuthorizationTest extends TransactionalTestCase
         }
     }
 
-    public function test_the_module_has_54_policies_permitting_execute_to_the_guest_and_the_authenticated(): void
+    public function test_the_module_has_56_policies_permitting_execute_to_the_guest_and_the_authenticated(): void
     {
         $summaries = AuthzPolicy::query()->with('authzResourceGroup')->get()
             ->filter(fn (AuthzPolicy $policy) => str_starts_with((string) $policy->authzResourceGroup?->code, 'http-services.workflow'))
@@ -72,7 +72,7 @@ final class WorkflowRouteAuthorizationTest extends TransactionalTestCase
             ->all();
         $expected = array_merge(...array_map(fn (string $name) => array_fill(0, 2, "http-services.{$name} service:execute permit"), self::ROUTES));
 
-        $this->assertCount(54, $summaries);
+        $this->assertCount(56, $summaries);
         $this->assertEqualsCanonicalizing($expected, array_values($summaries));
     }
 

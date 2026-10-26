@@ -5,6 +5,7 @@ import type {
     RecordModuleDefinition,
 } from './records';
 import type { RouteStepState } from './status';
+import type { WorkflowApplicant } from './workflowApplicant';
 import type { WorkflowApplyTarget } from './workflowApplyTarget';
 import type {
     WorkflowApplyAttachment,
@@ -74,6 +75,8 @@ export type WorkflowApplyProps = {
     attachment: WorkflowApplyAttachment;
     recordVersion: string | null; // 既存のデータからの申請だけ: 開いたときのレコードの版(申請で record_version に送る)
     recordTitle: string | null; // 既存のデータからの申請だけ: 見出しの表示の項目の値(無ければ null)
+    applicants: WorkflowApplicant[]; // 申請者の選択肢
+    applicant: number | null; // 既定の申請者(代理元。自分なら null。定義・next・申請基準日の範囲はこの人で引いた値)
 } & WorkflowApplyTarget;
 
 /** 再申請の差分(再申請の行だけ。設計/ワークフロー/画面/申請と案件.md 5 節) */

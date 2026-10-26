@@ -32,6 +32,7 @@ class CaseOperationDecider
         private CaseHolders $holders,
         private CaseConfirmations $confirmations,
         private BulkApprovals $bulkApprovals,
+        private DraftRequesters $draftRequesters,
     ) {}
 
     /**
@@ -73,7 +74,7 @@ class CaseOperationDecider
      */
     public function isUpdatable(Requester $requester, DateTimeInterface $date, int $flowId): bool
     {
-        return $this->membership->effectiveUserId($requester, $date) !== null && $this->updatableFlows->idsOf($requester, $date, [$flowId]) !== [];
+        return $this->updatableFlows->idsOf($requester, $date, [$flowId]) !== [];
     }
 
     /**
@@ -184,7 +185,7 @@ class CaseOperationDecider
 
     /**
      * 状況ごとの行の can。403 の判定は、効く案件(一時保存 = 申請できる人、再申請待ち = update)のフローだけで評価する(ほかは表が偽なので結果は同じ)。
-     * ノードの操作は、現在のノードのどれかで許されれば真。
+     * ノードの操作は、現在のノードのどれかで許されれば真。代理元の一時保存の行は持ち主が判定する人({@see DraftRequesters})。
      *
      * @param  list<CaseSituation>  $situations
      * @return array<int, array{pullBack: bool, reapply: bool, withdraw: bool, editDraft: bool, deleteDraft: bool}> 案件の id → can
@@ -192,8 +193,10 @@ class CaseOperationDecider
     public function rowCansOf(Requester $requester, DateTimeInterface $date, array $situations): array
     {
         $cans = [];
+        $asOwners = $this->draftRequesters->of($requester, $date, $situations);
 
         foreach ($this->canInputs($requester, $date, $situations) as $caseId => [$situation, $userId, $canApply, $canUpdate]) {
+            [$situation, $canApply] = $asOwners[$caseId] ?? [$situation, $canApply];
             $cans[$caseId] = $this->rowCanBy($this->anyNode($situation, $userId), $this->roles->of($userId, $situation, null, false, $canApply, $canUpdate));
         }
 
@@ -261,7 +264,7 @@ class CaseOperationDecider
         $userId = $this->membership->effectiveUserId($requester, $date);
         $flowIdsOf = fn (Closure $isNeeded) => array_values(array_unique(array_map(fn (CaseSituation $situation) => $situation->case->workflow_flow_id, array_filter($situations, $isNeeded))));
         $applicable = $userId === null ? [] : $this->applicableFlows->applicableIds($requester, $date, $flowIdsOf(fn (CaseSituation $situation) => $situation->case->state === WorkflowCaseState::Draft));
-        $updatable = $userId === null ? [] : $this->updatableFlows->idsOf($requester, $date, $flowIdsOf(fn (CaseSituation $situation) => $situation->labelState() === WorkflowNodeState::Reapply));
+        $updatable = $this->updatableFlows->idsOf($requester, $date, $flowIdsOf(fn (CaseSituation $situation) => $situation->labelState() === WorkflowNodeState::Reapply));
         $inputs = [];
 
         foreach ($situations as $situation) {

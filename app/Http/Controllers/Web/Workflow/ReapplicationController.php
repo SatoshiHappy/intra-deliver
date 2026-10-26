@@ -40,7 +40,10 @@ class ReapplicationController extends Controller
 
     public function store(ReapplicationRequest $request): RedirectResponse
     {
-        $this->reapplyCase->execute(AccessContext::of($request), $request->caseId(), $request->revision(), $request->applicationInput());
+        $this->reapplyCase->execute(
+            AccessContext::of($request), $request->caseId(), $request->revision(), $request->applicationInput(),
+            $request->principalUserId(), $request->contact(),
+        );
         Inertia::flash('toast', ['type' => 'success', 'message' => '再申請しました']);
 
         return redirect()->route('workflow.cases.show', ['case' => $request->caseId()]);
