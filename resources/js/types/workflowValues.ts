@@ -56,3 +56,4 @@ export type WorkflowBulkOutcome =
     | 'confirmed'
     | 'processed'
     | 'pending';
+export type WorkflowProxyKind = 'apply' | 'approve';

@@ -15,6 +15,12 @@ use Illuminate\Database\Eloquent\Builder;
  */
 class WorkflowProxies
 {
+    /** 代理の状態(並びの順 = 有効 → 開始前 → 終了。docs の 設計/ワークフロー/案件の運用/画面/管理と通知の画面.md の 7.3 節) */
+    public const STATUSES = ['active', 'upcoming', 'ended'];
+
+    /** {@see self::orderedByStatus()} が足す、状態の {@see self::STATUSES} の添え字の列の別名 */
+    public const STATUS_RANK = 'status_rank';
+
     /**
      * ノードに効く代理の別(ほかの種類に効く代理は無ければ null。設計/ワークフロー/案件の運用/案件の操作/README.md の
      * 4.1 節)。
@@ -206,10 +212,32 @@ class WorkflowProxies
     }
 
     /**
+     * 代理の行に、d で決めた状態の添え字の列 {@see self::STATUS_RANK} を足し、状態 → 開始日の降順 → id の降順に並べる(境界は
+     * {@see self::effective()} と同じ半開区間 [start_date, end_date))。
+     *
      * @param  Builder<WorkflowProxy>  $proxies
      * @return Builder<WorkflowProxy>
      */
-    private function effective(Builder $proxies, DateTimeInterface $date): Builder
+    public function orderedByStatus(Builder $proxies, DateTimeInterface $date): Builder
+    {
+        $day = $date->format('Y-m-d');
+        // 添え字は定数から作った整数を文に埋める(then をバインドにすると case が文字列の型になり、並びが変わるため)
+        $ranks = array_flip(self::STATUSES);
+        $rank = "case when workflow_proxies.start_date > ? then {$ranks['upcoming']}"
+            ." when workflow_proxies.end_date <= ? then {$ranks['ended']} else {$ranks['active']} end";
+
+        return $proxies->select('workflow_proxies.*')->selectRaw("{$rank} as ".self::STATUS_RANK, [$day, $day])
+            ->orderBy(self::STATUS_RANK)->orderByDesc('workflow_proxies.start_date')
+            ->orderByDesc('workflow_proxies.id');
+    }
+
+    /**
+     * d に有効な代理の行だけ(start_date <= d < end_date。end_date が NULL は上限なし)。
+     *
+     * @param  Builder<WorkflowProxy>  $proxies
+     * @return Builder<WorkflowProxy>
+     */
+    public function effective(Builder $proxies, DateTimeInterface $date): Builder
     {
         $day = $date->format('Y-m-d');
 

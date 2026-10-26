@@ -13,6 +13,7 @@ use App\Enums\Workflow\WorkflowCompletionReason;
 use App\Enums\Workflow\WorkflowConfirmationProgress;
 use App\Enums\Workflow\WorkflowNodeKind;
 use App\Enums\Workflow\WorkflowNodeState;
+use App\Enums\Workflow\WorkflowProxyKind;
 use BackedEnum;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -53,6 +54,7 @@ TS;
             'WorkflowConfirmationProgress' => [
                 'WorkflowConfirmationProgress', self::WORKFLOW_VALUES, WorkflowConfirmationProgress::class,
             ],
+            'WorkflowProxyKind' => ['WorkflowProxyKind', self::WORKFLOW_VALUES, WorkflowProxyKind::class],
             'RecordFieldType' => ['RecordFieldType', 'resources/js/types/records.ts', RecordFieldType::class],
             'RecordConditionOperator' => ['RecordConditionOperator', 'resources/js/types/records.ts', RecordConditionOperator::class],
             'RecordRuleKind' => ['RecordRuleKind', 'resources/js/types/records.ts', RecordRuleKind::class],

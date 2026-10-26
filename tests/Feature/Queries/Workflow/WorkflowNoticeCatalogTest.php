@@ -9,7 +9,7 @@ use Tests\Support\TransactionalTestCase;
 
 /**
  * ワークフローの通知の種類の列挙と、画面の文の雛形・移り先の登録の突合(docs の 設計/ワークフロー/案件の運用/通知.md の 3 節と 5 節。列挙が正本):
- * 種類の値ごとに雛形 resources/js/lib/Notice/noticeText.ts に case があり、雛形の switch に default があり、使う対象の種類(案件)に
+ * 種類の値ごとに雛形 resources/js/lib/Notice/noticeText.ts に case があり、雛形の switch に default があり、使う対象の種類(案件・代理)に
  * 起動のタグで登録した実装が答える。
  */
 final class WorkflowNoticeCatalogTest extends TransactionalTestCase
@@ -27,7 +27,7 @@ final class WorkflowNoticeCatalogTest extends TransactionalTestCase
         $this->assertStringContainsString('default:', $template);
     }
 
-    public function test_the_case_target_type_is_answered_by_the_tagged_implementation(): void
+    public function test_the_case_and_proxy_target_types_are_answered_by_the_tagged_implementation(): void
     {
         $answering = [];
 
@@ -38,5 +38,6 @@ final class WorkflowNoticeCatalogTest extends TransactionalTestCase
         }
 
         $this->assertSame([WorkflowNoticeTargets::class], $answering[WorkflowNoticeTargets::CASE_TARGET_TYPE] ?? []);
+        $this->assertSame([WorkflowNoticeTargets::class], $answering[WorkflowNoticeTargets::PROXY_TARGET_TYPE] ?? []);
     }
 }

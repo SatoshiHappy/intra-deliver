@@ -9,6 +9,7 @@ use App\Actions\Meeting\MeetingMinutesKind;
 use App\Actions\Meeting\MeetingTranscriptionKind;
 use App\Actions\Reset\Api\ResetParticipant;
 use App\Models\Master\User;
+use App\Queries\Account\Api\UserMenuSections;
 use App\Queries\Authz\Api\ResourceTypes;
 use App\Queries\Authz\ServiceResourceTypes;
 use App\Queries\Authz\UserRoleReferences;
@@ -41,6 +42,7 @@ use App\Queries\Workflow\WorkflowLeadHomeSection;
 use App\Queries\Workflow\WorkflowNoticeTargets;
 use App\Queries\Workflow\WorkflowRecordApplyEntries;
 use App\Queries\Workflow\WorkflowRecordHolds;
+use App\Queries\Workflow\WorkflowUserMenuSection;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Date;
@@ -100,6 +102,16 @@ class AppServiceProvider extends ServiceProvider
         $this->app->tag([OwnCaseTargetTerm::class, ProxyTargetTerm::class], CaseTargetTerm::TAG);
 
         $this->tagHomeSections();
+        $this->tagUserMenuSections();
+    }
+
+    /**
+     * 依存の逆転: 利用者メニューに、後ろのモジュールが節を足す(docs の 設計/ワークフロー/案件の運用/認可と一覧.md の 5 節)。
+     * ほかのプロバイダより先に登録するので、利用者の切替の節より前に並ぶ。
+     */
+    private function tagUserMenuSections(): void
+    {
+        $this->app->tag([WorkflowUserMenuSection::class], UserMenuSections::TAG);
     }
 
     /**

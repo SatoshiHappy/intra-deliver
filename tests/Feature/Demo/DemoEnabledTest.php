@@ -4,7 +4,7 @@ namespace Tests\Feature\Demo;
 
 use App\Http\Controllers\Web\Demo\SwitchUserController;
 use App\Models\Master\User;
-use App\Queries\Account\UserMenuSections;
+use App\Queries\Account\Api\UserMenuSections;
 use App\Queries\Demo\DemoResetSeeder;
 use App\Queries\Demo\LeadHomeSection;
 use App\Queries\Demo\PeopleHomeSection;
@@ -67,9 +67,13 @@ final class DemoEnabledTest extends TransactionalTestCase
         $this->assertSame([], $this->routesWithoutTheirResource($routes));
     }
 
+    /**
+     * 利用者の切替の節は、main のワークフローの節(ゲストには項目なし = docs の 設計/ワークフロー/案件の運用/認可と一覧.md の 5 節)の後に並ぶ。
+     */
     public function test_shares_the_section_with_the_candidates_effective_today_in_the_order_of_the_users(): void
     {
-        $this->get('/')->assertInertia(fn (Assert $page) => $page->where('userMenuSections', [[
+        $workflow = ['heading' => 'ワークフロー', 'items' => []];
+        $this->get('/')->assertInertia(fn (Assert $page) => $page->where('userMenuSections', [$workflow, [
             'heading' => self::HEADING,
             'items' => $this->expectedItems([
                 ['u0001', '佐々木 陽太', '申請者'],
@@ -87,7 +91,7 @@ final class DemoEnabledTest extends TransactionalTestCase
         config(['demo.users' => ['u0014' => ['role' => '退職者', 'can' => '退職者の文'], 'u0001' => ['role' => '申請者', 'can' => '申請者の文']]]);
 
         $this->get('/')->assertInertia(fn (Assert $page) => $page
-            ->where('userMenuSections.0.items', $this->expectedItems([['u0001', '佐々木 陽太', '申請者']]))
+            ->where('userMenuSections.1.items', $this->expectedItems([['u0001', '佐々木 陽太', '申請者']]))
             ->where('sections.1.items', [$this->expectedCard('u0001', '佐々木 陽太', '東京営業課', '申請者', '申請者の文')])
         );
     }
@@ -185,8 +189,8 @@ final class DemoEnabledTest extends TransactionalTestCase
     {
         $this->get('/')->assertInertia(fn (Assert $page) => $page
             ->reloadOnly('globalNavigation', fn (Assert $reload) => $reload
-                ->where('userMenuSections.0.heading', self::HEADING)
-                ->count('userMenuSections.0.items', 6)
+                ->where('userMenuSections.1.heading', self::HEADING)
+                ->count('userMenuSections.1.items', 6)
             )
         );
     }

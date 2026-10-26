@@ -119,3 +119,44 @@ describe('noticeTemplate(ワークフローの処理結果・確認依頼・連�
         );
     });
 });
+
+describe('noticeTemplate(ワークフローの代理)', () => {
+    const proxyNotice = (params: NoticeRow['params']) =>
+        noticeTemplate(row({ type: 'workflow.proxy', params }));
+    const base = {
+        principal_name: '高橋 誠',
+        kind: 'approve',
+        flow_name: null,
+        start_date: '2026-10-13',
+        end_date: null,
+    };
+
+    it('すべてのフロー・終了日なしの承認の代理(処理の結果の色)', () => {
+        expect(proxyNotice(base)).toEqual({
+            label: '代理',
+            tone: 'settled',
+            sentence:
+                '高橋 誠さんの承認の代理先に設定されました。期間は 2026/10/13 から、終了日なしです。',
+        });
+    });
+
+    it('すべてのフロー・終了日ありの申請の代理', () => {
+        expect(
+            proxyNotice({ ...base, kind: 'apply', end_date: '2026-10-31' })
+                .sentence,
+        ).toBe(
+            '高橋 誠さんの申請の代理先に設定されました。期間は 2026/10/13 から 2026/10/31 までです。',
+        );
+    });
+
+    it('フローを指定した代理は「{フロー名}の」を付ける(終了日なし・あり)', () => {
+        const flow = { ...base, flow_name: 'プロジェクト計画の承認' };
+
+        expect(proxyNotice(flow).sentence).toBe(
+            '高橋 誠さんのプロジェクト計画の承認の承認の代理先に設定されました。期間は 2026/10/13 から、終了日なしです。',
+        );
+        expect(proxyNotice({ ...flow, end_date: '2026-10-18' }).sentence).toBe(
+            '高橋 誠さんのプロジェクト計画の承認の承認の代理先に設定されました。期間は 2026/10/13 から 2026/10/18 までです。',
+        );
+    });
+});

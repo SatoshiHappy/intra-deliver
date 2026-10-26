@@ -54,10 +54,10 @@ use Illuminate\Database\Seeder;
  * 申請の案件名は空で渡して既定にする(docs の 設計/ワークフロー/初期データ.md 4 節)。定義の前に申請書の業務モジュール 2 つを作る({@see WorkflowApplicationModules})。
  * 見本の申請は申請対象のレコードをデータハブ(プロジェクト・課題)に作り、それを申請対象にした申請書で申請する({@see BuildsWorkflowSampleRecords})。
  *
- * 先頭に、接頭辞のリソースグループ 6・ルートのリソース 22 と、各ルートのゲストユーザ・認証済みユーザへの execute の許可
- * (44 = 設計/ワークフロー/ルートの深さ/初期データ.md 5 節の 38 と、一括承認・一括確認・利用者の候補の 6 =
+ * 先頭に、接頭辞のリソースグループ 9・ルートのリソース 34 と、ROUTES の 31 本のゲストユーザ・認証済みユーザへの execute の許可
+ * (62 = 設計/ワークフロー/ルートの深さ/初期データ.md 5 節の 38 と、案件の運用・申請の周辺で足したルートの分 =
  * 設計/ワークフロー/案件の運用/認可と一覧.md の 4 節)を入れる(設計/ワークフロー/ルートの深さ/初期データ.md 1 節。
- * 接頭辞のリソースグループには許可を置かない)。メニューのグループ「ワークフロー」は MenuSeeder が入れる。
+ * 接頭辞のリソースグループと、システム管理者だけの ADMIN_ROUTES の 3 本には許可を置かない)。メニューのグループ「ワークフロー」は MenuSeeder が入れる。
  * 定義の前に workflow-flow のセットとシステム管理者の許可 2 を入れ、フローを作るたびにフローのリソースを足す({@see WorkflowFlowResources}。
  * 設計/ワークフロー/案件の運用/認可と一覧.md の 3 節)。
  *
@@ -94,6 +94,9 @@ class WorkflowSeeder extends Seeder
         'workflow.drafts' => ['一時保存', 'Drafts'],
         'workflow.cases' => ['申請', 'Applications'],
         'workflow.reapplications' => ['再申請', 'Reapplications'],
+        'workflow.proxies' => ['代理の設定', 'Proxy settings'],
+        'workflow.admin' => ['ワークフローの管理', 'Workflow administration'],
+        'workflow.admin.proxies' => ['代理の管理', 'Proxy administration'],
     ];
 
     /** ルート: 名前 => [表示名(ja), 表示名(en)](どれもゲストユーザと認証済みユーザに execute を許す) */
@@ -126,6 +129,19 @@ class WorkflowSeeder extends Seeder
         'workflow.cases.confirm' => ['確認', 'Confirm'],
         'workflow.target-values' => ['申請対象の値', 'Target values'],
         'workflow.record-candidates' => ['参照項目の候補', 'Record candidates'],
+        'workflow.proxies.index' => ['代理の設定', 'Proxy settings'],
+        'workflow.proxies.store' => ['代理の追加', 'Add proxy'],
+        'workflow.proxies.destroy' => ['代理の削除', 'Delete proxy'],
+    ];
+
+    /**
+     * システム管理者だけのルート: 名前 => [表示名(ja), 表示名(en)](ポリシーを置かず、システム管理者がセットの先頭の許可を継承する =
+     * 設計/ワークフロー/案件の運用/認可と一覧.md の 4 節)
+     */
+    private const ADMIN_ROUTES = [
+        'workflow.admin.proxies.index' => ['代理の管理', 'Proxy administration'],
+        'workflow.admin.proxies.store' => ['代理の追加(管理)', 'Add proxy (admin)'],
+        'workflow.admin.proxies.destroy' => ['代理の削除(管理)', 'Delete proxy (admin)'],
     ];
 
     /** コンテンツ: コード => [申請書の業務モジュールのコード, 名前](申請対象の項目 = 申請書の業務モジュールの申請対象の項目 = {@see WorkflowApplicationModules}) */
@@ -194,7 +210,7 @@ class WorkflowSeeder extends Seeder
     }
 
     /**
-     * 接頭辞のリソースグループと、ルートのリソース・ポリシー(RecordsSeeder の業務のルートと同じ書き方)。
+     * 接頭辞のリソースグループと、ルートのリソース・ポリシー(RecordsSeeder の業務のルートと同じ書き方)。システム管理者だけのルートはリソースだけ。
      */
     private function createRoutes(): void
     {
@@ -210,6 +226,11 @@ class WorkflowSeeder extends Seeder
             foreach ($everyone as $subjectGroupId) {
                 $this->createPolicy->execute($resource->authz_resource_group_id, $subjectGroupId, ServiceAction::RESOURCE_TYPE, ServiceAction::Execute->value, PolicyEffect::Permit);
             }
+        }
+
+        foreach (self::ADMIN_ROUTES as $name => [$ja, $en]) {
+            $names = ['ja' => ['display_name' => $ja], 'en' => ['display_name' => $en]];
+            $this->createRouteResource->execute($name, $names);
         }
     }
 

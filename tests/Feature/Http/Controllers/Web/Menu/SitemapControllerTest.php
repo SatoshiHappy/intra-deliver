@@ -78,6 +78,11 @@ final class SitemapControllerTest extends TransactionalTestCase
                     ['code' => 'sitemap-admin-authz-overview', 'type' => 'item', 'name' => '認可設定', 'icon' => 'shield-check', 'href' => '/authz/overview', 'isExternal' => false],
                     ['code' => 'sitemap-admin-records-admin-modules-index', 'type' => 'item', 'name' => '業務モジュール', 'icon' => 'database', 'href' => '/records/admin/modules', 'isExternal' => false],
                     ['code' => 'sitemap-admin-records-admin-categories-index', 'type' => 'item', 'name' => 'モジュール分類', 'icon' => 'folder-tree', 'href' => '/records/admin/categories', 'isExternal' => false],
+                    [
+                        'code' => 'sitemap-admin-workflow-admin-proxies-index', 'type' => 'item', 'name' => '代理の管理',
+                        'icon' => 'user-cog',
+                        'href' => '/workflow/admin/proxies', 'isExternal' => false,
+                    ],
                 ],
             ])
         );

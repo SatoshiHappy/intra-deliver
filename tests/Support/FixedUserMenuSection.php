@@ -2,7 +2,7 @@
 
 namespace Tests\Support;
 
-use App\Queries\Account\UserMenuSections;
+use App\Queries\Account\Api\UserMenuSections;
 use App\Support\AccessContext;
 
 /**

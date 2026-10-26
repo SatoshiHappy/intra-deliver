@@ -3,7 +3,7 @@
 namespace App\Enums\Workflow;
 
 /**
- * ワークフローが案件の操作で送る通知の種類(docs の 設計/ワークフロー/案件の運用/通知.md の 3 節。値 = 表 notices の type)。
+ * ワークフローが案件の操作と代理の登録で送る通知の種類(docs の 設計/ワークフロー/案件の運用/通知.md の 3 節。値 = 表 notices の type)。
  * 値ごとの文の雛形は画面の resources/js/lib/Notice/noticeText.ts に置く(値を足すときは雛形の case も足す)。
  */
 enum WorkflowNoticeType: string
@@ -25,6 +25,9 @@ enum WorkflowNoticeType: string
 
     /** 連絡 */
     case Contact = 'workflow.contact';
+
+    /** 代理(代理の登録) */
+    case Proxy = 'workflow.proxy';
 
     /**
      * 文の値に操作のコメントを持つ種類か(担当変更・処理担当者の変更 = 通知.md の 3 節の表)。

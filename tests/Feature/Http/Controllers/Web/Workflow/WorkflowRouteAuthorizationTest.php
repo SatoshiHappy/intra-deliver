@@ -13,17 +13,17 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * ワークフローのルートの認可とメニュー(docs の 設計/ワークフロー/認可と一覧.md 4 節・6 節・7 節の HTTP の Feature テスト): 27 のルートのルートの認可が
- * ゲストと認証済みに execute を許す(AuthorizationQuery::allowsUri で確かめる = FormRequest の 403 と取り違えない)、このモジュールのポリシーが 54 件
- * (ルートの深さ/認可と一覧.md 4.1 = 処理対象者の候補の 2 件と、設計/ワークフロー/案件の運用/認可と一覧.md の 4 節 = 一括承認・一括確認・利用者の候補・
- * 保留・保留解除・振替・確認の 14 件と、設計/ワークフロー/申請の周辺/初期データ.md の 3 節 = 写しの値の入口の 2 件を足した)、
+ * ワークフローのルートの認可とメニュー(docs の 設計/ワークフロー/認可と一覧.md 4 節・6 節・7 節の HTTP の Feature テスト): 31 のルートのルートの認可が
+ * ゲストと認証済みに execute を許す(AuthorizationQuery::allowsUri で確かめる = FormRequest の 403 と取り違えない)、代理の管理の 3 本は許さない、
+ * このモジュールのポリシーが 62 件(ルートの深さ/認可と一覧.md 4.1 = 処理対象者の候補の 2 件と、設計/ワークフロー/案件の運用/認可と一覧.md の 4 節 =
+ * 一括承認・一括確認・利用者の候補・保留・保留解除・振替・確認・代理の設定の 20 件と、設計/ワークフロー/申請の周辺/初期データ.md の 3 節 = 写しの値の入口の 2 件を足した)、
  * ゲストと u0001 のサイドバーとサイトマップに「ワークフロー」の 4 アイテム(申請する・申請一覧・申請書の業務モジュール 2 つ。並びは業務の後・管理の前)。初期データを入れ、ルートの認可を外さない。
  */
 final class WorkflowRouteAuthorizationTest extends TransactionalTestCase
 {
     /**
-     * ワークフローのルート 28 本(設計/ワークフロー/画面/README.md 1.1 の表の順と、ルートの深さ/画面.md 1.1 の処理対象者の候補、
-     * 案件の運用/画面/README.md の 1.1 節の 8 本、写しの値の入口)
+     * ゲストと認証済みに許すワークフローのルート 31 本(設計/ワークフロー/画面/README.md 1.1 の表の順と、ルートの深さ/画面.md 1.1 の処理対象者の候補、
+     * 案件の運用/画面/README.md の 1.1 節の 11 本、写しの値の入口)
      */
     private const ROUTES = [
         'workflow.flows.index', 'workflow.applications.create', 'workflow.applications.store', 'workflow.drafts.store', 'workflow.drafts.edit',
@@ -33,6 +33,12 @@ final class WorkflowRouteAuthorizationTest extends TransactionalTestCase
         'workflow.cases.bulk-approve', 'workflow.cases.bulk-confirm', 'workflow.user-candidates',
         'workflow.cases.hold', 'workflow.cases.release', 'workflow.cases.transfer', 'workflow.cases.confirm',
         'workflow.target-values', 'workflow.record-candidates',
+        'workflow.proxies.index', 'workflow.proxies.store', 'workflow.proxies.destroy',
+    ];
+
+    /** システム管理者だけのルート(ポリシーなし = 設計/ワークフロー/案件の運用/認可と一覧.md の 4 節) */
+    private const ADMIN_ROUTES = [
+        'workflow.admin.proxies.index', 'workflow.admin.proxies.store', 'workflow.admin.proxies.destroy',
     ];
 
     protected function setUp(): void
@@ -57,14 +63,18 @@ final class WorkflowRouteAuthorizationTest extends TransactionalTestCase
         $authorization = app(AuthorizationQuery::class);
         $appRouteNames = array_values(array_filter(array_map(fn ($route) => $route->getName(), $routes->appRoutes()), fn (?string $name) => str_starts_with((string) $name, 'workflow.')));
 
-        $this->assertEqualsCanonicalizing(self::ROUTES, $appRouteNames);
+        $this->assertEqualsCanonicalizing([...self::ROUTES, ...self::ADMIN_ROUTES], $appRouteNames);
 
-        foreach (self::ROUTES as $name) {
-            $this->assertTrue($authorization->allowsUri(new Requester($userId, null), $routes->uriOf($name), 'execute', CarbonImmutable::today('Asia/Tokyo')), $name);
+        $requester = new Requester($userId, null);
+        $today = CarbonImmutable::today('Asia/Tokyo');
+
+        foreach ([...self::ROUTES, ...self::ADMIN_ROUTES] as $name) {
+            $allowed = $authorization->allowsUri($requester, $routes->uriOf($name), 'execute', $today);
+            $this->assertSame(in_array($name, self::ROUTES, true), $allowed, $name);
         }
     }
 
-    public function test_the_module_has_56_policies_permitting_execute_to_the_guest_and_the_authenticated(): void
+    public function test_the_module_has_62_policies_permitting_execute_to_the_guest_and_the_authenticated(): void
     {
         $summaries = AuthzPolicy::query()->with('authzResourceGroup')->get()
             ->filter(fn (AuthzPolicy $policy) => str_starts_with((string) $policy->authzResourceGroup?->code, 'http-services.workflow'))
@@ -72,7 +82,7 @@ final class WorkflowRouteAuthorizationTest extends TransactionalTestCase
             ->all();
         $expected = array_merge(...array_map(fn (string $name) => array_fill(0, 2, "http-services.{$name} service:execute permit"), self::ROUTES));
 
-        $this->assertCount(56, $summaries);
+        $this->assertCount(62, $summaries);
         $this->assertEqualsCanonicalizing($expected, array_values($summaries));
     }
 
@@ -109,6 +119,9 @@ final class WorkflowRouteAuthorizationTest extends TransactionalTestCase
             ->where('globalNavigation.1', $workflow('global-nav'))
             ->where('groups.0.code', 'sitemap-main')
             ->where('groups.1', $workflow('sitemap'))
+            // 「管理」(代理の管理を含む)はシステム管理者だけ(ShareGlobalNavigationTest・SitemapControllerTest)
+            ->count('globalNavigation', 2)
+            ->count('groups', 2)
         );
     }
 }

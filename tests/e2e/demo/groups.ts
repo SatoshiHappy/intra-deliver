@@ -15,7 +15,8 @@ export const demoGroups = [
     },
     {
         // workflow の件数と並びは、workflow-route の申請・承認を含む。zz-workflow-operations は前の 2 つが案件を変えた後の状態を使う。
-        // zz-workflow-proxy は案件を足すだけで、前の spec の見本の案件に触れないので最後に置く
+        // zz-workflow-proxy は案件を足すだけで、前の spec の見本の案件に触れない。zz-workflow-proxy-screens・zz-workflow-proxy-admin は
+        // 代理を足して消すだけ(代理先の通知が残る)で、案件と通知の件数を前提にしないので、この 3 つの順はどれでもよい
         name: 'demo-workflow',
         files: [
             'tests/e2e/demo/notice.spec.ts',
@@ -24,6 +25,8 @@ export const demoGroups = [
             'tests/e2e/demo/zz-workflow-operations.spec.ts',
             'tests/e2e/demo/zz-workflow-processing.spec.ts',
             'tests/e2e/demo/zz-workflow-proxy.spec.ts',
+            'tests/e2e/demo/zz-workflow-proxy-screens.spec.ts',
+            'tests/e2e/demo/zz-workflow-proxy-admin.spec.ts',
         ],
     },
     {

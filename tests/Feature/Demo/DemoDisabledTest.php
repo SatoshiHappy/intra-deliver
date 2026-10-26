@@ -5,7 +5,7 @@ namespace Tests\Feature\Demo;
 use App\Models\Authz\AuthzResourceGroup;
 use App\Models\Master\User;
 use App\Providers\DemoServiceProvider;
-use App\Queries\Account\UserMenuSections;
+use App\Queries\Account\Api\UserMenuSections;
 use App\Queries\Demo\SwitchUserMenuSection;
 use App\Queries\Menu\Api\HomeSections;
 use App\Queries\Reset\Api\ResetSeeder;
@@ -48,9 +48,13 @@ final class DemoDisabledTest extends TransactionalTestCase
         $this->assertGuest();
     }
 
-    public function test_shares_no_user_menu_section_and_tags_no_section_of_its_own(): void
+    /**
+     * 利用者メニューの節は main の節(ゲストには項目の無いワークフローの節 = docs の 設計/ワークフロー/案件の運用/認可と一覧.md の 5 節)だけ。
+     */
+    public function test_shares_no_switch_section_and_tags_no_section_of_its_own(): void
     {
-        $this->get('/')->assertInertia(fn (Assert $page) => $page->where('userMenuSections', []));
+        $workflow = ['heading' => 'ワークフロー', 'items' => []];
+        $this->get('/')->assertInertia(fn (Assert $page) => $page->where('userMenuSections', [$workflow]));
         $this->assertSame([], array_values(array_filter(
             iterator_to_array($this->app->tagged(UserMenuSections::TAG), false),
             fn (object $section) => $section instanceof SwitchUserMenuSection,

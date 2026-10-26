@@ -20,7 +20,8 @@ use Tests\Support\TransactionalTestCase;
 
 /**
  * 案件の運用の初期データ(docs の 設計/ワークフロー/案件の運用/初期データ.md 6 節の検査。値 = 同じ文書の 3 節・4 節): 期限の日数と確認する人、代理 4、
- * 保留・申請の代理・担当変更の見本、u0010 の確認、足した見本の通知。案件の一覧の 17 件は {@see WorkflowSeederTest}、時刻は {@see WorkflowSeederSampleTimesTest}。
+ * 代理の登録の通知、保留・申請の代理・担当変更の見本、u0010 の確認、足した見本の通知。
+ * 案件の一覧の 17 件は {@see WorkflowSeederTest}、時刻は {@see WorkflowSeederSampleTimesTest}。
  * 初期データは DatabaseSeeder が 1 回入れたもの(流し直さない)。
  */
 final class WorkflowSeederOperationSamplesTest extends TransactionalTestCase
@@ -85,6 +86,29 @@ final class WorkflowSeederOperationSamplesTest extends TransactionalTestCase
     }
 
     /**
+     * 4.1 の代理 4 行の登録の通知「代理」(設計/ワークフロー/案件の運用/通知.md の 3 節。宛先 = 代理先、起こした人 = 登録した人、対象 = 代理の行):
+     * u0002・u0009 に 2 つ・u0003。文の値は登録の時の写し(終了日は最後の有効な日)。
+     */
+    public function test_the_four_proxies_send_their_notices(): void
+    {
+        $notices = Notice::query()->with(['user', 'actor'])->where('type', 'workflow.proxy')->orderBy('id')->get();
+        $params = fn (Notice $notice, string $key) => $notice->params[$key] ?? null;
+
+        $this->assertSame([
+            ['u0002', 'u0010', '山田 恵', 'approve', '課題の対応の承認', '2026-08-30', '2026-09-28'],
+            ['u0009', 'u0010', '山田 恵', 'apply', null, '2026-09-29', null],
+            ['u0003', 'u0004', '清水 美穂', 'approve', 'プロジェクト計画の承認', '2026-10-08', '2026-10-18'],
+            ['u0009', 'u0003', '高橋 誠', 'approve', null, '2026-10-13', null],
+        ], $notices->map(fn (Notice $notice) => [
+            $notice->user?->code, $notice->actor?->code, $params($notice, 'principal_name'), $params($notice, 'kind'),
+            $params($notice, 'flow_name'), $params($notice, 'start_date'), $params($notice, 'end_date'),
+        ])->all());
+        $this->assertSame(['workflow-proxy'], $notices->pluck('target_type')->unique()->values()->all());
+        $proxyIds = WorkflowProxy::query()->orderBy('id')->pluck('id')->all();
+        $this->assertSame($proxyIds, $notices->pluck('target_id')->all());
+    }
+
+    /**
      * 4.3: WF-000013 の部長は保留中で、保留の行の処理者 u0003・実行者 u0009。WF-000015 は申請者 u0010・実行者 u0009・レコードの作成者 u0010。
      * WF-000016 の課長の承認の処理担当者は u0009(振替先)で、担当変更の履歴の人が u0009。
      */
@@ -128,7 +152,7 @@ final class WorkflowSeederOperationSamplesTest extends TransactionalTestCase
     }
 
     /**
-     * 足した見本の通知(宛先 = 設計/ワークフロー/案件の運用/通知.md の 3 節を 4.3 の操作に当てた値。代理の登録の通知はまだ無い):
+     * 足した見本の通知(宛先 = 設計/ワークフロー/案件の運用/通知.md の 3 節を 4.3 の操作に当てた値。代理の登録の通知は対象が代理なので入らない):
      * WF-000013 = 課長・部長の処理依頼と課長の確認依頼(保留は通知しない)、WF-000014 = 課長の処理依頼・連絡・部長の処理依頼(代理先 u0009 にも。
      * 代理は D − 2 から有効)・確認依頼、WF-000015 = 課長の処理依頼(処理者 u0010・実行者 u0009 には送らない)、WF-000016 = 処理依頼と振替先への担当変更。
      */

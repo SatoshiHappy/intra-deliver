@@ -170,12 +170,63 @@ final class WorkflowSeederTest extends TransactionalTestCase
         $this->assertSame(array_fill_keys(self::ACTIVE_NUMBERS, ['record']), $rejected);
     }
 
+    /** 代理の管理の接頭辞のリソースグループ */
+    private const ADMIN_PROXIES = 'http-services.workflow.admin.proxies';
+
+    /** ワークフローの接頭辞のリソースグループとルートのリソース(作った順。出典は下のテストの注): [ID, 親の ID, 表示名 ja, en] */
+    private const ROUTE_RESOURCE_GROUPS = [
+        ['http-services.workflow', 'http-services', 'ワークフロー', 'Workflow'],
+        ['http-services.workflow.flows', 'http-services.workflow', '申請できるフロー', 'Applicable flows'],
+        ['http-services.workflow.applications', 'http-services.workflow', '新規申請', 'New applications'],
+        ['http-services.workflow.drafts', 'http-services.workflow', '一時保存', 'Drafts'],
+        ['http-services.workflow.cases', 'http-services.workflow', '申請', 'Applications'],
+        ['http-services.workflow.reapplications', 'http-services.workflow', '再申請', 'Reapplications'],
+        ['http-services.workflow.proxies', 'http-services.workflow', '代理の設定', 'Proxy settings'],
+        ['http-services.workflow.admin', 'http-services.workflow', 'ワークフローの管理', 'Workflow administration'],
+        ['http-services.workflow.admin.proxies', 'http-services.workflow.admin', '代理の管理', 'Proxy administration'],
+        ['http-services.workflow.flows.index', 'http-services.workflow.flows', '申請できるフローの一覧', 'Applicable flow list'],
+        ['http-services.workflow.applications.create', 'http-services.workflow.applications', '申請の画面', 'New application form'],
+        ['http-services.workflow.applications.store', 'http-services.workflow.applications', '申請', 'Apply'],
+        ['http-services.workflow.drafts.store', 'http-services.workflow.drafts', '一時保存', 'Save draft'],
+        ['http-services.workflow.drafts.edit', 'http-services.workflow.drafts', '一時保存の画面', 'Draft form'],
+        ['http-services.workflow.drafts.update', 'http-services.workflow.drafts', '一時保存の上書き', 'Update draft'],
+        ['http-services.workflow.drafts.apply', 'http-services.workflow.drafts', '一時保存からの申請', 'Apply from draft'],
+        ['http-services.workflow.drafts.destroy', 'http-services.workflow.drafts', '一時保存の削除', 'Delete draft'],
+        ['http-services.workflow.cases.index', 'http-services.workflow.cases', '申請一覧', 'Application list'],
+        ['http-services.workflow.cases.show', 'http-services.workflow.cases', '申請の詳細', 'Application detail'],
+        ['http-services.workflow.cases.approve', 'http-services.workflow.cases', '承認', 'Approve'],
+        ['http-services.workflow.cases.approve-early', 'http-services.workflow.cases', '承認終了', 'Approve and close'],
+        ['http-services.workflow.cases.reject', 'http-services.workflow.cases', '否認', 'Reject'],
+        ['http-services.workflow.cases.send-back', 'http-services.workflow.cases', '差戻し', 'Send back'],
+        ['http-services.workflow.cases.pull-back', 'http-services.workflow.cases', '引戻し', 'Pull back'],
+        ['http-services.workflow.cases.withdraw', 'http-services.workflow.cases', '取止め', 'Withdraw'],
+        ['http-services.workflow.cases.assignee-candidates', 'http-services.workflow.cases', '処理対象者の候補', 'Assignee candidates'],
+        ['http-services.workflow.reapplications.create', 'http-services.workflow.reapplications', '再申請の画面', 'Reapplication form'],
+        ['http-services.workflow.reapplications.store', 'http-services.workflow.reapplications', '再申請', 'Reapply'],
+        ['http-services.workflow.cases.bulk-approve', 'http-services.workflow.cases', '一括承認', 'Bulk approve'],
+        ['http-services.workflow.cases.bulk-confirm', 'http-services.workflow.cases', '一括確認', 'Bulk confirm'],
+        ['http-services.workflow.user-candidates', 'http-services.workflow', '利用者の候補', 'User candidates'],
+        ['http-services.workflow.cases.hold', 'http-services.workflow.cases', '保留', 'Hold'],
+        ['http-services.workflow.cases.release', 'http-services.workflow.cases', '保留解除', 'Release hold'],
+        ['http-services.workflow.cases.transfer', 'http-services.workflow.cases', '担当変更', 'Transfer'],
+        ['http-services.workflow.cases.confirm', 'http-services.workflow.cases', '確認', 'Confirm'],
+        ['http-services.workflow.target-values', 'http-services.workflow', '申請対象の値', 'Target values'],
+        ['http-services.workflow.record-candidates', 'http-services.workflow', '参照項目の候補', 'Record candidates'],
+        ['http-services.workflow.proxies.index', 'http-services.workflow.proxies', '代理の設定', 'Proxy settings'],
+        ['http-services.workflow.proxies.store', 'http-services.workflow.proxies', '代理の追加', 'Add proxy'],
+        ['http-services.workflow.proxies.destroy', 'http-services.workflow.proxies', '代理の削除', 'Delete proxy'],
+        ['http-services.workflow.admin.proxies.index', self::ADMIN_PROXIES, '代理の管理', 'Proxy administration'],
+        ['http-services.workflow.admin.proxies.store', self::ADMIN_PROXIES, '代理の追加(管理)', 'Add proxy (admin)'],
+        ['http-services.workflow.admin.proxies.destroy', self::ADMIN_PROXIES, '代理の削除(管理)', 'Delete proxy (admin)'],
+    ];
+
     /**
-     * 設計/ワークフロー/ルートの深さ/初期データ.md 1 節、設計/ワークフロー/ルートの深さ/初期データ.md 5 節: 接頭辞のリソースグループ 6 と
-     * ルートのリソース 28(ルート 18 本 = 設計/ワークフロー/認可と一覧.md 4 節と、処理対象者の候補と、一括承認・一括確認・利用者の候補・
-     * 保留・保留解除・振替・確認・参照項目の候補 = 設計/ワークフロー/案件の運用/認可と一覧.md の 4 節と、写しの値の入口 = 設計/ワークフロー/申請の周辺/初期データ.md の 3 節。
-     * ID・親は名前から決まる。表示名 ja・en = それぞれの節)。
-     * ポリシー 56 は WorkflowRouteAuthorizationTest・AuthorizationSeedersTest が確かめる。(定義の管理を足すときは、そのリソースグループ・ルートとメニュー「フロー定義」をここで確かめる)
+     * 設計/ワークフロー/ルートの深さ/初期データ.md 1 節、設計/ワークフロー/ルートの深さ/初期データ.md 5 節: 接頭辞のリソースグループ 9 と
+     * ルートのリソース 34(ルート 18 本 = 設計/ワークフロー/認可と一覧.md 4 節と、処理対象者の候補と、一括承認・一括確認・利用者の候補・
+     * 保留・保留解除・振替・確認・参照項目の候補・代理の設定と代理の管理の 6 本 = 設計/ワークフロー/案件の運用/認可と一覧.md の 4 節と、
+     * 写しの値の入口 = 設計/ワークフロー/申請の周辺/初期データ.md の 3 節。代理の管理の親 http-services.workflow.admin の表示名 =
+     * 設計/ワークフロー/ルートの深さ/認可と一覧.md の 4.2 節。ID・親は名前から決まる。表示名 ja・en = それぞれの節)。
+     * ポリシー 62 は WorkflowRouteAuthorizationTest・AuthorizationSeedersTest が確かめる。(定義の管理を足すときは、そのリソースグループ・ルートとメニュー「フロー定義」をここで確かめる)
      */
     public function test_seeds_the_route_resources_of_the_design(): void
     {
@@ -188,43 +239,8 @@ final class WorkflowSeederTest extends TransactionalTestCase
             ])
             ->all();
 
-        $this->assertSame([
-            ['http-services.workflow', 'http-services', 'ワークフロー', 'Workflow'],
-            ['http-services.workflow.flows', 'http-services.workflow', '申請できるフロー', 'Applicable flows'],
-            ['http-services.workflow.applications', 'http-services.workflow', '新規申請', 'New applications'],
-            ['http-services.workflow.drafts', 'http-services.workflow', '一時保存', 'Drafts'],
-            ['http-services.workflow.cases', 'http-services.workflow', '申請', 'Applications'],
-            ['http-services.workflow.reapplications', 'http-services.workflow', '再申請', 'Reapplications'],
-            ['http-services.workflow.flows.index', 'http-services.workflow.flows', '申請できるフローの一覧', 'Applicable flow list'],
-            ['http-services.workflow.applications.create', 'http-services.workflow.applications', '申請の画面', 'New application form'],
-            ['http-services.workflow.applications.store', 'http-services.workflow.applications', '申請', 'Apply'],
-            ['http-services.workflow.drafts.store', 'http-services.workflow.drafts', '一時保存', 'Save draft'],
-            ['http-services.workflow.drafts.edit', 'http-services.workflow.drafts', '一時保存の画面', 'Draft form'],
-            ['http-services.workflow.drafts.update', 'http-services.workflow.drafts', '一時保存の上書き', 'Update draft'],
-            ['http-services.workflow.drafts.apply', 'http-services.workflow.drafts', '一時保存からの申請', 'Apply from draft'],
-            ['http-services.workflow.drafts.destroy', 'http-services.workflow.drafts', '一時保存の削除', 'Delete draft'],
-            ['http-services.workflow.cases.index', 'http-services.workflow.cases', '申請一覧', 'Application list'],
-            ['http-services.workflow.cases.show', 'http-services.workflow.cases', '申請の詳細', 'Application detail'],
-            ['http-services.workflow.cases.approve', 'http-services.workflow.cases', '承認', 'Approve'],
-            ['http-services.workflow.cases.approve-early', 'http-services.workflow.cases', '承認終了', 'Approve and close'],
-            ['http-services.workflow.cases.reject', 'http-services.workflow.cases', '否認', 'Reject'],
-            ['http-services.workflow.cases.send-back', 'http-services.workflow.cases', '差戻し', 'Send back'],
-            ['http-services.workflow.cases.pull-back', 'http-services.workflow.cases', '引戻し', 'Pull back'],
-            ['http-services.workflow.cases.withdraw', 'http-services.workflow.cases', '取止め', 'Withdraw'],
-            ['http-services.workflow.cases.assignee-candidates', 'http-services.workflow.cases', '処理対象者の候補', 'Assignee candidates'],
-            ['http-services.workflow.reapplications.create', 'http-services.workflow.reapplications', '再申請の画面', 'Reapplication form'],
-            ['http-services.workflow.reapplications.store', 'http-services.workflow.reapplications', '再申請', 'Reapply'],
-            ['http-services.workflow.cases.bulk-approve', 'http-services.workflow.cases', '一括承認', 'Bulk approve'],
-            ['http-services.workflow.cases.bulk-confirm', 'http-services.workflow.cases', '一括確認', 'Bulk confirm'],
-            ['http-services.workflow.user-candidates', 'http-services.workflow', '利用者の候補', 'User candidates'],
-            ['http-services.workflow.cases.hold', 'http-services.workflow.cases', '保留', 'Hold'],
-            ['http-services.workflow.cases.release', 'http-services.workflow.cases', '保留解除', 'Release hold'],
-            ['http-services.workflow.cases.transfer', 'http-services.workflow.cases', '担当変更', 'Transfer'],
-            ['http-services.workflow.cases.confirm', 'http-services.workflow.cases', '確認', 'Confirm'],
-            ['http-services.workflow.target-values', 'http-services.workflow', '申請対象の値', 'Target values'],
-            ['http-services.workflow.record-candidates', 'http-services.workflow', '参照項目の候補', 'Record candidates'],
-        ], $groups);
-        $this->assertSame(28, AuthzResource::query()->where('uri', 'like', 'service://workflow/%')->count());
+        $this->assertSame(self::ROUTE_RESOURCE_GROUPS, $groups);
+        $this->assertSame(34, AuthzResource::query()->where('uri', 'like', 'service://workflow/%')->count());
     }
 
     /**

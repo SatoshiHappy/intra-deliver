@@ -60,7 +60,15 @@ class MenuSeeder extends Seeder
      */
     private const GROUPS = [
         'main' => ['業務', 'Work', 0, true, ['menu.home', 'master.organization-chart', 'menu.sitemap'], []],
-        'admin' => ['管理', 'Administration', 100, false, ['authz.overview', 'records.admin.modules.index', 'records.admin.categories.index'], []],
+        // 「代理の管理」(ルートのリソースは WorkflowSeeder が作る = docs の 設計/ワークフロー/案件の運用/認可と一覧.md の 5 節)
+        'admin' => [
+            '管理', 'Administration', 100, false,
+            [
+                'authz.overview', 'records.admin.modules.index', 'records.admin.categories.index',
+                'workflow.admin.proxies.index',
+            ],
+            [],
+        ],
         // ワークフロー(並び 50 = 業務の後・管理の前。ルートのリソースと許可は WorkflowSeeder が作る = docs の 設計/ワークフロー/認可と一覧.md 6 節)
         'workflow' => [
             'ワークフロー', 'Workflow', 50, true, ['workflow.flows.index', 'workflow.cases.index'],
@@ -81,6 +89,7 @@ class MenuSeeder extends Seeder
         'records.admin.categories.index' => ['/records/admin/categories', 'モジュール分類', 'Module categories', 'folder-tree'],
         'workflow.flows.index' => ['/workflow/flows', '申請する', 'Apply', 'send'],
         'workflow.cases.index' => ['/workflow/cases', '申請一覧', 'Application list', 'inbox'],
+        'workflow.admin.proxies.index' => ['/workflow/admin/proxies', '代理の管理', 'Proxy administration', 'user-cog'],
     ];
 
     /** 申請書の業務モジュールのアイテムが指すルートの名前(業務の一覧) */

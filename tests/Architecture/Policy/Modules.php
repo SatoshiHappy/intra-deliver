@@ -45,7 +45,8 @@ final class Modules
      * ワークフローからも AI を使えるよう Workflow より前、使う基盤の Records の後に置く = docs の 設計/業務ツール/モジュール境界.md の「一覧の並び」・設計/AI/README.md)。
      * Workflow = ワークフロー(名前・対象者の判定・ホームの節・申請フォームのレコードを使うので Master・Authz・Menu・Records に依存し、使う基盤の後に置く = docs の 設計/ワークフロー/README.md の「コードのモジュール」。
      * 申請の一時保存の添付が台帳の行を指すので Upload にも依存する = 設計/業務データの入れ物/レコードの共通機能/README.md の「コードのモジュール」。
-     * 案件の操作の通知を送り、案件の移り先を答えるので Notice にも依存する = 設計/ワークフロー/案件の運用/通知.md の 1 節)。
+     * 案件の操作の通知を送り、案件の移り先を答えるので Notice にも依存する = 設計/ワークフロー/案件の運用/通知.md の 1 節。
+     * 利用者メニューの節の口を実装するので Account にも依存する = 設計/ワークフロー/案件の運用/認可と一覧.md の 5 節)。
      * Builtin = 組み込みの業務モジュールのコードと定義の列挙だけ(Actions・Queries・Models を持たず、どのモジュールにも依存しない。複数の製品が使う基盤なので
      * Workflow の直後に置く = docs の 設計/業務ツール/モジュール境界.md の「一覧の並び」と「組み込みの業務モジュールの置き場」)。
      * Meeting = 業務ツールの会議(書き起こし・会議と AI の実行の対応。依頼者と関係する人の名前に Master、閲覧の判定に Authz、完了と失敗の通知に Notice、
@@ -66,7 +67,7 @@ final class Modules
         'Upload' => ['Master'],
         'Records' => ['Master', 'Authz', 'Menu', 'Notice', 'Upload'],
         'Ai' => ['Master', 'Authz', 'Upload', 'Records', 'Reset'],
-        'Workflow' => ['Master', 'Authz', 'Menu', 'Notice', 'Records', 'Upload'],
+        'Workflow' => ['Master', 'Authz', 'Menu', 'Account', 'Notice', 'Records', 'Upload'],
         'Builtin' => [],
         'Meeting' => ['Master', 'Authz', 'Notice', 'Upload', 'Records', 'Ai', 'Builtin'],
     ];

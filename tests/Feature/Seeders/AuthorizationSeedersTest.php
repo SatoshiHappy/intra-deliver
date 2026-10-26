@@ -27,7 +27,7 @@ use Tests\Support\TransactionalTestCase;
  * 名前から決まるもの(2.3 の表)であることを確かめる(判定は {@see FindsAppRouteViolations})。
  * メニューのアイテムとポリシーの件数は、ワークフローの申請書の業務モジュール 2 つ(設計/ワークフロー/初期データ.md の 3 節)の分を含む:
  * 業務モジュールを作る業務処理が足すアイテム 2 × 2 と初期ポリシー 8 × 2、グループ「ワークフロー」に MenuSeeder が足すアイテム 2 × 2
- * (設計/ワークフロー/認可と一覧.md の 6 節)。
+ * (設計/ワークフロー/認可と一覧.md の 6 節)と、グループ「管理」の「代理の管理」1 × 2(設計/ワークフロー/案件の運用/認可と一覧.md の 5 節)。
  */
 final class AuthorizationSeedersTest extends TransactionalTestCase
 {
@@ -53,7 +53,7 @@ final class AuthorizationSeedersTest extends TransactionalTestCase
         });
 
         $this->assertSame([], $invalid->pluck('code')->all());
-        $this->assertSame(26 + 4 + 4, Menu::query()->where('type', MenuType::Item)->count());
+        $this->assertSame(26 + 4 + 4 + 2, Menu::query()->where('type', MenuType::Item)->count());
     }
 
     public function test_the_system_administrator_is_permitted_every_action_of_the_types_in_each_set(): void
@@ -157,8 +157,8 @@ final class AuthorizationSeedersTest extends TransactionalTestCase
 
     /**
      * 後の seeder は対象者を条件で引き直し、同じ対象者を作り足さない(FindsAuthzSubjects)。対象者 = ポリシーの 3 と、ワークフローの処理対象者・参照者・確認する人の 6(用途 selection。
-     * ルート・フローの業務処理が作る = 設計/ワークフロー/初期データ.md 2 節)の計 9。ポリシー = 156(56 + メニューのワークフローのグループ 4 + ホームの主な操作のグループ 1 + ワークフローのルート
-     * 56 = ルートの深さ/初期データ.md 6 節と案件の運用の 8 本の 16・写しの値の入口 2。通知のルート 8・ワークフローのフローのセット 2 = 設計/ワークフロー/案件の運用/認可と一覧.md の 4 節・3 節。
+     * ルート・フローの業務処理が作る = 設計/ワークフロー/初期データ.md 2 節)の計 9。ポリシー = 162(56 + メニューのワークフローのグループ 4 + ホームの主な操作のグループ 1 + ワークフローのルート
+     * 62 = ルートの深さ/初期データ.md 6 節と案件の運用の 11 本の 22・写しの値の入口 2。通知のルート 8・フローのセット 2 = 設計/ワークフロー/案件の運用/認可と一覧.md の 4 節・3 節。
      * 業務モジュールの全件の参照 1 = 設計/業務データの入れ物/認可とメニュー/README.md の 3 節。添付と外した時点のファイルのルート 6 × 2 = 12、コメントのルート 3 × 2 = 6 =
      * 設計/業務データの入れ物/レコードの共通機能/認可と初期データ.md の 2.3 節。組み込みの会議の業務モジュール 8 = 設計/業務ツール/モジュール境界.md の「組み込みの業務モジュールの置き場」。
      * 会議のルート 2 × 2 = 4 = 設計/業務ツール/会議/処理.md の 3.2・3.7。定義の管理はポリシーなし)と、申請書の業務モジュールの 16(クラスの注)。
@@ -166,7 +166,7 @@ final class AuthorizationSeedersTest extends TransactionalTestCase
     public function test_the_seeders_reuse_the_subjects(): void
     {
         $this->assertEquals(['policy' => 3, 'selection' => 6], AuthzSubjectGroup::query()->groupBy('purpose')->orderBy('purpose')->selectRaw('purpose, count(*) as subject_groups')->pluck('subject_groups', 'purpose')->all());
-        $this->assertCount(156 + 16, $this->policySummaries());
+        $this->assertCount(162 + 16, $this->policySummaries());
     }
 
     public function test_a_guest_sees_the_home_and_the_sitemap(): void
@@ -219,7 +219,7 @@ final class AuthorizationSeedersTest extends TransactionalTestCase
     }
 
     /**
-     * ワークフローの初期データのポリシー(ルート 27 本 × ゲストユーザ・認証済みユーザの execute = docs の 設計/ワークフロー/認可と一覧.md 4 節、ルートの深さ/認可と一覧.md 4.1)。
+     * ワークフローの初期データのポリシー(ルート 31 本 × ゲストユーザ・認証済みユーザの execute = docs の 設計/ワークフロー/認可と一覧.md 4 節、ルートの深さ/認可と一覧.md 4.1)。
      *
      * @return list<string>
      */
@@ -227,7 +227,7 @@ final class AuthorizationSeedersTest extends TransactionalTestCase
     {
         $routes = [
             'flows.index', 'applications.create', 'applications.store', 'drafts.store', 'drafts.edit', 'drafts.update', 'drafts.apply', 'drafts.destroy',
-            'cases.index', 'cases.show', 'cases.approve', 'cases.approve-early', 'cases.reject', 'cases.send-back', 'cases.pull-back', 'cases.withdraw', 'cases.bulk-approve', 'cases.bulk-confirm', 'cases.hold', 'cases.release', 'cases.transfer', 'cases.confirm', 'target-values', 'record-candidates',
+            'cases.index', 'cases.show', 'cases.approve', 'cases.approve-early', 'cases.reject', 'cases.send-back', 'cases.pull-back', 'cases.withdraw', 'cases.bulk-approve', 'cases.bulk-confirm', 'cases.hold', 'cases.release', 'cases.transfer', 'cases.confirm', 'target-values', 'record-candidates', 'proxies.index', 'proxies.store', 'proxies.destroy',
             'reapplications.create', 'reapplications.store', 'cases.assignee-candidates', 'user-candidates',
         ];
 

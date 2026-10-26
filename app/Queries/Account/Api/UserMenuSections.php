@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Queries\Account;
+namespace App\Queries\Account\Api;
 
 use App\Support\AccessContext;
 

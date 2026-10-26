@@ -1,7 +1,7 @@
 {
     "Account → Master": 3,
     "Authz → Master": 23,
-    "Demo → Account": 2,
+    "Demo → Account": 1,
     "Demo → Master": 2,
     "Menu → Authz": 5,
     "Menu → Master": 8,

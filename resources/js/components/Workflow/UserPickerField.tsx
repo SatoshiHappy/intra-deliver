@@ -27,8 +27,10 @@ type Props = {
     /** ラベルの横に出すもの(「必須」の札など) */
     labelAddon?: ReactNode;
     error?: string;
-    /** 候補の基準日にする案件(申請基準日。無ければ今日) */
+    /** 候補の基準日にする案件(申請基準日。無ければ baseDate、それも無ければ今日) */
     caseId: number | null;
+    /** 候補の基準日(YYYY-MM-DD。代理の登録の欄が入力中の開始日を渡す。案件があれば案件が先) */
+    baseDate?: string;
     picked: PickedUser[];
     /** 選べる人数の上限(1 = 選び直すと置き換える) */
     max: number;
@@ -82,27 +84,33 @@ function PickedChips({
     );
 }
 
+/** 候補の欄が引く対象(欄の名前・基準にする案件と日・候補から除く人) */
+type CandidateScope = {
+    label: string;
+    caseId: number | null;
+    baseDate: string | undefined;
+    exclude: Set<number>;
+};
+
 /**
  * 検索の入力と候補の一覧(語を空にしたままなら候補を引かない。選んだ人は候補から除く)。
  */
 function CandidateCommand({
     label,
     caseId,
+    baseDate,
     open,
     exclude,
     query,
     onQueryChange,
     onSelect,
-}: {
-    label: string;
-    caseId: number | null;
+}: CandidateScope & {
     open: boolean;
-    exclude: Set<number>;
     query: string;
     onQueryChange: (query: string) => void;
     onSelect: (user: PickedUser) => void;
 }) {
-    const candidates = useUserCandidates(caseId, open ? query : '');
+    const candidates = useUserCandidates(caseId, open ? query : '', baseDate);
     const options = candidates.users?.filter((user) => !exclude.has(user.id));
 
     return (
@@ -167,13 +175,10 @@ function SearchPopover({
     isDisabled,
     onPick,
     ...command
-}: {
+}: CandidateScope & {
     id: string;
     fieldProps: ReturnType<typeof invalidProps>;
     isDisabled: boolean;
-    label: string;
-    caseId: number | null;
-    exclude: Set<number>;
     onPick: (user: PickedUser) => void;
 }) {
     const [open, setOpen] = useState(false);
@@ -213,7 +218,7 @@ function SearchPopover({
 }
 
 /**
- * 人を選ぶ欄(処理のダイアログの連絡する人・担当変更先、申請の画面の連絡が使い回す。docs の 設計/ワークフロー/案件の運用/画面/README.md の 1.2 節・
+ * 人を選ぶ欄(処理のダイアログの連絡する人・担当変更先、申請の画面の連絡、代理の画面の代理先・代理元・絞り込みが使い回す。docs の 設計/ワークフロー/案件の運用/画面/README.md の 1.2 節・
  * 1.3 節): 選んだ人の札の並びと「ユーザーを検索して追加」(Popover + Command。候補 = workflow.user-candidates)。
  * 上限に達したら追加できない(上限 1 の欄は選び直すと置き換える)。人数の上限を超える分は送った時の業務処理の 422 が正本。
  */
@@ -225,6 +230,7 @@ export function UserPickerField({
     labelAddon,
     error,
     caseId,
+    baseDate,
     picked,
     max,
     onChange,
@@ -251,6 +257,7 @@ export function UserPickerField({
                     label={label}
                     fieldProps={invalidProps(id, error, help !== undefined)}
                     caseId={caseId}
+                    baseDate={baseDate}
                     isDisabled={!canAddUser(picked.length, max)}
                     exclude={new Set(picked.map((person) => person.id))}
                     onPick={(user) =>

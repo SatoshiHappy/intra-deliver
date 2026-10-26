@@ -2,8 +2,8 @@
 
 namespace App\Http\Middleware\Account;
 
+use App\Queries\Account\Api\UserMenuSections;
 use App\Queries\Account\CurrentAccountQuery;
-use App\Queries\Account\UserMenuSections;
 use App\Support\AccessContext;
 use Closure;
 use Illuminate\Container\Attributes\Tag;

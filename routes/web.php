@@ -24,6 +24,7 @@ use App\Http\Controllers\Web\Records\RecordController;
 use App\Http\Controllers\Web\Records\RecordRevisionFileController;
 use App\Http\Controllers\Web\Records\RelatedColumnController;
 use App\Http\Controllers\Web\Records\RuleController;
+use App\Http\Controllers\Web\Workflow\Admin\ProxyController as AdminProxyController;
 use App\Http\Controllers\Web\Workflow\ApplicationController;
 use App\Http\Controllers\Web\Workflow\AssigneeCandidateController;
 use App\Http\Controllers\Web\Workflow\BulkActionController;
@@ -32,6 +33,7 @@ use App\Http\Controllers\Web\Workflow\CaseConfirmationController;
 use App\Http\Controllers\Web\Workflow\CaseController;
 use App\Http\Controllers\Web\Workflow\DraftController;
 use App\Http\Controllers\Web\Workflow\FlowController;
+use App\Http\Controllers\Web\Workflow\ProxyController;
 use App\Http\Controllers\Web\Workflow\ReapplicationController;
 use App\Http\Controllers\Web\Workflow\RecordCandidateController;
 use App\Http\Controllers\Web\Workflow\TargetValueController;
@@ -197,3 +199,14 @@ Route::post('/workflow/cases/{case}/confirm', [CaseConfirmationController::class
     ->name('workflow.cases.confirm')->where('case', '[0-9]{1,18}');
 Route::get('/workflow/cases/{case}/reapply', [ReapplicationController::class, 'create'])->name('workflow.reapplications.create')->where('case', '[0-9]{1,18}');
 Route::post('/workflow/cases/{case}/reapply', [ReapplicationController::class, 'store'])->name('workflow.reapplications.store')->where('case', '[0-9]{1,18}');
+
+// 代理の設定と代理の管理(docs の 設計/ワークフロー/案件の運用/画面/README.md の 1.1 節)。{proxy} = 代理の id(数字だけ)。
+// 管理の 3 本はシステム管理者だけ(ポリシーを置かない = 設計/ワークフロー/案件の運用/認可と一覧.md の 4 節)。
+Route::get('/workflow/proxies', [ProxyController::class, 'index'])->name('workflow.proxies.index');
+Route::post('/workflow/proxies', [ProxyController::class, 'store'])->name('workflow.proxies.store');
+Route::delete('/workflow/proxies/{proxy}', [ProxyController::class, 'destroy'])
+    ->name('workflow.proxies.destroy')->where('proxy', '[0-9]{1,18}');
+Route::get('/workflow/admin/proxies', [AdminProxyController::class, 'index'])->name('workflow.admin.proxies.index');
+Route::post('/workflow/admin/proxies', [AdminProxyController::class, 'store'])->name('workflow.admin.proxies.store');
+Route::delete('/workflow/admin/proxies/{proxy}', [AdminProxyController::class, 'destroy'])
+    ->name('workflow.admin.proxies.destroy')->where('proxy', '[0-9]{1,18}');

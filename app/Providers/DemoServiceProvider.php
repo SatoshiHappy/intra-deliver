@@ -3,7 +3,7 @@
 namespace App\Providers;
 
 use App\Http\Middleware\Authz\AuthorizeRoute;
-use App\Queries\Account\UserMenuSections;
+use App\Queries\Account\Api\UserMenuSections;
 use App\Queries\Authz\Api\GuardedRoutes;
 use App\Queries\Demo\DemoGuardedRoutes;
 use App\Queries\Demo\DemoResetSeeder;

@@ -32,6 +32,7 @@ import {
     Tag,
     Ticket,
     Truck,
+    UserCog,
     Users,
     Wrench,
 } from 'lucide-react';
@@ -79,6 +80,7 @@ const ICONS: Record<string, LucideIcon> = {
     'folder-tree': FolderTree,
     send: Send,
     inbox: Inbox,
+    'user-cog': UserCog,
 };
 
 /**

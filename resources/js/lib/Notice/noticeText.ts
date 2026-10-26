@@ -1,5 +1,6 @@
 import { nameOrCode } from '@/lib/nameOrCode';
-import type { NoticeRow, StatusTone } from '@/types';
+import { formatDate } from '@/lib/recordValues';
+import type { NoticeRow, StatusTone, WorkflowProxyKind } from '@/types';
 
 /** 件数の札に出す上限(これを超えたら「99+」。docs の 設計/ワークフロー/案件の運用/画面/管理と通知の画面.md 7.5) */
 const UNREAD_BADGE_MAX = 99;
@@ -93,6 +94,8 @@ function workflowTemplate(row: NoticeRow): NoticeTemplate | null {
                 tone: 'settled',
                 sentence: contactSentence(row),
             };
+        case 'workflow.proxy':
+            return proxyTemplate(row);
         default:
             return null;
     }
@@ -206,6 +209,46 @@ function contactSentence(row: NoticeRow): string {
     return message === ''
         ? `${caseName}について連絡がありました。`
         : `${caseName}　${message}`;
+}
+
+/** 代理の別の語(代理の通知の文) */
+const PROXY_KIND_WORDS: Record<WorkflowProxyKind, string> = {
+    approve: '承認',
+    apply: '申請',
+};
+
+/**
+ * 代理の通知の札(処理の結果の色)と文。
+ */
+function proxyTemplate(row: NoticeRow): NoticeTemplate {
+    return { label: '代理', tone: 'settled', sentence: proxySentence(row) };
+}
+
+/**
+ * 代理の通知の文(フローの指定があればフロー名、終了日が無ければ終了日なし。日付は最後の有効な日を YYYY/MM/DD で出す)。
+ */
+function proxySentence(row: NoticeRow): string {
+    const principal = textParam(row, 'principal_name');
+    const flowName = textParam(row, 'flow_name');
+    const target = flowName === '' ? '' : `${flowName}の`;
+    const kind = proxyKindWord(row.params.kind);
+    const start = formatDate(textParam(row, 'start_date'));
+    const end = textParam(row, 'end_date');
+    const period =
+        end === ''
+            ? `期間は ${start} から、終了日なしです。`
+            : `期間は ${start} から ${formatDate(end)} までです。`;
+
+    return `${principal}さんの${target}${kind}の代理先に設定されました。${period}`;
+}
+
+/**
+ * 代理の別の語(知らない値は空 = ほかの文の値と同じ扱い)。
+ */
+function proxyKindWord(value: NoticeRow['params'][string]): string {
+    return value === 'apply' || value === 'approve'
+        ? PROXY_KIND_WORDS[value]
+        : '';
 }
 
 /**
