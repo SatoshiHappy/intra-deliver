@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vite-plus/test';
 import {
+    applyViewOf,
     blockerOf,
     headingLineOf,
     isFieldKey,
     nextText,
     operationOf,
     showsSaveDraft,
+    toastedErrorsOf,
 } from './applyScreen';
 import type { WorkflowApplyProps } from '@/types';
 
@@ -78,18 +80,19 @@ describe('申請すると誰の未処理に出るかの 1 文', () => {
 
 describe('画面の出し分け', () => {
     it('見出しの下の 1 行は、申請できない理由が無いときだけ次の 1 文を添える', () => {
-        expect(headingLineOf('申請', '次の文。', null)).toBe(
-            '内容を入力して申請します。次の文。',
-        );
-        expect(headingLineOf('申請', '次の文。', '理由')).toBe(
-            '内容を入力して申請します。',
-        );
+        expect(
+            headingLineOf('内容を入力して申請します。', '次の文。', null),
+        ).toBe('内容を入力して申請します。次の文。');
+        expect(
+            headingLineOf('内容を入力して申請します。', '次の文。', '理由'),
+        ).toBe('内容を入力して申請します。');
     });
 
-    it('一時保存のボタンは再申請だけ出さない', () => {
+    it('一時保存のボタンは新規と一時保存の画面だけ出す(再申請と既存のデータからの申請は出さない)', () => {
         expect(showsSaveDraft('new')).toBe(true);
         expect(showsSaveDraft('draft')).toBe(true);
         expect(showsSaveDraft('reapply')).toBe(false);
+        expect(showsSaveDraft('record')).toBe(false);
         expect(operationOf('reapply')).toBe('再申請');
         expect(operationOf('new')).toBe('申請');
     });
@@ -102,5 +105,127 @@ describe('画面の出し分け', () => {
         expect(isFieldKey('principal_user_id', false)).toBe(false);
         expect(isFieldKey('case', true)).toBe(false);
         expect(isFieldKey('values.name', false)).toBe(true);
+    });
+});
+
+const record = { values: {}, details: {} };
+const recordProps = (overrides: Partial<WorkflowApplyProps> = {}) =>
+    ({
+        mode: 'record',
+        recordId: 7,
+        recordTitle: '新製品の発売計画',
+        titleField: null,
+        flow: { code: 'project_plan', name: 'プロジェクト計画の承認' },
+        next: next({
+            nodes: [{ name: '課長', targets: [person], blockedReason: null }],
+        }),
+        ...overrides,
+    }) as WorkflowApplyProps;
+
+describe('既存のデータからの申請の見出しの 1 行', () => {
+    it('「{表示の項目の値}(既存のデータ)から申請します。」に、申請できない理由が無いときだけ次の 1 文を添える', () => {
+        const view = applyViewOf(recordProps(), record, '');
+
+        expect(view.heading).toBe('プロジェクト計画の承認');
+        expect(view.headingLine).toBe(
+            '新製品の発売計画(既存のデータ)から申請します。申請すると、課長の高橋 誠さんの未処理に表示されます。',
+        );
+        expect(
+            applyViewOf(
+                recordProps({
+                    next: next({
+                        nodes: [
+                            { name: '課長', targets: [], blockedReason: null },
+                        ],
+                    }),
+                }),
+                record,
+                '',
+            ).headingLine,
+        ).toBe('新製品の発売計画(既存のデータ)から申請します。');
+    });
+
+    it('表示の項目の値が無いレコードは #<id>', () => {
+        expect(
+            applyViewOf(recordProps({ recordTitle: null }), record, '')
+                .headingLine,
+        ).toMatch(/^#7\(既存のデータ\)から申請します。/);
+    });
+
+    it('ほかの画面の 1 行は変わらない', () => {
+        expect(
+            applyViewOf(recordProps({ mode: 'new' }), record, '').headingLine,
+        ).toMatch(/^内容を入力して申請します。/);
+        expect(
+            applyViewOf(
+                recordProps({
+                    mode: 'reapply',
+                    initial: { name: 'N' },
+                } as Partial<WorkflowApplyProps>),
+                record,
+                '',
+            ).headingLine,
+        ).toMatch(/^内容を入力して再申請します。/);
+    });
+});
+
+describe('申請対象からの申請の見出しの 1 行(業務レコードの詳細から開いた画面だけ、今の申請対象の欄で決める)', () => {
+    const targetProps = (overrides: Partial<WorkflowApplyProps> = {}) =>
+        recordProps({
+            mode: 'new',
+            targetField: 'project',
+            targetEntry: { module: 'project', record: 5 },
+            ...overrides,
+        });
+    const target = (label: string | null) => ({
+        values: { project: label === null ? null : { id: 5, label } },
+        details: {},
+    });
+
+    it('申請対象が入っていれば「{申請対象の表示の項目の値}を申請対象にして申請します。」に次の 1 文を添える', () => {
+        expect(
+            applyViewOf(targetProps(), target('新製品の発売計画'), '')
+                .headingLine,
+        ).toBe(
+            '新製品の発売計画を申請対象にして申請します。申請すると、課長の高橋 誠さんの未処理に表示されます。',
+        );
+    });
+
+    it('申請対象が空になれば(申請者を変えた・空にした)新規の申請の 1 行', () => {
+        expect(
+            applyViewOf(targetProps(), target(null), '').headingLine,
+        ).toMatch(/^内容を入力して申請します。/);
+    });
+
+    it('業務レコードの詳細から開いていない画面(targetEntry が無い)は、申請対象が入っていても今の 1 行のまま', () => {
+        expect(
+            applyViewOf(
+                targetProps({ targetEntry: null }),
+                target('新製品の発売計画'),
+                '',
+            ).headingLine,
+        ).toMatch(/^内容を入力して申請します。/);
+    });
+});
+
+describe('送信の誤りのうちトーストでも出すもの', () => {
+    const errors = {
+        record: '申請済みのため申請できません',
+        name: '案件名が長すぎます',
+        case: 'x',
+    };
+
+    it('既存のデータからの申請は record だけ。欄の誤りと封筒の誤りは出さない', () => {
+        expect(toastedErrorsOf('record', errors)).toEqual({
+            record: '申請済みのため申請できません',
+        });
+        expect(toastedErrorsOf('record', { name: '長すぎます' })).toEqual({});
+        expect(toastedErrorsOf('record', {})).toEqual({});
+    });
+
+    it('新規・一時保存・再申請の画面は、record があっても出さない', () => {
+        for (const mode of ['new', 'draft', 'reapply'] as const) {
+            expect(toastedErrorsOf(mode, errors)).toEqual({});
+        }
     });
 });

@@ -1,6 +1,6 @@
 import { router } from '@inertiajs/react';
 import type { InertiaFormProps } from '@inertiajs/react';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { clearRecordReferences } from '@/lib/Workflow/applyApplicant';
 import type { ApplyForm } from '@/lib/Workflow/applyForm';
 import {
@@ -43,6 +43,8 @@ type Reloader = {
     send: ApplyReloadSend;
     scope: ApplyReloadScope;
     pending: Pending | null;
+    /** サーバーが要求と別の申請者を選び直したとき */
+    onReselected: () => void;
 };
 
 function cancelPending(reloader: Reloader) {
@@ -79,23 +81,30 @@ function reload(
             }
 
             settle(reloader, mine);
-            loaded(reloader, request.only, page.props as LoadedProps, form);
+            loaded(reloader, request, page.props as LoadedProps, form);
         },
         onFinish: () => settle(reloader, mine),
     });
 }
 
-/** 申請者に依る props を読み直したら、サーバーが決めた申請者と申請基準日をフォームへ写す(選択肢に無い申請者なら選択肢も読み直す) */
+/**
+ * 申請者に依る props を読み直したら、サーバーが決めた申請者と申請基準日をフォームへ写す(選択肢に無い申請者なら選択肢も読み直す)。
+ * 要求した申請者と別の申請者にサーバーが選び直したときは、申請者を変えたのと同じに扱う(onReselected)。
+ */
 function loaded(
     reloader: Reloader,
-    only: string[],
+    request: ApplyReloadRequest,
     props: LoadedProps,
     form: ApplyReloadForm,
 ) {
-    const values = loadedApplicantOf(only, props);
+    const values = loadedApplicantOf(request.only, props);
 
     if (values === null) {
         return;
+    }
+
+    if (values.applicant !== (request.data.applicant ?? null)) {
+        reloader.onReselected();
     }
 
     form.setData((data) => ({ ...data, ...values }));
@@ -133,8 +142,9 @@ function change(
 export function applyReloaderOf(
     send: ApplyReloadSend,
     scope: ApplyReloadScope,
+    onReselected: () => void = () => {},
 ) {
-    const reloader: Reloader = { send, scope, pending: null };
+    const reloader: Reloader = { send, scope, pending: null, onReselected };
 
     /** 申請基準日を変えたら next を引き直す(空にしたら、待っている申請者の読み直しがあるときだけ送り直す) */
     const changeBaseDate = (form: ApplyReloadForm, value: string) => {
@@ -169,12 +179,24 @@ export function applyReloaderOf(
 export function useApplyReload(
     form: InertiaFormProps<ApplyForm>,
     props: WorkflowApplyProps,
+    onReselected: () => void,
 ) {
+    // 読み直しの応答は描き直しの後に届くので、呼ぶ先は最新の描画のものにする。
+    const reselected = useRef(onReselected);
+
+    useEffect(() => {
+        reselected.current = onReselected;
+    });
+
     const [reloader] = useState(() =>
-        applyReloaderOf((options) => router.reload(options), {
-            openedApplicant: props.applicant,
-            fromTarget: props.targetEntry !== null,
-        }),
+        applyReloaderOf(
+            (options) => router.reload(options),
+            {
+                openedApplicant: props.applicant,
+                fromTarget: props.targetEntry !== null,
+            },
+            () => reselected.current(),
+        ),
     );
 
     return {

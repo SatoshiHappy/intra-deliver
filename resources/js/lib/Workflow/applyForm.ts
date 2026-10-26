@@ -64,6 +64,16 @@ function applicantFieldsOf(
 }
 
 /**
+ * 既存のデータからの申請が送るレコードの指定(record_id・開いたときの版 record_version。版が無いレコードは null のまま送る =
+ * 口が空文字にしていつも比べる)。ほかの画面は送らない。
+ */
+function recordFieldsOf(props: WorkflowApplyProps) {
+    return props.mode === 'record'
+        ? { record_id: props.recordId, record_version: props.recordVersion }
+        : {};
+}
+
+/**
  * 送る内容。申請基準日は再申請以外で送る(再申請は申請基準日を変えない = 案件の操作/操作.md の 10.1 節)。連絡は申請と再申請だけで、
  * 人もひと言も空なら送らない(一時保存は連絡を持たない)。
  */
@@ -84,6 +94,7 @@ export function applyPayloadOf(
         ...(props.case === null ? {} : { revision: props.case.revision }),
         ...(props.mode === 'reapply' ? {} : { base_date: data.base_date }),
         ...applicantFieldsOf(props.mode, data.applicant),
+        ...recordFieldsOf(props),
         ...(contact === null ? {} : { contact }),
     };
 }

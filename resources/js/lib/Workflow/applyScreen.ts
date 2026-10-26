@@ -1,13 +1,13 @@
 import type { RecordFormData } from '@/lib/recordForm';
+import { applicationTargetOf } from '@/lib/Workflow/applicationTargetSnapshot';
 import { targetsText } from '@/lib/Workflow/workflowLabels';
 import type { WorkflowApplyProps } from '@/types';
 
 type Props = WorkflowApplyProps;
 
 /**
- * 申請の画面の文・見出し・出し分け(docs の 設計/ワークフロー/画面/申請と案件.md 3 節、ルートの深さ/画面.md 5 節)。
- * 申請対象の写しと既存のデータからの申請の見出しの下の 1 行・一時保存のボタンの有無は、mode と props で分かれるこの関数群
- * ({@link headingLineOf}・{@link showsSaveDraft})と、フォームの値を更新する useApplyForm の changeRecord に差し込む。
+ * 申請の画面の文・見出し・出し分け(docs の 設計/ワークフロー/画面/申請と案件.md の 3 節、設計/ワークフロー/ルートの深さ/画面.md の 5 節)。
+ * 見出しの下の 1 行と一時保存のボタンの有無は、mode と props で分かれるこの関数群({@link headingLineOf}・{@link showsSaveDraft})が決める。
  */
 
 /** 申請の操作の語(再申請 = 再申請、ほか = 申請) */
@@ -72,7 +72,7 @@ export function blockerOf(props: Props): string | null {
 }
 
 /**
- * 見出し(設計/ワークフロー/画面/申請と案件.md 3 節)。
+ * 見出し(docs の 設計/ワークフロー/画面/申請と案件.md の 3 節)。
  */
 function headingOf(props: Props): string {
     return props.mode === 'reapply'
@@ -81,25 +81,63 @@ function headingOf(props: Props): string {
 }
 
 /**
- * 見出しの下の 1 行(申請すると誰の未処理に出るかの文は、申請できない理由が無いときだけ添える)。
+ * 見出しの下の 1 行の頭の文(文の正本 = docs の 設計/ワークフロー/申請の周辺/画面.md の 8 節)。業務レコードの詳細から開いた画面は、
+ * 今の申請対象の欄で決める(空になれば新規の申請の文)。
+ */
+function headingLeadOf(
+    props: Props,
+    record: RecordFormData,
+    operation: string,
+): string {
+    if (props.mode === 'record') {
+        const title = props.recordTitle ?? `#${props.recordId}`;
+
+        return `${title}(既存のデータ)から申請します。`;
+    }
+
+    const applicationTarget =
+        props.targetEntry === null
+            ? null
+            : applicationTargetOf(record, props.targetField);
+
+    return applicationTarget === null
+        ? `内容を入力して${operation}します。`
+        : `${applicationTarget.label}を申請対象にして申請します。`;
+}
+
+/**
+ * 見出しの下の 1 行(頭の文に、申請すると誰の未処理に出るかの文を、申請できない理由が無いときだけ添える)。
  */
 export function headingLineOf(
-    operation: string,
+    lead: string,
     nextLine: string,
     blocker: string | null,
 ): string {
-    return `内容を入力して${operation}します。${blocker === null ? nextLine : ''}`;
+    return `${lead}${blocker === null ? nextLine : ''}`;
 }
 
 /**
- * 一時保存のボタンを出すか(新規と一時保存の画面だけ。再申請は一時保存を持たない)。
+ * 一時保存のボタンを出すか(新規と一時保存の画面だけ。再申請は一時保存を持たず、既存のデータからの申請は一時保存がレコードを持てないので持たない)。
  */
 export function showsSaveDraft(mode: Props['mode']): boolean {
-    return mode !== 'reapply';
+    return mode === 'new' || mode === 'draft';
 }
 
 /**
- * 案件名の欄の既定の案内(業務処理が空の案件名に付ける既定と同じ形 = 設計/ワークフロー/画面/申請と案件.md 3 節の面 1)。
+ * 送信の誤りのうちトーストでも出すもの(正本 = docs の 設計/ワークフロー/申請の周辺/画面.md の 5 節)。
+ * 決めているのは既存のデータからの申請の画面だけなので、ほかの画面の誤りの見え方は変えない。
+ */
+export function toastedErrorsOf(
+    mode: Props['mode'],
+    errors: Record<string, string>,
+): Record<string, string> {
+    const record = errors.record;
+
+    return mode !== 'record' || record === undefined ? {} : { record };
+}
+
+/**
+ * 案件名の欄の既定の案内(業務処理が空の案件名に付ける既定と同じ形 = docs の 設計/ワークフロー/画面/申請と案件.md の 3 節の面 1)。
  */
 function defaultNameOf(props: Props, record: RecordFormData): string {
     const draft =
@@ -135,7 +173,11 @@ export function applyViewOf(
         nextLine,
         blocker,
         defaultName,
-        headingLine: headingLineOf(operation, nextLine, blocker),
+        headingLine: headingLineOf(
+            headingLeadOf(props, record, operation),
+            nextLine,
+            blocker,
+        ),
         caseName: name.trim() === '' ? defaultName : name.trim(),
     };
 }

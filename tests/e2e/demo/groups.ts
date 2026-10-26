@@ -16,7 +16,10 @@ export const demoGroups = [
     {
         // workflow の件数と並びは、workflow-route の申請・承認を含む。zz-workflow-operations は前の 2 つが案件を変えた後の状態を使う。
         // zz-workflow-proxy は案件を足すだけで、前の spec の見本の案件に触れない。zz-workflow-proxy-screens・zz-workflow-proxy-admin は
-        // 代理を足して消すだけ(代理先の通知が残る)で、案件と通知の件数を前提にしないので、この 3 つの順はどれでもよい
+        // 代理を足して消すだけ(代理先の通知が残る)で、案件と通知の件数を前提にしないので、この 3 つの順はどれでもよい。
+        // 3 つとも zz-workflow-record-apply-* の前に置く。zz-workflow-record-apply-* は番号の順に流す(名前に target を含む 3 つは
+        // 申請対象からの申請で、プロジェクトを申請対象にするフローが 1 つのうちに流す。2 で 2 つ目のフローを足し、
+        // 3 で申請書の業務モジュールの更新の許可を外すので、最後に置く)
         name: 'demo-workflow',
         files: [
             'tests/e2e/demo/notice.spec.ts',
@@ -27,6 +30,12 @@ export const demoGroups = [
             'tests/e2e/demo/zz-workflow-proxy.spec.ts',
             'tests/e2e/demo/zz-workflow-proxy-screens.spec.ts',
             'tests/e2e/demo/zz-workflow-proxy-admin.spec.ts',
+            'tests/e2e/demo/zz-workflow-record-apply-1-single.spec.ts',
+            'tests/e2e/demo/zz-workflow-record-apply-1b-target-from-record.spec.ts',
+            'tests/e2e/demo/zz-workflow-record-apply-1c-target-choose.spec.ts',
+            'tests/e2e/demo/zz-workflow-record-apply-1d-target-proxy.spec.ts',
+            'tests/e2e/demo/zz-workflow-record-apply-2-choose.spec.ts',
+            'tests/e2e/demo/zz-workflow-record-apply-3-others.spec.ts',
         ],
     },
     {

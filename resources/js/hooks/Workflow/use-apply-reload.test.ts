@@ -187,3 +187,38 @@ describe('申請者の読み直しの応答が選択肢に無い申請者', () =
         });
     });
 });
+
+describe('サーバーが別の申請者を選び直したとき', () => {
+    const loaded = (applicant: number | null) => ({
+        props: {
+            applicants: [self, yamada],
+            applicant,
+            baseDate: '2026-10-13',
+        },
+    });
+
+    it('要求した申請者と違う申請者が返ったら、申請者を変えたのと同じに知らせる', () => {
+        const { send, sent } = fakeSend();
+        const onReselected = vi.fn();
+        const reloader = applyReloaderOf(send, scope, onReselected);
+
+        reloader.changeApplicant(fakeForm({}), module, 10);
+        sent[0].onSuccess(loaded(null));
+
+        expect(onReselected).toHaveBeenCalledOnce();
+    });
+
+    it('要求した申請者のままなら(自分を要求して自分が返った場合を含む)知らせない', () => {
+        const { send, sent } = fakeSend();
+        const onReselected = vi.fn();
+        const reloader = applyReloaderOf(send, scope, onReselected);
+        const form = fakeForm({ applicant: 10 });
+
+        reloader.changeApplicant(form, module, null);
+        sent[0].onSuccess(loaded(null));
+        reloader.changeApplicant(form, module, 10);
+        sent[1].onSuccess(loaded(10));
+
+        expect(onReselected).not.toHaveBeenCalled();
+    });
+});

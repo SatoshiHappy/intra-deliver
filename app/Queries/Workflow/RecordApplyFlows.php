@@ -18,8 +18,10 @@ use Illuminate\Database\Eloquent\Collection;
  * 申請のノードの対象者の判定は新規の申請と同じ {@see ApplicableFlows} を呼ぶ。そのものを申請するときは業務モジュールに求めるアクションを
  * read と update にし、申請対象からの申請は申請書の業務モジュールの create に元の業務モジュールの read を足す。
  * どの口もレコードを受けない(レコードの有無・作成者・閲覧は呼び手が見る)。鍵を取らない。
+ * 自分か代理元の判定は、入口も選択肢も {@see ApplicableFlows::applicableIdsByAnyChecked()}・{@see ApplicableFlows::applicantIdsChecked()}
+ * を通して求める(入口が通ることと選択肢が空でないことを揃えるため)。
  *
- * @phpstan-type FlowCheck Closure(Requester, list<int>, DateTimeInterface): list<int>
+ * @phpstan-import-type FlowCheck from ApplicableFlows
  */
 class RecordApplyFlows
 {
@@ -63,7 +65,7 @@ class RecordApplyFlows
     }
 
     /**
-     * 申請者の候補: 自分と、自分を申請の代理先とする d に有効でそのフローに効く代理の代理元を、1 人ずつ {@see self::allows()} で判定した残り
+     * 申請者の候補: {@see self::allows()} と同じ判定で、自分と、自分を申請の代理先とする d に有効でそのフローに効く代理の代理元から求める
      * (自分を先頭に、代理元は昇順)。空でないことは {@see self::allowsAny()} と同じ。レコードの作成者で絞るのは呼び手。
      *
      * @return list<int> ユーザーの id
@@ -138,7 +140,7 @@ class RecordApplyFlows
     }
 
     /**
-     * 申請対象からの申請の申請者の候補(自分を先頭に代理元は昇順。1 人ずつ {@see self::allowsForTarget()} で判定した残り)。
+     * 申請対象からの申請の申請者の候補({@see self::allowsForTarget()} と同じ判定で、自分と代理元から求める。自分を先頭に代理元は昇順)。
      *
      * @return list<int> ユーザーの id
      */
@@ -214,28 +216,18 @@ class RecordApplyFlows
     }
 
     /**
-     * 自分と代理元を 1 人ずつ判定した残り(自分を先頭に、代理元は昇順)。
+     * 自分と代理元の候補(自分を先頭に、代理元は昇順。自分は代理元に入れない)。
      *
      * @param  FlowCheck  $check
      * @return list<int>
      */
     private function candidateIds(Requester $requester, int $flowId, DateTimeInterface $date, Closure $check): array
     {
-        $userId = $requester->userId;
-
-        if ($userId === null) {
-            return [];
-        }
-
-        $principals = $this->proxies->principalIdsOf($userId, $flowId, WorkflowProxyKind::Apply, $date);
-        $allowed = fn (int $id): bool => $check(self::requesterAs($requester, $id), [$flowId], $date) === [$flowId];
-
-        return array_values(array_filter([$userId, ...array_diff($principals, [$userId])], $allowed));
+        return $this->applicableFlows->applicantIdsChecked($requester, $flowId, $date, $check);
     }
 
     /**
-     * 渡したフローのうち、自分か代理元のどれかができるものの id(代理元は自分ができないフローだけを、代理元ごとにまとめて判定する。
-     * 代理元は 1 回で引き、問い合わせの数をフローの数に比例させない)。
+     * 渡したフローのうち、自分か代理元のどれかができるものの id。
      *
      * @param  list<int>  $flowIds
      * @param  FlowCheck  $check
@@ -243,28 +235,7 @@ class RecordApplyFlows
      */
     private function allowedIds(Requester $requester, array $flowIds, DateTimeInterface $date, Closure $check): array
     {
-        $allowed = $check($requester, $flowIds, $date);
-        $userId = $requester->userId;
-
-        if ($userId === null) {
-            return $allowed;
-        }
-
-        $flowsByPrincipal = [];
-        $rest = array_values(array_diff($flowIds, $allowed));
-        $principalsByFlow = $this->proxies->principalIdsByFlow($userId, $rest, WorkflowProxyKind::Apply, $date);
-
-        foreach ($principalsByFlow as $flowId => $principalIds) {
-            foreach ($principalIds as $principalId) {
-                $flowsByPrincipal[$principalId][] = $flowId;
-            }
-        }
-
-        foreach ($flowsByPrincipal as $principalId => $ids) {
-            $allowed = [...$allowed, ...$check(self::requesterAs($requester, $principalId), $ids, $date)];
-        }
-
-        return $allowed;
+        return $this->applicableFlows->applicableIdsByAnyChecked($requester, $date, $flowIds, $check);
     }
 
     /**

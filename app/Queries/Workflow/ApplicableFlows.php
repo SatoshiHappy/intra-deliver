@@ -77,7 +77,7 @@ class ApplicableFlows
      */
     public function applicantIds(Requester $requester, int $flowId, DateTimeInterface $date): array
     {
-        return $this->applicantsByFlow($requester, [$flowId], $date, $this->newApplicationIds(...), true)[$flowId];
+        return $this->applicantIdsChecked($requester, $flowId, $date, $this->newApplicationIds(...));
     }
 
     /**
@@ -89,14 +89,46 @@ class ApplicableFlows
     }
 
     /**
-     * 渡したフローのうち、自分か申請の代理元のだれかが申請できるものの id(id の昇順)。候補の全員は要らないので、代理元は自分が申請できないフローだけで判定する。
+     * 渡したフローのうち、自分か申請の代理元のだれかが申請できるものの id(id の昇順)。
      *
      * @param  list<int>  $flowIds
      * @return list<int>
      */
     public function applicableIdsByAny(Requester $requester, DateTimeInterface $date, array $flowIds): array
     {
-        $byFlow = $this->applicantsByFlow($requester, $flowIds, $date, $this->newApplicationIds(...), false);
+        return $this->applicableIdsByAnyChecked($requester, $date, $flowIds, $this->newApplicationIds(...));
+    }
+
+    /**
+     * 判定 $check の申請者の候補(自分を先頭に、代理元は昇順。自分は代理元に入れない)。入口が通ることと候補が空でないことを揃える
+     * (設計/ワークフロー/案件の運用/案件の操作/README.md の 3.1 節)。
+     *
+     * @param  FlowCheck  $check
+     * @return list<int> ユーザーの id
+     */
+    public function applicantIdsChecked(
+        Requester $requester,
+        int $flowId,
+        DateTimeInterface $date,
+        Closure $check,
+    ): array {
+        return $this->applicantsByFlow($requester, [$flowId], $date, $check, true)[$flowId];
+    }
+
+    /**
+     * 渡したフローのうち、自分か申請の代理元のだれかが判定 $check を通るものの id(id の昇順。3.1 節の入口)。
+     *
+     * @param  list<int>  $flowIds
+     * @param  FlowCheck  $check
+     * @return list<int>
+     */
+    public function applicableIdsByAnyChecked(
+        Requester $requester,
+        DateTimeInterface $date,
+        array $flowIds,
+        Closure $check,
+    ): array {
+        $byFlow = $this->applicantsByFlow($requester, $flowIds, $date, $check, false);
         $ids = array_keys(array_filter($byFlow, fn (array $userIds): bool => $userIds !== []));
         sort($ids);
 
@@ -129,8 +161,8 @@ class ApplicableFlows
     }
 
     /**
-     * 申請できる人(設計/ワークフロー/案件の運用/案件の操作/README.md の 3.1 節)を求める 1 つの式。入口・選択肢・一覧がここを通り、答えを揃える。
-     * 代理は 1 回で引いて代理元ごとにまとめて判定する(問い合わせをフローの数に比例させない)。
+     * 申請できる人(設計/ワークフロー/案件の運用/案件の操作/README.md の 3.1 節)を求める 1 つの式。入口と選択肢の答えを揃えるため、
+     * 判定を渡す 2 つの口はここだけを通す。代理は 1 回で引く(問い合わせをフローの数に比例させない)。
      *
      * @param  list<int>  $flowIds
      * @param  FlowCheck  $check

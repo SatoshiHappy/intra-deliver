@@ -1,23 +1,19 @@
 import { Head } from '@inertiajs/react';
 import { useRef } from 'react';
-import { ApplyActions } from '@/components/Workflow/ApplyActions';
 import { ApplyApplicant } from '@/components/Workflow/ApplyApplicant';
 import { ApplyCommentSurface } from '@/components/Workflow/ApplyCommentSurface';
 import { ApplyContactSurface } from '@/components/Workflow/ApplyContactSurface';
+import { ApplyFormActions } from '@/components/Workflow/ApplyFormActions';
 import { ApplyHeading } from '@/components/Workflow/ApplyHeading';
 import { ApplyInfoSurface } from '@/components/Workflow/ApplyInfoSurface';
 import { ApplyRecordSurface } from '@/components/Workflow/ApplyRecordSurface';
+import { ApplicationTargetConfirmDialog } from '@/components/Workflow/ApplicationTargetConfirmDialog';
 import { ApplyUnshownErrors } from '@/components/Workflow/ApplyUnshownErrors';
 import { useApplyCandidateSource } from '@/hooks/Workflow/use-apply-candidate-source';
 import { useApplyForm } from '@/hooks/Workflow/use-apply-form';
 import { useFocusFirstInvalid } from '@/hooks/use-focus-first-invalid';
 import { showsApplicantField } from '@/lib/Workflow/applyApplicant';
-import {
-    applyActionOf,
-    backHrefOf,
-    breadcrumbsOf,
-    draftActionOf,
-} from '@/lib/Workflow/applyRoutes';
+import { breadcrumbsOf } from '@/lib/Workflow/applyRoutes';
 import { applyViewOf } from '@/lib/Workflow/applyScreen';
 import type { WorkflowApplyProps } from '@/types';
 
@@ -77,23 +73,14 @@ export default function Apply(props: Props) {
                         max={props.commentMaxLength}
                     />
                     <ApplyContactSurface form={form} />
-                    <ApplyActions
-                        mode={props.mode}
-                        workflowCase={props.case}
-                        isProcessing={form.processing}
-                        backHref={backHrefOf(props)}
-                        operation={view.operation}
-                        confirmDescription={`${view.caseName}を${view.operation}します。${view.nextLine}`}
-                        isApplyDisabled={view.blocker !== null}
-                        onSaveDraft={() =>
-                            apply.send(draftActionOf(props), 'saveDraft')
-                        }
-                        onApply={() =>
-                            apply.send(applyActionOf(props), 'apply')
-                        }
-                    />
+                    <ApplyFormActions props={props} view={view} apply={apply} />
                 </form>
             </div>
+            <ApplicationTargetConfirmDialog
+                changes={apply.applicationTarget.confirm?.changes ?? null}
+                onCancel={apply.applicationTarget.cancel}
+                onReflect={apply.applicationTarget.reflect}
+            />
         </>
     );
 }

@@ -82,7 +82,7 @@ export function daysSince(written: string): number {
 /**
  * 参照の選択欄で、検索する語を打って候補を選び、候補の欄が閉じるのを待つ(閉じる途中の欄が残ったまま次の選択欄を開くと、検索の入力欄が 2 つになる)。
  */
-async function pickReference(
+export async function pickReference(
     page: Page,
     combobox: string,
     query: string,
@@ -95,9 +95,9 @@ async function pickReference(
 }
 
 /**
- * 計画の申請の画面(フロー project_plan。申請基準日は版 2 の日 = 課長の承認・部長の承認)の入力を埋める。プロジェクト名がそのまま案件名の後ろに付く。
+ * 計画の申請書の業務データの欄(申請の画面の申請内容と、業務データの画面の登録・編集のフォームで共通)を埋める。
  */
-export async function fillPlanApplication(
+export async function fillPlanFields(
     page: Page,
     form: Locator,
     projectName: string,
@@ -114,6 +114,17 @@ export async function fillPlanApplication(
     await form
         .getByRole('textbox', { name: '予算(万円)', exact: true })
         .fill('100');
+}
+
+/**
+ * 計画の申請の画面(フロー project_plan。申請基準日は版 2 の日 = 課長の承認・部長の承認)の入力を埋める。プロジェクト名がそのまま案件名の後ろに付く。
+ */
+export async function fillPlanApplication(
+    page: Page,
+    form: Locator,
+    projectName: string,
+) {
+    await fillPlanFields(page, form, projectName);
     await fillVersionTwoBaseDate(form);
 }
 

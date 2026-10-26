@@ -9,9 +9,27 @@ import { destroy as draftDestroy } from '@/routes/workflow/drafts';
 import type { WorkflowApplyProps } from '@/types';
 import type { RouteDefinition } from '@/wayfinder';
 
+/** 一時保存の削除(確かめのダイアログつき。版を付けて送る) */
+function DeleteDraftButton({
+    workflowCase,
+}: {
+    workflowCase: NonNullable<WorkflowApplyProps['case']>;
+}) {
+    return (
+        <ConfirmDeleteDialog
+            triggerText="一時保存を削除"
+            triggerVariant="destructive"
+            title="一時保存の削除"
+            description="この一時保存を削除しますか。この操作は取り消せません。"
+            action={draftDestroy(workflowCase.id)}
+            data={{ revision: workflowCase.revision }}
+        />
+    );
+}
+
 /**
- * 申請の画面のボタン列(キャンセル・一時保存の削除・一時保存・申請/再申請の確認)。送信中はまとめて押せない。
- * 一時保存のボタンは {@link showsSaveDraft} が出す画面だけ、削除は一時保存の画面だけに出す。
+ * 申請の画面のボタン列(キャンセル・一時保存の削除・一時保存・申請/再申請の確認)。送信中はまとめて押せない。申請対象の値を取っている間は
+ * 一時保存と申請だけが押せない(キャンセルは押せる)。一時保存のボタンは {@link showsSaveDraft} が出す画面だけ、削除は一時保存の画面だけに出す。
  */
 export function ApplyActions({
     mode,
@@ -21,6 +39,7 @@ export function ApplyActions({
     operation,
     confirmDescription,
     isApplyDisabled,
+    isFetching,
     onSaveDraft,
     onApply,
 }: {
@@ -31,6 +50,7 @@ export function ApplyActions({
     operation: string;
     confirmDescription: string;
     isApplyDisabled: boolean;
+    isFetching: boolean;
     onSaveDraft: () => void;
     onApply: () => void;
 }) {
@@ -49,19 +69,13 @@ export function ApplyActions({
                     </Link>
                 </Button>
                 {mode === 'draft' && workflowCase !== null && (
-                    <ConfirmDeleteDialog
-                        triggerText="一時保存を削除"
-                        triggerVariant="destructive"
-                        title="一時保存の削除"
-                        description="この一時保存を削除しますか。この操作は取り消せません。"
-                        action={draftDestroy(workflowCase.id)}
-                        data={{ revision: workflowCase.revision }}
-                    />
+                    <DeleteDraftButton workflowCase={workflowCase} />
                 )}
                 {showsSaveDraft(mode) && (
                     <Button
                         type="button"
                         variant="outline"
+                        disabled={isFetching}
                         onClick={onSaveDraft}
                     >
                         一時保存
@@ -70,7 +84,7 @@ export function ApplyActions({
                 <ApplyConfirmDialog
                     label={operation}
                     description={confirmDescription}
-                    disabled={isProcessing || isApplyDisabled}
+                    disabled={isProcessing || isApplyDisabled || isFetching}
                     onConfirm={onApply}
                 />
             </FormActions>

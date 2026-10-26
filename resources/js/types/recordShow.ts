@@ -20,6 +20,16 @@ export type RecordDetailCan = {
     apply: boolean; // 申請の入口(applyEntries)がある
 };
 
+/**
+ * 詳細の「申請する」の入口 1 つ(フローの名前・説明と申請の画面の URL。サーバーの App\Queries\Records\Api\RecordApplyEntry。
+ * docs の 設計/ワークフロー/申請の周辺/既存のデータからの申請/README.md の 2 節)
+ */
+export type RecordApplyEntry = {
+    name: string;
+    description: string | null;
+    url: string;
+};
+
 /** サイドパネルの欄(帯の 1 項目)。並び = 添付ファイル → コメント → 更新履歴 → 業務ツールの節 */
 export type RecordPanelItem = {
     key: string; // 'attachments' | 'comments' | 'revisions' | 節の code(クエリ panel の値)

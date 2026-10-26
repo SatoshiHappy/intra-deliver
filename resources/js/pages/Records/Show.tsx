@@ -3,6 +3,7 @@ import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog';
 import { RecordAttachmentList } from '@/components/RecordAttachmentList';
 import { RecordAddonActions } from '@/components/Records/RecordAddonActions';
 import { RecordAddonBadges } from '@/components/Records/RecordAddonBadges';
+import { RecordApplyButton } from '@/components/Records/RecordApplyButton';
 import { RecordCommentsPane } from '@/components/Records/RecordCommentsPane';
 import { RecordDetailTabs } from '@/components/Records/RecordDetailTabs';
 import { RecordHoldNotice } from '@/components/Records/RecordHoldNotice';
@@ -26,6 +27,7 @@ import {
 } from '@/routes/records/data';
 import attachments from '@/routes/records/data/attachments';
 import type {
+    RecordApplyEntry,
     RecordDetail,
     RecordDetailCan,
     RecordHeadingGroup,
@@ -46,40 +48,54 @@ type Props = RecordShowPanelProps &
         /** 権限の判定だけ(持ち主の有無は hold = 設計/業務データの入れ物/レコードの共通機能/詳細の画面/README.md の 5.1 節) */
         can: RecordDetailCan;
         hold: RecordHold | null;
+        /** 申請できる入口(空 = 「申請する」を出さない。出し方 = 設計/ワークフロー/申請の周辺/既存のデータからの申請/README.md の 2 節) */
+        applyEntries: RecordApplyEntry[];
         addons: RecordShowAddons; // 操作・札・注(docs の 設計/業務データの入れ物/画面/業務の画面.md の 2.5)
     };
+
+type ShowActionsProps = Pick<
+    Props,
+    'module' | 'record' | 'can' | 'hold' | 'applyEntries' | 'addons'
+> & { heading: string };
+
+/** 「編集」(持ち主があれば押せない形) */
+function EditButton({
+    route,
+    held,
+}: {
+    route: { module: string; record: number };
+    held: boolean;
+}) {
+    return held ? (
+        <Button disabled>編集</Button>
+    ) : (
+        <Button asChild>
+            <Link href={edit(route)}>編集</Link>
+        </Button>
+    );
+}
 
 /**
  * 見出しの右の操作(詳細の画面/README.md の 5.1 節): 権限が無ければ出さず、持ち主(申請済み)があれば押せない形で出す(理由は見出しの下の 1 行)。
  */
-function ShowActions({
-    module,
-    record,
-    can,
-    hold,
-    addons,
-    heading,
-}: Pick<Props, 'module' | 'record' | 'can' | 'hold' | 'addons'> & {
-    heading: string;
-}) {
+function ShowActions(props: ShowActionsProps) {
+    const { module, record, can, hold, applyEntries, addons, heading } = props;
     const held = hold !== null;
     const hasDetails = module.fields.some((field) => field.type === 'details');
     const route = { module: module.code, record: record.id };
 
     return (
         <div className="flex items-center gap-2">
-            {can.update &&
-                (held ? (
-                    <Button disabled>編集</Button>
-                ) : (
-                    <Button asChild>
-                        <Link href={edit(route)}>編集</Link>
-                    </Button>
-                ))}
+            {can.update && <EditButton route={route} held={held} />}
             <RecordAddonActions actions={addons.actions} held={held} />
             {can.copy && (
                 <CopyButton moduleCode={module.code} recordId={record.id} />
             )}
+            <RecordApplyButton
+                entries={applyEntries}
+                held={held}
+                heading={heading}
+            />
             {can.delete &&
                 (held ? (
                     <Button variant="destructive" disabled>

@@ -134,3 +134,47 @@ describe('連絡の送り方', () => {
         expect(CONTACT_MESSAGE_MAX).toBe(1000);
     });
 });
+
+describe('既存のデータからの申請の送り方', () => {
+    const record = props({
+        mode: 'record',
+        recordId: 7,
+        recordVersion: 'v-1',
+    });
+
+    it('申請は record_id と開いたときの版 record_version を送り、申請者は applicant_user_id、申請基準日も送る', () => {
+        const payload = applyPayloadOf(
+            record,
+            data({ applicant: 10 }),
+            'apply',
+        );
+
+        expect(payload).toMatchObject({
+            record_id: 7,
+            record_version: 'v-1',
+            applicant_user_id: 10,
+            base_date: '2026-10-13',
+        });
+        expect(payload).not.toHaveProperty('revision');
+    });
+
+    it('版の無いレコードは record_version を null のまま送る(キーは落とさない)', () => {
+        const payload = applyPayloadOf(
+            props({ mode: 'record', recordId: 7, recordVersion: null }),
+            data(),
+            'apply',
+        );
+
+        expect(payload).toHaveProperty('record_id', 7);
+        expect(payload).toHaveProperty('record_version', null);
+    });
+
+    it('ほかの画面は record_id・record_version を送らない', () => {
+        for (const other of [props(), reapply, draft]) {
+            const payload = applyPayloadOf(other, data(), 'apply');
+
+            expect(payload).not.toHaveProperty('record_id');
+            expect(payload).not.toHaveProperty('record_version');
+        }
+    });
+});
