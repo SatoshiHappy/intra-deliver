@@ -35,7 +35,9 @@ use LogicException;
  *     pullBack: bool, reapply: bool, withdraw: bool, editDraft: bool, deleteDraft: bool,
  *     bulkApprove: bool, confirm: bool,
  * }
- * @phpstan-type RowCurrentNode array{id: int, name: string, state: string}
+ * @phpstan-type RowCurrentNode array{
+ *     id: int, name: string, parentId: int|null, parentName: string|null, childName: string|null, state: string,
+ * }
  * @phpstan-type PullBackNode array{id: int, name: string, blockedReason: string|null, canAttach: bool}
  */
 class CaseRows
@@ -105,14 +107,22 @@ class CaseRows
     }
 
     /**
-     * 現在のノードの並び(現在のステップの保留中の札をノードの名前の後に出すため = 設計/ワークフロー/案件の運用/認可と一覧.md の 2.2 節)。
+     * 現在のノードの並び(現在のステップの保留中の札をノードの名前の後に出し、同じ親の展開の行を親の名前でまとめるため =
+     * 設計/ワークフロー/案件の運用/認可と一覧.md の 2.2 節)。
      *
      * @return list<RowCurrentNode>
      */
     public static function currentNodesOf(CaseSituation $situation): array
     {
         return array_map(
-            fn (CurrentNode $node) => ['id' => $node->id, 'name' => $node->name, 'state' => $node->state->value],
+            fn (CurrentNode $node) => [
+                'id' => $node->id,
+                'name' => $node->name,
+                'parentId' => $node->parentId,
+                'parentName' => $node->parentName,
+                'childName' => $node->childName,
+                'state' => $node->state->value,
+            ],
             $situation->currentNodes,
         );
     }

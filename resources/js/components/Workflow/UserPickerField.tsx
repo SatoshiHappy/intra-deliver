@@ -1,4 +1,4 @@
-import { Plus, X } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { useState } from 'react';
 import type { ComponentProps, ReactNode } from 'react';
 import { FormBlock, invalidProps } from '@/components/FormBlock';
@@ -10,11 +10,11 @@ import {
     PopoverTrigger,
 } from '@/components/ui/popover';
 import { AssigneeCandidateList } from '@/components/Workflow/AssigneeCandidateList';
+import { PickedUserList } from '@/components/Workflow/PickedUserList';
 import { useUserCandidates } from '@/hooks/Workflow/use-user-candidates';
 import { CANDIDATE_QUERY_MAX_LENGTH } from '@/hooks/use-record-candidates';
 import { canAddUser } from '@/lib/Workflow/caseActionForm';
 import type { PickedUser } from '@/lib/Workflow/caseActionForm';
-import { personName } from '@/lib/Workflow/workflowLabels';
 
 type Props = {
     /** 検索の入力ボタンの id(ラベルの htmlFor。誤りの文言・説明の id もここから作る) */
@@ -31,64 +31,26 @@ type Props = {
     caseId: number | null;
     /** 候補の基準日(YYYY-MM-DD。代理の登録の欄が入力中の開始日を渡す。案件があれば案件が先) */
     baseDate?: string;
+    /** 指定されるステップ(承認のダイアログの指定の欄。候補は workflow.cases.assignee-candidates の口から引く。caseId が要る) */
+    candidateNodeId?: number;
     picked: PickedUser[];
+    /** 並びが処理の順(横配置の指定)。選んだ人の札に上へ・下への印を足す */
+    isOrdered?: boolean;
+    /** 選んだ人の並びの読み上げの名前(省くと「選んだ{ラベル}」) */
+    listLabel?: string;
+    /** 候補の一覧の読み上げの名前(省くと「{ラベル}の候補」。同じラベルの欄が並ぶダイアログは欄ごとに別の名前を渡す) */
+    candidateLabel?: string;
     /** 選べる人数の上限(1 = 選び直すと置き換える) */
     max: number;
     onChange: (picked: PickedUser[]) => void;
 };
 
-/**
- * 選んだ人の札の並び(名前・所属・外す印)。
- */
-function PickedChips({
-    label,
-    picked,
-    onChange,
-}: {
-    label: string;
-    picked: PickedUser[];
-    onChange: (picked: PickedUser[]) => void;
-}) {
-    return (
-        <ul className="flex flex-wrap gap-2" aria-label={`選んだ${label}`}>
-            {picked.map((person) => (
-                <li
-                    key={person.id}
-                    className="flex items-center gap-1 rounded-full border bg-muted/40 py-0.5 pr-1 pl-3 text-sm"
-                >
-                    <span>{personName(person)}</span>
-                    {(person.mainDepartmentName ?? null) !== null && (
-                        <span className="text-xs text-muted-foreground">
-                            {person.mainDepartmentName}
-                        </span>
-                    )}
-                    <Button
-                        type="button"
-                        variant="ghost"
-                        size="icon"
-                        className="size-6"
-                        aria-label={`${personName(person)}の選択を解除`}
-                        onClick={() =>
-                            onChange(
-                                picked.filter(
-                                    (other) => other.id !== person.id,
-                                ),
-                            )
-                        }
-                    >
-                        <X aria-hidden="true" />
-                    </Button>
-                </li>
-            ))}
-        </ul>
-    );
-}
-
-/** 候補の欄が引く対象(欄の名前・基準にする案件と日・候補から除く人) */
+/** 候補の欄が引く対象(候補の一覧の読み上げの名前・基準にする案件と日・候補から除く人) */
 type CandidateScope = {
-    label: string;
+    candidateLabel: string;
     caseId: number | null;
     baseDate: string | undefined;
+    nodeId: number | undefined;
     exclude: Set<number>;
 };
 
@@ -96,9 +58,10 @@ type CandidateScope = {
  * 検索の入力と候補の一覧(語を空にしたままなら候補を引かない。選んだ人は候補から除く)。
  */
 function CandidateCommand({
-    label,
+    candidateLabel,
     caseId,
     baseDate,
+    nodeId,
     open,
     exclude,
     query,
@@ -110,11 +73,16 @@ function CandidateCommand({
     onQueryChange: (query: string) => void;
     onSelect: (user: PickedUser) => void;
 }) {
-    const candidates = useUserCandidates(caseId, open ? query : '', baseDate);
+    const candidates = useUserCandidates(
+        caseId,
+        open ? query : '',
+        baseDate,
+        nodeId,
+    );
     const options = candidates.users?.filter((user) => !exclude.has(user.id));
 
     return (
-        <Command shouldFilter={false} label={`${label}の候補`}>
+        <Command shouldFilter={false} label={candidateLabel}>
             <CommandInput
                 value={query}
                 onValueChange={onQueryChange}
@@ -231,7 +199,11 @@ export function UserPickerField({
     error,
     caseId,
     baseDate,
+    candidateNodeId,
     picked,
+    isOrdered,
+    listLabel = `選んだ${label}`,
+    candidateLabel = `${label}の候補`,
     max,
     onChange,
 }: Props) {
@@ -245,19 +217,19 @@ export function UserPickerField({
             error={error}
         >
             <div className="grid gap-2">
-                {picked.length > 0 && (
-                    <PickedChips
-                        label={label}
-                        picked={picked}
-                        onChange={onChange}
-                    />
-                )}
+                <PickedUserList
+                    label={listLabel}
+                    picked={picked}
+                    isOrdered={isOrdered}
+                    onChange={onChange}
+                />
                 <SearchPopover
                     id={id}
-                    label={label}
+                    candidateLabel={candidateLabel}
                     fieldProps={invalidProps(id, error, help !== undefined)}
                     caseId={caseId}
                     baseDate={baseDate}
+                    nodeId={candidateNodeId}
                     isDisabled={!canAddUser(picked.length, max)}
                     exclude={new Set(picked.map((person) => person.id))}
                     onPick={(user) =>

@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vite-plus/test';
+import type { WorkflowCurrentNode } from '@/types';
 import { caseRow } from './caseRow.testing';
 import {
     columnsOf,
     countOf,
+    currentNodeGroups,
     dueOf,
     elapsedDaysOf,
     emptyTextOf,
@@ -158,5 +160,73 @@ describe('sublineNumberOf', () => {
         expect(
             sublineNumberOf(caseRow(4, { state: 'draft', number: null })),
         ).toBeNull();
+    });
+});
+
+const node = (
+    id: number,
+    parentId: number | null,
+    parentName: string | null,
+    own: string,
+): WorkflowCurrentNode => ({
+    id,
+    name: parentName === null ? own : `${parentName} ${own}`,
+    parentId,
+    parentName,
+    childName: parentName === null ? null : own,
+    state: 'waiting',
+});
+
+/** まとまりごとの [親の名前, ノードの id の並び] */
+const groupShape = (nodes: WorkflowCurrentNode[]) =>
+    currentNodeGroups(nodes).map((group) => [
+        group.parentName,
+        group.nodes.map((member) => member.id),
+    ]);
+
+describe('currentNodeGroups(まとめる所と切る所)', () => {
+    it('展開の行でなければ 1 つずつ、同じ親の子が続く所は 1 つにまとめ、次の別のノードで切る', () => {
+        expect(
+            groupShape([
+                node(1, null, null, '課長'),
+                node(2, 10, '関係部署の合議', '承認 1'),
+                node(3, 10, '関係部署の合議', '承認 3'),
+                node(4, null, null, '責任者'),
+            ]),
+        ).toEqual([
+            [null, [1]],
+            ['関係部署の合議', [2, 3]],
+            [null, [4]],
+        ]);
+    });
+
+    it('現在のノードが無ければ空', () => {
+        expect(currentNodeGroups([])).toEqual([]);
+    });
+});
+
+describe('currentNodeGroups(違う親)', () => {
+    it('子が 1 つでもまとまりになり、違う親の子が続けば分ける', () => {
+        expect(
+            groupShape([
+                node(1, 10, '関係部署の合議', '承認 1'),
+                node(2, 20, '事業部の配置', '承認 2'),
+            ]),
+        ).toEqual([
+            ['関係部署の合議', [1]],
+            ['事業部の配置', [2]],
+        ]);
+    });
+
+    it('同じ名前で別の親の子が続いても、親の id が違えば分ける', () => {
+        expect(
+            groupShape([
+                node(1, 10, '合議', '承認 1'),
+                node(2, 20, '合議', '承認 1'),
+            ]),
+        ).toEqual([
+            ['合議', [1]],
+            ['合議', [2]],
+        ]);
     });
 });

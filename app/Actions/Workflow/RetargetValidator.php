@@ -6,6 +6,7 @@ use App\Queries\Master\Api\EffectiveUsers;
 use App\Queries\Workflow\ApplicantApprovalGuard;
 use App\Queries\Workflow\CaseActor;
 use App\Queries\Workflow\OtherChildPeople;
+use App\Queries\Workflow\RetargetUserLimit;
 use Illuminate\Validation\ValidationException;
 use LogicException;
 
@@ -18,10 +19,7 @@ class RetargetValidator
     /** 入力のキー */
     public const KEY = 'user_ids';
 
-    /** 変更後の人数の上限(展開の行でないノード) */
-    public const MAX_USERS = 20;
-
-    public const COUNT = '処理担当者を 1 人から '.self::MAX_USERS.' 人まで指定してください';
+    public const COUNT = '処理担当者を 1 人から '.RetargetUserLimit::MAX_USERS.' 人まで指定してください';
 
     public const ONE_FOR_CHILD = 'このステップの処理担当者は 1 人を指定してください';
 
@@ -63,14 +61,15 @@ class RetargetValidator
         [$case, $node] = [$permit->case(), $permit->node()];
         $baseDate = $case->base_date ?? throw new LogicException("未完了の案件 {$case->id} に申請基準日が無い");
         $count = count($userIds);
-        $isChild = $node->parent_workflow_case_node_id !== null;
+        $parentId = $node->parent_workflow_case_node_id;
+        $isChild = RetargetUserLimit::isChild($parentId);
         $prevents = $node->prevents_applicant_approval;
         $applicantIds = fn () => $this->applicantGuard->applicantUserIds($case);
         $unique = array_values(array_unique($userIds));
 
         return match (true) {
             $isChild && $count !== 1 => self::ONE_FOR_CHILD,
-            $count < 1 || $count > self::MAX_USERS => self::COUNT,
+            $count < 1 || $count > RetargetUserLimit::maxOf($parentId) => self::COUNT,
             count($this->effectiveUsers->idsOn($unique, $baseDate)) !== count($unique) => self::NOT_EFFECTIVE,
             count($unique) !== $count => CaseOperationErrors::ASSIGNMENTS_DUPLICATE,
             in_array($actor->processorUserId, $userIds, true) => self::SELF,

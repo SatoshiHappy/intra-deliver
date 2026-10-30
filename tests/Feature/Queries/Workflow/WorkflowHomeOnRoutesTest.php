@@ -46,7 +46,7 @@ final class WorkflowHomeOnRoutesTest extends TransactionalTestCase
         $this->approve($case, 'manager', 'u0003');
 
         $this->assertSame([
-            '承認待ち：関係部署の合議 承認 1、関係部署の合議 承認 2、関係部署の合議 承認 3',
+            '承認待ち：関係部署の合議(承認 1、承認 2、承認 3)',
             [['申請', 'done', '処理済み'], ['課長', 'done', '処理済み'], ['予算', 'done', '処理済み'], ['部長', 'done', '処理済み'], ['分岐終了', 'done', '処理済み'], ['関係部署の合議', 'current', '承認待ち'], ['責任者', 'upcoming', '到達していない']],
         ], $this->routeOf($case));
     }

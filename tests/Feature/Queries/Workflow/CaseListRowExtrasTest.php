@@ -32,7 +32,11 @@ final class CaseListRowExtrasTest extends TransactionalTestCase
         $this->holdOn($case, 'b', 'u0006');
         $row = $this->rowOf('u0005', 'pending', $case);
 
-        $nodes = [['id' => $a, 'name' => 'a', 'state' => 'waiting'], ['id' => $b, 'name' => 'b', 'state' => 'hold']];
+        $plain = ['parentId' => null, 'parentName' => null, 'childName' => null];
+        $nodes = [
+            ['id' => $a, 'name' => 'a', ...$plain, 'state' => 'waiting'],
+            ['id' => $b, 'name' => 'b', ...$plain, 'state' => 'hold'],
+        ];
         $this->assertSame($nodes, $row['currentNodes']);
         $this->assertSame(['state' => 'waiting', 'name' => 'a、b'], $row['currentSummary']);
         $this->assertPair($case, 'u0005', ['nodeId' => $a, 'nodeName' => 'a', 'principal' => null]);

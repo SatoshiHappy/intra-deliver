@@ -26,6 +26,6 @@ export type WorkflowApplyAttachment = {
     enabled: boolean; // 申請の系統の可否(業務モジュール・フロー)
     limits: WorkflowAttachmentLimits;
     drafts: WorkflowDraftAttachment[]; // 可否によらず入る。新規の申請・再申請は空
-    attached: { name: string; size: number }[]; // レコードに付いている添付(再申請だけ。新しい順に上限まで。表示だけ)
+    attached: { name: string; size: number }[]; // レコードに付いている添付(再申請・既存のデータからの申請。新しい順に上限まで。表示だけ)
     attachedCount: number; // 付いている添付の全部の件数(「ほかに N 件」= attachedCount − attached の件数)
 };

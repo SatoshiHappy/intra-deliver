@@ -44,6 +44,7 @@ function can(overrides: Partial<Can> = {}): Can {
         reapply: false,
         withdraw: false,
         confirm: false,
+        operate: false,
         ...overrides,
     };
 }

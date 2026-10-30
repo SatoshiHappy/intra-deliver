@@ -20,10 +20,10 @@ import { CaseStateBadge } from '@/components/Workflow/WorkflowStatusBadge';
 import { EMPTY_VALUE, formatDatetime } from '@/lib/recordValues';
 import { BULK_TEXTS, allCheckedState } from '@/lib/Workflow/bulkActions';
 import type { BulkAction } from '@/lib/Workflow/bulkActions';
-import { columnsOf, namesText } from '@/lib/Workflow/caseList';
+import { namesText } from '@/lib/Workflow/caseList';
 import type { CaseListColumn } from '@/lib/Workflow/caseList';
 import { formatDateOf, personName } from '@/lib/Workflow/workflowLabels';
-import type { WorkflowCaseRow, WorkflowCaseTab } from '@/types';
+import type { WorkflowCaseRow } from '@/types';
 
 /** 選択の欄の状態(選択の欄を持つタブだけ。use-case-selection の値と、そのタブの一括の操作) */
 type CaseListSelection = {
@@ -35,7 +35,8 @@ type CaseListSelection = {
 };
 
 type Props = {
-    tab: WorkflowCaseTab;
+    /** 表の列(左から。申請一覧はタブごと、申請操作の一覧は固定) */
+    columns: CaseListColumn[];
     rows: WorkflowCaseRow[];
     emptyText: string;
     /** 表の読み上げの名前 */
@@ -228,19 +229,17 @@ function RowCells({
 }
 
 /**
- * 申請一覧の表(docs の 設計/ワークフロー/案件の運用/画面/案件の画面.md の 2 節、列 = 認可と一覧.md の 2.2 節): タブごとの列と、
+ * 申請一覧の表(docs の 設計/ワークフロー/案件の運用/画面/案件の画面.md の 2 節、列 = 認可と一覧.md の 2.2 節): 呼び手が渡す列と、
  * 未処理・未確認のタブの左端の選択の欄。0 件は文を 1 行。
  */
 export function CaseListTable({
-    tab,
+    columns,
     rows,
     emptyText,
     label,
     selection,
     actions,
 }: Props) {
-    const columns = columnsOf(tab);
-
     return (
         <Table aria-label={label}>
             <TableHeader>

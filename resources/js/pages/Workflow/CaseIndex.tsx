@@ -9,6 +9,7 @@ import { CaseListTabs } from '@/components/Workflow/CaseListTabs';
 import { CaseSearchField } from '@/components/Workflow/CaseSearchField';
 import { useBulkResult } from '@/hooks/Workflow/use-bulk-result';
 import { useCaseSearch } from '@/hooks/Workflow/use-case-search';
+import { caseListUrl, visitCaseList } from '@/lib/Workflow/caseListUrl';
 import { index } from '@/routes/workflow/cases';
 import type { WorkflowCaseIndexProps } from '@/types';
 
@@ -24,7 +25,9 @@ export default function CaseIndex({
 }: WorkflowCaseIndexProps) {
     const { openAction, dialogProps } = useCaseActionDialog();
     const bulkResult = useBulkResult();
-    const search = useCaseSearch(query);
+    const search = useCaseSearch(query.q, (q) =>
+        visitCaseList(caseListUrl({ ...query, q }), true),
+    );
 
     return (
         <>

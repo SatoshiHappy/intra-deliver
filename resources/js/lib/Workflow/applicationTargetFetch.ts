@@ -20,7 +20,8 @@ export function isHttpFailure(error: unknown): boolean {
 }
 
 /**
- * useHttp の get を、写しの流れの取り方にする。HTTP の失敗と、値を返さない応答(検証の誤りの 422)は null、ほかの例外は投げ直す。
+ * useHttp の get を、写しの流れの取り方にする。HTTP の失敗と、値を返さない応答(検証の誤りの 422)は取れなかった印の null にし、
+ * 呼び手の誤りは失敗に混ぜて隠さないよう投げ直す(docs の 設計/ワークフロー/申請の周辺/画面.md の 5 節の「申請対象の値の写し」)。
  */
 export function fetchOf(
     get: (url: string) => Promise<ApplicationTargetSnapshot | undefined>,

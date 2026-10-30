@@ -1,21 +1,17 @@
 import { router } from '@inertiajs/react';
 import { useEffect, useEffectEvent, useState } from 'react';
-import { caseListUrl, visitCaseList } from '@/lib/Workflow/caseListUrl';
-import type { CaseListQuery } from '@/lib/Workflow/caseListUrl';
 
 /** 最後の入力から一覧を引き直すまでの待ち(入力の停止。docs の 設計/ワークフロー/案件の運用/画面/案件の画面.md の 2 節) */
 const DEBOUNCE_MS = 300;
 
 /**
- * 申請一覧の検索の欄の語と待ち。入力の停止(DEBOUNCE_MS)か Enter(submit)で、今のタブ・切替の一覧を語で引き直す。
- * タブ・切替・ページ番号の URL にも欄の語を入れ、ほかの移動が始まったら待ちを消す(同期の訪問どうしは後の訪問が前を中断するので、
- * 待ちの発火で押したタブを消さないため)。
+ * 一覧の検索の欄の語と待ち(申請一覧と申請操作の一覧が使う)。入力の停止(DEBOUNCE_MS)か Enter(submit)で、今の絞り込みの一覧を語で
+ * 引き直す(search が引き直し。履歴を積まない)。呼び手はタブ・切替・ページ番号の URL にも欄の語を入れ、ほかの移動が始まったら
+ * 待ちを消す(同期の訪問どうしは後の訪問が前を中断するので、待ちの発火で押したタブを消さないため)。
  */
-export function useCaseSearch(query: CaseListQuery) {
-    const [value, setValue] = useState(query.q);
+export function useCaseSearch(initial: string, search: (q: string) => void) {
+    const [value, setValue] = useState(initial);
     const [waiting, setWaiting] = useState<string | null>(null);
-    const search = (q: string) =>
-        visitCaseList(caseListUrl({ ...query, q }), true);
 
     const fire = useEffectEvent((q: string) => {
         setWaiting(null);

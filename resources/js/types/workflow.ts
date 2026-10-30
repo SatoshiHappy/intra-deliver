@@ -12,6 +12,10 @@ import type {
     WorkflowAttachmentLimits,
 } from './workflowAttachments';
 import type {
+    WorkflowCaseOperationPanel,
+    WorkflowCaseCan,
+} from './workflowOperations';
+import type {
     WorkflowCaseRow,
     WorkflowCurrentSummary,
     WorkflowDeadline,
@@ -232,14 +236,6 @@ type WorkflowNodeAction = {
     principals: Partial<Record<WorkflowNodeOperation, WorkflowPrincipal[]>>; // 操作ごとの処理担当者の選択肢(許される操作だけ。1 つなら欄を出さない)
 };
 
-/** 案件の詳細の案件に 1 つの操作の可否(状態 × 役割 × 入口の 403 の判定) */
-type WorkflowCaseCan = {
-    pullBack: boolean;
-    reapply: boolean;
-    withdraw: boolean;
-    confirm: boolean; // 自分が確認対象者の開いている確認がある(確認の面の主ボタン)
-};
-
 /** 案件の詳細の引戻せるステップ 1 つ(principalUserId = h の処理者。自分なら null。選択肢でなく送る値) */
 export type WorkflowCasePullBackNode = WorkflowPullBackNode & {
     principalUserId: number | null;
@@ -288,6 +284,7 @@ export type WorkflowCaseShowProps = {
     histories: WorkflowCaseHistory[];
     related: { heading: string; cases: WorkflowCaseRow[] }[]; // つながる申請の群(並び・見出し = 業務データとの接続の 6 節。空の群は入れない)
     can: WorkflowCaseCan;
+    operation: WorkflowCaseOperationPanel | null; // 申請操作の面(can.operate が偽なら null)
     nodeActions: WorkflowNodeAction[]; // 自分が処理対象者の現在のステップごと
     pullBackNodes: WorkflowCasePullBackNode[]; // 自分か代理元として引戻せるステップ(写した並び。未完了だけ)
     casePrincipal: number | null; // 再申請・取止めで送る処理者(自分が申請者なら null、ほかは申請者)

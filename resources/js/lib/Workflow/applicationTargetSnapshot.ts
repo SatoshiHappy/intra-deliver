@@ -98,7 +98,7 @@ function valueChangesOf(
     targetField: string | null,
     current: RecordFormData,
     snapshot: ApplicationTargetSnapshot,
-    copied: RecordFormData,
+    snapshotForm: RecordFormData,
 ): ApplicationTargetChange[] {
     const defaults = createFormData(module).values;
 
@@ -112,7 +112,7 @@ function valueChangesOf(
         const now = current.values[code] ?? null;
 
         return comparableOf(field, now) ===
-            comparableOf(field, copied.values[code] ?? null)
+            comparableOf(field, snapshotForm.values[code] ?? null)
             ? []
             : [
                   {
@@ -131,7 +131,7 @@ function detailChangesOf(
     module: RecordModuleDefinition,
     current: RecordFormData,
     snapshot: ApplicationTargetSnapshot,
-    copied: RecordFormData,
+    snapshotForm: RecordFormData,
 ): ApplicationTargetChange[] {
     return drawnDetailsFields(module).flatMap((field) => {
         const code = field.code;
@@ -139,7 +139,11 @@ function detailChangesOf(
 
         if (
             !(code in snapshot.details) ||
-            !rowsDiffer(field.childModule, now, copied.details[code] ?? [])
+            !rowsDiffer(
+                field.childModule,
+                now,
+                snapshotForm.details[code] ?? [],
+            )
         ) {
             return [];
         }
@@ -175,11 +179,11 @@ export function applicationTargetChangesOf(
     current: RecordFormData,
     snapshot: ApplicationTargetSnapshot,
 ): ApplicationTargetChange[] {
-    const copied = editFormData(module, snapshot);
+    const snapshotForm = editFormData(module, snapshot);
 
     return [
-        ...valueChangesOf(module, targetField, current, snapshot, copied),
-        ...detailChangesOf(module, current, snapshot, copied),
+        ...valueChangesOf(module, targetField, current, snapshot, snapshotForm),
+        ...detailChangesOf(module, current, snapshot, snapshotForm),
     ];
 }
 
@@ -198,7 +202,7 @@ export function snapshotRecordOf(
     current: RecordFormData,
     snapshot: ApplicationTargetSnapshot,
 ): RecordFormData {
-    const copied = editFormData(module, snapshot);
+    const snapshotForm = editFormData(module, snapshot);
     const only = <T>(from: Record<string, T>, keys: string[]) =>
         Object.fromEntries(
             keys.filter((key) => key in from).map((key) => [key, from[key]]),
@@ -207,11 +211,11 @@ export function snapshotRecordOf(
     return {
         values: {
             ...current.values,
-            ...only(copied.values, Object.keys(snapshot.values)),
+            ...only(snapshotForm.values, Object.keys(snapshot.values)),
         },
         details: {
             ...current.details,
-            ...only(copied.details, Object.keys(snapshot.details)),
+            ...only(snapshotForm.details, Object.keys(snapshot.details)),
         },
     };
 }

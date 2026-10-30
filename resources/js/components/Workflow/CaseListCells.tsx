@@ -5,10 +5,19 @@ import {
     OverdueBadge,
 } from '@/components/Workflow/WorkflowStatusBadge';
 import { EMPTY_VALUE } from '@/lib/recordValues';
-import { dueOf, elapsedDaysOf, sublineNumberOf } from '@/lib/Workflow/caseList';
+import {
+    currentNodeGroups,
+    dueOf,
+    elapsedDaysOf,
+    sublineNumberOf,
+} from '@/lib/Workflow/caseList';
 import { show } from '@/routes/workflow/cases';
 import { edit as editDraft } from '@/routes/workflow/drafts';
-import type { WorkflowCaseRow, WorkflowDeadline } from '@/types';
+import type {
+    WorkflowCaseRow,
+    WorkflowCurrentNode,
+    WorkflowDeadline,
+} from '@/types';
 
 /**
  * 申請名の 2 行(1 行目 = 申請名。href があればリンク、2 行目 = 小さく「{申請番号}・{フロー名}」。番号が無ければ「{フロー名}」)。
@@ -73,21 +82,40 @@ export function CaseNameCell({ row }: { row: WorkflowCaseRow }) {
 }
 
 /**
- * 現在のステップのセル(表示名を「、」で並べ、保留中のノードの名前の後に札「保留中」。未完了でなければ「—」)。
+ * ノードの名前を「、」で並べる(展開の行は子の名前。保留中のノードは名前の後に札「保留中」)。
+ */
+function NodeNames({ nodes }: { nodes: WorkflowCurrentNode[] }) {
+    return nodes.map((node, position) => (
+        <Fragment key={node.id}>
+            {position > 0 && '、'}
+            {node.childName ?? node.name}
+            {node.state === 'hold' && (
+                <>
+                    {' '}
+                    <HoldBadge />
+                </>
+            )}
+        </Fragment>
+    ));
+}
+
+/**
+ * 現在のステップのセル(表示名を「、」で並べ、同じ親の展開の行が続く所は「{親の名前}({子の名前}、…)」にまとめる。
+ * 保留中のノードの名前の後に札「保留中」。未完了でなければ「—」)。
  */
 export function CurrentStepCell({ row }: { row: WorkflowCaseRow }) {
     if (row.state !== 'active' || row.currentNodes.length === 0) {
         return EMPTY_VALUE;
     }
 
-    return row.currentNodes.map((node, position) => (
-        <Fragment key={node.id}>
+    return currentNodeGroups(row.currentNodes).map((group, position) => (
+        <Fragment key={group.nodes.map((node) => node.id).join('-')}>
             {position > 0 && '、'}
-            {node.name}
-            {node.state === 'hold' && (
+            {group.parentName === null ? (
+                <NodeNames nodes={group.nodes} />
+            ) : (
                 <>
-                    {' '}
-                    <HoldBadge />
+                    {group.parentName}(<NodeNames nodes={group.nodes} />)
                 </>
             )}
         </Fragment>

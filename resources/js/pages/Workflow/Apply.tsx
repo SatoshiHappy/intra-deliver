@@ -1,6 +1,7 @@
 import { Head } from '@inertiajs/react';
 import { useRef } from 'react';
 import { ApplyApplicant } from '@/components/Workflow/ApplyApplicant';
+import { ApplyAttachmentSurface } from '@/components/Workflow/ApplyAttachmentSurface';
 import { ApplyCommentSurface } from '@/components/Workflow/ApplyCommentSurface';
 import { ApplyContactSurface } from '@/components/Workflow/ApplyContactSurface';
 import { ApplyFormActions } from '@/components/Workflow/ApplyFormActions';
@@ -12,7 +13,6 @@ import { ApplyUnshownErrors } from '@/components/Workflow/ApplyUnshownErrors';
 import { useApplyCandidateSource } from '@/hooks/Workflow/use-apply-candidate-source';
 import { useApplyForm } from '@/hooks/Workflow/use-apply-form';
 import { useFocusFirstInvalid } from '@/hooks/use-focus-first-invalid';
-import { showsApplicantField } from '@/lib/Workflow/applyApplicant';
 import { breadcrumbsOf } from '@/lib/Workflow/applyRoutes';
 import { applyViewOf } from '@/lib/Workflow/applyScreen';
 import type { WorkflowApplyProps } from '@/types';
@@ -21,7 +21,7 @@ type Props = WorkflowApplyProps;
 
 /**
  * 申請・一時保存・再申請(docs の 設計/ワークフロー/画面/申請と案件.md 3 節、ルートの深さ/画面.md 5 節、案件の運用/画面/案件の画面.md の 6.1 節)。
- * 面の並び = 申請情報(申請者の欄と注意の囲みを先頭に)→ 申請内容 → コメント → 連絡(添付の面は連絡の前に足す)。
+ * 面の並び = 申請情報(申請者の欄と注意の囲みを先頭に)→ 申請内容 → コメント → 添付ファイル → 連絡。
  */
 export default function Apply(props: Props) {
     const apply = useApplyForm(props);
@@ -45,10 +45,7 @@ export default function Apply(props: Props) {
                     aria-label={`${view.heading}の入力`}
                     className="flex flex-col gap-6"
                 >
-                    <ApplyUnshownErrors
-                        errors={errors}
-                        showsApplicant={showsApplicantField(props.applicants)}
-                    />
+                    <ApplyUnshownErrors props={props} errors={errors} />
                     <ApplyInfoSurface
                         props={props}
                         form={form}
@@ -72,6 +69,7 @@ export default function Apply(props: Props) {
                         form={form}
                         max={props.commentMaxLength}
                     />
+                    <ApplyAttachmentSurface props={props} apply={apply} />
                     <ApplyContactSurface form={form} />
                     <ApplyFormActions props={props} view={view} apply={apply} />
                 </form>

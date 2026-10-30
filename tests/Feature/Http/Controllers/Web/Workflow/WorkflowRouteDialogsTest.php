@@ -96,7 +96,7 @@ final class WorkflowRouteDialogsTest extends TransactionalTestCase
         $this->actingAsUser('u0009');
 
         $this->get("/workflow/cases/{$case}")->assertOk()->assertInertia(fn (Assert $page) => $page
-            ->where('case.currentSummary.name', '関係部署の合議 承認 1、関係部署の合議 承認 2、関係部署の合議 承認 3')
+            ->where('case.currentSummary.name', '関係部署の合議(承認 1、承認 2、承認 3)')
             ->where('nodeActions.0.nodeId', $child->id)
             ->where('nodeActions.0.name', '関係部署の合議 承認 1')
             ->where('nodeActions.0.sendBackTargets', [['id' => $this->nodeIdOf($case, 'apply'), 'name' => '申請'], ['id' => $this->nodeIdOf($case, 'section_chief'), 'name' => '課長']])

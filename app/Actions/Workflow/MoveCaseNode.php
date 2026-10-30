@@ -7,6 +7,7 @@ use App\Enums\Workflow\WorkflowOperation;
 use App\Models\Workflow\WorkflowCase;
 use App\Models\Workflow\WorkflowCaseNode;
 use App\Queries\Workflow\CaseActor;
+use App\Queries\Workflow\DesignatorNodeGuard;
 use App\Queries\Workflow\SendBackCandidates;
 use App\Support\AccessContext;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -25,6 +26,7 @@ class MoveCaseNode
         private CaseManagerGate $gate,
         private CaseInputRules $inputRules,
         private SendBackCandidates $candidates,
+        private DesignatorNodeGuard $designatorGuard,
         private CaseRoutePlanner $planner,
         private CaseWriter $writer,
         private SendCaseNotices $notices,
@@ -109,15 +111,13 @@ class MoveCaseNode
     }
 
     /**
-     * 指定するノードは進めない(指定の入力が要る = 15.5 節。一括承認と同じ規則)。
+     * 指定するノードは進めない(指定の入力が要る = 15.5 節。一括承認と同じ規則。式は詳細の申請操作の面と同じ {@see DesignatorNodeGuard})。
      *
      * @throws ValidationException
      */
     private function throwIfDesignator(WorkflowCaseNode $node): void
     {
-        $designates = WorkflowCaseNode::query()->where('designator_workflow_case_node_id', $node->id)->exists();
-
-        if ($designates) {
+        if ($this->designatorGuard->designatesAnother($node->id)) {
             throw CaseOperationErrors::ofCase(CaseOperationErrors::MOVE_DESIGNATOR);
         }
     }

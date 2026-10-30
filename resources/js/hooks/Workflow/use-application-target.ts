@@ -106,7 +106,7 @@ export function useApplicationTarget(
             reflect: () => reflectApplicationTarget(applicationTarget, ports),
             cancel: () => cancelApplicationTarget(applicationTarget, ports),
         },
-        // 返す Promise は応答を当て終わったとき。HTTP の失敗でない例外は未処理の拒否として上がる(握りつぶさない)
+        // 何も返さない(応答を当て終わるのを呼び手は待たない)。HTTP の失敗でない例外は未処理の拒否として上がる(握りつぶさない)
         changeRecord: (update: (record: RecordFormData) => RecordFormData) => {
             void recordChanged(applicationTarget, ports, update);
         },

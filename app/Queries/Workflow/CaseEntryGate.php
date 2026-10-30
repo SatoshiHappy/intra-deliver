@@ -28,6 +28,7 @@ class CaseEntryGate
         private CaseOperationDecider $decider,
         private RecordApplyFlows $recordApplyFlows,
         private ApplicantRequester $applicantRequester,
+        private FlowPermissions $flowPermissions,
     ) {}
 
     /**
@@ -88,6 +89,23 @@ class CaseEntryGate
     public function authorizeCase(AccessContext $context, int $caseId): void
     {
         $this->visibleCase($context, $caseId);
+    }
+
+    /**
+     * 案件操作(管理のルート): 案件が無い・閲覧できない 404 → 案件のフローの operate を許されない 403(docs の
+     * 設計/ワークフロー/案件の運用/案件の操作/案件操作.md の 15.1 節。業務処理の判定 = 案件操作の判定の入口と同じ読み取りを呼ぶ)。
+     *
+     * @throws ModelNotFoundException<WorkflowCase> 案件が無い・閲覧できないとき
+     * @throws AuthorizationException operate を許されないとき
+     */
+    public function authorizeCaseOperation(AccessContext $context, int $caseId): void
+    {
+        $case = $this->visibleCase($context, $caseId);
+        $requester = Requester::fromAccessContext($context);
+
+        if (! $this->flowPermissions->canOperate($requester, $context->date, $case->workflow_flow_id)) {
+            throw new AuthorizationException;
+        }
     }
 
     /**

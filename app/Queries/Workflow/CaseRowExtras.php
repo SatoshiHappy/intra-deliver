@@ -69,7 +69,7 @@ class CaseRowExtras
         foreach ($situations as $caseId => $situation) {
             $approval = $approvals[$caseId] ?? null;
             $extras[$caseId] = [
-                'deadline' => $wants(WorkflowCaseRowField::Deadline) ? $this->deadlineOf($situation, $date) : null,
+                'deadline' => $this->deadlineOf($situation, $date, $fields),
                 'principals' => array_map(fn (int $id) => $people[$id], $principals[$caseId] ?? []),
                 'confirmation' => $confirmations[$caseId] ?? null,
                 'bulkApproval' => $approval === null ? null : self::approvalOf($approval, $people),
@@ -83,15 +83,24 @@ class CaseRowExtras
     }
 
     /**
-     * 未処理の集まりの経過日数・期限(案件の操作/README.md の 1.4 節の案件ごとの値)。到達した日は集まりで最も早いもの。
+     * 経過日数・期限(案件の操作/README.md の 1.4 節の案件ごとの値)。対象 = 未処理の集まりか、現在のノードの全部(申請操作の一覧)。
+     * 到達した日は集まりで最も早いもの。どちらも求めなければ null。
      *
-     * @return Deadline
+     * @param  list<WorkflowCaseRowField>  $fields
+     * @return Deadline|null
      */
-    private function deadlineOf(CaseSituation $situation, DateTimeInterface $today): array
+    private function deadlineOf(CaseSituation $situation, DateTimeInterface $today, array $fields): ?array
     {
-        $nodes = $this->deadlines->pendingNodesOf($situation->currentNodes, $situation->targetNodeIds);
+        $current = $situation->currentNodes;
+        $targets = $situation->targetNodeIds;
+        $wants = fn (WorkflowCaseRowField $field) => in_array($field, $fields, true);
+        $nodes = match (true) {
+            $wants(WorkflowCaseRowField::Deadline) => $this->deadlines->pendingNodesOf($current, $targets),
+            $wants(WorkflowCaseRowField::CurrentDeadline) => $current,
+            default => null,
+        };
 
-        return $this->deadlines->viewOf($nodes, $today);
+        return $nodes === null ? null : $this->deadlines->viewOf($nodes, $today);
     }
 
     /**

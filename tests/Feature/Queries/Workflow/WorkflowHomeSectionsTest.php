@@ -160,7 +160,7 @@ final class WorkflowHomeSectionsTest extends TransactionalTestCase
         $this->assertSame([
             [13, '保留中：部長', [$done('申請'), $done('課長'), $done('予算'), ['部長', 'current', '保留中'], $upcoming('分岐終了'), $upcoming('関係部署の合議'), $owner], null],
             [14, '承認待ち：部長', [$done('申請'), $done('課長'), $done('予算'), ['部長', 'current', '承認待ち'], $upcoming('分岐終了'), $upcoming('関係部署の合議'), $owner], null],
-            [10, '承認待ち：関係部署の合議 承認 1、関係部署の合議 承認 2', [$done('申請'), $done('課長'), $done('予算'), ['部長', 'skipped', '省略'], $done('分岐終了'), $council, $owner], null],
+            [10, '承認待ち：関係部署の合議(承認 1、承認 2)', [$done('申請'), $done('課長'), $done('予算'), ['部長', 'skipped', '省略'], $done('分岐終了'), $council, $owner], null],
         ], $this->itemsOf($section));
         $this->assertSame([$this->caseNumbered(13)->name, route('workflow.cases.show', $this->caseNumbered(13)->id)], [$section['items'][0]['title'] ?? null, $section['items'][0]['url'] ?? null]);
 

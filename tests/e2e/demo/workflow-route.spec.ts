@@ -7,6 +7,10 @@ import {
     versionTwoDay,
 } from '../support/seed-dates';
 import { submitAndExpectUrl } from '../support/submit';
+import {
+    addAssignee,
+    expectCandidateLabel,
+} from '../support/workflow-assignees';
 
 // ワークフローのルートの深さの画面(docs の 設計/ワークフロー/ルートの深さ/画面.md 10 節の demo): 申請の画面の申請基準日、承認のダイアログの
 // 指定するステップ、差戻し先の制限、古い画面、申請者承認防止(送る前に知らせる)と、詳細のフロー図(既定)・図と表の切替・合議の進み具合・通らなかった枝。
@@ -197,23 +201,6 @@ async function expectInsideDiagram(page: Page, name: string) {
  */
 function councilProgress(page: Page) {
     return page.getByRole('region', { name: '関係部署の合議', exact: true });
-}
-
-/**
- * 指定するステップの欄で、検索する語を打って候補を選ぶ(候補の名前は「名前 主所属」なので先頭で引く)。
- */
-async function addAssignee(
-    page: Page,
-    section: ReturnType<Page['getByRole']>,
-    query: string,
-    name: string,
-) {
-    await section
-        .getByRole('button', { name: 'ユーザーを検索して追加', exact: true })
-        .click();
-    await page.getByPlaceholder('名前・コードで検索').fill(query);
-    await page.getByRole('option', { name: new RegExp(`^${name}`) }).click();
-    await expect(page.getByPlaceholder('名前・コードで検索')).toHaveCount(0);
 }
 
 /** 詳細の props のうち、横取りで書き換える部分(画面.md 7 節の nodeActions[].designations・pullBackNodes[].blockedReason・histories[].assignments) */
@@ -434,6 +421,9 @@ test('上長: 承認のダイアログに指定するステップが 2 つ出て
     await expect(owner).toBeVisible();
     // 完了の条件は 1 人以上かつ選んだ人数が必要な人数以上のときだけ(合議の最小は 2 なので 0 人でも省略の知らせは出ない = 画面.md 6 節、通しの回の T03)
     await expect(assigneeStatus(council)).toHaveText('選択中 0 人');
+    // 欄が 2 つでも候補の一覧は欄ごとに別の名前で読み上げる
+    await expectCandidateLabel(page, council, '関係部署の合議');
+    await expectCandidateLabel(page, owner, '責任者');
 
     await addAssignee(page, council, 'u0009', '吉田 達也');
     await expect(assigneeStatus(council)).toHaveText('選択中 1 人');
@@ -530,7 +520,7 @@ test('部長: 承認すると合議の 3 人が承認待ちになり、現在の
 
     await expect(page.getByText('承認しました', { exact: true })).toBeVisible();
     await expect(currentSteps(page)).toHaveText(
-        '関係部署の合議 承認 1、関係部署の合議 承認 2、関係部署の合議 承認 3',
+        '関係部署の合議(承認 1、承認 2、承認 3)',
     );
 
     // 図: 予算 350 なので「何もしない」の枝が通らなかった枝(点線と語)、部長は処理済み、縦配置の枠に完了の条件。合議の進み具合は 0 人が承認・必要 2 人

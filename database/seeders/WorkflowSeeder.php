@@ -96,6 +96,7 @@ class WorkflowSeeder extends Seeder
         'workflow.reapplications' => ['再申請', 'Reapplications'],
         'workflow.proxies' => ['代理の設定', 'Proxy settings'],
         'workflow.admin' => ['ワークフローの管理', 'Workflow administration'],
+        'workflow.admin.cases' => ['申請操作', 'Application operations'],
         'workflow.admin.proxies' => ['代理の管理', 'Proxy administration'],
     ];
 
@@ -139,6 +140,12 @@ class WorkflowSeeder extends Seeder
      * 設計/ワークフロー/案件の運用/認可と一覧.md の 4 節)
      */
     private const ADMIN_ROUTES = [
+        'workflow.admin.cases.index' => ['申請操作の一覧', 'Application operation list'],
+        'workflow.admin.cases.retarget' => ['処理担当者の変更', 'Change assignees'],
+        'workflow.admin.cases.reexpand' => ['再展開', 'Re-expand assignees'],
+        'workflow.admin.cases.move' => ['ステップの移動', 'Move step'],
+        'workflow.admin.cases.assign' => ['指定の変更', 'Change designation'],
+        'workflow.admin.cases.destroy' => ['申請の削除', 'Delete application'],
         'workflow.admin.proxies.index' => ['代理の管理', 'Proxy administration'],
         'workflow.admin.proxies.store' => ['代理の追加(管理)', 'Add proxy (admin)'],
         'workflow.admin.proxies.destroy' => ['代理の削除(管理)', 'Delete proxy (admin)'],

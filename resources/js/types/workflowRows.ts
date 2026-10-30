@@ -16,16 +16,19 @@ export type WorkflowPerson = { id: number; code: string; name: string | null };
 /** 札の状態(再申請待ち > すべて保留中 > 承認待ち = 認可と一覧.md の 2.4 節) */
 type WorkflowLabelState = 'waiting' | 'reapply' | 'hold';
 
-/** 現在のステップの要約(札の状態と、表示名を「、」で並べた名前。サーバーの 1 か所が作る) */
+/** 現在のステップの要約(札の状態と、現在のステップの文字列 = 同じ親の展開の行をまとめた名前。サーバーの 1 か所が作る) */
 export type WorkflowCurrentSummary = {
     state: WorkflowLabelState;
     name: string;
 };
 
-/** 現在のノード 1 つ(保留中の札を名前の後に出す) */
-type WorkflowCurrentNode = {
+/** 現在のノード 1 つ(保留中の札を名前の後に出す。同じ親の展開の行は親の名前でまとめる) */
+export type WorkflowCurrentNode = {
     id: number;
-    name: string;
+    name: string; // 表示名(展開の行は「{親の名前} {子の名前}」)
+    parentId: number | null; // 展開の行の親のノードの id(同じ親の子かを見る。展開の行でなければ null)
+    parentName: string | null; // 展開の行の親の名前(展開の行でなければ null)
+    childName: string | null; // 展開の行の子の名前(展開の行でなければ null)
     state: WorkflowLabelState;
 };
 

@@ -128,11 +128,11 @@ describe('取れなかったとき・取得中に空にする・申請者を変�
 
 describe('取得中に空にする・申請者を変える(続き)', () => {
     it('写しの後に空にしてから選んだレコードが 404: 空に戻る', () => {
-        const copied = applicationTargetSettled(
+        const kept = applicationTargetSettled(
             applicationTargetAnswered(sent(null, first).state, 1, 'ok').state,
             first,
         );
-        const emptied = applicationTargetPicked(copied, null).state;
+        const emptied = applicationTargetPicked(kept, null).state;
         const again = applicationTargetPicked(emptied, second);
 
         expect(emptied.settled).toBeNull();
@@ -164,8 +164,8 @@ describe('取得中に空にする・申請者を変える(続き)', () => {
     });
 
     it('写しを当てて決まった申請対象が、次の戻す先になる', () => {
-        const copied = applicationTargetSettled(sent(null, first).state, first);
-        const again = applicationTargetPicked(copied, second);
+        const kept = applicationTargetSettled(sent(null, first).state, first);
+        const again = applicationTargetPicked(kept, second);
 
         expect(
             applicationTargetAnswered(again.state, again.request ?? 0, 'failed')

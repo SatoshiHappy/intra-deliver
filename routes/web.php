@@ -24,6 +24,7 @@ use App\Http\Controllers\Web\Records\RecordController;
 use App\Http\Controllers\Web\Records\RecordRevisionFileController;
 use App\Http\Controllers\Web\Records\RelatedColumnController;
 use App\Http\Controllers\Web\Records\RuleController;
+use App\Http\Controllers\Web\Workflow\Admin\CaseOperationController;
 use App\Http\Controllers\Web\Workflow\Admin\ProxyController as AdminProxyController;
 use App\Http\Controllers\Web\Workflow\ApplicationController;
 use App\Http\Controllers\Web\Workflow\AssigneeCandidateController;
@@ -162,7 +163,7 @@ Route::put('/records/admin/categories/{category}/reorder', [ModuleCategoryContro
 Route::put('/records/admin/categories/{category}/modules', [ModuleCategoryController::class, 'updateModules'])->name('records.admin.categories.modules')->where('category', '[0-9a-z]{26}');
 
 // ワークフローの画面(docs の 設計/ワークフロー/画面/README.md 1.1)。{flow} = フローのコード、{case} = 案件の id(数字だけ。一時保存も同じ形で指す)。
-// 入口の判定の順(案件 404 → フロー 404 → 申請できる人・update 403 → 封筒の 422)は FormRequest の authorize と読み取りが持つ(案件の操作/操作.md 3.1 の 1)。
+// 入口の判定は FormRequest の authorize と読み取りが持つ(設計/ワークフロー/案件の操作/操作.md の 3.1 節の 1)。
 Route::get('/workflow/flows', [FlowController::class, 'index'])->name('workflow.flows.index');
 Route::get('/workflow/flows/{flow}/apply', [ApplicationController::class, 'create'])->name('workflow.applications.create')->where('flow', '[a-z][a-z0-9_]{0,49}');
 Route::post('/workflow/flows/{flow}/apply', [ApplicationController::class, 'store'])->name('workflow.applications.store')->where('flow', '[a-z][a-z0-9_]{0,49}');
@@ -210,3 +211,17 @@ Route::get('/workflow/admin/proxies', [AdminProxyController::class, 'index'])->n
 Route::post('/workflow/admin/proxies', [AdminProxyController::class, 'store'])->name('workflow.admin.proxies.store');
 Route::delete('/workflow/admin/proxies/{proxy}', [AdminProxyController::class, 'destroy'])
     ->name('workflow.admin.proxies.destroy')->where('proxy', '[0-9]{1,18}');
+
+// 申請操作(docs の 設計/ワークフロー/案件の運用/画面/README.md の 1.1 節)。{case} = 案件の id(数字だけ)。システム管理者だけ(ポリシーを置かない =
+// 設計/ワークフロー/案件の運用/認可と一覧.md の 4 節)。入口の判定は FormRequest の authorize が持つ。
+Route::get('/workflow/admin/cases', [CaseOperationController::class, 'index'])->name('workflow.admin.cases.index');
+Route::post('/workflow/admin/cases/{case}/retarget', [CaseOperationController::class, 'retarget'])
+    ->name('workflow.admin.cases.retarget')->where('case', '[0-9]{1,18}');
+Route::post('/workflow/admin/cases/{case}/reexpand', [CaseOperationController::class, 'reexpand'])
+    ->name('workflow.admin.cases.reexpand')->where('case', '[0-9]{1,18}');
+Route::post('/workflow/admin/cases/{case}/move', [CaseOperationController::class, 'move'])
+    ->name('workflow.admin.cases.move')->where('case', '[0-9]{1,18}');
+Route::post('/workflow/admin/cases/{case}/assign', [CaseOperationController::class, 'assign'])
+    ->name('workflow.admin.cases.assign')->where('case', '[0-9]{1,18}');
+Route::delete('/workflow/admin/cases/{case}', [CaseOperationController::class, 'destroy'])
+    ->name('workflow.admin.cases.destroy')->where('case', '[0-9]{1,18}');

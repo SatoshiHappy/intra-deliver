@@ -118,8 +118,8 @@ final class CaseDeadlinesTest extends TestCase
     {
         $reachedAt = CarbonImmutable::parse($reachedAtUtc, 'UTC');
 
-        $kind = WorkflowNodeKind::Approve;
+        [$kind, $state] = [WorkflowNodeKind::Approve, WorkflowNodeState::Waiting];
 
-        return new CurrentNode(1, '承認', $kind, WorkflowNodeState::Waiting, null, null, [], $reachedAt, $dueOn);
+        return new CurrentNode(1, '承認', $kind, $state, null, null, null, null, [], $reachedAt, $dueOn);
     }
 }

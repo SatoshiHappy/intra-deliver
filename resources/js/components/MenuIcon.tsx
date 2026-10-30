@@ -17,6 +17,7 @@ import {
     HeartPulse,
     House,
     Inbox,
+    ListChecks,
     ListTodo,
     Mail,
     MapIcon,
@@ -80,6 +81,7 @@ const ICONS: Record<string, LucideIcon> = {
     'folder-tree': FolderTree,
     send: Send,
     inbox: Inbox,
+    'list-checks': ListChecks,
     'user-cog': UserCog,
 };
 

@@ -20,7 +20,7 @@ describe('写した後のフォームの値', () => {
             { name: '旧名', budget: '5' },
             { milestones: [row(1, '旧行')] },
         );
-        const copied = snapshotRecordOf(
+        const snapshotted = snapshotRecordOf(
             planModule,
             current,
             snapshotOf(
@@ -29,28 +29,28 @@ describe('写した後のフォームの値', () => {
             ),
         );
 
-        expect(copied.values.name).toBe('新名');
-        expect(copied.values.budget).toBe('5');
-        expect(copied.values.project).toEqual({
+        expect(snapshotted.values.name).toBe('新名');
+        expect(snapshotted.values.budget).toBe('5');
+        expect(snapshotted.values.project).toEqual({
             id: 9,
             label: '新',
             affiliation: null,
         });
-        expect(copied.details.milestones).toHaveLength(1);
-        expect(copied.details.milestones[0]).toMatchObject({
+        expect(snapshotted.details.milestones).toHaveLength(1);
+        expect(snapshotted.details.milestones[0]).toMatchObject({
             id: null,
             values: { title: '新行', done: true },
         });
     });
 
     it('元の値が空の項目は空を写す', () => {
-        const copied = snapshotRecordOf(
+        const snapshotted = snapshotRecordOf(
             planModule,
             recordOf({ name: '旧名' }),
             snapshotOf({ name: null }),
         );
 
-        expect(copied.values.name).toBe('');
+        expect(snapshotted.values.name).toBe('');
     });
 });
 

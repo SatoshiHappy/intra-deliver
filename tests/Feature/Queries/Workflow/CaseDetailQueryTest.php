@@ -159,9 +159,9 @@ final class CaseDetailQueryTest extends TransactionalTestCase
         $this->assertSame([[$apply->name, 'apply', $this->users['a']->id, $at, null, null, null, null, []], [$approve1->name, 'approve', $this->users['b']->id, $at, null, null, null, null, []]], array_map(fn (array $history) => [
             $history['nodeName'], $history['action'], $history['actor']['id'], $history['at'], $history['comment'], $history['sendBackNodeName'], $history['diff'], $history['diffBaseAt'], $history['assignments'],
         ], $detail['histories']));
-        $this->assertSame([['pullBack' => false, 'reapply' => false, 'withdraw' => false, 'confirm' => false], 4000], [$detail['can'], $detail['commentMaxLength']]);
+        $this->assertSame([['pullBack' => false, 'reapply' => false, 'withdraw' => false, 'confirm' => false, 'operate' => false], null, 4000], [$detail['can'], $detail['operation'], $detail['commentMaxLength']]);
         $this->assertSame([['nodeId' => $approve2->id, 'name' => $approve2->name, 'approve' => true, 'approveEarly' => true, 'reject' => true, 'sendBack' => true, 'hold' => true, 'release' => false, 'transfer' => true, 'blockedReason' => null, 'holdBlockedReason' => null, 'sendBackTargets' => [['id' => $apply->id, 'name' => $apply->name], ['id' => $approve1->id, 'name' => $approve1->name]], 'sendBackRestricted' => false, 'isCouncilVote' => false, 'principals' => array_fill_keys(['approve', 'approveEarly', 'reject', 'sendBack', 'hold', 'transfer'], [['id' => $this->users['c']->id, 'name' => '高橋 誠', 'isSelf' => true]]), 'designations' => []]], $detail['nodeActions']);
-        $this->assertSame([['pullBack' => true, 'reapply' => false, 'withdraw' => false, 'confirm' => false], []], array_values(array_intersect_key($this->show($this->users['b'], $case->id), ['can' => 0, 'nodeActions' => 0])));
+        $this->assertSame([['pullBack' => true, 'reapply' => false, 'withdraw' => false, 'confirm' => false, 'operate' => false], []], array_values(array_intersect_key($this->show($this->users['b'], $case->id), ['can' => 0, 'nodeActions' => 0])));
     }
 
     public function test_a_send_back_row_names_its_target_node(): void

@@ -68,7 +68,7 @@ export async function pickApplicationTarget(
 /**
  * 写した値が申請の画面に入っている(プロジェクト名・予算・マイルストーンの行の数。行の数は見出しの行を含めない)。
  */
-export async function expectCopied(
+export async function expectSnapshot(
     form: Locator,
     values: { name: string; budget: string; rows: number },
 ): Promise<void> {

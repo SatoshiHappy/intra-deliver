@@ -10,7 +10,7 @@ import {
     SOURCE,
     applyForm,
     budgetField,
-    expectCopied,
+    expectSnapshot,
     expectProjectUntouched,
     openProject,
 } from '../support/workflow-target-apply';
@@ -38,7 +38,7 @@ test('プロジェクトの詳細の「申請する」→ 申請の画面に値�
         page.getByText(`${SOURCE}を申請対象にして申請します。`),
     ).toBeVisible();
     const form = applyForm(page);
-    await expectCopied(form, { name: SOURCE, budget: '1200', rows: 4 });
+    await expectSnapshot(form, { name: SOURCE, budget: '1200', rows: 4 });
     await expect(
         form.getByRole('textbox', { name: '名称(1 行目)', exact: true }),
     ).toHaveValue('要件定義');

@@ -24,7 +24,8 @@ use LogicException;
  * 失って取り戻した場合は返す(受け入れた代償)。
  * 引戻し・取止めの入口の添付の可否と attachmentLimits = 設計/ワークフロー/申請の周辺/添付/README.md の 5 節({@see CaseAttachEntries})。
  * だれとして処理するか(処理担当者の選択肢・引戻しと取止めの処理者・代理の 1 行)は {@see CaseProcessorChoices}、確認の面は
- * {@see CaseConfirmationPanel}、基本情報の期限は {@see CaseDeadlines}(設計/ワークフロー/案件の運用/画面/案件の画面.md の 4 節)。
+ * {@see CaseConfirmationPanel}、基本情報の期限は {@see CaseDeadlines}、申請操作の面(can.operate と operation)は {@see CaseOperationPanel}
+ * (設計/ワークフロー/案件の運用/画面/案件の画面.md の 4 節)。
  *
  * @phpstan-import-type Person from WorkflowPeople
  * @phpstan-import-type History from CaseHistories
@@ -35,14 +36,16 @@ use LogicException;
  * @phpstan-import-type AttachmentLimits from WorkflowAttachmentLimits
  * @phpstan-import-type DetailPullBackNode from CaseProcessorChoices
  * @phpstan-import-type Confirmation from CaseConfirmationPanel
+ * @phpstan-import-type Panel from CaseOperationPanel
  *
- * @phpstan-type Processing array{can: array{pullBack: bool, reapply: bool, withdraw: bool, confirm: bool},
+ * @phpstan-type ShowCan array{pullBack: bool, reapply: bool, withdraw: bool, confirm: bool, operate: bool}
+ * @phpstan-type Processing array{can: ShowCan,
  *     nodeActions: list<array<string, mixed>>, pullBackNodes: list<DetailPullBackNode>, casePrincipal: int|null,
  *     proxyNote: string|null, canAttachOnWithdraw: bool, attachmentLimits: AttachmentLimits|null}
  * @phpstan-type Detail array{case: array<string, mixed>, content: array<string, mixed>, nodes: list<DiagramNode>,
  *     edges: list<DiagramEdge>, councils: list<Council>, histories: list<History>,
  *     related: list<RelatedGroup>,
- *     can: array{pullBack: bool, reapply: bool, withdraw: bool, confirm: bool},
+ *     can: ShowCan, operation: Panel|null,
  *     nodeActions: list<array<string, mixed>>, pullBackNodes: list<DetailPullBackNode>, casePrincipal: int|null,
  *     proxyNote: string|null,
  *     confirmations: list<Confirmation>, commentMaxLength: int, canAttachOnWithdraw: bool,
@@ -65,6 +68,7 @@ class CaseDetailQuery
         private CaseConfirmationPanel $confirmationPanel,
         private CaseDeadlines $deadlines,
         private WorkflowAttachmentLimits $limits,
+        private CaseOperationPanel $operationPanel,
     ) {}
 
     /**
@@ -89,6 +93,7 @@ class CaseDetailQuery
         $councils = $this->councils->of($case, $nodes, $historiesById, $assignments, $situation, $requester->userId, $context->date, $context->localeCode);
         $diagram = $this->diagram->of($case, $nodes, $historiesById, $assignments, $situation, $people, $councils, $requester->userId);
         $updatedAfter = $this->updatedAfterSubmission($content['record']['updatedAt'], $histories);
+        $operation = $this->operationPanel->of($requester, $context, $situation, $nodes);
         $detail = [
             'case' => $this->caseOf($case, $situation, $people, $context),
             'content' => [...$content, 'updatedAfterSubmission' => $updatedAfter],
@@ -98,7 +103,8 @@ class CaseDetailQuery
             'histories' => $this->histories
                 ->of($requester, $context->date, $context->localeCode, $histories, $nodes->keyBy('id'), $people),
             'related' => $this->related->of($requester, $context->date, $context->localeCode, $case, $content),
-            ...$this->processingOf($requester, $context, $situation, $nodes),
+            ...$this->processingOf($requester, $context, $situation, $nodes, $operation !== null),
+            'operation' => $operation,
             'confirmations' => $this->confirmationPanel
                 ->of($case, $nodes, $context->userId, $context->date, $context->localeCode),
             'commentMaxLength' => WorkflowCaseHistory::COMMENT_MAX,
@@ -112,6 +118,7 @@ class CaseDetailQuery
      * 処理の操作の props(can・nodeActions と指定の欄・引戻せるノード・casePrincipal・代理の 1 行・添付の可否)。
      *
      * @param  Collection<int, WorkflowCaseNode>  $nodes  写した並びのノード
+     * @param  bool  $canOperate  申請操作の面を出すか(面のボタンのどれかが真 = 認可と一覧.md の 3 節)
      * @return Processing
      */
     private function processingOf(
@@ -119,6 +126,7 @@ class CaseDetailQuery
         AccessContext $context,
         CaseSituation $situation,
         Collection $nodes,
+        bool $canOperate,
     ): array {
         $date = $context->date;
         $kinds = array_map(fn (WorkflowCaseNode $node) => $node->kind, $nodes->keyBy('id')->all());
@@ -131,7 +139,11 @@ class CaseDetailQuery
         $attachable = in_array(true, [$choices['canAttachOnWithdraw'], ...$pullBackAttach], true);
 
         return [
-            'can' => [...$choices['can'], 'confirm' => $this->decider->canConfirm($requester, $date, $situation)],
+            'can' => [
+                ...$choices['can'],
+                'confirm' => $this->decider->canConfirm($requester, $date, $situation),
+                'operate' => $canOperate,
+            ],
             'nodeActions' => array_map($designated, $choices['nodeActions']),
             'pullBackNodes' => $choices['pullBackNodes'],
             'casePrincipal' => $choices['casePrincipal'],

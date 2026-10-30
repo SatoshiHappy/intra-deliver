@@ -2,18 +2,19 @@
 
 namespace App\Actions\Workflow;
 
-use App\Enums\Workflow\WorkflowNodeState;
 use App\Models\Workflow\WorkflowCase;
 use App\Models\Workflow\WorkflowCaseNode;
 use App\Queries\Master\Api\EffectiveUsers;
 use App\Queries\Workflow\ApplicantApprovalGuard;
 use App\Queries\Workflow\CaseActor;
+use App\Queries\Workflow\ReassignCandidates;
 use Illuminate\Validation\ValidationException;
 use LogicException;
 
 /**
  * 指定の変更の前提と人の規則(docs の 設計/ワークフロー/案件の運用/案件の操作/案件操作.md の 15.6 節、文言 = 同時実行と検査.md の 13 節)。
- * 前提は指定されるノード Y が現在のノードでないので表の外で見る(15.2 節の行の前提。外れれば 422 case)。鍵を取らない(案件の行の鍵の下で呼ぶ)。
+ * 前提は指定されるノード Y が現在のノードでないので表の外で見る(15.2 節の行の前提。外れれば 422 case。式は詳細の申請操作の面と同じ
+ * {@see ReassignCandidates})。鍵を取らない(案件の行の鍵の下で呼ぶ)。
  */
 class ReassignValidator
 {
@@ -29,6 +30,7 @@ class ReassignValidator
     public function __construct(
         private EffectiveUsers $effectiveUsers,
         private ApplicantApprovalGuard $applicantGuard,
+        private ReassignCandidates $reassignCandidates,
     ) {}
 
     /**
@@ -38,14 +40,7 @@ class ReassignValidator
      */
     public function requireReassignable(WorkflowCaseNode $node): void
     {
-        $designatorId = $node->designator_workflow_case_node_id;
-        $designator = $designatorId === null ? null : WorkflowCaseNode::query()->find($designatorId);
-        $designates = WorkflowCaseNode::query()->where('designator_workflow_case_node_id', $node->id)->exists();
-
-        $isUnreached = $node->state === WorkflowNodeState::Unreached;
-        $reassignable = $isUnreached && $designator?->state === WorkflowNodeState::Done;
-
-        if (! $reassignable || $designates) {
+        if (! $this->reassignCandidates->isReassignable($node)) {
             throw CaseOperationErrors::ofCase(CaseOperationErrors::NOT_PERMITTED);
         }
     }

@@ -11,6 +11,9 @@ enum WorkflowCaseRowField
     /** 経過日数・期限(未処理の集まり = 案件の操作/README.md の 1.4 節) */
     case Deadline;
 
+    /** 経過日数・期限(現在のノードの全部 = 申請操作の一覧。案件の運用/認可と一覧.md の 2.3 節) */
+    case CurrentDeadline;
+
     /** 代理元(未処理の集まりのうち、自分が本人として当たらないノードの代理元) */
     case Principals;
 

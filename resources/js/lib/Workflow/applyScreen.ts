@@ -1,7 +1,12 @@
 import type { RecordFormData } from '@/lib/recordForm';
+import {
+    attachmentSurfaceOf,
+    isAttachmentKey,
+    isHiddenAttachmentError,
+} from '@/lib/Workflow/applyAttachment';
 import { applicationTargetOf } from '@/lib/Workflow/applicationTargetSnapshot';
 import { targetsText } from '@/lib/Workflow/workflowLabels';
-import type { WorkflowApplyProps } from '@/types';
+import type { WorkflowApplyAttachment, WorkflowApplyProps } from '@/types';
 
 type Props = WorkflowApplyProps;
 
@@ -29,6 +34,27 @@ export function isFieldKey(key: string, showsApplicant: boolean): boolean {
         key.startsWith('contact.') ||
         (showsApplicant && key === 'applicant_user_id')
     );
+}
+
+/**
+ * フォームの先頭に出す誤りのキー(欄の下に出ないもの)。添付の誤りは面の有無と使えるかで出し先が変わる
+ * (設計/ワークフロー/申請の周辺/画面.md の 2 節)。
+ */
+export function unshownKeysOf(
+    errors: Record<string, string | undefined>,
+    showsApplicant: boolean,
+    attachment: Pick<WorkflowApplyAttachment, 'enabled' | 'drafts'>,
+): string[] {
+    const showsAttachment = attachmentSurfaceOf(attachment).kind !== 'none';
+
+    return Object.keys(errors)
+        .filter(
+            (key) =>
+                !isFieldKey(key, showsApplicant) &&
+                !(showsAttachment && isAttachmentKey(key)) &&
+                !isHiddenAttachmentError(key, attachment.enabled),
+        )
+        .sort();
 }
 
 /**

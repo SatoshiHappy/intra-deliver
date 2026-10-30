@@ -9,7 +9,7 @@ import {
     applyForm,
     budgetField,
     expectConfirmRows,
-    expectCopied,
+    expectSnapshot,
     milestoneRows,
     nameField,
     pickApplicationTarget,
@@ -33,7 +33,7 @@ test('新規の申請で申請対象を選ぶと値が写り、入力済みの�
     // 入力済みの値が無いので、確かめずに写す。見出しの下の 1 行は
     // 業務レコードの詳細から開いた画面だけが替わる
     await pickApplicationTarget(page, '新規', OTHER);
-    await expectCopied(form, { name: OTHER, budget: '300', rows: 2 });
+    await expectSnapshot(form, { name: OTHER, budget: '300', rows: 2 });
     await expect(page.getByRole('dialog')).toHaveCount(0);
     await expect(
         page.getByText('内容を入力して申請します。', { exact: false }),
@@ -59,7 +59,7 @@ test('新規の申請で申請対象を選ぶと値が写り、入力済みの�
     await pickApplicationTarget(page, '社内', SOURCE);
     await dialog.getByRole('button', { name: '反映', exact: true }).click();
     await expect(dialog).toHaveCount(0);
-    await expectCopied(form, { name: SOURCE, budget: '1200', rows: 4 });
+    await expectSnapshot(form, { name: SOURCE, budget: '1200', rows: 4 });
 });
 
 test('何も入れていない新規の申請で、状態が既定値(計画中)と違うプロジェクトを選んでも、確かめずに写す', async ({
@@ -70,7 +70,7 @@ test('何も入れていない新規の申請で、状態が既定値(計画中)
 
     await pickApplicationTarget(page, '社内', SOURCE);
 
-    await expectCopied(form, { name: SOURCE, budget: '1200', rows: 4 });
+    await expectSnapshot(form, { name: SOURCE, budget: '1200', rows: 4 });
     await expect(page.getByRole('dialog')).toHaveCount(0);
 });
 
@@ -97,7 +97,7 @@ test('写しの値の入口が 404 のとき、トーストが出て、申請対
     await openAs(page, 'applicant', APPLY_URL);
     const form = applyForm(page);
     await pickApplicationTarget(page, '新規', OTHER);
-    await expectCopied(form, { name: OTHER, budget: '300', rows: 2 });
+    await expectSnapshot(form, { name: OTHER, budget: '300', rows: 2 });
     await nameField(form).fill('写しの後に直した名前');
 
     await page.route('**/workflow/target-values/*', (route) =>

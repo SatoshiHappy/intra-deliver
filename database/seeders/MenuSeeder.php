@@ -60,12 +60,12 @@ class MenuSeeder extends Seeder
      */
     private const GROUPS = [
         'main' => ['業務', 'Work', 0, true, ['menu.home', 'master.organization-chart', 'menu.sitemap'], []],
-        // 「代理の管理」(ルートのリソースは WorkflowSeeder が作る = docs の 設計/ワークフロー/案件の運用/認可と一覧.md の 5 節)
+        // 「申請操作」「代理の管理」(ルートのリソースは WorkflowSeeder が作る = docs の 設計/ワークフロー/案件の運用/認可と一覧.md の 5 節)
         'admin' => [
             '管理', 'Administration', 100, false,
             [
                 'authz.overview', 'records.admin.modules.index', 'records.admin.categories.index',
-                'workflow.admin.proxies.index',
+                'workflow.admin.cases.index', 'workflow.admin.proxies.index',
             ],
             [],
         ],
@@ -89,6 +89,7 @@ class MenuSeeder extends Seeder
         'records.admin.categories.index' => ['/records/admin/categories', 'モジュール分類', 'Module categories', 'folder-tree'],
         'workflow.flows.index' => ['/workflow/flows', '申請する', 'Apply', 'send'],
         'workflow.cases.index' => ['/workflow/cases', '申請一覧', 'Application list', 'inbox'],
+        'workflow.admin.cases.index' => ['/workflow/admin/cases', '申請操作', 'Application operations', 'list-checks'],
         'workflow.admin.proxies.index' => ['/workflow/admin/proxies', '代理の管理', 'Proxy administration', 'user-cog'],
     ];
 

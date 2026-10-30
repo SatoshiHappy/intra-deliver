@@ -278,7 +278,10 @@ final class WorkflowPagesTest extends TransactionalTestCase
             ->has('histories', 3)
             ->where('histories.2.action', 'reapply')
             ->has('histories.2.diff.fields', 2)
-            ->where('can', ['pullBack' => false, 'reapply' => false, 'withdraw' => false, 'confirm' => false])
+            ->where('can', [
+                'pullBack' => false, 'reapply' => false, 'withdraw' => false, 'confirm' => false, 'operate' => false,
+            ])
+            ->where('operation', null)
             ->where('commentMaxLength', 4000)
             ->where('nodeActions', [[
                 'nodeId' => $this->nodeIdOf($case, 2), 'name' => '課長の承認', 'approve' => true, 'approveEarly' => true, 'reject' => true, 'sendBack' => true,

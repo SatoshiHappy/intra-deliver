@@ -15,7 +15,9 @@ final readonly class CurrentNode
     /**
      * @param  int  $id  案件のノードの id
      * @param  string  $name  表示名(展開の行は「{親の名前} {子の名前}」= WorkflowCaseNode::displayName())
+     * @param  int|null  $parentId  展開の行の親のノードの id(同じ親の子かを見る。展開の行でなければ null)
      * @param  string|null  $parentName  展開の行の親の名前(展開の行でなければ null)
+     * @param  string|null  $childName  展開の行の子の名前(表示名の「{子の名前}」と同じ値。展開の行でなければ null)
      * @param  int|null  $sequence  展開の行の番号(展開の行でなければ null)
      * @param  list<int>  $targetUserIds  処理対象者のユーザーの id(昇順)
      * @param  CarbonImmutable  $reachedAt  到達日時(reached_at)
@@ -26,7 +28,9 @@ final readonly class CurrentNode
         public string $name,
         public WorkflowNodeKind $kind,
         public WorkflowNodeState $state,
+        public ?int $parentId,
         public ?string $parentName,
+        public ?string $childName,
         public ?int $sequence,
         public array $targetUserIds,
         public CarbonImmutable $reachedAt,

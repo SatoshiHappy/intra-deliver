@@ -13,6 +13,7 @@ export * from './ui';
 export * from './workflow';
 export * from './workflowApplicant';
 export * from './workflowAttachments';
+export * from './workflowOperations';
 export * from './workflowProxies';
 export * from './workflowRows';
 export * from './workflowValues';

@@ -8,6 +8,7 @@ import {
     operationOf,
     showsSaveDraft,
     toastedErrorsOf,
+    unshownKeysOf,
 } from './applyScreen';
 import type { WorkflowApplyProps } from '@/types';
 
@@ -226,6 +227,38 @@ describe('送信の誤りのうちトーストでも出すもの', () => {
     it('新規・一時保存・再申請の画面は、record があっても出さない', () => {
         for (const mode of ['new', 'draft', 'reapply'] as const) {
             expect(toastedErrorsOf(mode, errors)).toEqual({});
+        }
+    });
+});
+
+describe('添付の誤りの出し方', () => {
+    const errors = {
+        record: 'レコードの誤り',
+        attachments: '面の誤り',
+        'attachments.0': '行の誤り',
+        remove_attachment_ids: '外す誤り',
+        name: '案件名の誤り',
+    };
+
+    it('添付の面を出しているときは面の下に出るので、フォームの先頭には出さない', () => {
+        expect(
+            unshownKeysOf(errors, true, { enabled: true, drafts: [] }),
+        ).toEqual(['record']);
+    });
+
+    it('添付の面を出していないときは、添付の誤りもフォームの先頭に出す(使えない間の行の誤りは出さない)', () => {
+        expect(
+            unshownKeysOf(errors, true, { enabled: false, drafts: [] }),
+        ).toEqual(['attachments', 'record', 'remove_attachment_ids']);
+    });
+
+    it('添付の誤りはトーストにしない(面の下の誤りと二重に出さない)。トーストにするのは既存のデータからの申請の record だけ', () => {
+        for (const mode of ['new', 'draft', 'reapply', 'record'] as const) {
+            const toasted = toastedErrorsOf(mode, errors);
+
+            expect(Object.keys(toasted)).toEqual(
+                mode === 'record' ? ['record'] : [],
+            );
         }
     });
 });

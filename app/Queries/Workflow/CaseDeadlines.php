@@ -2,14 +2,17 @@
 
 namespace App\Queries\Workflow;
 
+use App\Enums\Workflow\WorkflowNodeState;
+use App\Models\Workflow\WorkflowCaseNode;
 use App\Support\AccessContext;
 use Carbon\CarbonImmutable;
 use DateTimeInterface;
+use Illuminate\Database\Eloquent\Builder;
 use LogicException;
 
 /**
  * 到達日時・期限日・経過日数の計算の 1 か所(docs の 設計/ワークフロー/案件の運用/案件の操作/README.md の 1.4 節)。日付は Asia/Tokyo の暦日
- * (Y-m-d の文字列)。今日は呼び手が渡す基準日(日付だけを使う)。問い合わせをしない。
+ * (Y-m-d の文字列)。今日は呼び手が渡す基準日(日付だけを使う)。問い合わせをしない(期限超過の絞り込みは、呼び手の問い合わせに条件を足すだけ)。
  *
  * @phpstan-type Deadline array{reachedOn: string|null, elapsedDays: int|null, dueOn: string|null, overdue: bool}
  */
@@ -51,6 +54,25 @@ class CaseDeadlines
     public function isOverdue(?string $dueOn, DateTimeInterface $today): bool
     {
         return $dueOn !== null && $today->format(self::DATE_FORMAT) > $dueOn;
+    }
+
+    /**
+     * 期限を超過した現在のノードに絞る({@see self::dueOn()}・{@see self::isOverdue()} と同じ式の SQL。期限日 = 到達した日 + 期限の日数、
+     * 今日 > 期限日で超過)。申請操作の一覧の「期限超過だけ」が使う(設計/ワークフロー/案件の運用/認可と一覧.md の 2.3 節)。
+     *
+     * @param  Builder<WorkflowCaseNode>  $nodes
+     * @return Builder<WorkflowCaseNode>
+     */
+    public function whereOverdue(Builder $nodes, DateTimeInterface $today): Builder
+    {
+        $bindings = [AccessContext::TIMEZONE, $today->format(self::DATE_FORMAT)];
+
+        return $nodes->whereIn('workflow_case_nodes.state', WorkflowNodeState::current())
+            ->whereNotNull('workflow_case_nodes.deadline_days')
+            ->whereRaw(
+                '(workflow_case_nodes.reached_at at time zone ?)::date + workflow_case_nodes.deadline_days < ?::date',
+                $bindings,
+            );
     }
 
     /**

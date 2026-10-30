@@ -53,3 +53,10 @@ test('ゲストの代理の設定には「代理を追加」が無く、2 つの
         page.getByRole('cell', { name: '代理元はありません', exact: true }),
     ).toBeVisible();
 });
+
+// ゲストは申請操作を開けない(管理のルートの execute を許されない)ので、一覧は 403 の画面になる
+test('ゲストの申請操作の一覧は 403 になる', async ({ page }) => {
+    const response = await page.goto('/workflow/admin/cases');
+
+    expect(response?.status()).toBe(403);
+});

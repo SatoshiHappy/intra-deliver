@@ -42,7 +42,7 @@ export type ApplicationTargetFetch = (
 export type ApplicationTargetPorts = {
     module: WorkflowApplyProps['module'];
     applicant: number | null;
-    /** 業務データの欄を最新の値から替える。update は 1 回だけ走らせ、替える前と後の値を返す */
+    /** 応答は描き直しの後に届くので、描画時の値でなく最新の値から替える。前後の値は、申請対象の欄が変わったかを決めるのに使う */
     updateRecord: (update: (record: RecordFormData) => RecordFormData) => {
         before: RecordFormData;
         after: RecordFormData;
@@ -141,7 +141,8 @@ function answered(
 }
 
 /**
- * 写しの値を取り、応答を当てる(送るときの申請者で引く)。HTTP の失敗は取れなかった応答として扱い、ほかの例外は応答を当てた後に投げ直す。
+ * 写しの値を取り、応答を当てる。例外を投げ直すのは応答を当てた後にして、取得中の印が必ず解けるようにする(docs の
+ * 設計/ワークフロー/申請の周辺/画面.md の 5 節の「申請対象の値の写し」)。
  */
 async function ask(
     applicationTarget: ApplicationTargetFlow,
@@ -231,7 +232,7 @@ export function cancelApplicationTarget(
     show(applicationTarget, ports);
 }
 
-/** 申請者を変えて申請対象が消えた(待っている要求の応答は当てず、前の申請者で読んだ値の確かめも消す) */
+/** 申請者を変えて申請対象が消えたときの片付けを 1 か所にする(docs の 設計/ワークフロー/申請の周辺/画面.md の 5 節の「申請対象の値の写し」) */
 function clearApplicationTarget(
     applicationTarget: ApplicationTargetFlow,
     ports: ApplicationTargetPorts,

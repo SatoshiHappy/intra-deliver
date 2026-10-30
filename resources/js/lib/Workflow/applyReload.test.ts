@@ -9,13 +9,14 @@ const self = { id: 9, name: '吉田 達也', department: '総務部', isSelf: tr
 const yamada = { id: 10, name: '山田 恵', department: '経理部', isSelf: false };
 const sato = { id: 11, name: '佐藤 花子', department: null, isSelf: false };
 
-/** 申請者に依る props(申請者の選択肢は入らない) */
+/** 申請者に依る props(申請者の選択肢は入らない。付いている添付は申請者の閲覧で決まるので入る) */
 const APPLICANT_PROPS = [
     'module',
     'next',
     'baseDate',
     'baseDateRange',
     'applicant',
+    'attachment',
 ];
 
 /** 新規の画面を自分で開いた */

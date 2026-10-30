@@ -149,7 +149,10 @@ final class CaseListQueryTest extends TransactionalTestCase
             'id' => $active->id, 'number' => 'WF-1234567', 'name' => '案件の名前', 'flowName' => 'wf_rows の名前',
             'applicant' => ['id' => $nameless->id, 'code' => $nameless->code, 'name' => null], 'appliedAt' => $active->applied_at?->toIso8601String(),
             'currentSummary' => ['state' => 'waiting', 'name' => $current->name],
-            'currentNodes' => [['id' => $current->id, 'name' => $current->name, 'state' => 'waiting']],
+            'currentNodes' => [[
+                'id' => $current->id, 'name' => $current->name,
+                'parentId' => null, 'parentName' => null, 'childName' => null, 'state' => 'waiting',
+            ]],
             'state' => 'active', 'completionReason' => null, 'revision' => 0, 'pullBackNodes' => [], 'canAttachOnWithdraw' => false,
             'deadline' => ['reachedOn' => self::DATE, 'elapsedDays' => 0, 'dueOn' => null, 'overdue' => false],
             'principals' => [], 'confirmation' => null,

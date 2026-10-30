@@ -8,7 +8,7 @@ import { CaseListTable } from '@/components/Workflow/CaseListTable';
 import { CaseRowActions } from '@/components/Workflow/CaseRowActions';
 import { useCaseSelection } from '@/hooks/Workflow/use-case-selection';
 import { bulkActionOf, selectedRowsOf } from '@/lib/Workflow/bulkActions';
-import { caseTabOf, emptyTextOf } from '@/lib/Workflow/caseList';
+import { caseTabOf, columnsOf, emptyTextOf } from '@/lib/Workflow/caseList';
 import { caseListUrl, visitCaseList } from '@/lib/Workflow/caseListUrl';
 import type { WorkflowCaseIndexProps } from '@/types';
 
@@ -51,7 +51,7 @@ export function CaseListPanel({
                 />
             )}
             <CaseListTable
-                tab={query.tab}
+                columns={columnsOf(query.tab)}
                 rows={cases.data}
                 emptyText={emptyTextOf(query.tab, query.q)}
                 label={label}

@@ -13,7 +13,7 @@ use Tests\Support\TransactionalTestCase;
 
 /**
  * 現在のノードの集合の口(docs の 設計/ワークフロー/ルートの深さ/案件の操作/README.md 1.3): 状態が現在のノードの状態の一覧(承認待ち・再申請待ち)の
- * ノードだけ、並び = 親の position → 子の sequence、表示名 = 展開の行は「{親の名前} {子の名前}」(間は半角の空白 1 つ)、処理対象者は昇順。
+ * ノードだけ、並び = 親の position → 子の sequence、表示名 = 展開の行は「{親の名前} {子の名前}」(間は半角の空白 1 つ)、親の id と子の名前は展開の行だけ、処理対象者は昇順。
  */
 final class CurrentNodesTest extends TransactionalTestCase
 {
@@ -45,6 +45,10 @@ final class CurrentNodesTest extends TransactionalTestCase
             ['関係部署の合議 承認 3', 'approve', 'waiting', '関係部署の合議', 3, [$u0010->id]],
             ['責任者', 'approve', 'waiting', null, null, [$u0002->id]],
         ], array_map(fn (CurrentNode $node) => [$node->name, $node->kind->value, $node->state->value, $node->parentName, $node->sequence, $node->targetUserIds], $nodes));
+        $childNames = array_map(fn (CurrentNode $node) => $node->childName, $nodes);
+        $this->assertSame([null, null, '承認 1', '承認 3', null], $childNames);
+        $parentIds = array_map(fn (CurrentNode $node) => $node->parentId, $nodes);
+        $this->assertSame([null, null, $council->id, $council->id, null], $parentIds);
         $this->assertSame($first->id, $nodes[2]->id);
     }
 
