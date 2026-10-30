@@ -109,9 +109,9 @@ final class MultipleReferenceReadTest extends TransactionalTestCase
         $this->refer($first, $b, 1);
         $this->refer($second, $c, 0);
 
-        $this->assertSame([$first->id], $this->searched((string) $b->id));
-        $this->assertSame([$second->id], $this->searched((string) $c->id));
-        $this->assertSame([], $this->searched((string) $this->user()->id));
+        $this->assertSame([$first->id], $this->searched([(string) $b->id]));
+        $this->assertSame([$second->id], $this->searched([(string) $c->id]));
+        $this->assertSame([], $this->searched([(string) $this->user()->id]));
     }
 
     public function test_a_condition_reads_no_targets_as_empty(): void
@@ -151,15 +151,16 @@ final class MultipleReferenceReadTest extends TransactionalTestCase
     }
 
     /**
-     * members の検索条件で当たったレコードの id。
+     * members の検索条件(相手の並び)で当たったレコードの id。
      *
+     * @param  list<string>  $userIds
      * @return list<int>
      */
-    private function searched(string $userId): array
+    private function searched(array $userIds): array
     {
         $requester = $this->requester();
         $opened = app(RecordPageQuery::class)->open($requester, 'projects', $this->today(), RecordModuleAction::Read);
-        $filters = ['members' => $userId];
+        $filters = ['members' => $userIds];
         $listed = app(RecordListQuery::class)->list($requester, $opened, $filters, null, null, $this->today(), 'ja');
 
         return array_column($listed['records']['data'], 'id');

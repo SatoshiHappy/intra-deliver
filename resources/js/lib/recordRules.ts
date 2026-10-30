@@ -40,11 +40,21 @@ export function conditionOperatorsOf(
             return ['eq', 'ne', 'in', 'empty', 'not_empty'];
         case 'user':
         case 'department':
+        case 'user_or_department':
         case 'record':
             return ['empty', 'not_empty'];
         default:
             return [];
     }
+}
+
+/**
+ * 条件に使える項目(明細を除き、使える演算子が 1 つ以上ある項目 = 8.2 の表)。規則の作成の画面の項目の選択肢。
+ */
+export function conditionFields(module: RecordModuleDefinition) {
+    return module.fields.filter(
+        (field) => conditionOperatorsOf(field.type).length > 0,
+    );
 }
 
 /** 比べる値(空は null。真偽は真偽、整数・小数・日時・参照は数、複数選べる参照は数の配列、ほかは文字列) */

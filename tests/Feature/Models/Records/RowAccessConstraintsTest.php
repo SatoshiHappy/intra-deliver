@@ -13,7 +13,8 @@ use Tests\Support\TransactionalTestCase;
 
 /**
  * 行の権限の列の制約(docs の 設計/業務データの入れ物/データモデル/表.md 2.1・2.2、制約の分担と検査.md 7 節): 見える範囲は all・related だけで、
- * 明細のモジュールはいつも all。関係する人の旗はユーザー・組織の項目だけ(1 つと複数、明細のモジュールの項目を含む)。既定は all と旗なし。
+ * 明細のモジュールはいつも all。関係者の印はユーザー・組織・ユーザーと組織の項目だけ(1 つと複数、明細のモジュールの項目を含む)。
+ * 既定は all と関係者の印なし。
  */
 final class RowAccessConstraintsTest extends TransactionalTestCase
 {
@@ -65,6 +66,8 @@ final class RowAccessConstraintsTest extends TransactionalTestCase
             'ユーザー(複数)' => [RecordFieldType::User, true],
             '組織' => [RecordFieldType::Department, false],
             '組織(複数)' => [RecordFieldType::Department, true],
+            'ユーザーと組織' => [RecordFieldType::UserOrDepartment, false],
+            'ユーザーと組織(複数)' => [RecordFieldType::UserOrDepartment, true],
         ];
     }
 

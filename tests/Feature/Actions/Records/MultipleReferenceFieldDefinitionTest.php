@@ -27,10 +27,11 @@ final class MultipleReferenceFieldDefinitionTest extends TransactionalTestCase
     use BuildsRecordModules;
     use CatchesValidationErrors;
 
-    private const ONLY_USER_OR_DEPARTMENT = '複数はユーザー・組織の項目だけに設定できます';
+    private const ONLY_USER_OR_DEPARTMENT = '複数はユーザー・組織・ユーザーと組織の項目だけに設定できます';
 
     #[TestWith(['user'])]
     #[TestWith(['department'])]
+    #[TestWith(['user_or_department'])]
     public function test_adds_a_user_or_department_field_that_holds_multiple_targets(string $type): void
     {
         $this->recordModule('projects');
@@ -61,11 +62,13 @@ final class MultipleReferenceFieldDefinitionTest extends TransactionalTestCase
         $this->assertSame($count, RecordField::query()->count());
     }
 
-    public function test_is_multiple_cannot_be_changed_after_the_field_is_added(): void
+    #[TestWith([RecordFieldType::User])]
+    #[TestWith([RecordFieldType::UserOrDepartment])]
+    public function test_is_multiple_cannot_be_changed_after_the_field_is_added(RecordFieldType $type): void
     {
         $module = $this->recordModule('projects');
-        $this->field($module, 'members', RecordFieldType::User, ['is_multiple' => true]);
-        $this->field($module, 'owner', RecordFieldType::User);
+        $this->field($module, 'members', $type, ['is_multiple' => true]);
+        $this->field($module, 'owner', $type);
         $this->field($module, 'title');
 
         $toSingle = $this->validationErrors(fn () => $this->change('members', ['is_multiple' => false]));
@@ -93,18 +96,25 @@ final class MultipleReferenceFieldDefinitionTest extends TransactionalTestCase
         $this->assertSame(['members' => true, 'owner' => false], array_column($fields, 'isMultiple', 'code'));
     }
 
-    public function test_a_condition_on_a_multiple_field_accepts_only_empty_and_not_empty(): void
-    {
+    #[TestWith([RecordFieldType::User, true])]
+    #[TestWith([RecordFieldType::UserOrDepartment, true])]
+    #[TestWith([RecordFieldType::UserOrDepartment, false])]
+    public function test_a_condition_on_a_reference_field_accepts_only_empty_and_not_empty(
+        RecordFieldType $type,
+        bool $isMultiple,
+    ): void {
         $module = $this->recordModule('projects');
         $this->field($module, 'title');
-        $this->field($module, 'members', RecordFieldType::User, ['is_multiple' => true]);
+        $this->field($module, 'members', $type, ['is_multiple' => $isMultiple]);
         $rule = fn (array $expression) => app(AddRecordRule::class)->execute('projects', [
             'kind' => 'required_when',
             'target' => 'title',
             'condition' => ['all' => [['field' => 'members', ...$expression]]],
         ]);
 
-        $errors = $this->validationErrors(fn () => $rule(['op' => 'eq', 'value' => $this->user()->id]));
+        $userId = $this->user()->id;
+        $value = $type->hasPartyKind() ? ['type' => 'user', 'id' => $userId] : $userId;
+        $errors = $this->validationErrors(fn () => $rule(['op' => 'eq', 'value' => $value]));
         $rule(['op' => 'empty']);
         $rule(['op' => 'not_empty']);
 

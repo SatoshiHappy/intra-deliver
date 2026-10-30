@@ -1,3 +1,4 @@
+import { hasPartyKind, partyKindOf } from '@/lib/recordParty';
 import { referenceLabel, toTokyoLocal } from '@/lib/recordValues';
 import type {
     PickedReference,
@@ -11,7 +12,7 @@ import type {
 /**
  * 業務の登録・編集のフォームの値(docs の 設計/業務データの入れ物/画面/業務の画面.md 2.2)。欄の値(下書き)と、送る形への変換。
  * 欄の値: 文字列・整数・小数・日付・日時(datetime-local の YYYY-MM-DDTHH:MM)・選択(コード)= 文字列(空は '')、真偽 = 真偽、
- * ユーザー・組織・他モジュール参照 = 選んだ相手(無ければ null)、複数選べる参照 = 選んだ相手の並び(無ければ null か空)。
+ * ユーザー・組織・ユーザーと組織・他モジュール参照 = 選んだ相手(無ければ null)、複数選べる参照 = 選んだ相手の並び(無ければ null か空)。
  * 明細は行の配列(key は画面の中だけの識別子で、送らない)。
  */
 
@@ -36,18 +37,6 @@ export type RecordFormData = {
     details: Record<string, RecordRowDraft[]>;
 };
 
-/** 送る値(項目と規則/README.md 2 節の値。参照は id、複数選べる参照は id の配列、選択はコード、空は null) */
-export type RecordPayloadValue = string | boolean | number | number[] | null;
-
-/** 送る形(画面/業務の画面.md 2.2 の「送る形」) */
-export type RecordPayload = {
-    values: Record<string, RecordPayloadValue>;
-    details: Record<
-        string,
-        { id?: number; values: Record<string, RecordPayloadValue> }[]
-    >;
-};
-
 /** 明細の項目 1 つの行の数の上限(項目と規則/README.md 6 節) */
 export const MAX_DETAIL_ROWS = 100;
 
@@ -69,17 +58,16 @@ export function drawnDetailsFields(
     );
 }
 
-/** 日時の欄の値に付ける秒と時差(Asia/Tokyo。秒は 0 = 画面/業務の画面.md 2.2) */
-const DATETIME_SUFFIX = ':00+09:00';
-
 /** 新しい行の key の連番(画面の中だけ) */
 let nextRowKey = 0;
 
 /**
- * 参照の項目か(ユーザー・組織・他モジュール参照)。
+ * 参照の項目か(ユーザー・組織・ユーザーと組織・他モジュール参照)。
  */
 export function isReferenceField(field: RecordFieldDefinition): boolean {
-    return ['user', 'department', 'record'].includes(field.type);
+    return ['user', 'department', 'user_or_department', 'record'].includes(
+        field.type,
+    );
 }
 
 /**
@@ -121,14 +109,22 @@ function defaultDraft(field: RecordFieldDefinition): RecordFieldDraft {
         : String(value);
 }
 
-/** 今の値の相手を、選んだ相手にする(表示名 = 画面/README.md 1.3 の参照の表示。所属は今の値の affiliation = 画面/業務の画面.md 2.2) */
+/**
+ * 今の値の相手を、選んだ相手にする(表示名 = 画面/README.md 1.3 の参照の表示。所属は今の値の affiliation = 画面/業務の画面.md 2.2。
+ * 型「ユーザーと組織」の項目の相手は種類を持つ)。
+ *
+ * @throws Error 型「ユーザーと組織」の項目の今の値が種類を持たないとき(読み取りの形 = RecordPartyValue に合わない)
+ */
 function pickedOf(
     field: RecordFieldDefinition,
     target: RecordReferenceValue,
 ): PickedReference {
     const { id, affiliation } = target;
+    const label = referenceLabel(field, target);
 
-    return { id, label: referenceLabel(field.type, target), affiliation };
+    return hasPartyKind(field)
+        ? { id, label, affiliation, type: partyKindOf(field, target) }
+        : { id, label, affiliation };
 }
 
 /**
@@ -240,71 +236,6 @@ export function editFormData(
                                 : `id-${row.id}`,
                         id: row.id ?? null,
                         values: draftsOf(
-                            field.childModule === null
-                                ? []
-                                : valueFields(field.childModule),
-                            row.values,
-                        ),
-                    })),
-                ]),
-        ),
-    };
-}
-
-/**
- * 欄の値を送る値にする(参照は id、複数選べる参照は id の配列で 0 個は null、真偽は真偽、日時は :00+09:00 を付ける、空は null)。規則の条件の値・項目の既定値にも使う。
- */
-export function payloadValue(
-    field: RecordFieldDefinition,
-    draft: RecordFieldDraft,
-): RecordPayloadValue {
-    if (field.type === 'boolean') {
-        return draft === true;
-    }
-
-    if (draft === null || draft === '' || typeof draft === 'boolean') {
-        return null;
-    }
-
-    if (Array.isArray(draft)) {
-        return draft.length === 0 ? null : draft.map((picked) => picked.id);
-    }
-
-    if (typeof draft === 'object') {
-        return draft.id;
-    }
-
-    return field.type === 'datetime' ? draft + DATETIME_SUFFIX : draft;
-}
-
-/**
- * フォームの値を送る形にする(全項目を送る。明細の行は既にある行だけ id を持つ)。
- */
-export function toPayload(
-    module: RecordModuleDefinition,
-    data: RecordFormData,
-): RecordPayload {
-    const payloadOf = (
-        fields: RecordFieldDefinition[],
-        values: Record<string, RecordFieldDraft>,
-    ) =>
-        Object.fromEntries(
-            fields.map((field) => [
-                field.code,
-                payloadValue(field, values[field.code] ?? null),
-            ]),
-        );
-
-    return {
-        values: payloadOf(valueFields(module), data.values),
-        details: Object.fromEntries(
-            module.fields
-                .filter((field) => field.type === 'details')
-                .map((field) => [
-                    field.code,
-                    (data.details[field.code] ?? []).map((row) => ({
-                        ...(row.id === null ? {} : { id: row.id }),
-                        values: payloadOf(
                             field.childModule === null
                                 ? []
                                 : valueFields(field.childModule),

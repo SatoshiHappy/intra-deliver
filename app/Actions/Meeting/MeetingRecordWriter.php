@@ -21,8 +21,7 @@ class MeetingRecordWriter
     private const INPUT_FIELDS = [
         Meeting::Title,
         Meeting::HeldAt,
-        Meeting::ViewerUsers,
-        Meeting::ViewerDepartments,
+        Meeting::RelatedParties,
         Meeting::Project,
         Meeting::Agenda,
         Meeting::Notes,

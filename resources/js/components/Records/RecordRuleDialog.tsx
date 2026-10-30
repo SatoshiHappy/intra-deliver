@@ -32,9 +32,10 @@ import {
     RULE_KIND_LABELS,
 } from '@/lib/Records/recordDefinitions';
 import type { RecordFieldDraft } from '@/lib/recordForm';
-import { currentDraft, payloadValue } from '@/lib/recordForm';
+import { currentDraft } from '@/lib/recordForm';
+import { payloadValue } from '@/lib/recordPayload';
 import { clearRowErrors } from '@/lib/formErrors';
-import { conditionOperatorsOf } from '@/lib/recordRules';
+import { conditionFields, conditionOperatorsOf } from '@/lib/recordRules';
 import { store, update } from '@/routes/records/admin/rules';
 import type {
     RecordComparisonOperator,
@@ -79,15 +80,6 @@ const MAX_EXPRESSIONS = 10;
 
 /** 新しい式の key の連番(画面の中だけ) */
 let nextExpressionKey = 0;
-
-/**
- * 条件に使える項目(明細を除き、使える演算子が 1 つ以上ある項目 = 8.2 の表)。
- */
-function conditionFields(module: RecordModuleDefinition) {
-    return module.fields.filter(
-        (field) => conditionOperatorsOf(field.type).length > 0,
-    );
-}
 
 /**
  * 値の欄の初期値(真偽は偽、参照は無し、ほかは空)。

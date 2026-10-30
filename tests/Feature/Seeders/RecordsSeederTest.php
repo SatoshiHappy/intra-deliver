@@ -53,10 +53,20 @@ final class RecordsSeederTest extends TransactionalTestCase
             'issue_resolution_application' => 1 + 8,
         ], $fieldCounts);
         $this->assertSame(2 + 2, RecordRule::query()->count());
-        $this->assertEqualsCanonicalizing(
-            array_map(fn (RecordFieldType $type) => $type->value, RecordFieldType::cases()),
-            RecordField::query()->where('is_builtin', false)->distinct()->pluck('type')->map(fn (RecordFieldType $type) => $type->value)->all(),
-        );
+    }
+
+    /**
+     * 型は 12 種すべてが、初期データと組み込みの業務モジュールの項目を合わせて 1 つ以上ある(認可とメニュー/メニューと初期データ.md の 7 節。
+     * 型「ユーザーと組織」は会議の項目「関係者」が持つ)。
+     */
+    public function test_every_field_type_appears_in_the_seeded_and_builtin_fields(): void
+    {
+        $value = fn (RecordFieldType $type) => $type->value;
+        $types = RecordField::query()->distinct()->pluck('type')->map($value)->all();
+        $seeded = RecordField::query()->where('is_builtin', false)->distinct()->pluck('type')->map($value)->all();
+
+        $this->assertEqualsCanonicalizing(array_map($value, RecordFieldType::cases()), $types);
+        $this->assertSame(['user_or_department'], array_values(array_diff($types, $seeded)));
     }
 
     /**

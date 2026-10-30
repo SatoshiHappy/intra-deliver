@@ -1,3 +1,4 @@
+import { hasPartyKind, PARTY_KIND_NAMES, partyKindOf } from '@/lib/recordParty';
 import { plainTextExcerpt } from '@/lib/richText';
 import type {
     RecordChoiceValue,
@@ -79,41 +80,70 @@ function isChoice(value: RecordFieldValue): value is RecordChoiceValue {
     return typeof value === 'object' && value !== null && 'name' in value;
 }
 
-function isReference(value: RecordFieldValue): value is RecordReferenceValue {
+function isReferenceValue(
+    value: RecordFieldValue,
+): value is RecordReferenceValue {
     return typeof value === 'object' && value !== null && 'label' in value;
 }
 
 /**
- * 参照の値の表示(label、無ければユーザー・組織はコード、レコードは #<id>)。
+ * 参照の値の表示(規則 = 画面/README.md 1.3)。種類は項目の型で決める(種類の無い相手を黙って種類の無い表示にしないため。
+ * lib/recordParty の partyKindOf が投げる)。
  */
 export function referenceLabel(
-    type: RecordFieldDefinition['type'],
+    field: Pick<RecordFieldDefinition, 'type' | 'code'>,
     value: RecordReferenceValue,
 ): string {
-    return (
-        value.label ??
-        (type === 'record' ? `#${value.id}` : (value.code ?? `#${value.id}`))
-    );
+    const kind = hasPartyKind(field) ? partyKindOf(field, value) : null;
+
+    if (value.label !== null) {
+        return value.label;
+    }
+
+    if (field.type === 'record') {
+        return `#${value.id}`;
+    }
+
+    const code = value.code ?? `#${value.id}`;
+
+    return kind === null ? code : `${code}(${PARTY_KIND_NAMES[kind]})`;
 }
 
 /**
- * 複数選べる参照の値の表示(表のセルで 3 つ以上なら、先頭の 2 つの後に空白をはさんで「ほか <N> 名」。組織は「ほか <N> 件」)。
+ * 複数選べる参照の値のうち、出す相手と、残りの数の添え書き(表のセルの規則 = 画面/README.md 1.3。添え書きが無ければ rest は null)。
+ * 値の部品(種類の印を付ける)と文字の表示が同じ数え方をするため、ここに 1 つ置く。
+ */
+export function shownReferences<T extends RecordReferenceValue>(
+    field: RecordFieldDefinition,
+    values: T[],
+    place: RecordValuePlace,
+): { shown: T[]; rest: string | null } {
+    if (place !== 'cell' || values.length <= CELL_SHOWN_TARGETS) {
+        return { shown: values, rest: null };
+    }
+
+    const unit = field.type === 'user' ? '名' : '件';
+
+    return {
+        shown: values.slice(0, CELL_SHOWN_TARGETS),
+        rest: `ほか ${values.length - CELL_SHOWN_TARGETS} ${unit}`,
+    };
+}
+
+/**
+ * 複数選べる参照の値の表示(相手ごとの表示を「、」でつなぎ、添え書きは空白をはさんで後ろに付ける)。
  */
 function referencesText(
     field: RecordFieldDefinition,
     values: RecordReferenceValue[],
     place: RecordValuePlace,
 ): string {
-    const labels = values.map((value) => referenceLabel(field.type, value));
+    const { shown, rest } = shownReferences(field, values, place);
+    const labels = shown
+        .map((value) => referenceLabel(field, value))
+        .join('、');
 
-    if (place !== 'cell' || labels.length <= CELL_SHOWN_TARGETS) {
-        return labels.join('、');
-    }
-
-    const rest = labels.length - CELL_SHOWN_TARGETS;
-    const unit = field.type === 'user' ? '名' : '件';
-
-    return `${labels.slice(0, CELL_SHOWN_TARGETS).join('、')} ほか ${rest} ${unit}`;
+    return rest === null ? labels : `${labels} ${rest}`;
 }
 
 /**
@@ -146,8 +176,8 @@ export function formatRecordValue(
             : referencesText(field, value, place);
     }
 
-    if (isReference(value)) {
-        return referenceLabel(field.type, value);
+    if (isReferenceValue(value)) {
+        return referenceLabel(field, value);
     }
 
     if (isChoice(value)) {
@@ -185,7 +215,9 @@ export function isNumericValue(
     }
 
     return (
-        field.type === 'record' && isReference(value) && value.label === null
+        field.type === 'record' &&
+        isReferenceValue(value) &&
+        value.label === null
     );
 }
 

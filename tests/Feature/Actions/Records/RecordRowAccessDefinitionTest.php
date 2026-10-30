@@ -27,12 +27,14 @@ final class RecordRowAccessDefinitionTest extends TransactionalTestCase
     use BuildsRecordModules;
     use CatchesValidationErrors;
 
-    private const ONLY_USER_OR_DEPARTMENT = '関係する人はユーザー・組織の項目だけに設定できます';
+    private const ONLY_USER_OR_DEPARTMENT = '関係する人はユーザー・組織・ユーザーと組織の項目だけに設定できます';
 
     #[TestWith(['user', false])]
     #[TestWith(['user', true])]
     #[TestWith(['department', false])]
     #[TestWith(['department', true])]
+    #[TestWith(['user_or_department', false])]
+    #[TestWith(['user_or_department', true])]
     public function test_flags_a_user_or_department_field(string $type, bool $isMultiple): void
     {
         $this->recordModule('meetings');

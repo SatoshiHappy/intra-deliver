@@ -1,14 +1,17 @@
 import { FileText } from 'lucide-react';
+import { Fragment } from 'react';
 import type { ReactNode } from 'react';
 import { RecordPanelMore } from '@/components/RecordPanelMore';
 import { RecordRevisionValueChange } from '@/components/RecordRevisionValueChange';
+import { RecordValue } from '@/components/RecordValue';
 import { StatusBadge } from '@/components/StatusBadge';
 import {
     changeBadge,
     revisionActorText,
     revisionOperation,
 } from '@/lib/recordShow';
-import { detailRowName, detailRowSummary } from '@/lib/recordRevisions';
+import type { DetailRowCell } from '@/lib/recordRevisions';
+import { detailRowCells } from '@/lib/recordRevisions';
 import { formatDate, formatDatetime } from '@/lib/recordValues';
 import { cn } from '@/lib/utils';
 import type {
@@ -23,7 +26,7 @@ function Change({
     children,
 }: {
     change: 'added' | 'removed' | 'changed';
-    label: string;
+    label: ReactNode;
     children: ReactNode;
 }) {
     const badge = changeBadge(change);
@@ -76,6 +79,45 @@ function AttachmentChange({
     );
 }
 
+/** 明細の行の表示(明細の名前と、先頭の項目の値) */
+function DetailRowName({
+    detailName,
+    cells,
+}: {
+    detailName: string;
+    cells: DetailRowCell[];
+}) {
+    const first = cells.at(0);
+
+    return (
+        <>
+            {`${detailName}　`}
+            {first !== undefined && (
+                <RecordValue
+                    field={first.definition}
+                    value={first.value}
+                    place="diff"
+                />
+            )}
+        </>
+    );
+}
+
+/** 明細の行の値の要約(先頭の項目より後の項目の「<名前> <値>」を全角の空白でつなぐ) */
+function DetailRowSummary({ cells }: { cells: DetailRowCell[] }) {
+    return cells.slice(1).map((cell, index) => (
+        <Fragment key={cell.definition.code}>
+            {index > 0 && '　'}
+            {cell.name}{' '}
+            <RecordValue
+                field={cell.definition}
+                value={cell.value}
+                place="diff"
+            />
+        </Fragment>
+    ));
+}
+
 function DetailChanges({
     detail,
     row,
@@ -84,8 +126,11 @@ function DetailChanges({
     row: RecordRevisionRow;
 }) {
     return detail.rows.flatMap((rowChange) => {
-        const values = rowChange.after ?? rowChange.before;
-        const name = `${detail.name}　${detailRowName(detail.fields, values)}`;
+        const cells = detailRowCells(
+            detail.fields,
+            rowChange.after ?? rowChange.before,
+        );
+        const name = <DetailRowName detailName={detail.name} cells={cells} />;
 
         if (rowChange.change !== 'changed') {
             return [
@@ -94,7 +139,7 @@ function DetailChanges({
                     change={rowChange.change}
                     label={name}
                 >
-                    {detailRowSummary(detail.fields, values)}
+                    <DetailRowSummary cells={cells} />
                 </Change>,
             ];
         }
@@ -105,7 +150,11 @@ function DetailChanges({
                 <Change
                     key={`${rowChange.rowId}-${field.code}`}
                     change="changed"
-                    label={`${name}　${field.name}`}
+                    label={
+                        <>
+                            {name}　{field.name}
+                        </>
+                    }
                 >
                     <RecordRevisionValueChange
                         field={field}

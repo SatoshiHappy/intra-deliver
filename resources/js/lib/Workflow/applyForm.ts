@@ -1,6 +1,7 @@
 import { contactPayloadOf } from '@/lib/Workflow/caseActionForm';
 import type { PickedUser } from '@/lib/Workflow/caseActionForm';
-import { createFormData, editFormData, toPayload } from '@/lib/recordForm';
+import { createFormData, editFormData } from '@/lib/recordForm';
+import { toPayload } from '@/lib/recordPayload';
 import type { RecordFormData } from '@/lib/recordForm';
 import type { WorkflowApplyProps } from '@/types';
 

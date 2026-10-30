@@ -11,8 +11,7 @@ final class MeetingKickoffSample
     public const MEETING = [
         'title' => '社内ポータル刷新 キックオフ',
         'held_at' => '2026-07-03T10:00:00+09:00',
-        'viewers' => ['u0009'],
-        'departments' => ['development'],
+        'parties' => [['user', 'u0009'], ['department', 'development']],
         'file' => 'キックオフ.vtt',
         'agenda' => <<<'MD'
             1. プロジェクトの目的と範囲

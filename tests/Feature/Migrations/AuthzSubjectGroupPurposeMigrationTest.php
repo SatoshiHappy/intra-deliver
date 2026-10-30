@@ -11,6 +11,7 @@ use App\Models\Master\User;
 use Illuminate\Database\Migrations\Migrator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Tests\Support\DropsUserOrDepartmentFields;
 use Tests\Support\TransactionalTestCase;
 
 /**
@@ -20,6 +21,8 @@ use Tests\Support\TransactionalTestCase;
  */
 final class AuthzSubjectGroupPurposeMigrationTest extends TransactionalTestCase
 {
+    use DropsUserOrDepartmentFields;
+
     private const MIGRATION = '2026_10_13_000001_add_purpose_to_authz_subject_groups_table.php';
 
     public function test_down_removes_the_column_and_constraints(): void
@@ -80,6 +83,8 @@ final class AuthzSubjectGroupPurposeMigrationTest extends TransactionalTestCase
         // 後のマイグレーションの申請対象の列の down は、申請対象を持つコンテンツの行があると止まる(初期データのコンテンツ)。
         // TX の中で申請対象を外してから戻す(docs の 設計/ワークフロー/初期データ.md の 3 節)。
         DB::table('workflow_contents')->update(['target_record_field_id' => null, 'target_record_module_id' => null]);
+        // 後のマイグレーションの型の一覧を狭める down は、型「ユーザーと組織」の項目があると止まる。TX の中で消してから戻す
+        $this->dropUserOrDepartmentFields();
         // 組み込みの旗の down は、旗の付いた行があると止まる。TX の中で旗を外してから戻す
         foreach (['record_modules', 'record_fields', 'record_field_options'] as $table) {
             DB::table($table)->update(['is_builtin' => false]);

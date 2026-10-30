@@ -72,6 +72,8 @@ final class RecordFieldTest extends TransactionalTestCase
             '真偽の一覧と検索' => [['type' => RecordFieldType::Boolean, 'is_listed' => true, 'is_searchable' => true]],
             'ユーザーの複数' => [['type' => RecordFieldType::User, 'is_multiple' => true]],
             '組織の複数' => [['type' => RecordFieldType::Department, 'is_multiple' => true]],
+            'ユーザーと組織' => [['type' => RecordFieldType::UserOrDepartment]],
+            'ユーザーと組織の複数' => [['type' => RecordFieldType::UserOrDepartment, 'is_multiple' => true]],
         ];
     }
 
@@ -227,7 +229,7 @@ final class RecordFieldTest extends TransactionalTestCase
 
     /**
      * キャストが受けない形の既定値(小数部のある数・配列)も DB が拒む(キャストを通さず、JSON を直接入れる)。整数の項目の既定値は、
-     * テキストの形が ^-?[0-9]{1,15}$ の数(5.0 は拒む。PHP が整数として読める形だけ = 修正方針 D6)。
+     * テキストの形が ^-?[0-9]{1,15}$ の数(5.0 は拒む。PHP が整数として読める形だけ)。
      */
     #[TestWith([RecordFieldType::Integer, '1.5'])]
     #[TestWith([RecordFieldType::Integer, '5.0'])]

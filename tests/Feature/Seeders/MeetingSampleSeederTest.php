@@ -55,24 +55,26 @@ final class MeetingSampleSeederTest extends TransactionalTestCase
     }
 
     /**
-     * 閲覧者は利用者の切替の候補の人(設定の初期値 = docs の 設計/デモユーザー切替/README.md の 3 節)、閲覧組織は開発部。
-     * どの項目も参照は 1 つ(初期データを入れた DB でマイグレーションを戻す検査が、1 項目 1 参照の一意の索引を作り直すため)。
+     * 関係者 = 利用者の切替の候補の人(設定の初期値 = docs の 設計/デモユーザー切替/README.md の 3 節)と開発部の 2 つ(並びはユーザー・組織)。
+     * 2 件は同じ組織と別のユーザーを持つ(一覧の検索で人と組織を選ぶと、両方を持つ会議だけに当たる = 設計/業務ツール/会議/README.md の 1.2)。
      */
-    public function test_the_viewers_are_users_offered_by_the_user_switch_and_the_department_is_development(): void
+    public function test_the_related_parties_are_a_user_of_the_user_switch_and_the_development_department(): void
     {
-        $viewers = [];
+        $parties = [];
 
         foreach ($this->meetingsByTitle() as $title => $recordId) {
-            $viewers[$title] = [
-                User::query()->whereKey($this->references($recordId, 'user_id'))->orderBy('code')->pluck('code')->all(),
-                Department::query()->whereKey($this->references($recordId, 'department_id'))->pluck('code')->all(),
-            ];
+            $parties[$title] = RecordReference::query()->where('record_id', $recordId)
+                ->whereNull('referenced_record_id')->orderBy('sort_key')->get()
+                ->map(fn (RecordReference $row) => $row->user_id !== null
+                    ? ['user', User::query()->findOrFail($row->user_id)->code]
+                    : ['department', Department::query()->findOrFail($row->department_id)->code])
+                ->all();
         }
 
         $this->assertSame([
-            '社内ポータル刷新 キックオフ' => [['u0009'], ['development']],
-            '社内ポータル刷新 定例' => [['u0001'], ['development']],
-        ], $viewers);
+            '社内ポータル刷新 キックオフ' => [['user', 'u0009'], ['department', 'development']],
+            '社内ポータル刷新 定例' => [['user', 'u0001'], ['department', 'development']],
+        ], $parties);
     }
 
     public function test_the_dates_are_relative_to_the_seeding_day(): void

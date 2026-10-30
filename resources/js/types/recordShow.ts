@@ -4,11 +4,8 @@
  * 節の口(詳細の画面/節の口.md の 1 節)の @phpstan-type を同じ名前で写す。records.ts が大きさの上限に近いので分けた。
  * 後ろのモジュールが一覧と詳細に足すものの型も、ここに置く(末尾)。
  */
-import type {
-    RecordFieldType,
-    RecordFieldValue,
-    RecordReferenceValue,
-} from './records';
+import type { RecordReferenceValue } from './recordReference';
+import type { RecordFieldType, RecordFieldValue } from './records';
 import type { StatusTone } from './status';
 
 /** レコードの詳細の can(権限の判定だけ。持ち主の有無は hold) */

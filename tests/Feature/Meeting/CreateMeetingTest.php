@@ -103,7 +103,7 @@ final class CreateMeetingTest extends TransactionalTestCase
     }
 
     /**
-     * 人が入れた件名は仮の件名にせず、材料に入れる。閲覧者の表示名・閲覧組織の名前・アジェンダ・議事メモを渡し、プロジェクトは渡さない。
+     * 人が入れた件名は仮の件名にせず、材料に入れる。関係者のユーザーの表示名と組織の名前を分けて(項目の値の並び)・アジェンダ・議事メモを渡し、プロジェクトは渡さない。
      */
     public function test_a_title_and_the_fields_given_by_a_person_are_in_the_prompt_and_the_ai_keeps_the_title(): void
     {
@@ -113,8 +113,11 @@ final class CreateMeetingTest extends TransactionalTestCase
         $values = [
             'title' => '週次の定例',
             'held_at' => '2026-10-21T10:30+09:00',
-            'viewer_users' => [$viewers[0]->id, $viewers[1]->id],
-            'viewer_departments' => [$department->id],
+            'related_parties' => [
+                ['type' => 'user', 'id' => $viewers[0]->id],
+                ['type' => 'department', 'id' => $department->id],
+                ['type' => 'user', 'id' => $viewers[1]->id],
+            ],
             'agenda' => '進み具合',
             'notes' => '遅れなし',
             'summary' => '入力に無い欄は渡さない',
@@ -132,8 +135,8 @@ final class CreateMeetingTest extends TransactionalTestCase
             '会議の情報:',
             '件名: 週次の定例',
             '日時: 2026-10-21 10:30',
-            '閲覧者: 佐藤 花子、鈴木 一郎',
-            '閲覧組織: 開発部',
+            '関係者(人): 佐藤 花子、鈴木 一郎',
+            '関係者(組織): 開発部',
             '',
             'アジェンダ:',
             '進み具合',
@@ -147,7 +150,7 @@ final class CreateMeetingTest extends TransactionalTestCase
         ]), $this->userTextOf($this->lastRunIdOf($recordId)));
     }
 
-    public function test_the_values_without_viewers_and_notes_are_none(): void
+    public function test_the_values_without_related_parties_and_notes_are_none(): void
     {
         $recordId = $this->pastedMeeting($this->user(), '発言', ['held_at' => '2026-10-21T00:00Z']);
 
@@ -156,8 +159,8 @@ final class CreateMeetingTest extends TransactionalTestCase
             '会議の情報:',
             '件名: (未入力)',
             '日時: 2026-10-21 09:00',
-            '閲覧者: なし',
-            '閲覧組織: なし',
+            '関係者(人): なし',
+            '関係者(組織): なし',
             '',
             'アジェンダ:',
             'なし',

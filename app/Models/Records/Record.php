@@ -14,6 +14,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * レコード(業務データの 1 行。親を持つ行は明細の行)。表 records(docs の 設計/業務データの入れ物/データモデル/表.md 2.5)。
  * 通常の項目の値 field_values は、項目の id をキーにした値の JSON のオブジェクト(設計/業務データの入れ物/データモデル/値の形と直列化.md 3 節。{@see FieldValues})。
  * 参照の項目の値は record_references、明細は子のレコード。作成者・更新者が null の行はゲストが書いた。
+ *
+ * @phpstan-type Party array{type: 'user'|'department', id: int}
  */
 #[Fillable(['record_module_id', 'parent_record_module_id', 'parent_record_id', 'sort_key', 'field_values', 'created_by_user_id', 'updated_by_user_id'])]
 class Record extends Model
@@ -85,18 +87,24 @@ class Record extends Model
     }
 
     /**
-     * 項目の参照の値(相手の id。複数選べる参照は sort_key の順の id の配列。行が無ければ null)。
+     * 項目の参照の値(相手の id。型「ユーザーと組織」は相手の {type, id}。複数選べる参照は sort_key の順の相手の配列。行が無ければ null)。
+     * 業務処理の入力を正規化した値と同じ形(比べて変わったかを決める)。
      *
-     * @return int|list<int>|null
+     * @return int|Party|list<int|Party>|null
      */
     public function referenceValue(RecordField $field): int|array|null
     {
-        $ids = array_map(fn (RecordReference $reference) => $reference->targetId(), $this->referencesFor($field));
+        $targets = array_map(
+            fn (RecordReference $reference) => $field->type->hasPartyKind()
+                ? $reference->party()
+                : $reference->targetId(),
+            $this->referencesFor($field),
+        );
 
         return match (true) {
-            $ids === [] => null,
-            $field->is_multiple => $ids,
-            default => $ids[0],
+            $targets === [] => null,
+            $field->is_multiple => $targets,
+            default => $targets[0],
         };
     }
 

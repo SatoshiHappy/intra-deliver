@@ -114,7 +114,7 @@ export function candidateQueryOf(
 }
 
 /**
- * 他モジュール参照の欄の値(単一の参照)を空にする。ユーザー・組織の参照は共通マスタの候補で、申請者に依らないので消さない。
+ * 他モジュール参照の欄の値(単一の参照)を空にする。ユーザー・組織・ユーザーと組織の参照は共通マスタの候補で、申請者に依らないので消さない。
  */
 function clearedValues(
     fields: RecordFieldDefinition[],

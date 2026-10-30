@@ -8,12 +8,14 @@ use App\Actions\Records\Api\RecordInput;
 use App\Enums\Records\RecordComparisonOperator;
 use App\Enums\Records\RecordFieldType;
 use App\Enums\Records\RecordRuleKind;
+use App\Models\Master\DepartmentSet;
 use App\Models\Records\RecordField;
 use App\Models\Records\RecordModule;
 use App\Models\Records\RecordRule;
 use Illuminate\Validation\ValidationException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Support\BuildsCommonMaster;
+use Tests\Support\BuildsPartyInputs;
 use Tests\Support\BuildsRecordModules;
 use Tests\Support\TransactionalTestCase;
 
@@ -24,6 +26,7 @@ use Tests\Support\TransactionalTestCase;
 final class RecordRuleEvaluationTest extends TransactionalTestCase
 {
     use BuildsCommonMaster;
+    use BuildsPartyInputs;
     use BuildsRecordModules;
 
     /**
@@ -40,7 +43,7 @@ final class RecordRuleEvaluationTest extends TransactionalTestCase
          *     holds: bool}> $shared
          */
         $shared = json_decode($json, true, flags: JSON_THROW_ON_ERROR);
-        // 複数選べる参照の行は相手のユーザーを作ってから入力にするので、MultipleReferenceRuleEvaluationTest が読む
+        // 複数選べる参照の行は相手のユーザー・組織を作ってから入力にするので、MultipleReferenceRuleEvaluationTest が読む
         $single = array_filter($shared, fn (array $row): bool => ! ($row['isMultiple'] ?? false));
 
         return [
@@ -102,7 +105,7 @@ final class RecordRuleEvaluationTest extends TransactionalTestCase
         $expression = in_array($operator, ['empty', 'not_empty'], true) ? ['field' => 'f', 'op' => $operator] : ['field' => 'f', 'op' => $operator, 'value' => $expected];
         $this->requiredWhen($module, $target, ['all' => [$expression]]);
 
-        $errors = $this->errorsOf($module, $input === null ? [] : ['f' => $input]);
+        $errors = $this->errorsOf($module, $input === null ? [] : ['f' => $this->partyInputFromRow($type, $input)]);
 
         $this->assertSame($holds ? ['values.target' => 'targetを入力してください'] : [], $errors);
     }
@@ -187,6 +190,21 @@ final class RecordRuleEvaluationTest extends TransactionalTestCase
         $this->requiredWhen($module, $tasks, ['all' => [['field' => 'planned', 'op' => 'eq', 'value' => true]]]);
 
         $this->assertSame(['details.tasks' => 'tasksを 1 行以上入力してください'], $this->errorsOf($module, ['planned' => true]));
+    }
+
+    /**
+     * 表の型「ユーザーと組織」の相手の入力({type, id}。id はテストが作る相手に置き換える印)を、作ったユーザー・組織の相手にする
+     * (ほかの型の入力はそのまま)。
+     */
+    private function partyInputFromRow(RecordFieldType $type, mixed $input): mixed
+    {
+        if ($type !== RecordFieldType::UserOrDepartment || ! is_array($input)) {
+            return $input;
+        }
+
+        $party = $input['type'] === 'user' ? $this->user() : $this->department(DepartmentSet::factory()->create());
+
+        return self::partyInputOf($party);
     }
 
     /**

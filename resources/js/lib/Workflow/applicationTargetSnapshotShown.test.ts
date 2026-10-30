@@ -53,3 +53,83 @@ describe('確かめの行の今の値(入力済みかの判定と同じ空の扱
         expect(currentOf('start_at', record)).toBe('2026-10-11T09:30:00+09:00');
     });
 });
+
+/** 型「ユーザーと組織」の項目 parties を足した申請書の業務モジュール */
+const partiesModule = {
+    ...planModule,
+    fields: [
+        ...planModule.fields,
+        {
+            ...planModule.fields[0],
+            code: 'parties',
+            name: 'parties',
+            type: 'user_or_department' as const,
+            isMultiple: true,
+            referencedModule: null,
+        },
+    ],
+};
+const user3 = { ...picked(3, '高橋 誠'), type: 'user' as const };
+const party = (type: 'user' | 'department', id: number, label: string) => ({
+    ...reference(id, label),
+    type,
+});
+const changesOf = (snapshot: ReturnType<typeof snapshotOf>) =>
+    applicationTargetChangesOf(
+        partiesModule,
+        APPLICATION_TARGET_FIELD,
+        recordOf({ parties: [user3] }),
+        snapshot,
+    );
+
+describe('型「ユーザーと組織」の項目の写し', () => {
+    it('同じ種類と id の相手なら変わらない', () => {
+        expect(
+            changesOf(snapshotOf({ parties: [party('user', 3, '高橋 誠')] })),
+        ).toEqual([]);
+    });
+
+    it('同じ id でも種類が違えば変わり、今の値と写す値を種類つきの相手で出す(値の表示が種類の印を付ける)', () => {
+        const changes = changesOf(
+            snapshotOf({ parties: [party('department', 3, '開発部')] }),
+        );
+
+        expect(changes).toHaveLength(1);
+        expect(changes[0]).toMatchObject({
+            kind: 'value',
+            filled: true,
+            current: [
+                {
+                    type: 'user',
+                    id: 3,
+                    code: null,
+                    label: '高橋 誠',
+                    affiliation: null,
+                },
+            ],
+            next: [{ type: 'department', id: 3, label: '開発部' }],
+        });
+    });
+});
+
+describe('写しの表示の値の形は項目の型で決める', () => {
+    it('ほかの参照の型の項目は、相手が種類を持っても参照の値で出す', () => {
+        const current = recordOf({
+            department: { ...picked(3, '開発部'), type: 'department' },
+        });
+        const changes = applicationTargetChangesOf(
+            planModule,
+            APPLICATION_TARGET_FIELD,
+            current,
+            snapshotOf({ department: reference(4, '総務部') }),
+        );
+
+        expect(changes[0]).toMatchObject({ kind: 'value' });
+        expect(changes[0]?.kind === 'value' && changes[0].current).toEqual({
+            id: 3,
+            code: null,
+            label: '開発部',
+            affiliation: null,
+        });
+    });
+});

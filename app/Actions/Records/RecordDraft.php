@@ -7,8 +7,9 @@ use App\Models\Records\RecordModule;
 
 /**
  * 保存する 1 つのレコード(親か明細の行)の作業中の値(docs の 設計/業務データの入れ物/項目と規則/規則と業務処理/README.md 9.2 の 3〜9)。
- * 入力の値 input(4 で正規化)と、合わせた値 values(5 で作り、6 で正規化)を、項目のコードで持つ。参照の値は相手の id。
- * input・values を書くのは {@see RecordValidator} だけ(M01。業務処理の内部の型で、公開の口に出さない)。
+ * 入力の値 input(4 で正規化)と、合わせた値 values(5 で作り、6 で正規化)を、項目のコードで持つ。参照の値は相手の id
+ * (型「ユーザーと組織」は相手の {type, id})。
+ * input・values を書くのは {@see RecordValidator} だけ(書き手を 1 か所にするため。業務処理の内部の型で、公開の口に出さない)。
  */
 final class RecordDraft
 {

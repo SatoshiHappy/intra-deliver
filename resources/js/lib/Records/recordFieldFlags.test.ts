@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test';
 import type { RecordFieldType } from '@/types';
-import { attributeFlags } from './recordFieldFlags';
+import { attributeFlags, flagsPayload } from './recordFieldFlags';
 
 const labelsOf = (type: RecordFieldType, isMultiline = false) =>
     attributeFlags({ type, isMultiline }).map((flag) => flag.label);
@@ -48,5 +48,27 @@ describe('attributeFlags', () => {
         expect(labelsOf('details')).toEqual(['必須(1 行以上)']);
         expect(labelsOf('string')).toContain('表示の項目');
         expect(labelsOf('string', true)).not.toContain('表示の項目');
+    });
+});
+
+describe('attributeFlags と flagsPayload(型「ユーザーと組織」)', () => {
+    it('型「ユーザーと組織」は、ユーザー・組織と同じ欄を出し、関係者の印を送る', () => {
+        expect(labelsOf('user_or_department')).toEqual(labelsOf('user'));
+        expect(
+            flagsPayload({
+                type: 'user_or_department',
+                isMultiline: false,
+                isRequired: false,
+                isListed: true,
+                isSearchable: true,
+                isTitle: false,
+                grantsRowAccess: true,
+            }),
+        ).toEqual({
+            is_required: false,
+            is_listed: true,
+            is_searchable: true,
+            grants_row_access: true,
+        });
     });
 });

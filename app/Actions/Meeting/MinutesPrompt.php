@@ -26,7 +26,7 @@ class MinutesPrompt
     /** 値の無い見出しの値 */
     private const NONE = 'なし';
 
-    /** 閲覧者・閲覧組織の名前のつなぎ */
+    /** 関係者の名前のつなぎ */
     private const NAME_SEPARATOR = '、';
 
     /**
@@ -46,8 +46,8 @@ class MinutesPrompt
                 '会議の情報:',
                 '件名: '.($title === null ? self::UNTITLED : self::inert($title)),
                 '日時: '.self::heldAt($fields->heldAt),
-                '閲覧者: '.self::names($fields->viewerNames),
-                '閲覧組織: '.self::names($fields->departmentNames),
+                '関係者(人): '.self::names($fields->userNames),
+                '関係者(組織): '.self::names($fields->departmentNames),
             ]),
             "アジェンダ:\n".($fields->agenda === null ? self::NONE : self::inert($fields->agenda)),
             "議事メモ:\n".($fields->notes === null ? self::NONE : self::inert($fields->notes)),

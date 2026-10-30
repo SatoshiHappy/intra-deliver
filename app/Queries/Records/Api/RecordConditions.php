@@ -75,7 +75,8 @@ class RecordConditions
 
     /**
      * レコードの明細を除く項目の値(項目のコード → 値)。通常の項目は保存された値の読み方({@see FieldValueParser::stored()}。真偽はキーが無ければ偽)、
-     * 参照の項目は相手の id(複数選べる参照は id の配列。無ければ null = 空の配列にしない)。条件つき必須が評価する合わせた値と同じ形。
+     * 参照の項目は {@see Record::referenceValue()} の形(相手の id か型「ユーザーと組織」の {type, id}、複数選べる参照はその配列。
+     * 無ければ null)。条件つき必須が評価する合わせた値と同じ形。
      *
      * @return array<string, mixed>
      */

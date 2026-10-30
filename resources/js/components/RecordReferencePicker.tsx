@@ -1,9 +1,11 @@
 import { ChevronsUpDown } from 'lucide-react';
 import { useState } from 'react';
+import { PartyMark } from '@/components/PartyMark';
 import { Button } from '@/components/ui/button';
 import {
     Command,
     CommandEmpty,
+    CommandGroup,
     CommandInput,
     CommandItem,
     CommandList,
@@ -13,19 +15,17 @@ import {
     PopoverContent,
     PopoverTrigger,
 } from '@/components/ui/popover';
-import { useMasterSearch } from '@/hooks/use-master-search';
-import {
-    CANDIDATE_QUERY_MAX_LENGTH,
-    useRecordCandidates,
-} from '@/hooks/use-record-candidates';
-import { nameOrCode } from '@/lib/nameOrCode';
+import { CANDIDATE_QUERY_MAX_LENGTH } from '@/hooks/use-record-candidates';
+import { useReferenceOptions } from '@/hooks/use-reference-options';
+import type { PickedGroup } from '@/lib/pickedReference';
+import { pickedGroups, pickedKey, pickedMarkOf } from '@/lib/pickedReference';
 import { cn } from '@/lib/utils';
 import type { PickedReference, RecordFieldDefinition } from '@/types';
 
 type Props = {
     /** ボタンの id(ラベルと結ぶ) */
     id?: string;
-    /** 参照の項目(ユーザー・組織・他モジュール参照) */
+    /** 参照の項目(ユーザー・組織・ユーザーと組織・他モジュール参照) */
     field: RecordFieldDefinition;
     /** 書くレコードの id(他モジュール参照の候補から除く。null = 除かない) */
     recordId: number | null;
@@ -45,66 +45,16 @@ type Props = {
 const noticeClass = 'py-6 text-center text-sm';
 
 /**
- * 候補の一覧(ユーザー・組織は共通マスタの検索の口の群を 1 つだけ、他モジュール参照は候補の口。群なし = 設計/業務データの入れ物/画面/README.md 4 節)。
- * 開いている間は必ず取るので、options が null なら結果を待っている(失敗は hasFailed)。ユーザーは主所属の名前を所属に持つ
- * (複数の参照の欄のチップに出す)。
- */
-export function useReferenceOptions(
-    field: RecordFieldDefinition,
-    recordId: number | null,
-    query: string,
-    open: boolean,
-): {
-    options: PickedReference[] | null;
-    hasFailed: boolean;
-} {
-    const isRecord = field.type === 'record';
-    // 開いている間は、語が空でも先頭の候補を取る(閉じると語を空にして結果を捨てる)。使わない側の口は呼ばない。
-    const master = useMasterSearch(isRecord ? '' : query, open && !isRecord);
-    const records = useRecordCandidates(
-        field.referencedModule?.code ?? '',
-        isRecord ? query : '',
-        recordId,
-        open && isRecord,
-    );
-
-    if (isRecord) {
-        return {
-            options:
-                records.result?.records.map((record) => ({
-                    id: record.id,
-                    label: record.label ?? `#${record.id}`,
-                })) ?? null,
-            hasFailed: records.hasFailed,
-        };
-    }
-
-    const found =
-        field.type === 'user'
-            ? master.result?.users.map((user) => ({
-                  id: user.id,
-                  label: nameOrCode(user),
-                  affiliation:
-                      user.mainDepartment === null
-                          ? null
-                          : nameOrCode(user.mainDepartment),
-              }))
-            : master.result?.departments.map((department) => ({
-                  id: department.id,
-                  label: nameOrCode(department),
-              }));
-
-    return { options: found ?? null, hasFailed: master.hasFailed };
-}
-
-/**
  * 候補の一覧の中身(待ち・失敗・該当なしの知らせと候補。参照の選択欄と複数の参照の欄で同じ)。
  */
 export function ReferenceOptionList({
+    field,
     options,
     hasFailed,
     onSelect,
 }: {
+    /** 候補を取る参照の項目(候補のキーと群の見出しは項目の型で決める) */
+    field: RecordFieldDefinition;
     options: PickedReference[] | null;
     hasFailed: boolean;
     onSelect: (picked: PickedReference) => void;
@@ -121,15 +71,61 @@ export function ReferenceOptionList({
         return <CommandEmpty>該当する候補はありません</CommandEmpty>;
     }
 
-    return options.map((option) => (
-        <CommandItem
-            key={option.id}
-            value={`id:${option.id}`}
-            onSelect={() => onSelect(option)}
-        >
-            <span className="truncate">{option.label}</span>
-        </CommandItem>
-    ));
+    const items = (group: PickedGroup) =>
+        group.options.map((option) => (
+            <CommandItem
+                key={pickedKey(field, option)}
+                value={`id:${pickedKey(field, option)}`}
+                onSelect={() => onSelect(option)}
+            >
+                <span className="truncate">{option.label}</span>
+            </CommandItem>
+        ));
+
+    return pickedGroups(field, options).map((group) =>
+        group.heading === null ? (
+            items(group)
+        ) : (
+            <CommandGroup key={group.heading} heading={group.heading}>
+                {items(group)}
+            </CommandGroup>
+        ),
+    );
+}
+
+/**
+ * 選択欄のボタンの中身(選んだ値の表示名、無ければ「選択してください」。型「ユーザーと組織」の値は前に種類の印
+ * = docs の 設計/業務データの入れ物/画面/README.md 1.3)。
+ */
+function PickedLabel({
+    field,
+    value,
+}: {
+    field: RecordFieldDefinition;
+    value: PickedReference | null;
+}) {
+    const mark = pickedMarkOf(field, value);
+
+    return (
+        <span className="flex min-w-0 items-center gap-2">
+            {mark !== null && value !== null && (
+                <PartyMark
+                    kind={mark}
+                    label={value.label}
+                    size="inline"
+                    announced
+                />
+            )}
+            <span
+                className={cn(
+                    'truncate',
+                    value === null && 'text-muted-foreground',
+                )}
+            >
+                {value?.label ?? '選択してください'}
+            </span>
+        </span>
+    );
 }
 
 /**
@@ -184,14 +180,7 @@ export function RecordReferencePicker({
                     aria-describedby={describedBy}
                     className="w-full justify-between font-normal"
                 >
-                    <span
-                        className={cn(
-                            'truncate',
-                            value === null && 'text-muted-foreground',
-                        )}
-                    >
-                        {value?.label ?? '選択してください'}
-                    </span>
+                    <PickedLabel field={field} value={value} />
                     <ChevronsUpDown className="size-4 shrink-0 opacity-50" />
                 </Button>
             </PopoverTrigger>
@@ -208,6 +197,7 @@ export function RecordReferencePicker({
                     />
                     <CommandList>
                         <ReferenceOptionList
+                            field={field}
                             options={options}
                             hasFailed={hasFailed}
                             onSelect={choose}

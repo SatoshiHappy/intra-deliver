@@ -114,7 +114,7 @@ class RecordRevisionLabels
     }
 
     /**
-     * 値の表示に要る属性(型ごと。表.md の 2.1.2 節)。
+     * 値の表示に要る属性(型ごと。表.md の 2.1.2 節)。既定の枝に落とさず全部の型を挙げる(新しい型を足したら静的解析が漏れを知らせる)。
      *
      * @return array<string, mixed>
      */
@@ -122,12 +122,19 @@ class RecordRevisionLabels
     {
         return match ($field->type) {
             RecordFieldType::String => ['multiline' => $field->is_multiline],
-            RecordFieldType::User, RecordFieldType::Department => ['multiple' => $field->is_multiple],
+            RecordFieldType::User,
+            RecordFieldType::Department,
+            RecordFieldType::UserOrDepartment => ['multiple' => $field->is_multiple],
             RecordFieldType::Record => ['referenced_module' => $field->referencedRecordModule?->code],
             RecordFieldType::Details => [
                 'fields' => $this->fields($field->childRecordModule->recordFields ?? new Collection),
             ],
-            default => [],
+            RecordFieldType::Integer,
+            RecordFieldType::Decimal,
+            RecordFieldType::Date,
+            RecordFieldType::Datetime,
+            RecordFieldType::Boolean,
+            RecordFieldType::Choice => [],
         };
     }
 

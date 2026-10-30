@@ -9,8 +9,8 @@ import type {
     RecordHeadingGroup,
     RecordModuleDefinition,
     RecordModuleSummary,
-    RecordReferenceValue,
 } from './records';
+import type { RecordReferenceValue } from './recordReference';
 
 /** 入口 1 つ(参照元の業務モジュール × 参照の項目。並び = 入口の並び) */
 export type RecordRelatedEntry = {

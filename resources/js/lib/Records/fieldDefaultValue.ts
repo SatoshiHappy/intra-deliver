@@ -5,7 +5,8 @@ import {
     relativePayload,
 } from '@/lib/Records/relativeDefault';
 import type { RecordFieldDraft } from '@/lib/recordForm';
-import { currentDraft, payloadValue } from '@/lib/recordForm';
+import { currentDraft } from '@/lib/recordForm';
+import { payloadValue } from '@/lib/recordPayload';
 import type {
     RecordAdminField,
     RecordFieldDefinition,

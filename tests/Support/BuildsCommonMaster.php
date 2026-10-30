@@ -73,6 +73,23 @@ trait BuildsCommonMaster
     }
 
     /**
+     * 同じ id の、有効なユーザーと組織(型「ユーザーと組織」の相手を種類と id で比べることを確かめるため)。採番の続きと重ならないように、
+     * id は両方の表の最大より十分大きくする。
+     *
+     * @return array{User, Department}
+     */
+    protected function userAndDepartmentWithTheSameId(DepartmentSet $set): array
+    {
+        $id = max((int) User::query()->max('id'), (int) Department::query()->max('id')) + 100_000;
+        $user = User::factory()->create(['id' => $id]);
+        $department = Department::factory()->create(['id' => $id, 'department_set_id' => $set->id, 'is_root' => false]);
+        UserTerm::factory()->create(['user_id' => $id, ...$this->period(self::ALWAYS[0])]);
+        DepartmentTerm::factory()->create(['department_id' => $id, ...$this->period(self::ALWAYS[0])]);
+
+        return [$user, $department];
+    }
+
+    /**
      * 内包(親子の組織は同じ組織セット)。
      *
      * @param  array{0: string, 1: string|null, 2?: bool}  $term

@@ -3,6 +3,7 @@
 namespace App\Actions\Records;
 
 use App\Enums\Records\RecordFieldType;
+use App\Models\Records\Record;
 use App\Models\Records\RelativeDefault;
 use App\Queries\Records\FieldValueParser;
 use App\Queries\Records\InvalidFieldValue;
@@ -14,9 +15,9 @@ use Carbon\CarbonImmutable;
  * 5 = 登録は入力 + 既定値(入力にキーの無い項目だけ。真偽は既定値が無ければ 6 の parse で偽になる = 3 節)、更新は今の値に入力を重ねたもの。
  * 合わせた値は今の定義の項目だけを持つ(定義に無いキーは読まない)。6 = 入力で変えなかった値も今の定義で 2 節の検証に掛ける
  * (参照の有効性は確かめ直さない)。7・8 = {@see RuleEvaluator}。6 で型の形に合わない値の項目を対象・相手・条件に使う規則は、7・8 で評価しない
- * (その項目の誤りは 6 で返る。ほかの規則は評価して一緒に返す = M01、9.2 の 6〜8 の注記)。
+ * (その項目の誤りは 6 で返る。ほかの規則は評価して一緒に返す = 9.2 の 6〜8 の注記)。
  *
- * 作業中の値({@see RecordDraft} の input・values)を書くのはこのクラスだけ(M01。読むのは {@see RuleEvaluator} と {@see RecordWriter})。
+ * 作業中の値({@see RecordDraft} の input・values)を書くのはこのクラスだけ(書き手を 1 か所にするため。読むのは {@see RuleEvaluator} と {@see RecordWriter})。
  */
 class RecordValidator
 {
@@ -83,7 +84,7 @@ class RecordValidator
     }
 
     /**
-     * 今の行の値(項目のコード → 値。参照は相手の id、複数選べる参照は id の配列。新しい行なら空)。
+     * 今の行の値(項目のコード → 値。参照は {@see Record::referenceValue()} の形。新しい行なら空)。
      *
      * @return array<string, mixed>
      */

@@ -15,7 +15,7 @@ import {
 import { useFocusFirstInvalid } from '@/hooks/use-focus-first-invalid';
 import { clearRowErrors } from '@/lib/formErrors';
 import type { RecordFormData } from '@/lib/recordForm';
-import { toPayload } from '@/lib/recordForm';
+import { toPayload } from '@/lib/recordPayload';
 import { isRecordFieldKey } from '@/lib/recordFormErrors';
 import type { RelatedDialogStatus } from '@/lib/recordRelated';
 import { addedMessage, relatedFormData } from '@/lib/recordRelated';
@@ -157,13 +157,15 @@ function RelatedForm(props: FormProps) {
 
 /** 入口の項目(押せない形で、このレコードの表示名と下の 1 行を出す) */
 function fixedFieldOf(form: RecordRelatedForm) {
-    const type = form.module.fields.find(
-        (item) => item.code === form.field,
-    )?.type;
+    const field = form.module.fields.find((item) => item.code === form.field);
 
     return {
         code: form.field,
-        text: referenceLabel(type ?? 'record', form.value),
+        // 項目が見つからなければ、今の定義の他モジュール参照と同じ表示(名前か #<id>)
+        text:
+            field === undefined
+                ? (form.value.label ?? `#${form.value.id}`)
+                : referenceLabel(field, form.value),
         hint: FIXED_HINT,
     };
 }

@@ -27,13 +27,10 @@ const meeting: RecordModuleDefinition = {
             isRequired: true,
             defaultValue: '2026-10-21T01:30:00Z',
         }),
-        recordField('viewer_users', 'user', {
-            name: '閲覧者',
+        recordField('related_parties', 'user_or_department', {
+            name: '関係者',
             isMultiple: true,
-        }),
-        recordField('viewer_departments', 'department', {
-            name: '閲覧組織',
-            isMultiple: true,
+            grantsRowAccess: true,
         }),
         recordField('project', 'record', { name: 'プロジェクト' }),
         recordField('purge_due_on', 'date', {
@@ -55,12 +52,11 @@ function data(overrides: Partial<CreateMeetingData> = {}): CreateMeetingData {
 }
 
 describe('dialogFields・initialCreateMeetingData', () => {
-    it('欄は 日時・件名・閲覧者・閲覧組織・プロジェクト・アジェンダ・議事メモ の順で、削除予定日と議事録の欄を出さない', () => {
+    it('欄は 日時・件名・関係者・プロジェクト・アジェンダ・議事メモ の順で、削除予定日と議事録の欄を出さない', () => {
         expect(dialogFields(meeting).map((field) => field.name)).toEqual([
             '日時',
             '件名',
-            '閲覧者',
-            '閲覧組織',
+            '関係者',
             'プロジェクト',
             'アジェンダ',
             '議事メモ',
@@ -76,8 +72,7 @@ describe('dialogFields・initialCreateMeetingData', () => {
         expect(dialogFields(withoutNotes).map((field) => field.code)).toEqual([
             'held_at',
             'title',
-            'viewer_users',
-            'viewer_departments',
+            'related_parties',
             'project',
             'agenda',
         ]);
@@ -91,8 +86,7 @@ describe('dialogFields・initialCreateMeetingData', () => {
             values: {
                 held_at: '2026-10-21T10:30',
                 title: '',
-                viewer_users: null,
-                viewer_departments: null,
+                related_parties: null,
                 project: null,
                 agenda: '',
                 notes: '',
@@ -104,13 +98,17 @@ describe('dialogFields・initialCreateMeetingData', () => {
 /** 欄を埋め、ファイルと貼り付けの両方を持つ値と、その欄の送る値 */
 function payloadCase() {
     const picked = (id: number) => ({ id, label: `#${id}`, affiliation: null });
+    const party = (type: 'user' | 'department', id: number) => ({
+        ...picked(id),
+        type,
+    });
     const filled = data({
         file: new File(['発言'], '定例.txt'),
         text: '貼り付けた発言',
         values: {
             ...data().values,
             title: '',
-            viewer_users: [picked(3), picked(5)],
+            related_parties: [party('user', 3), party('department', 3)],
             project: picked(9),
             agenda: '1. 進み具合',
         },
@@ -118,8 +116,10 @@ function payloadCase() {
     const values = {
         held_at: '2026-10-21T10:30:00+09:00',
         title: null,
-        viewer_users: [3, 5],
-        viewer_departments: null,
+        related_parties: [
+            { type: 'user', id: 3 },
+            { type: 'department', id: 3 },
+        ],
         project: 9,
         agenda: '1. 進み具合',
         notes: null,
@@ -158,7 +158,7 @@ describe('createMeetingPayload(貼り付け・ファイルの無いとき)', () 
             values: {
                 ...values,
                 title: null,
-                viewer_users: null,
+                related_parties: null,
                 project: null,
                 agenda: null,
             },
@@ -168,12 +168,17 @@ describe('createMeetingPayload(貼り付け・ファイルの無いとき)', () 
 
 describe('shownErrorKeys', () => {
     it('欄の下に出すのは今の札の取り込みの欄と、ダイアログの欄(複数の参照の欄は添字も)', () => {
-        const picked = { id: 1, label: 'A', affiliation: null };
+        const picked = {
+            id: 1,
+            label: 'A',
+            affiliation: null,
+            type: 'user' as const,
+        };
         const shown = shownErrorKeys(
             meeting,
             data({
                 source: 'paste',
-                values: { ...data().values, viewer_users: [picked, picked] },
+                values: { ...data().values, related_parties: [picked, picked] },
             }),
         );
 
@@ -183,8 +188,8 @@ describe('shownErrorKeys', () => {
             expect.arrayContaining([
                 'values.held_at',
                 'values.title',
-                'values.viewer_users.0',
-                'values.viewer_users.1',
+                'values.related_parties.0',
+                'values.related_parties.1',
             ]),
         );
         expect(shown).not.toContain('values.purge_due_on');

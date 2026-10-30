@@ -48,7 +48,8 @@ final class MeetingTranscriptionRequesterTest extends TransactionalTestCase
     public function test_the_minutes_are_written_after_the_requester_lost_access_during_processing(string $lost): void
     {
         $viewer = $this->user();
-        $recordId = $this->audioMeeting($this->creator, '定例.mp3', [Meeting::ViewerUsers->value => [$viewer->id]]);
+        $parties = [Meeting::RelatedParties->value => [['type' => 'user', 'id' => $viewer->id]]];
+        $recordId = $this->audioMeeting($this->creator, '定例.mp3', $parties);
         match ($lost) {
             'read' => $this->denyMeeting(RecordModuleAction::Read),
             'update' => $this->denyMeeting(RecordModuleAction::Update),

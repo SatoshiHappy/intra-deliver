@@ -2,7 +2,9 @@
  * 業務データの入れ物の画面の型(docs の 設計/業務データの入れ物/画面/README.md 1.2。サーバーの App\Queries\Records が返す形)。
  */
 
-/** 項目の型(項目と規則/README.md 1 節の 11 種) */
+import type { RecordPartyValue, RecordReferenceValue } from './recordReference';
+
+/** 項目の型(項目と規則/README.md 1 節の 12 種) */
 export type RecordFieldType =
     | 'string'
     | 'integer'
@@ -13,6 +15,7 @@ export type RecordFieldType =
     | 'choice'
     | 'user'
     | 'department'
+    | 'user_or_department'
     | 'record'
     | 'details';
 
@@ -64,7 +67,7 @@ export type RecordFieldDefinition = {
     type: RecordFieldType;
     isRequired: boolean;
     isMultiline: boolean;
-    isMultiple: boolean; // ユーザー・組織だけ。複数選べる参照(項目と規則/README.md 1 節)
+    isMultiple: boolean; // ユーザー・組織・ユーザーと組織だけ。複数選べる参照(項目と規則/README.md 1 節)
     maxLength: number | null; // 文字列だけ。型の上限を含めた実際の上限(属性が NULL なら型の上限)
     defaultValue: string | number | boolean | null;
     options: { code: string; name: string }[]; // 選択だけ。並びの順
@@ -73,10 +76,10 @@ export type RecordFieldDefinition = {
     isListed: boolean;
     isSearchable: boolean;
     isTitle: boolean;
-    grantsRowAccess: boolean; // ユーザー・組織だけ。関係する人の旗(認可とメニュー/README.md 2.4)
+    grantsRowAccess: boolean; // ユーザー・組織・ユーザーと組織だけ。関係者の印(認可とメニュー/行の権限.md 2.4)
 };
 
-/** 業務モジュールの見える範囲(全員・関係する人だけ = 認可とメニュー/README.md 2.4) */
+/** 業務モジュールの見える範囲(全員・関係する人だけ = 認可とメニュー/行の権限.md 2.4) */
 export type RowAccessScope = 'all' | 'related';
 
 export type RecordModuleDefinition = {
@@ -87,21 +90,13 @@ export type RecordModuleDefinition = {
     rules: RecordRuleDefinition[];
 };
 
-/**
- * 参照の値(名称・タイトルが無ければ label は null。画面はユーザー・組織はコード、レコードは #<id> を出す)。
- * affiliation = ユーザーの主所属の組織の名前(複数の参照の欄のチップに出す。組織・他モジュール参照と主所属の無いユーザーは null = 画面/README.md 1.2)
- */
-export type RecordReferenceValue = {
-    id: number;
-    code: string | null;
-    label: string | null;
-    affiliation: string | null;
-};
-
 /** 選択の値(選択肢に無いコードは name が null) */
 export type RecordChoiceValue = { code: string; name: string | null };
 
-/** 1 項目の値。未設定は null。小数は文字列、日時は UTC の文字列、選択は { code, name }、配列 = 複数選べる参照(並びの順。空は null) */
+/**
+ * 1 項目の値。未設定は null。小数は文字列、日時は UTC の文字列、選択は { code, name }、配列 = 複数選べる参照(並びの順。空は null)。
+ * 型「ユーザーと組織」の相手は RecordPartyValue(RecordReferenceValue に種類 type を足した形)
+ */
 export type RecordFieldValue =
     | string
     | number
@@ -109,6 +104,8 @@ export type RecordFieldValue =
     | RecordChoiceValue
     | RecordReferenceValue
     | RecordReferenceValue[]
+    | RecordPartyValue
+    | RecordPartyValue[]
     | null;
 
 export type RecordDetailRow = {
@@ -116,9 +113,13 @@ export type RecordDetailRow = {
     values: Record<string, RecordFieldValue>;
 };
 
-/** 一覧の検索条件(範囲の型は from・to) */
+/**
+ * 一覧の検索条件(範囲の型は from・to、複数選べる参照は相手の並び 1〜100 個 = 画面/業務の画面.md 2.1)。
+ * 型「ユーザーと組織」の相手は `user:<id>`・`department:<id>`
+ */
 export type RecordFilterValue =
     | string
+    | string[]
     | { from: string | null; to: string | null };
 
 /** 一覧のページ Records/Index の records(画面/業務の画面.md 2.1) */
@@ -159,16 +160,6 @@ export type RecordCopySource = {
 
 /** レコードの持ち主(詳細・編集のページの hold。理由だけを出し、案件の番号や名前は出さない = 画面/業務の画面.md 2.2・2.3) */
 export type RecordHold = { reason: string };
-
-/**
- * 参照の選択欄で選んだ相手(id と表示名 = 画面/README.md 4 節)。affiliation = ユーザーの所属(複数の参照の欄のチップに出す)。
- * 出どころは、候補から選んだ相手なら候補の主所属の名前、今の値の相手なら RecordReferenceValue の affiliation(画面/業務の画面.md 2.2)。
- */
-export type PickedReference = {
-    id: number;
-    label: string;
-    affiliation?: string | null;
-};
 
 /** 編集のページ Records/Edit の record(画面/業務の画面.md 2.2) */
 export type RecordEditable = {

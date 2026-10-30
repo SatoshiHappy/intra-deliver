@@ -3,6 +3,8 @@ import { recordField } from './recordField.testing';
 import {
     formatRecordValue,
     missingChoiceLabel,
+    referenceLabel,
+    shownReferences,
     toTokyoLocal,
 } from './recordValues';
 
@@ -97,6 +99,91 @@ describe('formatRecordValue(複数選べる参照)', () => {
     });
 });
 
+const parties = recordField('parties', 'user_or_department', {
+    isMultiple: true,
+});
+
+const host = recordField('host', 'user_or_department');
+
+/** 型「ユーザーと組織」の相手(コード = c<id>) */
+function party(type: 'user' | 'department', id: number, label: string | null) {
+    return { type, ...target(id, label) };
+}
+
+describe('formatRecordValue(型「ユーザーと組織」)', () => {
+    it('表のセルで 3 つ以上なら、人だけでも「ほか <N> 件」', () => {
+        const people = [
+            party('user', 1, '高橋 誠'),
+            party('user', 2, '中村 美咲'),
+            party('user', 3, '山田 恵'),
+        ];
+
+        expect(formatRecordValue(parties, people, 'cell')).toBe(
+            '高橋 誠、中村 美咲 ほか 1 件',
+        );
+    });
+
+    it('人と組織が混ざっても、並びの順に先頭の 2 つと「ほか <N> 件」', () => {
+        const mixed = [
+            party('department', 3, '開発部'),
+            party('user', 3, '高橋 誠'),
+            party('department', 4, '総務部'),
+            party('user', 5, '中村 美咲'),
+        ];
+
+        expect(formatRecordValue(parties, mixed, 'cell')).toBe(
+            '開発部、高橋 誠 ほか 2 件',
+        );
+        expect(formatRecordValue(parties, mixed)).toBe(
+            '開発部、高橋 誠、総務部、中村 美咲',
+        );
+    });
+
+    it('名前の無い相手は、コードに種類を添える(1 つの値も同じ)', () => {
+        const nameless = [party('user', 3, null), party('department', 3, null)];
+
+        expect(formatRecordValue(parties, nameless)).toBe(
+            'c3(ユーザー)、c3(組織)',
+        );
+        expect(formatRecordValue(host, party('department', 7, null))).toBe(
+            'c7(組織)',
+        );
+        expect(formatRecordValue(host, party('user', 7, '高橋 誠'))).toBe(
+            '高橋 誠',
+        );
+    });
+});
+
+describe('shownReferences', () => {
+    it('表のセルの数の境界: 2 つまでは全部、3 つから先頭の 2 つと残りの数', () => {
+        const cell = (count: number) =>
+            shownReferences(
+                parties,
+                Array.from({ length: count }, (_, index) =>
+                    party('user', index + 1, `u${index + 1}`),
+                ),
+                'cell',
+            );
+
+        expect(cell(1)).toMatchObject({ rest: null });
+        expect(cell(2).shown).toHaveLength(2);
+        expect(cell(2).rest).toBeNull();
+        expect(cell(3).shown.map((value) => value.id)).toEqual([1, 2]);
+        expect(cell(3).rest).toBe('ほか 1 件');
+        expect(cell(101).rest).toBe('ほか 99 件');
+    });
+
+    it('詳細と差分は添え書きを付けない', () => {
+        const three = [1, 2, 3].map((id) => party('user', id, `u${id}`));
+
+        expect(shownReferences(parties, three, 'detail')).toEqual({
+            shown: three,
+            rest: null,
+        });
+        expect(shownReferences(members, three, 'diff').rest).toBeNull();
+    });
+});
+
 describe('formatRecordValue(複数行の文字列)', () => {
     const note = recordField('note', 'string', { isMultiline: true });
     const markdown = '# 見出し\n\n[公式](https://example.com) と **太字**';
@@ -121,5 +208,25 @@ describe('formatRecordValue(複数行の文字列)', () => {
         const line = recordField('title', 'string');
 
         expect(formatRecordValue(line, '**太字**', 'cell')).toBe('**太字**');
+    });
+});
+
+describe('種類の判定は項目の型で決める(表示)', () => {
+    const owner = recordField('owner', 'user');
+    const untyped = target(3, '高橋 誠');
+    const nameless = target(3, null);
+
+    it('型「ユーザーと組織」の項目で種類の無い値は、名前の有無によらず投げる(1 つ・複数)', () => {
+        expect(() => formatRecordValue(host, untyped)).toThrow();
+        expect(() => formatRecordValue(host, nameless)).toThrow();
+        expect(() => formatRecordValue(parties, [untyped])).toThrow();
+        expect(() => formatRecordValue(parties, [nameless])).toThrow();
+        expect(() => referenceLabel(host, untyped)).toThrow();
+        expect(() => referenceLabel(host, nameless)).toThrow();
+    });
+
+    it('ほかの参照の型の項目は、種類を持つ値でも種類の名前を付けない', () => {
+        expect(referenceLabel(owner, party('user', 3, null))).toBe('c3');
+        expect(formatRecordValue(members, [party('user', 3, null)])).toBe('c3');
     });
 });

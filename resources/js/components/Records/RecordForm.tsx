@@ -7,7 +7,7 @@ import { RecordFields } from '@/components/RecordFields';
 import { Button } from '@/components/ui/button';
 import { useFocusFirstInvalid } from '@/hooks/use-focus-first-invalid';
 import type { RecordFormData } from '@/lib/recordForm';
-import { toPayload } from '@/lib/recordForm';
+import { toPayload } from '@/lib/recordPayload';
 import { isRecordFieldKey } from '@/lib/recordFormErrors';
 import { clearRowErrors } from '@/lib/formErrors';
 import type { RouteDefinition } from '@/wayfinder';

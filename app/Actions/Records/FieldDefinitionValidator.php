@@ -25,7 +25,7 @@ class FieldDefinitionValidator
     /** 型を分ける旗 → その旗を持てる型(旗を変える入力を「変えられない」と比べるのは、持てる型に真偽で与えたときだけ) */
     private const TYPE_FLAGS = [
         'is_multiline' => [RecordFieldType::String],
-        'is_multiple' => [RecordFieldType::User, RecordFieldType::Department],
+        'is_multiple' => [RecordFieldType::User, RecordFieldType::Department, RecordFieldType::UserOrDepartment],
     ];
 
     /** 真偽の属性(旗) */
@@ -33,8 +33,12 @@ class FieldDefinitionValidator
         'is_required', 'is_multiline', 'is_multiple', 'is_listed', 'is_searchable', 'is_title', 'grants_row_access',
     ];
 
-    /** 関係する人の旗を持てる型(認可とメニュー/README.md 2.4。変えられる旗なので、変えられないキーの比較には掛けない) */
-    private const ROW_ACCESS_TYPES = [RecordFieldType::User, RecordFieldType::Department];
+    /** 関係者の印を持てる型(認可とメニュー/行の権限.md 2.4。変えられる印なので、変えられないキーの比較には掛けない) */
+    private const ROW_ACCESS_TYPES = [
+        RecordFieldType::User,
+        RecordFieldType::Department,
+        RecordFieldType::UserOrDepartment,
+    ];
 
     public function __construct(
         private FieldDefaultValidator $defaults,
@@ -160,7 +164,7 @@ class FieldDefinitionValidator
 
     /**
      * 変えられないキーの比較に掛ける値か。型を分ける旗は、持てる型の項目に bool で与えたときだけ(ほかは旗の形の誤り・組の誤り =
-     * 「複数行は文字列だけ」「複数はユーザー・組織だけ」が言う)。
+     * 「複数行は文字列だけ」「複数はユーザー・組織・ユーザーと組織だけ」が言う)。
      */
     private function isComparable(string $key, mixed $given, RecordField $field): bool
     {
@@ -236,7 +240,7 @@ class FieldDefinitionValidator
             'is_multiline' => [$attributes['is_multiline'] && ! $isString, '複数行は文字列の項目だけに設定できます'],
             'is_multiple' => [
                 $attributes['is_multiple'] && ! in_array($type, self::TYPE_FLAGS['is_multiple'], true),
-                '複数はユーザー・組織の項目だけに設定できます',
+                '複数はユーザー・組織・ユーザーと組織の項目だけに設定できます',
             ],
             'is_listed' => [$attributes['is_listed'] && $isDetails, '明細の項目は一覧に表示できません'],
             'is_searchable' => [$attributes['is_searchable'] && $isDetails, '明細の項目は検索条件にできません'],
@@ -252,7 +256,7 @@ class FieldDefinitionValidator
     }
 
     /**
-     * 関係する人の旗の誤り(ユーザー・組織の項目だけ。データモデル/表.md 2.2 の検査制約と同じ規則)。
+     * 関係者の印の誤り(ユーザー・組織・ユーザーと組織の項目だけ。データモデル/表.md 2.2 の検査制約と同じ規則)。
      *
      * @param  array<string, mixed>  $attributes  形を確かめた属性
      */
@@ -260,7 +264,7 @@ class FieldDefinitionValidator
     {
         $isAllowed = in_array($type, self::ROW_ACCESS_TYPES, true);
 
-        return $attributes['grants_row_access'] && ! $isAllowed ? '関係する人はユーザー・組織の項目だけに設定できます' : null;
+        return $attributes['grants_row_access'] && ! $isAllowed ? '関係する人はユーザー・組織・ユーザーと組織の項目だけに設定できます' : null;
     }
 
     /**

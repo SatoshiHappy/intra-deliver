@@ -132,15 +132,20 @@ class RecordRevisionDiff
     }
 
     /**
-     * 参照の項目 1 つの画面の値(今は無い相手は id を残して code・label が null)。
+     * 参照の項目 1 つの画面の値(今は無い相手は id を残して code・label が null。型「ユーザーと組織」は相手の種類 type を足す =
+     * 読み取りと同じ形)。
      *
      * @param  FieldEntry  $entry
      * @param  array<string, ReferenceValue>  $targets
      */
     private function referenceValue(array $entry, mixed $raw, array $targets): mixed
     {
-        $shown = array_map(fn (array $target) => $targets[$this->reader->targetKey($target)]
-            ?? ['id' => $target['id'], 'code' => null, 'label' => null, 'affiliation' => null], $this->targetsIn($raw));
+        $shown = array_map(function (array $target) use ($entry, $targets): array {
+            $value = $targets[$this->reader->targetKey($target)]
+                ?? ['id' => $target['id'], 'code' => null, 'label' => null, 'affiliation' => null];
+
+            return $this->reader->withKind($entry['type'], $target, $value);
+        }, $this->targetsIn($raw));
 
         return match (true) {
             $shown === [] => null,

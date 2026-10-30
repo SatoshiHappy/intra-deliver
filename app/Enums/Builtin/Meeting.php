@@ -33,8 +33,8 @@ enum Meeting: string
     /** 必須で一覧に出す */
     private const REQUIRED_LISTED = ['is_required' => true, ...self::LISTED];
 
-    /** 関係する人の旗を付けた、複数選べる参照(一覧に出す) */
-    private const VIEWERS = ['is_multiple' => true, 'grants_row_access' => true, ...self::LISTED];
+    /** 関係者の印を付けた、複数選べる参照(一覧に出す) */
+    private const RELATED = ['is_multiple' => true, 'grants_row_access' => true, ...self::LISTED];
 
     /** 件名 */
     case Title = 'title';
@@ -42,11 +42,8 @@ enum Meeting: string
     /** 日時 */
     case HeldAt = 'held_at';
 
-    /** 閲覧者 */
-    case ViewerUsers = 'viewer_users';
-
-    /** 閲覧組織 */
-    case ViewerDepartments = 'viewer_departments';
+    /** 関係者(ユーザーと組織を 1 つの項目で選ぶ = ADR 0028 の決定 7) */
+    case RelatedParties = 'related_parties';
 
     /** プロジェクト */
     case Project = 'project';
@@ -97,8 +94,7 @@ enum Meeting: string
                 'name' => '日時', 'type' => 'datetime',
                 'default_value' => ['relative' => 'P0D'], ...self::REQUIRED_LISTED,
             ],
-            self::ViewerUsers => ['name' => '閲覧者', 'type' => 'user', ...self::VIEWERS],
-            self::ViewerDepartments => ['name' => '閲覧組織', 'type' => 'department', ...self::VIEWERS],
+            self::RelatedParties => ['name' => '関係者', 'type' => 'user_or_department', ...self::RELATED],
             self::Project => [
                 'name' => 'プロジェクト', 'type' => 'record',
                 'referenced_module' => self::PROJECT_MODULE, ...self::LISTED,

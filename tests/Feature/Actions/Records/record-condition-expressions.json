@@ -427,5 +427,82 @@
         "server": [1],
         "form": [{ "id": 1, "label": "a" }],
         "holds": false
+    },
+    "ユーザーと組織 empty null は真": {
+        "type": "user_or_department",
+        "op": "empty",
+        "value": null,
+        "server": null,
+        "form": null,
+        "holds": true
+    },
+    "ユーザーと組織 not_empty null は偽": {
+        "type": "user_or_department",
+        "op": "not_empty",
+        "value": null,
+        "server": null,
+        "form": null,
+        "holds": false
+    },
+    "ユーザーと組織 not_empty 相手は真": {
+        "type": "user_or_department",
+        "op": "not_empty",
+        "value": null,
+        "server": { "type": "user", "id": 1 },
+        "form": { "id": 1, "label": "a", "type": "user" },
+        "holds": true
+    },
+    "ユーザーと組織 empty 相手は偽": {
+        "type": "user_or_department",
+        "op": "empty",
+        "value": null,
+        "server": { "type": "department", "id": 1 },
+        "form": { "id": 1, "label": "a", "type": "department" },
+        "holds": false
+    },
+    "ユーザーと組織(複数) empty 空の配列は真": {
+        "type": "user_or_department",
+        "isMultiple": true,
+        "op": "empty",
+        "value": null,
+        "server": [],
+        "form": [],
+        "holds": true
+    },
+    "ユーザーと組織(複数) not_empty 空の配列は偽": {
+        "type": "user_or_department",
+        "isMultiple": true,
+        "op": "not_empty",
+        "value": null,
+        "server": [],
+        "form": [],
+        "holds": false
+    },
+    "ユーザーと組織(複数) empty null は真": {
+        "type": "user_or_department",
+        "isMultiple": true,
+        "op": "empty",
+        "value": null,
+        "server": null,
+        "form": null,
+        "holds": true
+    },
+    "ユーザーと組織(複数) not_empty 相手 1 つは真": {
+        "type": "user_or_department",
+        "isMultiple": true,
+        "op": "not_empty",
+        "value": null,
+        "server": [{ "type": "department", "id": 1 }],
+        "form": [{ "id": 1, "label": "a", "type": "department" }],
+        "holds": true
+    },
+    "ユーザーと組織(複数) empty 相手 1 つは偽": {
+        "type": "user_or_department",
+        "isMultiple": true,
+        "op": "empty",
+        "value": null,
+        "server": [{ "type": "user", "id": 1 }],
+        "form": [{ "id": 1, "label": "a", "type": "user" }],
+        "holds": false
     }
 }

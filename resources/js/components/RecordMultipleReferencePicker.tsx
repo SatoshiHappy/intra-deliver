@@ -1,10 +1,7 @@
-import { Building2, Search, X } from 'lucide-react';
+import { Search, X } from 'lucide-react';
 import { useState } from 'react';
-import {
-    ReferenceOptionList,
-    useReferenceOptions,
-} from '@/components/RecordReferencePicker';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { PartyMark } from '@/components/PartyMark';
+import { ReferenceOptionList } from '@/components/RecordReferencePicker';
 import { Button } from '@/components/ui/button';
 import { Command, CommandInput, CommandList } from '@/components/ui/command';
 import {
@@ -13,7 +10,10 @@ import {
     PopoverTrigger,
 } from '@/components/ui/popover';
 import { CANDIDATE_QUERY_MAX_LENGTH } from '@/hooks/use-record-candidates';
+import { useReferenceOptions } from '@/hooks/use-reference-options';
+import { pickedKey, unpickedOptions } from '@/lib/pickedReference';
 import { MAX_REFERENCE_TARGETS } from '@/lib/recordForm';
+import { hasPartyKind, partyKindOf } from '@/lib/recordParty';
 import type { ReferenceItemErrors } from '@/lib/recordFormErrors';
 import { cn } from '@/lib/utils';
 import type { PickedReference, RecordFieldDefinition } from '@/types';
@@ -21,7 +21,7 @@ import type { PickedReference, RecordFieldDefinition } from '@/types';
 type Props = {
     /** 検索の欄のボタンの id(ラベルと結ぶ) */
     id?: string;
-    /** 複数選べる参照の項目(ユーザー・組織) */
+    /** 複数選べる参照の項目(ユーザー・組織・ユーザーと組織) */
     field: RecordFieldDefinition;
     /** 選んだ相手(並びの順) */
     value: PickedReference[];
@@ -37,28 +37,29 @@ type Props = {
 };
 
 /**
- * チップの頭の印(ユーザーは頭文字の丸、組織は組織のアイコン。合意したモックの形)。
+ * チップの頭の印(ユーザーは頭文字の丸、組織は組織のアイコン。合意したモックの形)。型「ユーザーと組織」は相手の種類で決め、種類を読み上げる。
  */
 function ChipMark({
     field,
-    label,
+    picked,
 }: {
     field: RecordFieldDefinition;
-    label: string;
+    picked: PickedReference;
 }) {
-    return field.type === 'user' ? (
-        <Avatar className="size-[26px]" aria-hidden="true">
-            <AvatarFallback className="bg-primary text-xs font-bold text-primary-foreground">
-                {Array.from(label)[0]}
-            </AvatarFallback>
-        </Avatar>
-    ) : (
-        <span
-            aria-hidden="true"
-            className="grid size-[26px] shrink-0 place-items-center rounded-full bg-accent text-primary"
-        >
-            <Building2 className="size-[15px]" />
-        </span>
+    const isParty = hasPartyKind(field);
+    const kind = isParty
+        ? partyKindOf(field, picked)
+        : field.type === 'user'
+          ? 'user'
+          : 'department';
+
+    return (
+        <PartyMark
+            kind={kind}
+            label={picked.label}
+            size="chip"
+            announced={isParty}
+        />
     );
 }
 
@@ -86,7 +87,7 @@ function ReferenceChip({
                 invalid && 'border-destructive',
             )}
         >
-            <ChipMark field={field} label={picked.label} />
+            <ChipMark field={field} picked={picked} />
             <span className="truncate font-medium">{picked.label}</span>
             {(picked.affiliation ?? null) !== null && (
                 <span className="truncate text-xs text-muted-foreground">
@@ -128,7 +129,6 @@ function ReferenceCandidates({
         query,
         true,
     );
-    const pickedIds = new Set(value.map((picked) => picked.id));
 
     return (
         <Command shouldFilter={false} label={`${field.name}の候補`}>
@@ -140,10 +140,11 @@ function ReferenceCandidates({
             />
             <CommandList>
                 <ReferenceOptionList
+                    field={field}
                     options={
-                        options?.filter(
-                            (option) => !pickedIds.has(option.id),
-                        ) ?? null
+                        options === null
+                            ? null
+                            : unpickedOptions(field, options, value)
                     }
                     hasFailed={hasFailed}
                     onSelect={onSelect}
@@ -229,7 +230,7 @@ export function RecordMultipleReferencePicker({
                 >
                     {value.map((picked, index) => (
                         <ReferenceChip
-                            key={picked.id}
+                            key={pickedKey(field, picked)}
                             field={field}
                             picked={picked}
                             invalid={

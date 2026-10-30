@@ -38,8 +38,11 @@ final class MeetingStoreEnvelopeTest extends TransactionalTestCase
         $department = $this->namedDepartment('開発部');
         $projectId = $this->recordNamed('project', 'name', '社内ポータル刷新')->id;
         $values = [
-            'viewer_users' => [$viewers[0]->id, $viewers[1]->id],
-            'viewer_departments' => [$department->id],
+            'related_parties' => [
+                ['type' => 'user', 'id' => $viewers[0]->id],
+                ['type' => 'department', 'id' => $department->id],
+                ['type' => 'user', 'id' => $viewers[1]->id],
+            ],
             'project' => $projectId,
         ];
 
@@ -70,7 +73,7 @@ final class MeetingStoreEnvelopeTest extends TransactionalTestCase
     public static function unreadableEnvelopes(): array
     {
         return [
-            '封筒が無い(文字列の欄だけ)' => [['values' => ['title' => '定例', 'viewer_users' => ['1']]]],
+            '封筒が無い(文字列の欄だけ)' => [['values' => ['title' => '定例', 'related_parties' => ['1']]]],
             'JSON のリスト' => [['envelope' => '[{"values": {}}]']],
             'JSON でない' => [['envelope' => '{"values":']],
             '大きすぎる' => [['envelope' => '{"values": {"notes": "'.str_repeat('a', 1_048_576).'"}}']],

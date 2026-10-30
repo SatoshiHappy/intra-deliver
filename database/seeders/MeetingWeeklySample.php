@@ -11,8 +11,7 @@ final class MeetingWeeklySample
     public const MEETING = [
         'title' => '社内ポータル刷新 定例',
         'held_at' => '2026-10-14T15:00:00+09:00',
-        'viewers' => ['u0001'],
-        'departments' => ['development'],
+        'parties' => [['user', 'u0001'], ['department', 'development']],
         'file' => '定例.vtt',
         'agenda' => <<<'MD'
             1. 設計の完了の確認

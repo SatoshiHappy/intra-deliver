@@ -3,6 +3,7 @@ import { useState } from 'react';
 import type { ComponentProps, FormEvent } from 'react';
 import { DateInput } from '@/components/DateInput';
 import { RecordChoicePicker } from '@/components/RecordChoicePicker';
+import { RecordMultipleReferencePicker } from '@/components/RecordMultipleReferencePicker';
 import { RecordReferencePicker } from '@/components/RecordReferencePicker';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -21,15 +22,17 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import type { SearchDraft } from '@/lib/Records/recordSearch';
-import { filterValue } from '@/lib/Records/recordSearch';
-import { toTokyoLocal } from '@/lib/recordValues';
+import { isReferenceField } from '@/lib/recordForm';
+import {
+    draftsOf,
+    filterValue,
+    initialDraft,
+    isPicked,
+    isRanged,
+} from '@/lib/Records/recordSearch';
 import { SELECT_NONE } from '@/lib/selectNone';
 import type { QueryParams } from '@/wayfinder';
-import type {
-    RecordFieldDefinition,
-    RecordFilterValue,
-    RecordListQuery,
-} from '@/types';
+import type { RecordFieldDefinition, RecordListQuery } from '@/types';
 
 /** 検索欄の開閉を覚える localStorage のキー(利用者のブラウザに 1 つ。業務モジュールに依らない) */
 const OPEN_STORAGE_KEY = 'records.searchOpen';
@@ -43,69 +46,6 @@ type Props = {
     /** 検索条件(クエリの filter)を送る。null = 条件を解除 */
     onSearch: (filter: QueryParams | null) => void;
 };
-
-function isRanged(field: RecordFieldDefinition) {
-    return ['integer', 'decimal', 'date', 'datetime'].includes(field.type);
-}
-
-function isReference(field: RecordFieldDefinition) {
-    return ['user', 'department', 'record'].includes(field.type);
-}
-
-/**
- * 読み取りが解釈した検索条件から、欄の初期値を作る(日時の範囲は Asia/Tokyo の datetime-local の形に直す = 画面/業務の画面.md 2.1)。
- * 参照は表示名を持たないので #<id> を出す。
- */
-function initialDraft(
-    field: RecordFieldDefinition,
-    value: RecordFilterValue | undefined,
-): SearchDraft {
-    if (isRanged(field)) {
-        const range = typeof value === 'object' ? value : null;
-        const local = (side: string | null | undefined) =>
-            side === null || side === undefined
-                ? ''
-                : field.type === 'datetime'
-                  ? (toTokyoLocal(side) ?? '')
-                  : side;
-
-        return { from: local(range?.from), to: local(range?.to) };
-    }
-
-    if (isReference(field)) {
-        return typeof value === 'string'
-            ? { id: Number(value), label: `#${value}` }
-            : null;
-    }
-
-    return typeof value === 'string' ? value : '';
-}
-
-/**
- * 読み取りが解釈した検索条件から、欄の全体を作る。参照は、今の欄が同じ相手を選んでいればその表示名を残す(無ければ #<id>)。
- */
-function draftsOf(
-    fields: RecordFieldDefinition[],
-    query: RecordListQuery,
-    current: Record<string, SearchDraft>,
-): Record<string, SearchDraft> {
-    return Object.fromEntries(
-        fields.map((field) => {
-            const next = initialDraft(field, query.filters[field.code]);
-            const kept = current[field.code];
-            const isSamePick =
-                next !== null &&
-                typeof next === 'object' &&
-                'id' in next &&
-                typeof kept === 'object' &&
-                kept !== null &&
-                'id' in kept &&
-                kept.id === next.id;
-
-            return [field.code, isSamePick ? kept : next];
-        }),
-    );
-}
 
 /**
  * 利用者が最後に選んだ検索欄の開閉(読めなければ畳む)。
@@ -147,6 +87,42 @@ function BoundInput({
 }
 
 /**
+ * 参照の項目の欄(1 つは参照の選択欄、複数選べる参照は複数の参照の欄 = 画面/業務の画面.md 2.1)。
+ */
+function ReferenceSearchInput({
+    id,
+    field,
+    draft,
+    onChange,
+}: {
+    id: string;
+    field: RecordFieldDefinition;
+    draft: SearchDraft;
+    onChange: (draft: SearchDraft) => void;
+}) {
+    if (field.isMultiple) {
+        return (
+            <RecordMultipleReferencePicker
+                id={id}
+                field={field}
+                value={Array.isArray(draft) ? draft : []}
+                onChange={onChange}
+            />
+        );
+    }
+
+    return (
+        <RecordReferencePicker
+            id={id}
+            field={field}
+            recordId={null}
+            value={isPicked(draft) ? draft : null}
+            onChange={onChange}
+        />
+    );
+}
+
+/**
  * 1 つの項目の欄(型ごとの入力 = 画面/業務の画面.md 2.1)。
  */
 function DraftInput({
@@ -160,17 +136,12 @@ function DraftInput({
 }) {
     const id = `record-filter-${field.code}`;
 
-    if (isReference(field)) {
+    if (isReferenceField(field)) {
         return (
-            <RecordReferencePicker
+            <ReferenceSearchInput
                 id={id}
                 field={field}
-                recordId={null}
-                value={
-                    typeof draft === 'object' && draft !== null && 'id' in draft
-                        ? draft
-                        : null
-                }
+                draft={draft}
                 onChange={onChange}
             />
         );

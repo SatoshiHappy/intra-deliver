@@ -25,7 +25,10 @@ use LogicException;
  * 書き起こし・発言の行)で入れる。AI は呼ばず、会議と実行の対応は書かない。日付は流す日からの相対({@see SeedingDates})。
  * 削除予定日は相対の既定値を基準の日に当てた日付を流す日へずらす(既定値は登録の時の時計で決まり、流す日に合わないため)。
  *
- * @phpstan-type Sample array{title: string, held_at: string, viewers: list<string>, departments: list<string>,
+ * 関係者 = デモユーザーと組織(8.4)。2 件とも同じ組織と別のユーザーを持つ(一覧の検索で人と組織を選ぶと、両方を持つ会議だけに当たる =
+ * 設計/業務ツール/会議/README.md の 1.2 の関係者)。
+ *
+ * @phpstan-type Sample array{title: string, held_at: string, parties: list<array{'user'|'department', string}>,
  *     file: string, agenda: string, notes: string|null, summary: string, topics: string, decisions: string,
  *     open_issues: string, next_actions: string, lines: list<array{string, string, string}>}
  */
@@ -83,8 +86,7 @@ class MeetingSampleSeeder extends Seeder
         return [
             Meeting::Title->value => $sample['title'],
             Meeting::HeldAt->value => SeedingDates::dateTime($sample['held_at']),
-            Meeting::ViewerUsers->value => array_map($this->userId(...), $sample['viewers']),
-            Meeting::ViewerDepartments->value => array_map($this->departmentId(...), $sample['departments']),
+            Meeting::RelatedParties->value => array_map($this->party(...), $sample['parties']),
             Meeting::Project->value => $projectId,
             Meeting::PurgeDueOn->value => $purgeDueOn,
             Meeting::Summary->value => $sample['summary'],
@@ -95,6 +97,19 @@ class MeetingSampleSeeder extends Seeder
             Meeting::Agenda->value => $sample['agenda'],
             Meeting::Notes->value => $sample['notes'],
         ];
+    }
+
+    /**
+     * 関係者の相手(種類とコード)を入力の相手 {type, id} にする。
+     *
+     * @param  array{'user'|'department', string}  $party
+     * @return array{type: 'user'|'department', id: int}
+     */
+    private function party(array $party): array
+    {
+        [$type, $code] = $party;
+
+        return ['type' => $type, 'id' => $type === 'user' ? $this->userId($code) : $this->departmentId($code)];
     }
 
     /**

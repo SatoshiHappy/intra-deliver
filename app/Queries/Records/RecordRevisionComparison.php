@@ -82,23 +82,47 @@ class RecordRevisionComparison
     }
 
     /**
-     * 参照の値の相手の並び(複数選べる参照は配列の並びのまま。種類が項目の型と違う・id が整数でない相手は除く)。
+     * 参照の値の相手の並び(複数選べる参照は配列の並びのまま。種類が項目の型の相手の種類でない・id が整数でない相手は除く)。
      *
      * @param  FieldEntry  $entry
      * @return list<ReferenceTarget>
      */
     private function targets(array $entry, mixed $value): array
     {
-        $type = $entry['type']->value;
+        $kinds = self::referenceTargetKinds($entry['type']);
         $found = [];
 
         foreach ($this->targetList($entry, $value) as $target) {
-            if (is_array($target) && ($target['type'] ?? null) === $type && is_int($target['id'] ?? null)) {
-                $found[] = ['type' => $type, 'id' => $target['id']];
+            $type = is_array($target) && is_string($target['type'] ?? null) ? $target['type'] : null;
+
+            if (is_array($target) && in_array($type, $kinds, true) && is_int($target['id'] ?? null)) {
+                $found[] = ['type' => (string) $type, 'id' => $target['id']];
             }
         }
 
         return $found;
+    }
+
+    /**
+     * 項目の型の値が持つ相手の種類(型「ユーザーと組織」はユーザーと組織、ほかの参照の型はその型、参照でない型は無し)。
+     * 既定の枝に落とさず全部の型を挙げる(新しい型を足したら静的解析が漏れを知らせる)。
+     *
+     * @return list<string>
+     */
+    private static function referenceTargetKinds(RecordFieldType $type): array
+    {
+        return match ($type) {
+            RecordFieldType::User, RecordFieldType::Department, RecordFieldType::Record => [$type->value],
+            RecordFieldType::UserOrDepartment => [RecordFieldType::User->value, RecordFieldType::Department->value],
+            RecordFieldType::String,
+            RecordFieldType::Integer,
+            RecordFieldType::Decimal,
+            RecordFieldType::Date,
+            RecordFieldType::Datetime,
+            RecordFieldType::Boolean,
+            RecordFieldType::Choice,
+            RecordFieldType::Details => [],
+        };
     }
 
     /**
@@ -117,7 +141,7 @@ class RecordRevisionComparison
     }
 
     /**
-     * 値が違う項目(項目の並び。参照は相手の id の集合で比べる)。
+     * 値が違う項目(項目の並び。参照は相手の集合 = 種類と id で比べる。型「ユーザーと組織」で id が同じでも種類が違えば別の相手)。
      *
      * @param  list<FieldEntry>  $entries
      * @param  RawRow  $before
@@ -131,10 +155,11 @@ class RecordRevisionComparison
                 return $raw;
             }
 
-            $ids = array_column($raw, 'id');
-            sort($ids);
+            // 相手({type, id}。targets() がキーの順をそろえた写し)を文字列にして、並びによらない集合で比べる
+            $keys = array_map(fn (mixed $target) => serialize($target), $raw);
+            sort($keys);
 
-            return $ids;
+            return $keys;
         };
 
         return array_values(array_filter(

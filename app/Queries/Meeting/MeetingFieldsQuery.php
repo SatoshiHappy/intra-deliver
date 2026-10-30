@@ -47,8 +47,8 @@ class MeetingFieldsQuery
         return new MeetingFields(
             self::text($values[Meeting::Title->value] ?? null),
             self::text($values[Meeting::HeldAt->value] ?? null),
-            self::labels($values[Meeting::ViewerUsers->value] ?? null),
-            self::labels($values[Meeting::ViewerDepartments->value] ?? null),
+            self::labels($values[Meeting::RelatedParties->value] ?? null, 'user'),
+            self::labels($values[Meeting::RelatedParties->value] ?? null, 'department'),
             self::text($values[Meeting::Agenda->value] ?? null),
             self::text($values[Meeting::Notes->value] ?? null),
         );
@@ -60,16 +60,18 @@ class MeetingFieldsQuery
     }
 
     /**
-     * 複数選べる参照の値(相手ごとの {id, code, label, affiliation})の名前。名前の無い相手(基準日に無い)は入れない。
+     * 関係者の値(相手ごとの {type, id, code, label, affiliation})のうち、種類が $type の相手の名前(ユーザーと組織を分けて渡す =
+     * 文字起こしと議事録.md の 5.3)。名前の無い相手(基準日に無い)は入れない。
      *
+     * @param  'user'|'department'  $type
      * @return list<string>
      */
-    private static function labels(mixed $value): array
+    private static function labels(mixed $value, string $type): array
     {
         $labels = [];
 
         foreach (is_array($value) ? $value : [] as $target) {
-            if (is_array($target) && is_string($target['label'] ?? null)) {
+            if (is_array($target) && ($target['type'] ?? null) === $type && is_string($target['label'] ?? null)) {
                 $labels[] = $target['label'];
             }
         }

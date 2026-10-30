@@ -3,7 +3,6 @@ import type {
     RecordFieldValue,
     RecordRevisionField,
 } from '@/types';
-import { formatRecordValue } from './recordValues';
 
 /**
  * 更新履歴の変化の値を描く分岐(docs の 設計/業務データの入れ物/レコードの共通機能/更新履歴.md の 5.2 節)。
@@ -39,42 +38,28 @@ export function revisionFieldDefinition(
 
 type RowValues = Record<string, RecordFieldValue> | null;
 
-/**
- * 明細の行の表示(先頭の項目の値。行が無ければ空)。
- */
-export function detailRowName(
-    fields: RecordRevisionField[],
-    values: RowValues,
-): string {
-    const first = fields[0];
-
-    return first === undefined || values === null
-        ? ''
-        : formatRecordValue(
-              revisionFieldDefinition(first),
-              values[first.code] ?? null,
-              'diff',
-          );
-}
+/** 明細の行の項目 1 つの値(値の部品 RecordValue に渡す定義と値) */
+export type DetailRowCell = {
+    name: string;
+    definition: RecordFieldDefinition;
+    value: RecordFieldValue;
+};
 
 /**
- * 明細の行の値の要約(先頭の項目より後の項目の「<名前> <値>」を全角の空白でつなぐ)。
+ * 明細の行の項目ごとの値(項目の並び。行が無ければ空)。先頭の項目の値が行の表示、後の項目の「<名前> <値>」が行の値の要約
+ * (5.2 の「明細」。値は値の部品で描く = 種類を持つ値に種類の印が付く)。
  */
-export function detailRowSummary(
+export function detailRowCells(
     fields: RecordRevisionField[],
     values: RowValues,
-): string {
+): DetailRowCell[] {
     if (values === null) {
-        return '';
+        return [];
     }
 
-    return fields
-        .slice(1)
-        .map((field) => {
-            const definition = revisionFieldDefinition(field);
-            const value = values[field.code] ?? null;
-
-            return `${field.name} ${formatRecordValue(definition, value, 'diff')}`;
-        })
-        .join('　');
+    return fields.map((field) => ({
+        name: field.name,
+        definition: revisionFieldDefinition(field),
+        value: values[field.code] ?? null,
+    }));
 }

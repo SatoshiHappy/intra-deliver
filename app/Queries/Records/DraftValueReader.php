@@ -20,8 +20,9 @@ use Illuminate\Database\Eloquent\Collection;
  *   長さ・必須・規則は見ない(申請の時に検証する)。文字列は型の解釈で落ちない(文字列なら長さ・改行を見ずにそのまま。文字列でない・JSON に
  *   表せない文字列(不正な UTF-8・U+0000)は未設定)。
  * - 選択は文字列なら生のコードを保つ(今の選択肢に無いコードは name が null。文字列でなければ未設定)。
- * - 参照は整数のときだけ相手を引く。相手が無ければ id を残して表示名なし。複数選べる参照は配列のときだけ、整数の要素だけで相手を引く
- *   (配列でなければ未設定。整数でない要素と、同じ相手の 2 度目以降は捨てる。要素が残らなければ未設定)。他モジュール参照の相手が、項目の参照先の業務モジュールの親の無い
+ * - 参照は整数のときだけ相手を引く(型「ユーザーと組織」は相手の形 {type, id} のときだけ = {@see RecordParty::of()}。種類を保つ = 写しとつながる申請.md 9 節)。
+ *   相手が無ければ id を残して表示名なし。複数選べる参照は配列のときだけ、相手の形の要素だけで相手を引く
+ *   (配列でなければ未設定。相手の形でない要素と、同じ相手の 2 度目以降は捨てる。要素が残らなければ未設定)。他モジュール参照の相手が、項目の参照先の業務モジュールの親の無い
  *   レコードでなければ、その項目では相手が無いのと同じ。
  * - 明細の行は values だけで id を持たない(一時保存の行はいつも新しい行)。配列でない行は捨てる。
  *
@@ -144,8 +145,7 @@ class DraftValueReader
     {
         return $this->reader->rawValues($fields, fn (RecordField $field) => $this->plainValue($field, $input[$field->code] ?? null), function (RecordField $field) use ($input, &$targets): array {
             $value = $input[$field->code] ?? null;
-            $ids = $field->is_multiple ? $this->multipleIds($value) : array_filter([$value], is_int(...));
-            $found = array_map(fn (int $id) => ['type' => $field->type->value, 'id' => $id], $ids);
+            $found = $this->referenceTargetsOf($field, $field->is_multiple ? $value : [$value]);
 
             foreach ($found as $target) {
                 $targets[$this->reader->targetKey($target)] = $target;
@@ -156,18 +156,29 @@ class DraftValueReader
     }
 
     /**
-     * 複数選べる参照の入力の整数の要素(配列でなければ空)。同じ相手の 2 度目以降は捨てる(最初の位置を残す。検証しない読み取りなので
+     * 参照の入力の相手の並び(1 つの値の項目は値 1 つの並びで渡す。配列のリストでなければ空)。相手の形の要素だけを残し(型「ユーザーと組織」=
+     * {@see RecordParty::of()}、ほかの参照の型 = 整数)、同じ相手の 2 度目以降は捨てる(最初の位置を残す。検証しない読み取りなので
      * 重なった値が入りうる)。100 件を超える分は捨てない(申請の時の検証が知らせる)。
      *
-     * @return list<int>
+     * @return list<ReferenceTarget>
      */
-    private function multipleIds(mixed $value): array
+    private function referenceTargetsOf(RecordField $field, mixed $values): array
     {
-        if (! is_array($value) || ! array_is_list($value)) {
-            return [];
+        $found = [];
+
+        foreach (is_array($values) && array_is_list($values) ? $values : [] as $value) {
+            $target = match (true) {
+                $field->type->hasPartyKind() => RecordParty::of($value),
+                is_int($value) => ['type' => $field->type->value, 'id' => $value],
+                default => null,
+            };
+
+            if ($target !== null) {
+                $found[$this->reader->targetKey($target)] ??= $target;
+            }
         }
 
-        return array_values(array_unique(array_filter($value, is_int(...))));
+        return array_values($found);
     }
 
     /**

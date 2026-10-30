@@ -2,7 +2,6 @@ import {
     createFormData,
     drawnDetailsFields,
     editFormData,
-    payloadValue,
     valueFields,
 } from '@/lib/recordForm';
 import type {
@@ -10,6 +9,7 @@ import type {
     RecordFormData,
     RecordRowDraft,
 } from '@/lib/recordForm';
+import { payloadValue } from '@/lib/recordPayload';
 import type { ApplicationTargetSnapshot } from '@/types/workflowApplyTarget';
 import type {
     PickedReference,
@@ -17,6 +17,7 @@ import type {
     RecordFieldValue,
     RecordModuleDefinition,
 } from '@/types';
+import { shownValueOf } from './applicationTargetShown';
 
 /**
  * 申請対象の値の写し(docs の 設計/ワークフロー/申請の周辺/既存のデータからの申請/申請対象からの申請.md の 10.2 節)。
@@ -66,50 +67,6 @@ function isFilled(
         (field.type === 'boolean' || value !== null) &&
         comparableOf(field, draft) !== comparableOf(field, defaultDraft)
     );
-}
-
-/** 選んだ相手を、値の表示(RecordValue)に渡せる参照の値にする */
-function referenceOf(picked: PickedReference) {
-    return {
-        id: picked.id,
-        code: null,
-        label: picked.label,
-        affiliation: picked.affiliation ?? null,
-    };
-}
-
-/**
- * 今の欄の値(下書き)を、値の表示に渡せる値にする。空の扱いは「入力済みか」の判定と同じ(payloadValue)で決める。
- */
-function shownValueOf(
-    field: RecordFieldDefinition,
-    draft: RecordFieldDraft,
-): RecordFieldValue {
-    const payload = payloadValue(field, draft);
-
-    if (field.type === 'boolean') {
-        return payload === true;
-    }
-
-    if (payload === null) {
-        return null;
-    }
-
-    if (Array.isArray(draft)) {
-        return draft.map(referenceOf);
-    }
-
-    if (typeof draft === 'object' && draft !== null) {
-        return referenceOf(draft);
-    }
-
-    if (field.type === 'choice') {
-        const option = field.options.find((choice) => choice.code === payload);
-
-        return { code: String(payload), name: option?.name ?? null };
-    }
-
-    return String(payload);
 }
 
 /** 明細の行を比べる(行の数と、各行の値。行どうしの突き合わせはしないので並びの位置で比べる) */

@@ -7,9 +7,10 @@ import type {
 } from '@/types';
 import shared from '../../../tests/Feature/Actions/Records/record-condition-expressions.json';
 import { recordField } from './recordField.testing';
-import type { RecordFieldDraft, RecordPayloadValue } from './recordForm';
-import { payloadValue } from './recordForm';
-import { isRequiredNow } from './recordRules';
+import type { RecordFieldDraft } from './recordForm';
+import type { RecordPayloadValue } from './recordPayload';
+import { payloadValue } from './recordPayload';
+import { conditionOperatorsOf, isRequiredNow } from './recordRules';
 
 /**
  * サーバーの評価のテスト(RecordRuleEvaluationTest・MultipleReferenceRuleEvaluationTest)と共有する表の 1 行。
@@ -20,7 +21,7 @@ type SharedRow = {
     isMultiple?: boolean;
     op: RecordConditionExpression['op'];
     value: RecordConditionExpression['value'] | null;
-    server: string | boolean | number[] | null;
+    server: RecordPayloadValue;
     form: RecordFieldDraft;
     holds: boolean;
 };
@@ -163,5 +164,22 @@ describe('isRequiredNow', () => {
         const required = { ...field('target', 'string'), isRequired: true };
 
         expect(isRequiredNow(module, required, {})).toBe(true);
+    });
+});
+
+describe('conditionOperatorsOf', () => {
+    it('参照の型(型「ユーザーと組織」を含む)は空・空でないだけ(8.2 の表)', () => {
+        for (const type of [
+            'user',
+            'department',
+            'user_or_department',
+            'record',
+        ] as const) {
+            expect(conditionOperatorsOf(type)).toEqual(['empty', 'not_empty']);
+        }
+    });
+
+    it('明細は条件に使えない', () => {
+        expect(conditionOperatorsOf('details')).toEqual([]);
     });
 });

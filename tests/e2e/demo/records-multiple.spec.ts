@@ -1,5 +1,17 @@
 import { expect, test } from '../support/test';
 import type { Locator, Page } from '@playwright/test';
+import {
+    addPartyField,
+    createBothItem,
+    createWithParties,
+    expectPartyListCell,
+    expectPartyMarksInDetail,
+    removePartyField,
+    removeRecord,
+    searchByUserAndDepartment,
+    USER_ONLY_ITEM,
+} from '../support/records-multiple';
+import { openAsAdministrator } from '../support/records-headings';
 import { submitAndExpectUrl } from '../support/submit';
 
 // 業務データの入れ物の複数選べる参照(docs の 設計/業務データの入れ物/画面/README.md 6 節の管理の分の「複数選べる参照」、
@@ -16,30 +28,6 @@ const PICKS = [
     ['山田', '山田 恵'],
 ] as const;
 const ITEM_NAME = 'E2E の複数の参照';
-
-/**
- * ゲストからシステム管理者に切り替えて、path を開く。
- */
-async function openAsAdministrator(page: Page, path: string) {
-    await page.goto('/');
-    await page
-        .getByRole('button', { name: '利用者メニュー：ゲスト', exact: true })
-        .click();
-    await submitAndExpectUrl(
-        page,
-        page
-            .getByRole('menu')
-            .getByRole('menuitem')
-            .filter({ hasText: 'システム管理者' }),
-    );
-    await expect(
-        page.getByRole('button', {
-            name: '利用者メニュー：伊藤 涼子（経営企画室）',
-            exact: true,
-        }),
-    ).toBeVisible();
-    await page.goto(path);
-}
 
 /**
  * 管理の画面で、型「ユーザー(複数)」の項目(一覧に表示)を足す。
@@ -168,4 +156,24 @@ test('「ユーザー(複数)」の項目で 3 人を選ぶとチップが 3 つ
     ).toContainText('高橋 誠、中村 美咲 ほか 1 名');
 
     await removeRecordAndField(page, detailUrl);
+});
+
+test('「ユーザーと組織(複数)」の項目は候補を群で出してチップに種類の印を付け、一覧は先頭の 2 つと「ほか 1 件」、検索は人と組織の両方を持つレコードだけ', async ({
+    page,
+}) => {
+    // docs の 設計/業務データの入れ物/画面/README.md 6 節の型「ユーザーと組織」の行
+    await openAsAdministrator(page, '/records/admin/modules/equipment');
+    await addPartyField(page);
+
+    const bothUrl = await createBothItem(page);
+    await expectPartyMarksInDetail(page);
+    const userOnlyUrl = await createWithParties(page, USER_ONLY_ITEM, [
+        ['高橋', 'ユーザー', '高橋 誠'],
+    ]);
+    await expectPartyListCell(page);
+    await searchByUserAndDepartment(page);
+
+    await removeRecord(page, userOnlyUrl);
+    await removeRecord(page, bothUrl);
+    await removePartyField(page);
 });

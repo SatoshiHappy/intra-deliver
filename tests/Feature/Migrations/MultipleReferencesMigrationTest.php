@@ -25,6 +25,7 @@ final class MultipleReferencesMigrationTest extends TransactionalTestCase
 
     public function test_down_drops_the_columns_and_restores_one_reference_per_field(): void
     {
+        $this->dropSeededMultipleReferences();
         $this->migrator()->reset([$this->migrationPath()]);
 
         $this->assertFalse(Schema::hasColumn('record_fields', 'is_multiple'));
@@ -62,6 +63,7 @@ final class MultipleReferencesMigrationTest extends TransactionalTestCase
 
     public function test_up_after_down_keeps_the_current_references_readable(): void
     {
+        $this->dropSeededMultipleReferences();
         $this->migrator()->reset([$this->migrationPath()]);
         $field = RecordField::factory()->create(['type' => RecordFieldType::User]);
         $record = Record::factory()->create(['record_module_id' => $field->record_module_id]);
@@ -84,6 +86,15 @@ final class MultipleReferencesMigrationTest extends TransactionalTestCase
             'record_references_record_id_record_field_id_sort_key_unique',
             'record_references_record_id_record_field_id_user_id_unique',
         ], $this->uniqueNames());
+    }
+
+    /**
+     * 初期データが入れた、複数選べる参照の値の行を消す(down は項目ごとに 2 行以上の参照があると止まる。見本の会議の関係者はユーザーと組織の
+     * 2 行を持つ = 設計/業務ツール/会議/公開デモと画面.md の 8.4)。
+     */
+    private function dropSeededMultipleReferences(): void
+    {
+        DB::table('record_references')->where('is_multiple', true)->delete();
     }
 
     /**

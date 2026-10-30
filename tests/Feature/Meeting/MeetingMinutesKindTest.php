@@ -74,7 +74,8 @@ final class MeetingMinutesKindTest extends TransactionalTestCase
     {
         $creator = $this->user();
         $requester = $this->user();
-        $recordId = $this->pastedMeeting($creator, values: ['viewer_users' => [$requester->id]]);
+        $party = ['type' => 'user', 'id' => $requester->id];
+        $recordId = $this->pastedMeeting($creator, values: ['related_parties' => [$party]]);
         $this->completeMinutes($this->lastRunIdOf($recordId));
         app(RegenerateMinutes::class)->execute($this->contextOf($requester), $recordId, null);
         $edited = new RecordInput(['summary' => '人が直した要約', 'title' => '人が直した件名']);
@@ -250,7 +251,7 @@ final class MeetingMinutesKindTest extends TransactionalTestCase
     }
 
     /**
-     * 宛先 = 作成者・閲覧者・閲覧組織にその日に所属する人(主所属と兼務。下の組織は含めない)のうち、今日に有効な人。重複を除く。
+     * 宛先 = 作成者・関係者のユーザー・関係者の組織にその日に所属する人(主所属と兼務。下の組織は含めない)のうち、今日に有効な人。重複を除く。
      */
     public function test_the_recipients_are_the_related_people_on_the_day(): void
     {
@@ -269,8 +270,11 @@ final class MeetingMinutesKindTest extends TransactionalTestCase
         $this->join($childOnly, $child, isMain: true);
         $this->join($inactive, $section, isMain: true);
         $recordId = $this->pastedMeeting($creator, values: [
-            'viewer_users' => [$viewer->id, $creator->id],
-            'viewer_departments' => [$section->id],
+            'related_parties' => [
+                ['type' => 'user', 'id' => $viewer->id],
+                ['type' => 'department', 'id' => $section->id],
+                ['type' => 'user', 'id' => $creator->id],
+            ],
         ]);
 
         $this->completeMinutes($this->lastRunIdOf($recordId));

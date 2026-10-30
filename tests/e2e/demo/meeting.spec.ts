@@ -49,7 +49,7 @@ const budgetSpentTest = test.extend<{ minutesBudgetSpent: void }>({
 const APPLICANT = '佐々木 陽太（東京営業課）';
 
 /**
- * ゲストから申請者(見本の定例の閲覧者)に切り替える。
+ * ゲストから申請者(見本の定例の関係者)に切り替える。
  */
 async function switchToApplicant(page: Page) {
     await page.goto('/');
@@ -119,7 +119,7 @@ test('貼り付けで作った会議が処理中になり、議事録ができ�
     completeLastRun(artisan, meetingId);
 });
 
-test('ファイルの札で閲覧者とプロジェクトを選んで作ると、参照の値が一覧に出る', async ({
+test('ファイルの札で関係者(人と組織)とプロジェクトを選んで作ると、参照の値が一覧に出る', async ({
     page,
     artisan,
 }) => {
@@ -134,10 +134,15 @@ test('ファイルの札で閲覧者とプロジェクトを選んで作ると�
         mimeType: 'text/plain',
         buffer: Buffer.from('最初の発言\n次の発言'),
     });
-    const viewers = dialog.getByRole('group', { name: '閲覧者', exact: true });
-    await pickReference(page, viewers.getByRole('combobox'), [
+    // 関係者は人と組織を 1 つの候補の一覧(群「ユーザー」「組織」)から選ぶ
+    const parties = dialog.getByRole('group', { name: '関係者', exact: true });
+    await pickReference(page, parties.getByRole('combobox'), [
         '中村',
         '中村 美咲',
+    ]);
+    await pickReference(page, parties.getByRole('combobox'), [
+        '開発部',
+        '開発部',
     ]);
     await pickReference(
         page,
@@ -148,19 +153,23 @@ test('ファイルの札で閲覧者とプロジェクトを選んで作ると�
 
     const row = meetingRow(page, title);
     await expect(row).toContainText('中村 美咲');
+    await expect(row).toContainText('開発部');
+    await expect(
+        row.getByRole('img', { name: '組織', exact: true }),
+    ).toHaveCount(1);
     await expect(
         row.getByRole('cell', { name: '社内ポータル刷新', exact: true }),
     ).toBeVisible();
     completeLastRun(artisan, await meetingIdOf(page, title));
 });
 
-test('見本の会議は閲覧者の一覧に出て、詳細に議事録と書き起こしの節がある', async ({
+test('見本の会議は関係者の一覧に出て、詳細に議事録と書き起こしの節がある', async ({
     page,
 }) => {
     await switchToApplicant(page);
     await page.goto('/records/data/meeting');
 
-    // 申請者は定例の閲覧者で、キックオフの閲覧者ではない(行の権限)。プロジェクトの列は初期データのプロジェクト
+    // 申請者は定例の関係者で、キックオフの関係者ではない(行の権限)。プロジェクトの列は初期データのプロジェクト
     await expect(
         meetingRow(page, '社内ポータル刷新 定例').getByRole('cell', {
             name: '社内ポータル刷新',

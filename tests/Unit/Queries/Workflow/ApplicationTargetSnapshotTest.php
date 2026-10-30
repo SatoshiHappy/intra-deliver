@@ -7,7 +7,7 @@ use PHPUnit\Framework\TestCase;
 
 /**
  * 申請対象の値の写しの規則(docs の 設計/ワークフロー/申請の周辺/既存のデータからの申請/申請対象からの申請.md の 10.1)。
- * 定義は RecordFormQuery::definition の形。
+ * 定義は RecordFormQuery::definition の形。型「ユーザーと組織」は複数の指定が同じ項目にだけ、相手の種類を保って写る。
  */
 final class ApplicationTargetSnapshotTest extends TestCase
 {
@@ -78,6 +78,38 @@ final class ApplicationTargetSnapshotTest extends TestCase
 
         $this->assertSame(['name', 'amount', 'owner', 'customer'], $fields['fields']);
         $this->assertSame([], $fields['details']);
+    }
+
+    public function test_a_user_or_department_field_is_copied_with_the_kinds_only_to_the_same_type_and_multiple(): void
+    {
+        $party = fn (string $code, bool $multiple) => self::field(
+            $code,
+            'user_or_department',
+            ['isMultiple' => $multiple],
+        );
+        $application = self::module('app', [
+            $party('parties', true), $party('host', false), $party('single', false), $party('owners', true),
+            self::ref('target', 'projects'),
+        ]);
+        $applicationTarget = self::module('projects', [
+            $party('parties', true), $party('host', false), $party('single', true),
+            self::ref('owners', 'user', true, 'user'),
+        ]);
+        $user = ['type' => 'user', 'id' => 3, 'code' => 'u0003', 'label' => '山田', 'affiliation' => '総務部'];
+        $department = ['type' => 'department', 'id' => 3, 'code' => 'd0003', 'label' => '総務部', 'affiliation' => null];
+        $values = [
+            'parties' => [$user, $department],
+            'host' => $department,
+            'single' => [$user],
+            'owners' => [['id' => 3]],
+        ];
+
+        $snapshot = $this->snapshotter()->snapshot($application, $applicationTarget, $values, [], 'target', 42);
+
+        $this->assertSame(
+            ['parties' => [$user, $department], 'host' => $department, 'target' => 42],
+            $snapshot['values'],
+        );
     }
 
     public function test_details_rows_are_copied_as_new_rows_in_order_with_the_same_rule_inside(): void

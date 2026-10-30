@@ -44,6 +44,22 @@ class RecordReference extends Model
     }
 
     /**
+     * 型「ユーザーと組織」の項目の値の相手(種類と id。キーの順 type・id = App\Queries\Records\RecordParty の形)。
+     *
+     * @return array{type: 'user'|'department', id: int}
+     *
+     * @throws UnexpectedValueException ユーザーも組織も持たない行のとき(業務処理が書かない = データモデル/表.md 2.6 の業務処理で止める規則)
+     */
+    public function party(): array
+    {
+        return match (true) {
+            $this->user_id !== null => ['type' => 'user', 'id' => $this->user_id],
+            $this->department_id !== null => ['type' => 'department', 'id' => $this->department_id],
+            default => throw new UnexpectedValueException("ユーザーと組織の参照の行がユーザーも組織も持たない: {$this->id}"),
+        };
+    }
+
+    /**
      * 持ち主のレコード。
      *
      * @return BelongsTo<Record, $this>

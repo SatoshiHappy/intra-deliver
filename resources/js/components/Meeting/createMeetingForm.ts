@@ -1,6 +1,8 @@
 import { limitSizeText } from '@/components/Meeting/meetingDialog';
-import type { RecordFieldDraft, RecordPayloadValue } from '@/lib/recordForm';
-import { createFormData, payloadValue } from '@/lib/recordForm';
+import type { RecordFieldDraft } from '@/lib/recordForm';
+import { createFormData } from '@/lib/recordForm';
+import type { RecordPayloadValue } from '@/lib/recordPayload';
+import { payloadValue } from '@/lib/recordPayload';
 import { shownValueKeys } from '@/lib/recordFormErrors';
 import type { RecordFieldDefinition, RecordModuleDefinition } from '@/types';
 
@@ -37,12 +39,11 @@ const TEXT_EXTENSIONS = ['txt', 'vtt', 'md'];
 /** 件名の欄(任意。空なら AI が付ける) */
 export const TITLE_FIELD_CODE = 'title';
 
-/** ダイアログの欄の並び(日時・件名・閲覧者・閲覧組織・プロジェクト・アジェンダ・議事メモ。削除予定日は出さない) */
+/** ダイアログの欄の並び(日時・件名・関係者・プロジェクト・アジェンダ・議事メモ。削除予定日は出さない) */
 const FIELD_CODES = [
     'held_at',
     TITLE_FIELD_CODE,
-    'viewer_users',
-    'viewer_departments',
+    'related_parties',
     'project',
     'agenda',
     'notes',

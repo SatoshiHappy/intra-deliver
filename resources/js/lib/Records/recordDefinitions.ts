@@ -26,12 +26,17 @@ const FIELD_TYPE_LABELS: Record<RecordFieldType, string> = {
     choice: '選択',
     user: 'ユーザー',
     department: '組織',
+    user_or_department: 'ユーザーと組織',
     record: '他モジュール参照',
     details: '明細',
 };
 
-/** 複数(is_multiple)を持てる型(1 節の表の「複数」の列 = ユーザー・組織) */
-const MULTIPLE_TYPES: RecordFieldType[] = ['user', 'department'];
+/** 複数(is_multiple)を持てる型(1 節の表の「複数」の列 = ユーザー・組織・ユーザーと組織) */
+const MULTIPLE_TYPES: RecordFieldType[] = [
+    'user',
+    'department',
+    'user_or_department',
+];
 
 /**
  * 複数(is_multiple)を持てる型か。
@@ -40,8 +45,12 @@ export function canBeMultiple(type: RecordFieldType | ''): boolean {
     return type !== '' && MULTIPLE_TYPES.includes(type);
 }
 
-/** 関係する人の旗(grants_row_access)を持てる型(ユーザー・組織。1 つと複数 = 画面/管理の画面.md 3.4) */
-const ROW_ACCESS_TYPES: RecordFieldType[] = ['user', 'department'];
+/** 関係者の印(grants_row_access)を持てる型(ユーザー・組織・ユーザーと組織。1 つと複数 = 画面/管理の画面.md 3.4) */
+const ROW_ACCESS_TYPES: RecordFieldType[] = [
+    'user',
+    'department',
+    'user_or_department',
+];
 
 /**
  * 関係する人の旗を持てる型か。
@@ -51,8 +60,8 @@ export function canGrantRowAccess(type: RecordFieldType | ''): boolean {
 }
 
 /**
- * 型の画面の名前(1 節: 文字列は is_multiline で「文字列(1 行)」「文字列(複数行)」、ユーザー・組織は is_multiple で
- * 「ユーザー(複数)」「組織(複数)」)。項目の表・編集の固定の表示・型の一覧で使う。
+ * 型の画面の名前(1 節: 文字列は is_multiline で「文字列(1 行)」「文字列(複数行)」、ユーザー・組織・ユーザーと組織は is_multiple で
+ * 「ユーザー(複数)」「組織(複数)」「ユーザーと組織(複数)」)。項目の表・編集の固定の表示・型の一覧で使う。
  */
 export function fieldTypeLabel(field: {
     type: RecordFieldType;
@@ -78,7 +87,7 @@ export type FieldTypeChoice = {
 
 /**
  * 型の一覧(画面/管理の画面.md 3.4: 先頭に「文字列(1 行)」「文字列(複数行)」を別の選択肢で置き、ほかの型は 1 節の表の順。
- * 「ユーザー」「組織」のそれぞれ直後に「ユーザー(複数)」「組織(複数)」)。
+ * 「ユーザー」「組織」「ユーザーと組織」のそれぞれ直後に「ユーザー(複数)」「組織(複数)」「ユーザーと組織(複数)」)。
  */
 export const FIELD_TYPE_CHOICES: FieldTypeChoice[] = [
     { value: 'string', type: 'string', isMultiline: false, isMultiple: false },

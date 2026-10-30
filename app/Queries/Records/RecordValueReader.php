@@ -25,13 +25,16 @@ use UnexpectedValueException;
  * - 通常の項目 = field_values の項目の id のキー(無ければ null。真偽は偽)。定義に無いキーは読まない。選択は {code, name}(選択肢に無いコードは name が null)。
  * - 参照 = {id, code, label, affiliation}。ユーザー・組織は d・ロケールの名称(無ければ null)とコード。他モジュール参照は参照先の表示の項目の値で、
  *   判定を求める者が参照先の業務モジュールの参照を許されていないか、参照先のレコードが行の判定を通らなければ null
- *   (code はいつも null。画面は #<id> を出す = 認可とメニュー/README.md 2.4 の「参照の表示名」)。複数選べる参照は相手ごとの値の配列
+ *   (code はいつも null。画面は #<id> を出す = 認可とメニュー/行の権限.md 2.4 の「参照の表示名」)。複数選べる参照は相手ごとの値の配列
  *   (sort_key の順。相手が無ければ null)。affiliation はユーザーの主所属の組織の名前(画面/README.md 1.2。ほかの相手は null)。
+ * - 型「ユーザーと組織」= 相手ごとに上の値に種類 type(user・department)を足したもの(画面/README.md 1.2 の RecordPartyValue)。
  *
  * 参照の相手は {@see self::target()} の形(種類 = 項目の型の値 user・department・record と id)で扱い、更新履歴の版の写し(RecordSnapshots)と
  * 一時保存の入力(RecordFormQuery)の相手も同じ口で値にする。
  *
  * @phpstan-type ReferenceValue array{id: int, code: string|null, label: string|null, affiliation: string|null}
+ * @phpstan-type PartyValue array{type: string, id: int, code: string|null, label: string|null,
+ *     affiliation: string|null}
  * @phpstan-type ReferenceTarget array{type: string, id: int}
  * @phpstan-type RawValues array{values: array<string, mixed>, references: array<string, list<ReferenceTarget>>}
  */
@@ -124,8 +127,11 @@ class RecordValueReader
             $shown[$field->code] = match (true) {
                 ! $field->type->isReference() => $this->plainValue($field, $raw['values'][$field->code] ?? null),
                 $targets === [] => null,
-                $field->is_multiple => array_map(fn (array $target) => $this->shownTarget($target, $labels), $targets),
-                default => $this->shownTarget($targets[0], $labels),
+                $field->is_multiple => array_map(
+                    fn (array $target) => $this->shownTarget($field, $target, $labels),
+                    $targets,
+                ),
+                default => $this->shownTarget($field, $targets[0], $labels),
             };
         }
 
@@ -133,16 +139,30 @@ class RecordValueReader
     }
 
     /**
-     * 相手 1 つの画面の値(今は無い相手は id を残して code・label を null)。
+     * 相手 1 つの画面の値(今は無い相手は id を残して code・label を null)。型「ユーザーと組織」の項目は相手の種類を足す({@see self::withKind()})。
      *
      * @param  ReferenceTarget  $target
      * @param  array<string, ReferenceValue>  $labels
-     * @return ReferenceValue
+     * @return ReferenceValue|PartyValue
      */
-    private function shownTarget(array $target, array $labels): array
+    private function shownTarget(RecordField $field, array $target, array $labels): array
     {
-        return $labels[$this->targetKey($target)]
+        $value = $labels[$this->targetKey($target)]
             ?? ['id' => $target['id'], 'code' => null, 'label' => null, 'affiliation' => null];
+
+        return $this->withKind($field->type, $target, $value);
+    }
+
+    /**
+     * 相手の画面の値に、型「ユーザーと組織」なら相手の種類 type を先頭に足す(ほかの型はそのまま)。版の差分も同じ形にする 1 か所。
+     *
+     * @param  ReferenceTarget  $target
+     * @param  ReferenceValue  $value
+     * @return ReferenceValue|PartyValue
+     */
+    public function withKind(RecordFieldType $type, array $target, array $value): array
+    {
+        return $type->hasPartyKind() ? ['type' => $target['type'], ...$value] : $value;
     }
 
     /**

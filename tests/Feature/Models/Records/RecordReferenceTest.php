@@ -14,7 +14,7 @@ use Tests\Support\TransactionalTestCase;
 /**
  * 参照の項目の値(docs の 設計/業務データの入れ物/データモデル/表.md 2.6・制約の分担と検査.md 7 節: 持ち主のレコードと項目が同じ業務モジュールにある、参照先のレコードが
  * 項目の定義した参照先の業務モジュールにある(複合外部キー)、1 行は 1 つの相手だけを指す、複数でない項目に参照は 1 つ、複数選べる参照は
- * 同じ相手・同じ並びの位置を 2 度持たず、is_multiple の写しが項目と同じ)。
+ * 同じ相手・同じ並びの位置を 2 度持たず、is_multiple の写しが項目と同じ。型「ユーザーと組織」の項目は同じ id のユーザーと組織を別の相手として持つ)。
  */
 final class RecordReferenceTest extends TransactionalTestCase
 {
@@ -120,6 +120,29 @@ final class RecordReferenceTest extends TransactionalTestCase
             fn () => RecordReference::factory()->create(
                 [...$owner, 'sort_key' => 2, 'department_id' => $first->department_id],
             ),
+        );
+    }
+
+    public function test_a_user_or_department_field_holds_a_user_and_a_department_of_the_same_id(): void
+    {
+        $owner = [...$this->multipleOwner(RecordFieldType::UserOrDepartment), 'is_multiple' => true];
+        // 採番の続きと重ならないように、両方の表の最大より十分大きい id にする
+        $id = max((int) User::query()->max('id'), (int) Department::query()->max('id')) + 100_000;
+        User::factory()->create(['id' => $id]);
+        Department::factory()->create(['id' => $id]);
+
+        RecordReference::factory()->create([...$owner, 'user_id' => $id]);
+        $asDepartment = [...$owner, 'user_id' => null, 'department_id' => $id];
+        $department = RecordReference::factory()->create([...$asDepartment, 'sort_key' => 1]);
+
+        $this->assertSame([null, $id], [$department->refresh()->user_id, $department->department_id]);
+        $this->assertRejectedBy(
+            'record_references_record_id_record_field_id_user_id_unique',
+            fn () => RecordReference::factory()->create([...$owner, 'sort_key' => 2, 'user_id' => $id]),
+        );
+        $this->assertRejectedBy(
+            'record_references_record_id_record_field_id_department_id_unique',
+            fn () => RecordReference::factory()->create([...$asDepartment, 'sort_key' => 2]),
         );
     }
 
