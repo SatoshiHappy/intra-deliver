@@ -23,6 +23,7 @@ use App\Queries\Menu\QuickActionsHomeSection;
 use App\Queries\Notice\Api\NoticeTargets;
 use App\Queries\Records\Api\RecordApplyEntries;
 use App\Queries\Records\Api\RecordHolds;
+use App\Queries\Records\Api\RecordModuleVisibilityStops;
 use App\Queries\Records\Api\RecordScreenAddons;
 use App\Queries\Records\Api\RecordShowSections;
 use App\Queries\Records\RecordMenuItemVisibility;
@@ -42,6 +43,7 @@ use App\Queries\Workflow\WorkflowLeadHomeSection;
 use App\Queries\Workflow\WorkflowNoticeTargets;
 use App\Queries\Workflow\WorkflowRecordApplyEntries;
 use App\Queries\Workflow\WorkflowRecordHolds;
+use App\Queries\Workflow\WorkflowRecordModuleVisibilityStops;
 use App\Queries\Workflow\WorkflowUserMenuSection;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
@@ -66,8 +68,7 @@ class AppServiceProvider extends ServiceProvider
         // 依存の逆転: 認可の業務処理が、各モジュールの定義するリソースタイプとアクションの一覧の和で検査する(docs の 設計/メニュー/認可との結び付け.md 2.1)
         $this->app->tag([ServiceResourceTypes::class, MenuResourceTypes::class, RecordModuleResourceTypes::class, WorkflowFlowResourceTypes::class], ResourceTypes::TAG);
 
-        // 依存の逆転: 業務データの入れ物の書き込みが、未完了の案件が指すレコードを持ち主の規則で守る(docs の 設計/ワークフロー/業務データとの接続/申請と書き込み.md 4 節)
-        $this->app->tag([WorkflowRecordHolds::class], RecordHolds::TAG);
+        $this->tagRecordWriteGuards();
 
         // 依存の逆転: 業務データの入れ物の詳細の「申請する」が、レコードから申請できる入口を聞く(docs の 設計/ワークフロー/申請の周辺/既存のデータからの申請/README.md の 2 節)
         $this->app->tag([WorkflowRecordApplyEntries::class], RecordApplyEntries::TAG);
@@ -103,6 +104,19 @@ class AppServiceProvider extends ServiceProvider
 
         $this->tagHomeSections();
         $this->tagUserMenuSections();
+    }
+
+    /**
+     * 業務データの入れ物の書き込みを守る依存の逆転の口(レコードの持ち主・業務モジュールの表示の止め)を、ワークフローの実装で登録する。
+     */
+    private function tagRecordWriteGuards(): void
+    {
+        // 依存の逆転: 業務データの入れ物の書き込みが、未完了の案件が指すレコードを持ち主の規則で守る(docs の 設計/ワークフロー/業務データとの接続/申請と書き込み.md 4 節)
+        $this->app->tag([WorkflowRecordHolds::class], RecordHolds::TAG);
+
+        // 依存の逆転: 業務モジュールを変える業務処理と管理の編集の画面が、コンテンツが指す業務モジュールの表示の止めを聞く(ADR 0031。
+        // docs の 設計/ワークフロー/業務データとの接続/公開の口.md 7 節)
+        $this->app->tag([WorkflowRecordModuleVisibilityStops::class], RecordModuleVisibilityStops::TAG);
     }
 
     /**

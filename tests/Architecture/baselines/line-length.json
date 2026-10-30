@@ -49,7 +49,7 @@
     "app/Actions/Records/SetModuleCategoryModules.php": 6,
     "app/Actions/Records/SyncRecordModuleItems.php": 4,
     "app/Actions/Records/UpdateRecordField.php": 5,
-    "app/Actions/Records/UpdateRecordModule.php": 10,
+    "app/Actions/Records/UpdateRecordModule.php": 9,
     "app/Actions/Records/ValidatesDefinitionText.php": 8,
     "app/Actions/Workflow/AddRouteVersion.php": 3,
     "app/Actions/Workflow/ApplicationBaseDate.php": 1,

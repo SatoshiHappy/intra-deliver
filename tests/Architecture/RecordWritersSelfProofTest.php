@@ -17,6 +17,8 @@ use PHPUnit\Framework\Attributes\DataProvider;
  * AI の依頼の口と音声の依頼の部品: 一覧に無い業務処理(議事録の種類・入口の判定の部品・コマンド・Ai の内部)から RequestPrompt・RequestTranscription
  * に、依頼の口の一覧の場所(完了の受け手)・入口のコントローラから MeetingAudioRequest に依存すると赤になり、一覧の場所(作成・再作成・
  * 完了の受け手・音声の依頼の部品)と、文だけを RunRequestMessages から使う入口の判定の部品は通る。
+ * 業務モジュールを非表示にする口: 一覧の外(コンテンツを作る業務処理と同じ名前空間のほかのクラス・seeder・入れ物の内部)から
+ * HideRecordModuleUnchecked に依存すると赤になり(抑制の注釈を付けても消えない)、一覧の場所(コンテンツを作る業務処理)からの依存は通る。
  * fixture は通常の設定のまま(一覧は差し替えない)、走査ルートだけを fixture に差し替える。
  */
 final class RecordWritersSelfProofTest extends PhpStanSelfProofTestCase
@@ -32,6 +34,8 @@ final class RecordWritersSelfProofTest extends PhpStanSelfProofTestCase
     private const REQUEST_RULE = 'phpat.runRequestDependencies';
 
     private const AUDIO_REQUEST_RULE = 'phpat.meetingAudioRequestDependencies';
+
+    private const HIDE_MODULE_RULE = 'phpat.hideModuleDependencies';
 
     /**
      * @return array<string, array{string, int}>
@@ -105,6 +109,18 @@ final class RecordWritersSelfProofTest extends PhpStanSelfProofTestCase
         ];
     }
 
+    /**
+     * @return array<string, array{string, int}>
+     */
+    public static function hideModuleViolations(): array
+    {
+        return [
+            'コンテンツを作る業務処理と同じ名前空間のほかのクラス' => ['Actions/Workflow/HidesBesideTheContent.php', 12],
+            '登録・更新の一覧の場所(seeder)' => ['database/seeders/HidesModuleSeeder.php', 13],
+            '抑制の注釈を付けた入れ物の内部(消せない)' => ['Actions/Records/SuppressedHide.php', 13],
+        ];
+    }
+
     #[DataProvider('violations')]
     public function test_detects_a_dependency_on_the_record_writers_outside_the_list(string $file, int $line): void
     {
@@ -142,6 +158,14 @@ final class RecordWritersSelfProofTest extends PhpStanSelfProofTestCase
         int $line,
     ): void {
         $this->assertDetects($rule, 'RecordWriters/violating/'.$file, $line, self::analyse('RecordWriters/violating'));
+    }
+
+    #[DataProvider('hideModuleViolations')]
+    public function test_detects_a_dependency_on_the_hide_module_outside_the_list(string $file, int $line): void
+    {
+        $analysis = self::analyse('RecordWriters/violating');
+
+        $this->assertDetects(self::HIDE_MODULE_RULE, 'RecordWriters/violating/'.$file, $line, $analysis);
     }
 
     public function test_passes_the_callers_in_the_list(): void

@@ -3,6 +3,7 @@ import { expect } from './test';
 import { submitAndExpectUrl } from './submit';
 
 // 見出しの E2E(records-headings-admin・records-headings-show の spec)が共有する部品。業務モジュール「見出し確認」は最初の spec が作る。
+// 管理者で開く部品 openAsAdministrator は、ほかの spec も使う。
 
 /** 「見出し確認」の管理の定義の画面 */
 export const HEADING_MODULE = '/records/admin/modules/heading_check';

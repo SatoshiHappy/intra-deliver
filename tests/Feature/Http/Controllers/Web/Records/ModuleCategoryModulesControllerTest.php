@@ -13,7 +13,7 @@ use Tests\Support\TransactionalTestCase;
  * モジュール分類の中の業務モジュールの書き込みの口(docs の 設計/業務データの入れ物/モジュール分類/画面と検査.md 4.4・6 節の「追加の Dialog の口」):
  * システム管理者(u0004)が分類の中の業務モジュールを揃える(トースト)と、業務モジュールの分類をドラッグで変える(トーストなし)。表示しない
  * 業務モジュールは 422 でキー categories・codes。ほかのルートと権限の組み合わせは {@see ModuleCategoryControllerTest}。
- * 初期データ(プロジェクト・課題・会議・申請書の業務モジュール 2 つ = 直下 100・110・120・130・140)を入れ、ルートの認可を外さずに開く。
+ * 初期データ(プロジェクト・課題・会議 = 直下 100・110・120。申請書の業務モジュール 2 つは非表示 = ADR 0031)を入れ、ルートの認可を外さずに開く。
  */
 final class ModuleCategoryModulesControllerTest extends TransactionalTestCase
 {
@@ -22,10 +22,10 @@ final class ModuleCategoryModulesControllerTest extends TransactionalTestCase
     /** 初期データの組み込みの会議(分類に入れないので「分類なし」に表示中で残る) */
     private const MEETING = ['code' => 'meeting', 'name' => '会議', 'isVisible' => true];
 
-    /** 初期データの申請書の業務モジュール 2 つ(作った順 = 直下 130・140。分類に入れないので「分類なし」に表示中で残る) */
-    private const APPLICATIONS = [
-        ['code' => 'project_plan_application', 'name' => 'プロジェクト計画の申請', 'isVisible' => true],
-        ['code' => 'issue_resolution_application', 'name' => '課題の対応の申請', 'isVisible' => true],
+    /** 初期データの申請書の業務モジュール 2 つ(非表示 = ADR 0031。「分類なし」の表示中の行の後に、並び順・コードの順) */
+    private const HIDDEN_APPLICATIONS = [
+        ['code' => 'issue_resolution_application', 'name' => '課題の対応の申請', 'isVisible' => false],
+        ['code' => 'project_plan_application', 'name' => 'プロジェクト計画の申請', 'isVisible' => false],
     ];
 
     protected function setUp(): void
@@ -57,7 +57,7 @@ final class ModuleCategoryModulesControllerTest extends TransactionalTestCase
                 ],
                 ['id' => $second, 'name' => '総務', 'modules' => [['code' => 'project_issue', 'name' => '課題']]],
             ])
-            ->where('uncategorized', [self::MEETING, ...self::APPLICATIONS])
+            ->where('uncategorized', [self::MEETING, ...self::HIDDEN_APPLICATIONS])
         );
 
         // 外したものは、ほかの分類に属さなければ直下の末尾に、属せばそちらに残る
@@ -66,7 +66,8 @@ final class ModuleCategoryModulesControllerTest extends TransactionalTestCase
             ->where('categories.0.modules', [])
             ->where('categories.1.modules', [['code' => 'project_issue', 'name' => '課題']])
             ->where('uncategorized', [
-                self::MEETING, ...self::APPLICATIONS, ['code' => 'project', 'name' => 'プロジェクト', 'isVisible' => true],
+                self::MEETING, ['code' => 'project', 'name' => 'プロジェクト', 'isVisible' => true],
+                ...self::HIDDEN_APPLICATIONS,
             ])
         );
     }
@@ -114,7 +115,8 @@ final class ModuleCategoryModulesControllerTest extends TransactionalTestCase
                 ['id' => $second, 'name' => '総務', 'modules' => [['code' => 'project_issue', 'name' => '課題']]],
             ])
             ->where('uncategorized', [
-                self::MEETING, ...self::APPLICATIONS, ['code' => 'project', 'name' => 'プロジェクト', 'isVisible' => true],
+                self::MEETING, ['code' => 'project', 'name' => 'プロジェクト', 'isVisible' => true],
+                ...self::HIDDEN_APPLICATIONS,
             ])
         );
     }

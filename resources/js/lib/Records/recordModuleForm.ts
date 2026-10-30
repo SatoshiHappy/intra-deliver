@@ -21,11 +21,13 @@ export type ModuleFormData = {
 
 /**
  * フォームの初期値(今の定義。明細のモジュールの持たない値は空・偽・使用する・全員にしておき、送らない)。
+ * 表示の止めは {@link withVisibilityStop} で当てる。
  */
 export function initialModuleData(
     module: RecordAdminModuleForm,
+    visibilityStopReason: string | null = null,
 ): ModuleFormData {
-    return {
+    const data: ModuleFormData = {
         name: module.name,
         description: module.description ?? '',
         icon: module.icon ?? '',
@@ -34,6 +36,20 @@ export function initialModuleData(
         is_attachment_enabled: module.isAttachmentEnabled !== false,
         row_access_scope: module.rowAccessScope ?? 'all',
     };
+
+    return withVisibilityStop(data, visibilityStopReason);
+}
+
+/**
+ * 表示の止めを当てたフォームの値(管理の画面.md 3.5)。初期値と、開いている間に止めが立ったときの両方をこれで決める。
+ */
+export function withVisibilityStop(
+    data: ModuleFormData,
+    visibilityStopReason: string | null,
+): ModuleFormData {
+    return visibilityStopReason === null
+        ? data
+        : { ...data, is_visible: false };
 }
 
 /**

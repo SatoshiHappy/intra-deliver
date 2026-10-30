@@ -1,4 +1,4 @@
-import { Head, Link, useForm } from '@inertiajs/react';
+import { Head, Link } from '@inertiajs/react';
 import type { FormEvent } from 'react';
 import { CountedTextInput } from '@/components/CountedTextInput';
 import { FormBlock, invalidProps, UnshownErrors } from '@/components/FormBlock';
@@ -17,10 +17,8 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
-import {
-    initialModuleData,
-    toModulePayload,
-} from '@/lib/Records/recordModuleForm';
+import { useRecordModuleForm } from '@/hooks/Records/use-record-module-form';
+import { toModulePayload } from '@/lib/Records/recordModuleForm';
 import { edit, index, show, update } from '@/routes/records/admin/modules';
 import type {
     DefinitionTextMaxLengths,
@@ -32,14 +30,28 @@ import type {
 /** 画面名(見出し・パンくず・題) */
 const HEADING = '業務モジュールの編集';
 
+/** 欄として描くキー(明細のモジュール・親の無い業務モジュール。ほかのキーの誤りはフォームの面の先頭に出す) */
+const DETAILS_KEYS = ['name', 'description'];
+
+const MODULE_KEYS = [
+    ...DETAILS_KEYS,
+    'icon',
+    'is_visible',
+    'categories',
+    'is_attachment_enabled',
+    'row_access_scope',
+];
+
 /**
- * icons = アイコンの選択肢(作成と同じ)、categories = すべてのモジュール分類(並びの順)、textMaxLengths = 名前・説明の文字数の上限
+ * icons = アイコンの選択肢(作成と同じ)、categories = すべてのモジュール分類(並びの順)、textMaxLengths = 名前・説明の文字数の上限、
+ * visibilityStopReason = 表示の止めの理由(止めが無い・明細のモジュールは null)
  */
 type Props = {
     module: RecordAdminModuleForm;
     icons: RecordModuleIconChoice[];
     categories: ModuleCategoryChoice[];
     textMaxLengths: DefinitionTextMaxLengths;
+    visibilityStopReason: string | null;
 };
 
 /**
@@ -51,8 +63,9 @@ export default function ModuleEdit({
     icons,
     categories,
     textMaxLengths,
+    visibilityStopReason,
 }: Props) {
-    const form = useForm(initialModuleData(module));
+    const form = useRecordModuleForm(module, visibilityStopReason);
     const submit = (event: FormEvent) => {
         event.preventDefault();
         form.transform((data) =>
@@ -159,17 +172,7 @@ export default function ModuleEdit({
                             form.errors as Record<string, string | undefined>
                         }
                         shownKeys={
-                            module.isDetails
-                                ? ['name', 'description']
-                                : [
-                                      'name',
-                                      'description',
-                                      'icon',
-                                      'is_visible',
-                                      'categories',
-                                      'is_attachment_enabled',
-                                      'row_access_scope',
-                                  ]
+                            module.isDetails ? DETAILS_KEYS : MODULE_KEYS
                         }
                     />
                     {module.isDetails ? (
@@ -181,6 +184,7 @@ export default function ModuleEdit({
                                 data={form.data}
                                 errors={form.errors}
                                 categories={categories}
+                                visibilityStopReason={visibilityStopReason}
                                 onChange={form.setData}
                             />
                         </div>

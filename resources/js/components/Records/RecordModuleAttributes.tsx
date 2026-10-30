@@ -18,17 +18,27 @@ const CATEGORIES_HINT =
 
 /**
  * 枠「属性」のチェック「サイドバーに表示」(説明と、is_visible の誤り = アイテムを作る・消す段の失敗を含む)。
+ * 表示の止めがあるとき(stopReason が null でない = ADR 0031)は、チェックを無効にし、ふだんの説明の代わりに止めの理由だけを出して
+ * チェックの説明として読み上げに結ぶ(画面/管理の画面.md 3.5)。外した形は、見せる値と送る値を 1 か所で決めるため、呼び手のフォームの値(偽)で描く。
  */
 function VisibilityFlag({
     checked,
     onChange,
     error,
+    stopReason,
 }: {
     checked: boolean;
     onChange: (checked: boolean) => void;
     error: string | undefined;
+    stopReason: string | null;
 }) {
     const id = 'module-is_visible';
+    const stopReasonId = `${id}-stop-reason`;
+    const invalid = invalidProps(id, error);
+    const describedBy = [
+        invalid['aria-describedby'],
+        stopReason === null ? undefined : stopReasonId,
+    ].join(' ');
 
     return (
         <div className="flex flex-col gap-2">
@@ -36,12 +46,19 @@ function VisibilityFlag({
                 <Checkbox
                     id={id}
                     checked={checked}
+                    disabled={stopReason !== null}
                     onCheckedChange={(next) => onChange(next === true)}
-                    {...invalidProps(id, error)}
+                    {...invalid}
+                    aria-describedby={describedBy.trim() || undefined}
                 />
                 <Label htmlFor={id}>サイドバーに表示</Label>
             </div>
-            <p className="text-xs text-muted-foreground">{VISIBILITY_HINT}</p>
+            <p
+                id={stopReason === null ? undefined : stopReasonId}
+                className="text-xs text-muted-foreground"
+            >
+                {stopReason ?? VISIBILITY_HINT}
+            </p>
             {error !== undefined && (
                 <p id={formErrorId(id)} className="text-sm text-destructive">
                     {error}
@@ -174,6 +191,18 @@ function AttachmentFlag({
     );
 }
 
+/** 枠「属性」の props(visibilityStopReason = 表示の止めの理由。止めが無ければ null) */
+type ModuleAttributesProps = {
+    data: ModuleFormData;
+    errors: Partial<Record<keyof ModuleFormData, string>>;
+    categories: ModuleCategoryChoice[];
+    visibilityStopReason: string | null;
+    onChange: <K extends keyof ModuleFormData>(
+        key: K,
+        value: ModuleFormData[K],
+    ) => void;
+};
+
 /**
  * 枠「属性」(docs の 設計/業務データの入れ物/画面/管理の画面.md 3.5、レコードの共通機能/業務モジュールの管理.md の 2 節。明細のモジュールには出さない):
  * 並び = サイドバーに表示 → モジュール分類(表示の選択)→ 添付ファイルの追加・削除を許可 → 見える範囲。
@@ -182,16 +211,9 @@ export function ModuleAttributes({
     data,
     errors,
     categories,
+    visibilityStopReason,
     onChange,
-}: {
-    data: ModuleFormData;
-    errors: Partial<Record<keyof ModuleFormData, string>>;
-    categories: ModuleCategoryChoice[];
-    onChange: <K extends keyof ModuleFormData>(
-        key: K,
-        value: ModuleFormData[K],
-    ) => void;
-}) {
+}: ModuleAttributesProps) {
     return (
         <FormSurface
             aria-labelledby="module-attributes"
@@ -205,6 +227,7 @@ export function ModuleAttributes({
                 checked={data.is_visible}
                 onChange={(checked) => onChange('is_visible', checked)}
                 error={errors.is_visible}
+                stopReason={visibilityStopReason}
             />
             <CategoryChecklist
                 categories={categories}

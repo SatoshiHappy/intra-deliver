@@ -62,7 +62,7 @@
     "resources/js/pages/Records/Admin/FieldForm.tsx FieldForm": 335,
     "resources/js/pages/Records/Admin/ModuleCategories.tsx ModuleCategories": 58,
     "resources/js/pages/Records/Admin/ModuleCreate.tsx ModuleCreate": 145,
-    "resources/js/pages/Records/Admin/ModuleEdit.tsx ModuleEdit": 152,
+    "resources/js/pages/Records/Admin/ModuleEdit.tsx ModuleEdit": 144,
     "resources/js/pages/Records/Admin/ModuleIndex.tsx ModuleIndex": 92,
     "resources/js/pages/Records/Admin/ModuleShow.tsx ModuleShow": 93,
     "resources/js/pages/Records/Index.tsx Index": 102,
@@ -73,7 +73,7 @@
     "tests/e2e/demo/authz.spec.ts (無名)": 157,
     "tests/e2e/demo/records-admin.spec.ts (ファイル)": 1210,
     "tests/e2e/demo/records-admin.spec.ts (無名)": [
-        93, 92, 90, 83, 65, 57, 55, 51
+        93, 92, 90, 81, 65, 57, 55, 51
     ],
     "tests/e2e/demo/records-corrections.spec.ts (ファイル)": 759,
     "tests/e2e/demo/records-corrections.spec.ts (無名)": [74, 67, 51, 51],

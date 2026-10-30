@@ -27,10 +27,11 @@ final class RecordAdminModuleListControllerTest extends TransactionalTestCase
 
         $this->get('/records/admin/modules')->assertOk()->assertInertia(fn (Assert $page) => $page
             ->component('Records/Admin/ModuleIndex')
+            // 申請書の業務モジュールは初期データで非表示(ADR 0031)
             ->where('modules', [
                 [
                     'code' => 'issue_resolution_application', 'name' => '課題の対応の申請',
-                    'parentCode' => null, 'isVisible' => true,
+                    'parentCode' => null, 'isVisible' => false,
                 ],
                 ['code' => 'meeting', 'name' => '会議', 'parentCode' => null, 'isVisible' => true],
                 ['code' => 'project', 'name' => 'プロジェクト', 'parentCode' => null, 'isVisible' => true],
@@ -38,7 +39,7 @@ final class RecordAdminModuleListControllerTest extends TransactionalTestCase
                 ['code' => 'project_issue', 'name' => '課題', 'parentCode' => null, 'isVisible' => true],
                 [
                     'code' => 'project_plan_application', 'name' => 'プロジェクト計画の申請',
-                    'parentCode' => null, 'isVisible' => true,
+                    'parentCode' => null, 'isVisible' => false,
                 ],
                 [
                     'code' => 'project_plan_application_milestones', 'name' => 'マイルストーン',

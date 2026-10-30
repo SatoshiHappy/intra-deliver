@@ -70,7 +70,7 @@ final class ShareGlobalNavigationTest extends TransactionalTestCase
 
     /**
      * 初期データのゲストのグローバルナビ(業務・ワークフロー。ワークフローは並び 50 = 業務の後・管理の前)。
-     * 申請書の業務モジュール 2 つは、「業務」の末尾とワークフローの末尾の両方に出る。
+     * 申請書の業務モジュール 2 つは、ワークフローの末尾にだけ出る(「業務」には出ない = ADR 0031)。
      *
      * @return list<array<string, mixed>>
      */
@@ -88,16 +88,6 @@ final class ShareGlobalNavigationTest extends TransactionalTestCase
                 [
                     'code' => 'global-nav-main-records-meeting', 'type' => 'item', 'name' => '会議', 'icon' => 'users',
                     'href' => '/records/data/meeting', 'isExternal' => false,
-                ],
-                [
-                    'code' => 'global-nav-main-records-project_plan_application', 'type' => 'item',
-                    'name' => 'プロジェクト計画の申請', 'icon' => 'file-text',
-                    'href' => '/records/data/project_plan_application', 'isExternal' => false,
-                ],
-                [
-                    'code' => 'global-nav-main-records-issue_resolution_application', 'type' => 'item',
-                    'name' => '課題の対応の申請', 'icon' => 'clipboard-list',
-                    'href' => '/records/data/issue_resolution_application', 'isExternal' => false,
                 ],
             ],
         ], [

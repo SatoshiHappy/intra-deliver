@@ -33,18 +33,11 @@ final class RecordModuleMenuItemsTest extends TransactionalTestCase
         $response = $this->get(route('menu.sitemap'));
 
         $this->assertSame(
-            [
-                'global-nav-main-records-project_issue', 'global-nav-main-records-meeting',
-                'global-nav-main-records-project_plan_application',
-                'global-nav-main-records-issue_resolution_application',
-            ],
+            ['global-nav-main-records-project_issue', 'global-nav-main-records-meeting'],
             $this->recordItemCodes($response, 'globalNavigation'),
         );
         $this->assertSame(
-            [
-                'sitemap-main-records-project_issue', 'sitemap-main-records-meeting',
-                'sitemap-main-records-project_plan_application', 'sitemap-main-records-issue_resolution_application',
-            ],
+            ['sitemap-main-records-project_issue', 'sitemap-main-records-meeting'],
             $this->recordItemCodes($response, 'groups'),
         );
     }
@@ -66,18 +59,16 @@ final class RecordModuleMenuItemsTest extends TransactionalTestCase
             ['sitemap-workflow-records-data-index-issue-resolution-application'],
             $this->recordItemCodes($response, 'groups', '-workflow'),
         );
+        // 申請書の業務モジュールは「業務」に無い(初期データで非表示 = ADR 0031)
         $this->assertSame(
             [
                 'global-nav-main-records-project', 'global-nav-main-records-project_issue',
-                'global-nav-main-records-meeting', 'global-nav-main-records-issue_resolution_application',
+                'global-nav-main-records-meeting',
             ],
             $this->recordItemCodes($response, 'globalNavigation'),
         );
         $this->assertSame(
-            [
-                'sitemap-main-records-project', 'sitemap-main-records-project_issue', 'sitemap-main-records-meeting',
-                'sitemap-main-records-issue_resolution_application',
-            ],
+            ['sitemap-main-records-project', 'sitemap-main-records-project_issue', 'sitemap-main-records-meeting'],
             $this->recordItemCodes($response, 'groups'),
         );
     }
@@ -91,17 +82,10 @@ final class RecordModuleMenuItemsTest extends TransactionalTestCase
         $this->deny('project_issue', RecordModuleAction::Read);
         $after = $this->get(route('menu.sitemap'));
 
-        $applications = [
-            'sitemap-main-records-project_plan_application',
-            'sitemap-main-records-issue_resolution_application',
-        ];
-        $all = [
-            'sitemap-main-records-project', 'sitemap-main-records-project_issue', 'sitemap-main-records-meeting',
-            ...$applications,
-        ];
+        $all = ['sitemap-main-records-project', 'sitemap-main-records-project_issue', 'sitemap-main-records-meeting'];
         $this->assertSame($all, $this->recordItemCodes($before, 'groups'));
         $this->assertSame(
-            ['sitemap-main-records-project', 'sitemap-main-records-meeting', ...$applications],
+            ['sitemap-main-records-project', 'sitemap-main-records-meeting'],
             $this->recordItemCodes($after, 'groups'),
         );
     }
@@ -134,11 +118,7 @@ final class RecordModuleMenuItemsTest extends TransactionalTestCase
 
         $response->assertOk();
         $this->assertSame(
-            [
-                'global-nav-main-records-project_issue', 'global-nav-main-records-meeting',
-                'global-nav-main-records-project_plan_application',
-                'global-nav-main-records-issue_resolution_application',
-            ],
+            ['global-nav-main-records-project_issue', 'global-nav-main-records-meeting'],
             $this->recordItemCodes($response, 'globalNavigation'),
         );
         $this->assertSame('project_issue', $response->inertiaProps('module.code'));

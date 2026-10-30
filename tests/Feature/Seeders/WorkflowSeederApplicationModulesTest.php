@@ -10,6 +10,7 @@ use App\Models\Records\RecordModule;
 use App\Models\Workflow\WorkflowContent;
 use App\Queries\Authz\Api\Requester;
 use App\Queries\Records\Api\RecordFormQuery;
+use App\Queries\Records\RecordModuleVisibility;
 use App\Queries\Workflow\ApplicationTargetSnapshot;
 use App\Support\AccessContext;
 use Carbon\CarbonImmutable;
@@ -17,7 +18,8 @@ use Database\Seeders\WorkflowApplicationModules;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * 申請書の業務モジュールとコンテンツ(docs の 設計/ワークフロー/初期データ.md の 3 節の「seeder が満たす条件」と「止め方」)。
+ * 申請書の業務モジュールとコンテンツ(docs の 設計/ワークフロー/初期データ.md の 3 節の「seeder が満たす条件」と「止め方」、6 節の
+ * 「申請書の業務モジュールを非表示にする手順」)。
  * 見本の案件の申請対象と申請書は {@see WorkflowSeederApplicationTargetsTest}。初期データは DatabaseSeeder が 1 回入れたもの。
  */
 final class WorkflowSeederApplicationModulesTest extends TransactionalTestCase
@@ -30,7 +32,7 @@ final class WorkflowSeederApplicationModulesTest extends TransactionalTestCase
 
     /**
      * グループ「ワークフロー」(グローバルナビ・サイトマップ)の、申請する・申請一覧の後に、申請書の業務モジュールの一覧へのアイテム
-     * (docs の 設計/ワークフロー/申請の周辺/メニューと導線.md の 1.1 節)。表示名とアイコンはグループ「業務」の同じ業務モジュールのアイテムと同じ。
+     * (docs の 設計/ワークフロー/申請の周辺/メニューと導線.md の 1.1 節)。表示名とアイコンは業務モジュールの名前とアイコン。
      */
     public function test_the_group_workflow_has_the_items_of_the_application_modules_after_the_two_initial_items(): void
     {
@@ -52,13 +54,38 @@ final class WorkflowSeederApplicationModulesTest extends TransactionalTestCase
             foreach ($codes as $position => $moduleCode) {
                 $item = $children->get($position + 2);
                 $this->assertInstanceOf(Menu::class, $item);
-                $workItem = Menu::query()->where('code', $work->recordModuleItemCode($moduleCode))->sole();
+                $module = RecordModule::query()->where('code', $moduleCode)->sole();
 
                 $this->assertSame("/records/data/{$moduleCode}", $item->url);
-                $this->assertSame($workItem->icon_32, $item->icon_32);
-                $this->assertSame($this->displayNames($workItem), $this->displayNames($item));
+                $this->assertSame($module->icon, $item->icon_32);
+                $this->assertSame(['en' => $module->name, 'ja' => $module->name], $this->displayNames($item));
                 $this->assertFalse(str_starts_with($item->code, $work->recordModuleItemPrefix()));
             }
+        }
+    }
+
+    /**
+     * 申請書の業務モジュールは、コンテンツを作る業務処理が非表示にする(初期データは別の手順を持たない = ADR 0031 の決定 3): 業務のアプリ
+     * (グループ「業務」の 2 つの木)にアイテムが無く、ワークフローのアプリのアイテムは残る。
+     */
+    public function test_the_application_modules_are_hidden_from_the_work_app_and_stay_in_the_workflow_app(): void
+    {
+        foreach ([WorkflowApplicationModules::PLAN, WorkflowApplicationModules::ISSUE] as $moduleCode) {
+            $this->assertFalse(app(RecordModuleVisibility::class)->isVisible($moduleCode), $moduleCode);
+
+            foreach (WorkMenuGroup::cases() as $work) {
+                $items = Menu::query()->where('code', 'like', $work->value.'-%')
+                    ->where('url', "/records/data/{$moduleCode}");
+                $this->assertSame(0, $items->count(), "{$work->value} {$moduleCode}");
+            }
+
+            $workflowItems = Menu::query()->where('code', 'like', '%-workflow-records-data-index-%')
+                ->where('url', "/records/data/{$moduleCode}")->pluck('code')->sort()->values()->all();
+            $slug = str_replace('_', '-', $moduleCode);
+            $this->assertSame([
+                "global-nav-workflow-records-data-index-{$slug}",
+                "sitemap-workflow-records-data-index-{$slug}",
+            ], $workflowItems);
         }
     }
 

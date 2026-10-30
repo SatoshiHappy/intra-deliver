@@ -18,7 +18,7 @@ use Tests\Support\TransactionalTestCase;
 /**
  * 業務モジュールの表示の状態(docs の 設計/業務データの入れ物/認可とメニュー/メニューと初期データ.md 5.1、モジュール分類/README.md 1.4): アイテムは目標の親の子に
  * あるときだけ数え、モジュール分類の画面(画面と検査.md 4.4)とアイテムを揃える業務処理(モジュール分類/業務処理.md 3.7)も同じ読み方をする。
- * 初期データのプロジェクト(直下)と課題(直下)、申請書の業務モジュール 2 つ(直下。グループ「ワークフロー」のアイテムは数えない)を使う。
+ * 初期データのプロジェクト(直下)と課題(直下)、申請書の業務モジュール 2 つ(非表示 = ADR 0031。グループ「ワークフロー」のアイテムは数えない)を使う。
  */
 final class RecordModuleVisibilityTest extends TransactionalTestCase
 {
@@ -41,9 +41,9 @@ final class RecordModuleVisibilityTest extends TransactionalTestCase
         $this->assertSame([
             ['code' => 'project_issue', 'name' => '課題', 'isVisible' => true],
             ['code' => 'meeting', 'name' => '会議', 'isVisible' => true],
-            ['code' => 'project_plan_application', 'name' => 'プロジェクト計画の申請', 'isVisible' => true],
-            ['code' => 'issue_resolution_application', 'name' => '課題の対応の申請', 'isVisible' => true],
+            ['code' => 'issue_resolution_application', 'name' => '課題の対応の申請', 'isVisible' => false],
             ['code' => 'project', 'name' => 'プロジェクト', 'isVisible' => false],
+            ['code' => 'project_plan_application', 'name' => 'プロジェクト計画の申請', 'isVisible' => false],
         ], $props['uncategorized']);
     }
 
@@ -124,7 +124,7 @@ final class RecordModuleVisibilityTest extends TransactionalTestCase
         ];
         $hidden = array_column(array_filter($props['uncategorized'], fn (array $module) => ! $module['isVisible']), 'code');
 
-        $this->assertEqualsCanonicalizing(['project', 'project_issue', 'meeting', ...$applications], $visible);
+        $this->assertEqualsCanonicalizing(['project', 'project_issue', 'meeting'], $visible);
         foreach ($codes as $code) {
             $this->assertSame(in_array($code, $visible, true) ? [true, false] : [false, true], [in_array($code, $shown, true), in_array($code, $hidden, true)], $code);
         }

@@ -18,7 +18,7 @@ use Tests\Support\TransactionalTestCase;
  * 移り先の records.admin.categories.index が 200 で props に結果が出る(作成・名前・削除はトースト、並び替えはトーストなし)。無い分類は壊れた入力でも
  * 422 より先に 404(無い業務モジュールのコードも同じ)。入れ物の形の誤りと業務処理の 422 は元の画面へ戻り、入力の名前のキーにエラーが付く。ルート reorder は {module}・{category} に取られない。
  * 分類の中の業務モジュールを揃える書き込み(追加の Dialog・ドラッグ)は {@see ModuleCategoryModulesControllerTest}。
- * 初期データ(プロジェクト・課題・会議・申請書の業務モジュール 2 つ = 直下 100・110・120・130・140)を入れ、ルートの認可を外さずに開く。
+ * 初期データ(プロジェクト・課題・会議 = 直下 100・110・120。申請書の業務モジュール 2 つは非表示 = ADR 0031)を入れ、ルートの認可を外さずに開く。
  */
 final class ModuleCategoryControllerTest extends TransactionalTestCase
 {
@@ -27,10 +27,13 @@ final class ModuleCategoryControllerTest extends TransactionalTestCase
     /** 初期データの組み込みの会議(分類に入れないので「分類なし」に表示中で残る) */
     private const MEETING = ['code' => 'meeting', 'name' => '会議', 'isVisible' => true];
 
-    /** 初期データの申請書の業務モジュール 2 つ(作った順 = 直下 130・140。分類に入れないので「分類なし」に表示中で残る) */
-    private const APPLICATIONS = [
-        ['code' => 'project_plan_application', 'name' => 'プロジェクト計画の申請', 'isVisible' => true],
-        ['code' => 'issue_resolution_application', 'name' => '課題の対応の申請', 'isVisible' => true],
+    /** 初期データの申請書の業務モジュール 2 つ(非表示 = ADR 0031。「分類なし」の非表示の行は並び順・コードの順) */
+    private const ISSUE_APPLICATION = [
+        'code' => 'issue_resolution_application', 'name' => '課題の対応の申請', 'isVisible' => false,
+    ];
+
+    private const PLAN_APPLICATION = [
+        'code' => 'project_plan_application', 'name' => 'プロジェクト計画の申請', 'isVisible' => false,
     ];
 
     protected function setUp(): void
@@ -94,7 +97,8 @@ final class ModuleCategoryControllerTest extends TransactionalTestCase
                 ['id' => $second, 'name' => '総務', 'modules' => [['code' => 'project_issue', 'name' => '課題']]],
             ])
             ->where('uncategorized', [
-                self::MEETING, ...self::APPLICATIONS, ['code' => 'project', 'name' => 'プロジェクト', 'isVisible' => false],
+                self::MEETING, self::ISSUE_APPLICATION, ['code' => 'project', 'name' => 'プロジェクト', 'isVisible' => false],
+                self::PLAN_APPLICATION,
             ])
             ->where('textMaxLengths', ['code' => 50, 'name' => 1000, 'description' => 4000])
         );
@@ -104,9 +108,10 @@ final class ModuleCategoryControllerTest extends TransactionalTestCase
             ->where('categories.0.modules', [])
             ->where('uncategorized', [
                 self::MEETING,
-                ...self::APPLICATIONS,
                 ['code' => 'project_issue', 'name' => '課題', 'isVisible' => true],
+                self::ISSUE_APPLICATION,
                 ['code' => 'project', 'name' => 'プロジェクト', 'isVisible' => false],
+                self::PLAN_APPLICATION,
             ])
         );
     }
@@ -136,7 +141,7 @@ final class ModuleCategoryControllerTest extends TransactionalTestCase
         // ほかの分類に属さないプロジェクトは「業務」の直下の末尾へ
         $this->get('/records/admin/categories')->assertInertia(fn (Assert $page) => $page
             ->where('categories', [])
-            ->where('uncategorized.4', ['code' => 'project', 'name' => 'プロジェクト', 'isVisible' => true])
+            ->where('uncategorized.2', ['code' => 'project', 'name' => 'プロジェクト', 'isVisible' => true])
         );
     }
 
@@ -163,7 +168,7 @@ final class ModuleCategoryControllerTest extends TransactionalTestCase
         $this->put('/records/admin/modules/project', ['is_visible' => true, 'categories' => []])->assertStatus(303);
         $this->put('/records/admin/modules/project_issue', ['is_visible' => true, 'categories' => []])->assertStatus(303);
         $this->get('/records/admin/categories')->assertOk();
-        $codes = ['project_issue', 'project', 'meeting', 'project_plan_application', 'issue_resolution_application'];
+        $codes = ['project_issue', 'project', 'meeting'];
         $this->put('/records/admin/modules/reorder', ['codes' => $codes])
             ->assertStatus(303)->assertRedirect('/records/admin/categories')->assertInertiaFlashMissing('toast');
 
@@ -174,8 +179,6 @@ final class ModuleCategoryControllerTest extends TransactionalTestCase
         $this->assertSame([
             'global-nav-main-records-project_issue' => 100, 'global-nav-main-records-project' => 110,
             'global-nav-main-records-meeting' => 120,
-            'global-nav-main-records-project_plan_application' => 130,
-            'global-nav-main-records-issue_resolution_application' => 140,
         ], array_filter(
             $this->children('global-nav-main'),
             fn (string $code) => str_starts_with($code, 'global-nav-main-records-'),

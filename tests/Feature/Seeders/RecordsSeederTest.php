@@ -122,15 +122,12 @@ final class RecordsSeederTest extends TransactionalTestCase
         $icons = Menu::query()->where('code', 'like', '%-main-records-%')->where('code', 'not like', '%-main-records-'.Meeting::CODE)
             ->orderBy('code')->pluck('icon_32', 'code')->all();
 
+        // 申請書の業務モジュールのアイテムは、コンテンツを作る業務処理が消す(ADR 0031)
         $this->assertSame([
-            'global-nav-main-records-issue_resolution_application' => 'clipboard-list',
             'global-nav-main-records-project' => 'folder-kanban',
             'global-nav-main-records-project_issue' => 'list-todo',
-            'global-nav-main-records-project_plan_application' => 'file-text',
-            'sitemap-main-records-issue_resolution_application' => 'clipboard-list',
             'sitemap-main-records-project' => 'folder-kanban',
             'sitemap-main-records-project_issue' => 'list-todo',
-            'sitemap-main-records-project_plan_application' => 'file-text',
         ], $icons);
     }
 

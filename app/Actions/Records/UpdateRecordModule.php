@@ -6,7 +6,6 @@ use App\Actions\Authz\RenameResourceGroup;
 use App\Actions\Master\FillsAllLocales;
 use App\Actions\Master\WritesCommonMaster;
 use App\Actions\Menu\UpdateMenuDisplay;
-use App\Enums\Menu\MenuIcon;
 use App\Enums\Menu\WorkMenuGroup;
 use App\Enums\Records\RecordModuleAction;
 use App\Enums\Records\RecordModuleVisibilityChange;
@@ -14,37 +13,14 @@ use App\Enums\Records\RowAccessScope;
 use App\Models\Records\RecordModule;
 use App\Queries\Records\ModuleCategoryQuery;
 use App\Queries\Records\RecordModuleVisibility;
+use App\Queries\Records\RecordModuleVisibilityStopCatalog;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Validation\ValidationException;
 
 /**
- * 業務モジュールを変える(docs の 設計/業務データの入れ物/項目と規則/規則と業務処理/失敗と定義の変更.md 11 節の「業務モジュールを変える」、認可とメニュー/README.md 1 節、メニューと初期データ.md 5.1、
- * モジュール分類/業務処理.md 3.7)。明細のモジュールも変えられる。
- *
- * 入力 = { name, description, icon, is_visible, categories, is_attachment_enabled, row_access_scope }
- * (画面/管理の画面.md 3.5、添付ファイルの使用と見える範囲 = レコードの共通機能/業務モジュールの管理.md 2 節。キーはエラーのキー)。
- * 入力に無いキーは今の値のまま(項目を変えると同じ規則)。値のキー name・description の null は空(名前は 422、説明は消す)、
- * 既定を持つキー icon・is_visible・categories・is_attachment_enabled・row_access_scope の null は未指定(今の値のまま)。
- * 明細のモジュールでこれらが null 以外なら 422(キーはその名前。明細のモジュールはアイコンも表示の状態も分類も
- * 添付の使用も見える範囲も持たない)。添付の使用は真偽で、値を書くだけ(付いている添付は残る)。
- * 見える範囲は all・related のどちらか(値を書くだけ。レコードは変えない)。検証は作成と同じ文言
- * (名前の空・長さ・U+0000、説明の長さ、アイコンが {@see MenuIcon::recordModuleChoices()} にあること)と、
- * is_visible が真偽であること、categories が重ならない分類 ID の配列で、どれもロックの後に引き直した分類にあり、
- * 更新の後に非表示(is_visible が偽、または未指定で今が非表示)なら空であること。
- *
- * 共通マスタと業務モジュールの排他の勧告ロック({@see LocksRecordModule})の下で、変える前の表示中の判定({@see RecordModuleVisibility})を検証と手順 1 の前に読み、
- * 同じトランザクションで:
- * - 手順 1: record_modules の名前・説明・アイコン・見える範囲
- * - 手順 2: 名前が変われば、認可のリソースグループ record-module-<コード> の表示名(すべてのロケール)を新しい名前に({@see RenameResourceGroup})
- * - 手順 3: is_visible か categories が入力にあれば、「業務」の 2 つのグループ({@see WorkMenuGroup})のアイテムの配置を揃える({@see SyncRecordModuleItems})。
- *   目標 = 更新の後に非表示ならどこにも置かない、表示中なら categories(未指定なら今の所属)の分類ごと(空なら直下)。作るアイテムは 1 で書いた後の名前とアイコン。
- *   変える前の状態とは比べない(片方だけがある状態からも、どちらの向きでも 1 回で揃う)。失敗は原因によらずキー is_visible(文言は下位の業務処理のもの)
- * - 手順 4: 名前かアイコンが変われば、3 で作ったものを除いたすべてのアイテム(直下とすべての分類の中)の表示名(すべてのロケール)と icon_32 を、
- *   書いた後の名前とアイコンに({@see UpdateMenuDisplay})
- * 手順 2〜4 は親の無い業務モジュールだけ(明細のモジュールはリソースもアイテムも持たない)。下位の業務処理が拒めば全体が巻き戻り、
- * 手順 2・4 の誤りは下位のキーのまま(resource_group・menu・locale)で返る(規則と業務処理/失敗と定義の変更.md 10 節。画面は 設計/業務データの入れ物/画面/管理の画面.md
- * 3 節の冒頭の規則で出す)。戻り値 = 表示の変化(変える前と後の表示中の判定を比べたもの。明細のモジュールはいつも変えていない)。入口はこれでトーストの文言を選ぶ。
- * コード・親・認可のリソースとポリシー・レコード・項目・規則は変えない。業務モジュールの判定はしない(管理のルートの認可だけ = 認可とメニュー/README.md 4 節)。
+ * 業務モジュールを変える(明細のモジュールも)。規則の正本 = docs の 設計/業務データの入れ物/項目と規則/規則と業務処理/失敗と定義の変更.md
+ * 11 節の「業務モジュールを変える」と「表示の止め」(入力の名前 = 設計/業務データの入れ物/画面/管理の画面.md 3.5、添付と見える範囲 =
+ * 設計/業務データの入れ物/レコードの共通機能/業務モジュールの管理.md 2 節、分類 = 設計/業務データの入れ物/モジュール分類/業務処理.md 3.7)。
  */
 class UpdateRecordModule
 {
@@ -56,6 +32,7 @@ class UpdateRecordModule
 
     public function __construct(
         private RecordModuleVisibility $visibility,
+        private RecordModuleVisibilityStopCatalog $visibilityStops,
         private ModuleCategoryQuery $categories,
         private RenameResourceGroup $renameResourceGroup,
         private SyncRecordModuleItems $syncItems,
@@ -76,7 +53,8 @@ class UpdateRecordModule
             $module = $this->lockRecordModuleExclusively($moduleCode);
             $isDetails = $module->parent_record_module_id !== null;
             $wasVisible = ! $isDetails && $this->visibility->isVisible($module->code);
-            [$columns, $isVisible, $categories] = $this->validated($module, $input, $wasVisible);
+            $stopReason = $isDetails ? null : $this->visibilityStops->stopReason($module->id);
+            [$columns, $isVisible, $categories] = $this->validated($module, $input, $wasVisible, $stopReason);
             $module->update($columns);
 
             if ($isDetails) {
@@ -119,10 +97,9 @@ class UpdateRecordModule
     }
 
     /**
-     * 手順 3: アイテムの配置を目標(null = どこにも置かない、[] = 直下、分類 ID の配列 = 分類ごと)に揃え、作ったメニュー ID を返す。失敗は原因によらずキー
-     * is_visible で、文言は下位の業務処理(「業務」のグループが無い = 作成と同じ文言、メニューを足す・消す業務処理の拒否)のもの。
+     * 手順 3: アイテムの配置を目標に揃え、作ったメニュー ID を返す(失敗のキーと文言 = 失敗と定義の変更.md 11 節の手順 3)。
      *
-     * @param  list<string>|null  $target
+     * @param  list<string>|null  $target  null = どこにも置かない、[] = 直下、分類 ID の配列 = 分類ごと
      * @param  array<string, string>  $names  ロケールのコード → 表示名
      * @return list<string>
      *
@@ -138,15 +115,16 @@ class UpdateRecordModule
     }
 
     /**
-     * 入力にあるキーを確かめ、[変える列 → 値(icon・is_attachment_enabled・row_access_scope の null は未指定なので含めない),
-     * is_visible(null = 未指定), categories(null = 未指定)] を返す。
+     * 入力にあるキーを確かめ、[変える列 → 値, is_visible, categories] を返す。未指定は手順で今の値を使うため、変える列から外す
+     * (未指定の読み方 = 失敗と定義の変更.md 11 節)。
      *
      * @param  array<array-key, mixed>  $input
+     * @param  string|null  $stopReason  表示の止めの理由(止めが無い・明細のモジュールは null)
      * @return array{array<array-key, mixed>, bool|null, list<string>|null}
      *
      * @throws ValidationException 規則に反するとき
      */
-    private function validated(RecordModule $module, array $input, bool $wasVisible): array
+    private function validated(RecordModule $module, array $input, bool $wasVisible, ?string $stopReason): array
     {
         $isDetails = $module->parent_record_module_id !== null;
         $icon = $input['icon'] ?? null;
@@ -162,11 +140,7 @@ class UpdateRecordModule
                 $isDetails => '明細のモジュールにはアイコンを設定できません',
                 default => $this->iconError($icon),
             },
-            'is_visible' => match (true) {
-                $isVisible === null => null,
-                $isDetails => '明細のモジュールには表示の状態を設定できません',
-                default => $this->flagError($isVisible),
-            },
+            'is_visible' => $this->visibilityError($isVisible, $isDetails, $stopReason),
             'categories' => $this->categoriesError($categories, $isDetails, is_bool($isVisible) ? $isVisible : $wasVisible),
             'is_attachment_enabled' => match (true) {
                 $attachment === null => null,
@@ -187,8 +161,20 @@ class UpdateRecordModule
     }
 
     /**
-     * categories の誤り(無ければ null。null は未指定): 明細のモジュールでないこと、分類 ID の配列であること、重ならないこと、どれもロックの後に
-     * 引き直した分類(global-nav-main の分類のフォルダ)にあること、更新の後に非表示なら空であること(モジュール分類/業務処理.md 3.7)。
+     * is_visible の誤り(無ければ null。null は未指定)。表示の止めの行 = 失敗と定義の変更.md 11 節の「表示の止め」の表。
+     */
+    private function visibilityError(mixed $isVisible, bool $isDetails, ?string $stopReason): ?string
+    {
+        return match (true) {
+            $isVisible === null => null,
+            $isDetails => '明細のモジュールには表示の状態を設定できません',
+            $isVisible === true && $stopReason !== null => $stopReason,
+            default => $this->flagError($isVisible),
+        };
+    }
+
+    /**
+     * categories の誤り(無ければ null。null は未指定)。規則の正本 = 設計/業務データの入れ物/モジュール分類/業務処理.md 3.7。
      */
     private function categoriesError(mixed $categories, bool $isDetails, bool $isVisibleAfter): ?string
     {

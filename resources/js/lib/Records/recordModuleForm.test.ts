@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vite-plus/test';
 import type { RecordAdminModuleForm } from '@/types';
-import { initialModuleData, toModulePayload } from './recordModuleForm';
+import {
+    initialModuleData,
+    toModulePayload,
+    withVisibilityStop,
+} from './recordModuleForm';
 
 const module: RecordAdminModuleForm = {
     code: 'meetings',
@@ -40,6 +44,20 @@ describe('initialModuleData', () => {
         expect(initialModuleData(module).is_attachment_enabled).toBe(false);
         expect(initialModuleData(details).is_attachment_enabled).toBe(true);
     });
+
+    it('表示の止めがあれば、表示中でもサイドバーに表示を偽にする', () => {
+        expect(initialModuleData(module).is_visible).toBe(true);
+        expect(initialModuleData(module, '止めの理由').is_visible).toBe(false);
+    });
+});
+
+describe('withVisibilityStop', () => {
+    it('止めが立ったら「サイドバーに表示」を偽にし、止めが無ければ変えない', () => {
+        const data = initialModuleData(module);
+
+        expect(withVisibilityStop(data, '止めの理由').is_visible).toBe(false);
+        expect(withVisibilityStop(data, null)).toBe(data);
+    });
 });
 
 describe('toModulePayload', () => {
@@ -55,6 +73,16 @@ describe('toModulePayload', () => {
             is_attachment_enabled: false,
             row_access_scope: 'related',
         });
+    });
+
+    it('表示の止めがあれば is_visible を偽、分類を空で送る', () => {
+        const payload = toModulePayload(
+            initialModuleData(module, '止めの理由'),
+            false,
+            categories,
+        );
+
+        expect([payload.is_visible, payload.categories]).toEqual([false, []]);
     });
 
     it('明細のモジュールは名前と説明だけで、見える範囲を送らない', () => {

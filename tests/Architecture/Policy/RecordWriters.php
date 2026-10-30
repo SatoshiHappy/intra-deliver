@@ -9,7 +9,7 @@ use PHPat\Test\Builder\Rule;
 use PHPat\Test\PHPat;
 
 /**
- * レコードを書く口と判定を呼び手に任せる口の呼び手の 6 つの一覧と規則(Policy。phpat の規則クラスで、phpstan.neon に phpat.test として登録する。docs の 設計/業務ツール/機械検査.md の
+ * レコードを書く口と判定を呼び手に任せる口の呼び手の 7 つの一覧と規則(Policy。phpat の規則クラスで、phpstan.neon に phpat.test として登録する。docs の 設計/業務ツール/機械検査.md の
  * 検査 (b))。(1) 登録・更新の口: 業務データの入れ物の CreateRecord・UpdateRecord に依存できるのは、一覧 {@see self::CALLERS} の場所だけ
  * (AI の処理や業務ツールのモジュールが、決めた口を通らずにレコードを書く経路を止める)。(2) 判定しない削除の口: DeleteRecordUnchecked に依存できるのは、
  * 一覧 {@see self::UNCHECKED_DELETE_CALLERS} の場所だけ(主体の判定をしないので、呼び手が操作の判定を済ませる場所に絞る)。
@@ -19,6 +19,8 @@ use PHPat\Test\PHPat;
  * (5) AI の依頼の口: RequestPrompt・RequestTranscription に依存できるのは、一覧 {@see self::REQUEST_CALLERS} の場所だけ
  * (依頼者の権限は呼び手の入口が依頼の時点に確かめるので、入口の確かめを持つ呼び手に絞る = 設計/AI/公開の口.md 3 節の「依頼の時点の確かめ」の (b))。
  * (6) その呼び手だけが使う部品 MeetingAudioRequest に依存できるのは、一覧 {@see self::MEETING_AUDIO_REQUEST_CALLERS} の場所だけ。
+ * (7) 業務モジュールを非表示にする口: HideRecordModuleUnchecked に依存できるのは、一覧 {@see self::HIDE_MODULE_CALLERS} の場所だけ
+ * (主体の判定をせず、止めを立てる書き込みの業務処理が止めを書く前に呼ぶ口なので、その業務処理に絞る = ADR 0031)。
  * AI の書き込みの口は (1) の一覧に無く、(3) の判定しない更新だけを使う(ADR 0029 の決定 10)。この規則が保証するのは直接呼べる場所の
  * 制限までで、AI の読み書きを完了の受け手の中だけに絞る守りは、書き込みの口と読む口が持つ(設計/AI/公開の口.md の 3.2・3.3「呼べる時」)。
  *
@@ -44,6 +46,9 @@ final class RecordWriters
 
     /** 会議の作成と再作成だけが使う、音声の依頼の部品 */
     public const MEETING_AUDIO_REQUEST_APIS = ['App\Actions\Meeting\MeetingAudioRequest'];
+
+    /** 主体の判定をしない、業務モジュールを非表示にする口(業務データの入れ物の公開の口) */
+    public const HIDE_MODULE_APIS = ['App\Actions\Records\Api\HideRecordModuleUnchecked'];
 
     /**
      * 登録・更新の口に依存できる場所と理由。
@@ -141,6 +146,20 @@ final class RecordWriters
         ['type' => 'class', 'place' => 'App\Actions\Meeting\RegenerateMinutes', 'reason' => '議事録の再作成(音声を差し替える)'],
     ];
 
+    /**
+     * 業務モジュールを非表示にする口に依存できる場所と理由。
+     *
+     * @var list<array{type: 'namespace'|'class'|'path', place: string, reason: string}>
+     */
+    public const HIDE_MODULE_CALLERS = [
+        [
+            'type' => 'class',
+            'place' => 'App\Actions\Workflow\CreateWorkflowContent',
+            'reason' => '止めを立てる書き込みの業務処理(コンテンツを作る。指す業務モジュールを止めを書く前に非表示にする = ADR 0031)。'
+                .'指す業務モジュールを替える業務処理は作るときに足す',
+        ],
+    ];
+
     /** 規則を掛けるアプリのコード(App\ の名前空間と、database/ の下のファイル = 名前空間を持たないマイグレーションを含む) */
     private const APP_NAMESPACE = 'App';
 
@@ -203,6 +222,16 @@ final class RecordWriters
             self::MEETING_AUDIO_REQUEST_CALLERS,
             self::MEETING_AUDIO_REQUEST_APIS,
             '機械検査 (b): MeetingAudioRequest に依存できるのは呼び手の一覧(RecordWriters::MEETING_AUDIO_REQUEST_CALLERS)の場所だけ',
+        );
+    }
+
+    #[TestRule]
+    public function hideModuleDependencies(): Rule
+    {
+        return self::dependenciesOnlyFrom(
+            self::HIDE_MODULE_CALLERS,
+            self::HIDE_MODULE_APIS,
+            '機械検査 (b): HideRecordModuleUnchecked に依存できるのは呼び手の一覧(RecordWriters::HIDE_MODULE_CALLERS)の場所だけ',
         );
     }
 

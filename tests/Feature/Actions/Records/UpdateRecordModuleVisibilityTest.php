@@ -11,6 +11,7 @@ use App\Models\Menu\MenuTranslation;
 use App\Models\Records\Record;
 use App\Queries\Records\ModuleCategoryPageQuery;
 use App\Queries\Records\RecordModuleVisibility;
+use App\Queries\Records\RecordModuleVisibilityStopCatalog;
 use Database\Seeders\WorkflowApplicationModules;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Support\CatchesValidationErrors;
@@ -58,10 +59,11 @@ final class UpdateRecordModuleVisibilityTest extends TransactionalTestCase
             'global-nav-main-records-project' => [['en' => '案件', 'ja' => '案件'], 'truck'],
             'sitemap-main-records-project' => [['en' => '案件', 'ja' => '案件'], 'truck'],
         ], $this->items('project'));
-        // 初期データのアイテムの並びはプロジェクト 100・課題 110・会議 120・申請書の業務モジュール 2 つ 130・140。戻したプロジェクトは残ったアイテムの後(最大 + 10)
+        // 初期データのアイテムの並びはプロジェクト 100・課題 110・会議 120(申請書の業務モジュール 2 つはコンテンツを作る業務処理が消す = ADR 0031)。
+        // 戻したプロジェクトは残ったアイテムの後(最大 + 10)
         $sortNumbers = array_map(fn (array $row) => $row['sort_number'], $this->itemRows('project'));
         $this->assertSame([
-            'global-nav-main-records-project' => 150, 'sitemap-main-records-project' => 150,
+            'global-nav-main-records-project' => 130, 'sitemap-main-records-project' => 130,
         ], $sortNumbers);
     }
 
@@ -82,6 +84,8 @@ final class UpdateRecordModuleVisibilityTest extends TransactionalTestCase
      */
     public function test_the_items_in_the_group_workflow_stay_when_hiding_and_are_not_added_when_showing(): void
     {
+        // 申請書の業務モジュールは初期データで非表示で、表示の止めがある(ADR 0031)。表示にする向きも見るため止めの実装を外す
+        $this->app->instance(RecordModuleVisibilityStopCatalog::class, new RecordModuleVisibilityStopCatalog([]));
         $code = WorkflowApplicationModules::PLAN;
         $workflowItems = [
             'global-nav-workflow-records-data-index-project-plan-application',
@@ -91,6 +95,14 @@ final class UpdateRecordModuleVisibilityTest extends TransactionalTestCase
         $urlCount = fn () => Menu::query()->where('url', "/records/data/{$code}")->count();
         $before = $ids();
         $this->assertCount(2, $before);
+        $this->assertSame([[], 2], [$this->items($code), $urlCount()]);
+
+        $this->assertSame(RecordModuleVisibilityChange::Shown, $this->update($code, ['is_visible' => true]));
+
+        $groupItems = ["global-nav-main-records-{$code}", "sitemap-main-records-{$code}"];
+        $this->assertSame($groupItems, array_keys($this->items($code)));
+        $this->assertSame([$before, 4], [$ids(), $urlCount()]);
+        $this->assertTrue(app(RecordModuleVisibility::class)->isVisible($code));
 
         $this->assertSame(RecordModuleVisibilityChange::Hidden, $this->update($code, ['is_visible' => false]));
 
@@ -99,14 +111,7 @@ final class UpdateRecordModuleVisibilityTest extends TransactionalTestCase
         $this->assertFalse(app(RecordModuleVisibility::class)->isVisible($code));
         $uncategorized = app(ModuleCategoryPageQuery::class)->props()['uncategorized'];
         $hidden = array_filter($uncategorized, fn (array $module) => ! $module['isVisible']);
-        $this->assertSame([$code], array_column($hidden, 'code'));
-
-        $this->assertSame(RecordModuleVisibilityChange::Shown, $this->update($code, ['is_visible' => true]));
-
-        $groupItems = ["global-nav-main-records-{$code}", "sitemap-main-records-{$code}"];
-        $this->assertSame($groupItems, array_keys($this->items($code)));
-        $this->assertSame([$before, 4], [$ids(), $urlCount()]);
-        $this->assertTrue(app(RecordModuleVisibility::class)->isVisible($code));
+        $this->assertContains($code, array_column($hidden, 'code'));
     }
 
     public function test_the_same_visibility_on_both_items_keeps_their_ids_and_order(): void

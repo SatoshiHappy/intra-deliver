@@ -199,9 +199,10 @@ final class CommonMasterLockTest extends TransactionalTestCase
             ModuleCategoryFolders::class => [fn (self $test) => app(ModuleCategoryFolders::class)->write($test->moduleCategory(), false, fn () => null)],
             ReorderModuleCategories::class => [fn (self $test) => app(ReorderModuleCategories::class)->execute([$test->moduleCategory()])],
             ReorderRecordFields::class => [fn (self $test) => $test->reorderFields()],
+            // 直下の表示中の業務モジュール(申請書の業務モジュール 2 つは初期データで非表示 = ADR 0031)
             ReorderRecordModuleItems::class => [fn (self $test) => app(ReorderRecordModuleItems::class)->execute(
                 null,
-                ['project', 'project_issue', 'meeting', 'project_plan_application', 'issue_resolution_application'],
+                ['project', 'project_issue', 'meeting'],
             )],
             SetRecordRelatedColumns::class => [fn (self $test) => $test->setRelatedColumns()],
             SyncRecordModuleItems::class => [fn (self $test) => app(SyncRecordModuleItems::class)->execute(RecordModule::factory()->create(), [], ['ja' => '備品'])],

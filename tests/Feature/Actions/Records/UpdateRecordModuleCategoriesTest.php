@@ -18,7 +18,7 @@ use Tests\Support\TransactionalTestCase;
  * モジュール分類/画面と検査.md 6 節の「配置」): 選んだ分類ごとに 2 木の分類の中にアイテムを作り、直下のアイテムを消す。空にすると直下の末尾に 1 つ。非表示にすると
  * 直下とすべての分類の中のアイテムが消え、表示に戻すと直下に 1 つ(分類は戻らない)。名前・アイコンの変更はすべてのアイテムに及ぶ。入力の誤りは
  * キー categories の 422 で何も変わらない。表示中の判定は分類の中のアイテムでも真。初期データのプロジェクト(直下 100)・課題(直下 110)と
- * 組み込みの会議(直下 120)、申請書の業務モジュール 2 つ(直下 130・140)を使う。
+ * 組み込みの会議(直下 120)を使う(申請書の業務モジュール 2 つは初期データで非表示 = ADR 0031)。
  */
 final class UpdateRecordModuleCategoriesTest extends TransactionalTestCase
 {
@@ -52,7 +52,7 @@ final class UpdateRecordModuleCategoriesTest extends TransactionalTestCase
         $this->assertSame(['global-nav-main-records-project', 'sitemap-main-records-project'], $this->placements('project'));
         $sortNumbers = array_map(fn (array $row) => $row['sort_number'], $this->itemRows('project'));
         $this->assertSame([
-            'global-nav-main-records-project' => 150, 'sitemap-main-records-project' => 150,
+            'global-nav-main-records-project' => 130, 'sitemap-main-records-project' => 130,
         ], $sortNumbers);
         $this->assertSame([], $this->children("global-nav-main-cat-{$categoryId}"));
     }

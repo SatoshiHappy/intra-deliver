@@ -37,17 +37,18 @@ final class RecordModuleIconMigrationTest extends TransactionalTestCase
 
         $this->migrator()->run([$this->migrationPath()]);
 
+        // 初期データの申請書の業務モジュールは非表示で「業務」のアイテムが無い(ADR 0031)ので、アイテムの無い業務モジュールと同じく table
         $this->assertSame([
             'icon_chosen' => 'truck',
             'icon_null' => 'table',
             'icon_outside' => 'table',
             'icon_sitemap_only' => 'table',
-            'issue_resolution_application' => 'clipboard-list',
+            'issue_resolution_application' => 'table',
             'meeting' => 'users',
             'project' => 'folder-kanban',
             'project_issue' => 'list-todo',
             'project_milestone' => null,
-            'project_plan_application' => 'file-text',
+            'project_plan_application' => 'table',
             'project_plan_application_milestones' => null,
         ], DB::table('record_modules')->orderBy('code')->pluck('icon', 'code')->all());
         $this->assertSame(['CHECK (((parent_record_module_id IS NULL) = (icon IS NOT NULL)))'], $this->iconCheckDefinitions());

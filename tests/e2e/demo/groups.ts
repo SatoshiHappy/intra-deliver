@@ -50,11 +50,13 @@ export const demoGroups = [
         // ほかのファイルの変えた DB を前提にしないもの(authz・switch-user・workflow-connected は DB に書かず、
         // records-corrections・records-headings-admin は自分で作る業務モジュールだけを使い、
         // records-headings-show は admin が作る業務モジュールを使う = 名前の順で admin が先に走る。
-        // records-related-columns は初期データの「課題」の関連レコードの列を変え、筋の最後に未選択に戻す)。
+        // records-related-columns は初期データの「課題」の関連レコードの列を変え、筋の最後に未選択に戻す。
+        // records-admin-visibility-stop は初期データの申請書の業務モジュールの編集の画面を開くだけで保存しない)。
         // 時間の長い demo のファイルを上の 2 つの組から分けて、組どうしの時間をそろえる
         name: 'demo-ほか',
         files: [
             'tests/e2e/demo/authz.spec.ts',
+            'tests/e2e/demo/records-admin-visibility-stop.spec.ts',
             'tests/e2e/demo/records-corrections.spec.ts',
             'tests/e2e/demo/records-headings-admin.spec.ts',
             'tests/e2e/demo/records-headings-show.spec.ts',

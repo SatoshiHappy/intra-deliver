@@ -33,14 +33,7 @@ final class SitemapControllerTest extends TransactionalTestCase
                         'code' => 'sitemap-main-records-meeting', 'type' => 'item', 'name' => '会議', 'icon' => 'users',
                         'href' => '/records/data/meeting', 'isExternal' => false,
                     ],
-                    $this->applicationItem(
-                        'sitemap-main-records-project_plan_application',
-                        'project_plan_application', 'プロジェクト計画の申請', 'file-text',
-                    ),
-                    $this->applicationItem(
-                        'sitemap-main-records-issue_resolution_application',
-                        'issue_resolution_application', '課題の対応の申請', 'clipboard-list',
-                    ),
+                    // 申請書の業務モジュールは「業務」に出ない(初期データで非表示 = ADR 0031)
                 ],
             ], [
                 'code' => 'sitemap-workflow',

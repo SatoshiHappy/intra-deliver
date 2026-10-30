@@ -1,6 +1,6 @@
 import { expect, test } from '../support/test';
 import type { Locator, Page, Request } from '@playwright/test';
-import { UNCATEGORIZED_AFTER_CATEGORY_DELETE } from './records-admin-support';
+import { UNCATEGORIZED } from './records-admin-support';
 import { submitAndExpectUrl } from '../support/submit';
 
 // 業務データの入れ物の管理の画面(docs の 設計/業務データの入れ物/画面/README.md 6 節の管理の分)。デモユーザー切替でシステム管理者になって
@@ -795,15 +795,16 @@ test('分類を 2 つにして取っ手を Space → 上矢印 → Space で動�
     await expect(rows.nth(1)).toContainText('営業');
 });
 
-test('「分類なし」の「備品台帳」の取っ手を Space → 上矢印 → Space で動かすと、サイドバーの「業務」の直下で「課題の対応の申請」の前に出る', async ({
+test('「分類なし」の「備品台帳」の取っ手を Space → 上矢印 → Space で動かすと、サイドバーの「業務」の直下で「会議」の前に出る', async ({
     page,
 }) => {
     await openAsAdministrator(page, '/records/admin/categories');
+    // 「分類なし」は表示中(プロジェクト・会議・備品台帳)の後ろに、非表示の申請書の業務モジュール 2 つ(ADR 0031。取っ手なし)
     const uncategorized = page
         .getByRole('list', { name: '分類なしの業務モジュール', exact: true })
         .getByRole('listitem');
-    await expect(uncategorized.nth(3)).toContainText('課題の対応の申請');
-    await expect(uncategorized.nth(4)).toContainText('備品台帳');
+    await expect(uncategorized.nth(1)).toContainText('会議');
+    await expect(uncategorized.nth(2)).toContainText('備品台帳');
 
     await moveByKeyboard(
         page,
@@ -812,16 +813,17 @@ test('「分類なし」の「備品台帳」の取っ手を Space → 上矢印
             exact: true,
         }),
         'ArrowUp',
-        '備品台帳を課題の対応の申請の位置へ移動しました',
+        '備品台帳を会議の位置へ移動しました',
         '/records/admin/modules/reorder',
     );
 
-    await expect(uncategorized.nth(3)).toContainText('備品台帳');
+    await expect(uncategorized.nth(1)).toContainText('備品台帳');
+    await expect(uncategorized.nth(2)).toContainText('会議');
     await expect(
         navigationGroup(page, '業務')
             .getByRole('link')
-            .filter({ hasText: /^(備品台帳|課題の対応の申請)$/ }),
-    ).toHaveText(['備品台帳', '課題の対応の申請']);
+            .filter({ hasText: /^(備品台帳|会議)$/ }),
+    ).toHaveText(['備品台帳', '会議']);
 });
 
 test('「営業」を選んで削除の Dialog で消すと、件数の文が出て、「課題」が「業務」の直下の末尾に戻る', async ({
@@ -859,7 +861,7 @@ test('「営業」を選んで削除の Dialog で消すと、件数の文が出
     await expect(work.getByRole('link').last()).toHaveAccessibleName('課題');
 });
 
-// 以下の 2 筋は削除の筋の後の状態(分類は「総務」だけで 0 件、「分類なし」の表示中は UNCATEGORIZED_AFTER_CATEGORY_DELETE)から始め、最後に分類を消して
+// 以下の 2 筋は削除の筋の後の状態(分類は「総務」だけで 0 件、「分類なし」の表示中は UNCATEGORIZED.afterCategoryDelete)から始め、最後に分類を消して
 // すべての業務モジュールを「業務」の直下に戻す(後の records.spec.ts は直下に「プロジェクト」「課題」のリンクがあることを見る)。
 
 /**
@@ -1057,7 +1059,7 @@ test('「総務」を選んで「業務モジュールの追加」の Dialog で
         exact: true,
     });
     await expect(list.locator('label')).toHaveText(
-        UNCATEGORIZED_AFTER_CATEGORY_DELETE,
+        UNCATEGORIZED.afterCategoryDelete,
     );
     for (const name of ['備品台帳', 'プロジェクト', '課題']) {
         await expect(
@@ -1083,9 +1085,7 @@ test('「総務」を選んで「業務モジュールの追加」の Dialog で
     await expect(modulesIn(page, '総務')).toHaveText(['プロジェクト', '課題']);
     await expect(
         page.getByRole('list', { name: '分類なしの業務モジュール' }),
-    ).toHaveText(
-        /^\s*会議\s*プロジェクト計画の申請\s*備品台帳\s*課題の対応の申請\s*$/,
-    );
+    ).toHaveText(UNCATEGORIZED.afterAdd);
     const work = navigationGroup(page, '業務');
     await expect(
         work
@@ -1121,7 +1121,7 @@ test('取っ手をマウスで別の分類の行へドラッグすると、Ctrl 
 }) => {
     await openAsAdministrator(page, '/records/admin/categories');
 
-    // 「分類なし」の「備品台帳」を「総務」へ = 「総務」の末尾に入り、「分類なし」に表示中の行は初期データの会議と申請書の業務モジュール 2 つだけになる
+    // 「分類なし」の「備品台帳」を「総務」へ = 「総務」の末尾に入り、「分類なし」の表示中の行は初期データの会議だけになる(後ろに非表示の申請書の業務モジュール 2 つ)
     await dragToCategory(
         page,
         page.getByRole('button', {
@@ -1138,7 +1138,7 @@ test('取っ手をマウスで別の分類の行へドラッグすると、Ctrl 
     ]);
     await expect(
         page.getByRole('list', { name: '分類なしの業務モジュール' }),
-    ).toHaveText(/^\s*会議\s*プロジェクト計画の申請\s*課題の対応の申請\s*$/);
+    ).toHaveText(UNCATEGORIZED.onlyMeeting);
 
     // Ctrl を押しながら「総務」の「課題」を「営業」へ = 両方にある
     await createCategory(page, '営業');

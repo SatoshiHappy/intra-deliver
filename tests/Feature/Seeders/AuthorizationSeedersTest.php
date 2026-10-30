@@ -26,8 +26,9 @@ use Tests\Support\TransactionalTestCase;
  * (認可との結び付け.md 2.3 の検査 2・3、初期データ.md の全部を許すロールの検査)。検査 2 は、ルートのリソースのリソースグループ ID と親も、
  * 名前から決まるもの(2.3 の表)であることを確かめる(判定は {@see FindsAppRouteViolations})。
  * メニューのアイテムとポリシーの件数は、ワークフローの申請書の業務モジュール 2 つ(設計/ワークフロー/初期データ.md の 3 節)の分を含む:
- * 業務モジュールを作る業務処理が足すアイテム 2 × 2 と初期ポリシー 8 × 2、グループ「ワークフロー」に MenuSeeder が足すアイテム 2 × 2
- * (設計/ワークフロー/認可と一覧.md の 6 節)と、グループ「管理」の「申請操作」「代理の管理」2 × 2(設計/ワークフロー/案件の運用/認可と一覧.md の 5 節)。
+ * 業務モジュールを作る業務処理が足すアイテム 2 × 2(コンテンツを作る業務処理が消すので 0 = ADR 0031)と初期ポリシー 8 × 2、
+ * グループ「ワークフロー」に MenuSeeder が足すアイテム 2 × 2(設計/ワークフロー/認可と一覧.md の 6 節)
+ * と、グループ「管理」の「申請操作」「代理の管理」2 × 2(設計/ワークフロー/案件の運用/認可と一覧.md の 5 節)。
  */
 final class AuthorizationSeedersTest extends TransactionalTestCase
 {
@@ -53,7 +54,7 @@ final class AuthorizationSeedersTest extends TransactionalTestCase
         });
 
         $this->assertSame([], $invalid->pluck('code')->all());
-        $this->assertSame(26 + 4 + 4 + 4, Menu::query()->where('type', MenuType::Item)->count());
+        $this->assertSame(26 + 4 + 4, Menu::query()->where('type', MenuType::Item)->count());
     }
 
     public function test_the_system_administrator_is_permitted_every_action_of_the_types_in_each_set(): void

@@ -24,6 +24,8 @@ use Illuminate\Database\Eloquent\Relations\Relation;
  * isAttachmentEnabled = 添付ファイルの追加・削除を許可するか・rowAccessScope = 見える範囲(どちらも明細のモジュールは null = レコードの共通機能/業務モジュールの管理.md 2 節)。
  * headings・items = 見出しと項目の 1 本の並び(同 3 節・6 節。{@see RecordHeadingGroups})。
  * 編集の画面のモジュール分類(所属の分類 ID と、すべての分類)は {@see ModuleCategoryQuery}(モジュール分類/画面と検査.md 4.2)。
+ * 編集の画面の visibilityStopReason = 表示の止めの理由({@see RecordModuleVisibilityStopCatalog}。止めが無い・明細のモジュールは null =
+ * 画面/管理の画面.md 3.5)。
  *
  * @phpstan-type ModuleRow array{code: string, name: string, parentCode: string|null, isVisible: bool|null}
  * @phpstan-type ModuleSummary array{code: string, name: string}
@@ -40,6 +42,7 @@ class RecordAdminQuery
         private RecordModuleVisibility $visibility,
         private ModuleCategoryQuery $categories,
         private RecordHeadingGroups $headingGroups,
+        private RecordModuleVisibilityStopCatalog $visibilityStops,
     ) {}
 
     /**
@@ -130,7 +133,7 @@ class RecordAdminQuery
     /**
      * 業務モジュールの編集の画面の props(画面/管理の画面.md 3.5、モジュール分類/画面と検査.md 4.2)。
      *
-     * @return array{module: array{code: string, name: string, description: string|null, icon: string|null, isVisible: bool|null, isDetails: bool, categoryIds: list<string>|null, isAttachmentEnabled: bool|null, rowAccessScope: string|null}, icons: list<IconChoice>, categories: list<CategoryChoice>, textMaxLengths: TextMaxLengths}
+     * @return array{module: array{code: string, name: string, description: string|null, icon: string|null, isVisible: bool|null, isDetails: bool, categoryIds: list<string>|null, isAttachmentEnabled: bool|null, rowAccessScope: string|null}, icons: list<IconChoice>, categories: list<CategoryChoice>, textMaxLengths: TextMaxLengths, visibilityStopReason: string|null}
      *
      * @throws ModelNotFoundException<RecordModule> 業務モジュールが無いとき
      */
@@ -154,6 +157,7 @@ class RecordAdminQuery
             'icons' => $this->iconChoices(),
             'categories' => $this->categories->choices(),
             'textMaxLengths' => DefinitionText::maxLengths(),
+            'visibilityStopReason' => $isDetails ? null : $this->visibilityStops->stopReason($module->id),
         ];
     }
 
