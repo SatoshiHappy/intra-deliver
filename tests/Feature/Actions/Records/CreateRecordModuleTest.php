@@ -82,7 +82,7 @@ final class CreateRecordModuleTest extends TransactionalTestCase
 
         $module = app(CreateRecordModule::class)->execute(['code' => 'equipment', 'name' => '備品']);
 
-        $this->assertSame([true, 'all'], [$module->is_attachment_enabled, $module->row_access_scope->value]);
+        $this->assertSame([true, false], [$module->is_attachment_enabled, $module->row_access_restricted_by_default]);
     }
 
     public function test_puts_the_chosen_icon_on_both_menu_items(): void

@@ -14,15 +14,15 @@ enum MeetingNoticeReason: string
     /** 長すぎるため処理できなかった(断られた対応の理由) */
     case TooLong = 'too_long';
 
-    /** 議事録の出力が上限で切れた */
+    /** 議事録の出力か、欄・件名が長すぎた(TooLong は断られた対応の理由で別) */
     case Truncated = 'truncated';
 
     /** 音声から書き起こせなかった */
     case AudioUnusable = 'audio_unusable';
 
-    /** 会議に書けなかった(入れ物の検証が会議の更新を断った = 設計/業務ツール/会議/通知と削除予定日.md の 6.4 の「会議に書けない理由」) */
+    /** 入れ物の検証が会議の更新を断った */
     case RecordUnavailable = 'record_unavailable';
 
-    /** ほか(時間をおいて再作成する) */
+    /** 上のどれでもない失敗 */
     case Other = 'other';
 }

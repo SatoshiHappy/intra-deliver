@@ -17,6 +17,8 @@ use LogicException;
  *
  * 3・4(入力の形と値。親と明細の全行)の失敗をまとめて返し、5 以降に進まない。6〜8(親と、保存後に残る明細の全行)の失敗も、
  * すべて集めてから一度に返す(キーごとに最初の 1 つ)。どの段で失敗しても何も書かない。
+ * 参照制限(チェックと参照者)は {@see RecordRowAccessInput} が 3〜5 を、{@see RecordRowAccessWriter} が 9 の参照者の行を受け持つ
+ * (チェックの列は親のレコードと一緒に書く)。
  */
 class RecordSaver
 {
@@ -28,6 +30,8 @@ class RecordSaver
         private RecordValidator $validator,
         private RecordWriter $writer,
         private ReferenceTargets $targets,
+        private RecordRowAccessInput $rowAccess,
+        private RecordRowAccessWriter $rowAccessWriter,
     ) {}
 
     /**
@@ -48,11 +52,14 @@ class RecordSaver
         $rows = array_merge([], ...array_values($plan['drafts']));
         $check = new ReferenceCheck($requester, $date);
         $this->targets->prepare($check, array_merge([], ...array_map(fn (RecordDraft $draft) => $this->reader->changedReferences($draft), [$parent, ...$rows])));
+        $originalRowAccess = $this->rowAccess->original($module, $record);
+        $this->targets->prepareParties($check, $this->rowAccess->newViewers($originalRowAccess, $input));
 
         $parentInput = $this->reader->read($parent, $check, $errors);
         $rowInputs = array_map(function (RecordDraft $row) use ($check, &$errors) {
             return $this->reader->read($row, $check, $errors);
         }, $rows);
+        $rowAccess = $this->rowAccess->read($originalRowAccess, $input, $check, $errors);
 
         $this->throwIfAny($errors);
         // 相対の既定値の登録の時。親と明細の行に同じ時点を渡す(基準日 $date とは別 = 項目と規則/README.md 3 節の「登録の時」)
@@ -66,7 +73,8 @@ class RecordSaver
         }
 
         $this->throwIfAny($errors);
-        $saved = $this->writer->write($parent, null, $userId, true);
+        $saved = $this->writer->write($parent, null, $userId, true, $rowAccess['restricted']);
+        $this->rowAccessWriter->write($saved, $originalRowAccess, $rowAccess);
         Record::query()->whereKey(array_map(fn (Record $removed) => $removed->id, $plan['removed']))->delete();
 
         foreach ($rows as $row) {

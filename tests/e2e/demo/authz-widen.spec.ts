@@ -1,6 +1,11 @@
 import { expect, test } from '../support/test';
 import type { Page } from '@playwright/test';
 import {
+    adminMenuButton,
+    openFromAdminMenu,
+    sidebarHeading,
+} from '../support/app-navigation';
+import {
     addUserColumn,
     ADMINISTRATOR,
     APPLICANT,
@@ -21,23 +26,6 @@ test.use({ viewport: { width: 1280, height: 720 } });
 test.describe.configure({ mode: 'serial' });
 
 const APPLICANT_NAME = '佐々木 陽太';
-
-/**
- * グローバルナビの「管理」のグループの中のリンク。
- */
-function adminLink(page: Page, name: string) {
-    return page
-        .getByRole('navigation', { name: 'グローバルナビ' })
-        .locator('[data-sidebar="group"]')
-        .filter({
-            has: page.getByRole('heading', {
-                level: 2,
-                name: '管理',
-                exact: true,
-            }),
-        })
-        .getByRole('link', { name, exact: true });
-}
 
 /**
  * システム管理者に切り替えて認可設定を編集中にし、申請者の列を追加する。
@@ -64,7 +52,7 @@ async function permit(page: Page, rowName: string, action = 0) {
 }
 
 // 初期状態で認可設定を開けない人に、2 つの許可(認可設定の画面と、編集の 4 ルートの接頭辞のグループ「認可設定の編集」の「実行」)と
-// メニューグループ「管理」の「参照」を許可すると、その人が開いてセルを保存できる。
+// メニューグループ「管理」(歯車のアプリ)の「参照」を許可すると、その人が開いてセルを保存できる。
 test('認可設定を開けない人に 2 つの許可と「管理」の参照を足すと、開いてセルを保存できる', async ({
     page,
 }) => {
@@ -84,7 +72,10 @@ test('認可設定を開けない人に 2 つの許可と「管理」の参照�
     await press(page, cell);
 
     await switchTo(page, ADMINISTRATOR.label, APPLICANT);
-    await adminLink(page, '認可設定').click();
+    // 管理のアプリの参照を許された人には歯車が出て、歯車から開くと今のアプリが管理になる
+    await expect(adminMenuButton(page)).toBeVisible();
+    await openFromAdminMenu(page, '認可設定');
+    await expect(sidebarHeading(page)).toHaveText('管理');
     await expect(
         page.getByRole('heading', { level: 1, name: '認可設定' }),
     ).toBeVisible();

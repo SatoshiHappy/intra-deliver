@@ -85,11 +85,12 @@ class RecordFormQuery
      * 主体の判定をしない。呼び手が、そのレコードの値を見てよいことを確かめてから呼ぶ(呼び手ごとの確かめ = docs の
      * 設計/ワークフロー/業務データとの接続/公開の口.md 7 節の editValues の行)。
      *
-     * 結果の形は `@return` の型(7 節の行の結果の欄にある `rowAccessRestricted` は返さない)。検証の範囲 = 同じ 7 節の editValues の行
+     * 結果の形は `@return` の型(rowAccessRestricted = そのレコードのチェック「参照を制限する」= 7 節の行の結果)。検証の範囲 = 同じ 7 節の editValues の行
      * (version を送り返す使い方 = 設計/ワークフロー/申請の周辺/既存のデータからの申請/README.md の 3 節)。判定を求める者は、参照先の表示名の
      * 出し分けにだけ使う(同じ 7 節の「行の権限」)。
      *
-     * @return array{values: array<string, mixed>, details: array<string, list<DetailRow>>, version: string}
+     * @return array{values: array<string, mixed>, details: array<string, list<DetailRow>>, version: string,
+     *     rowAccessRestricted: bool}
      *
      * @throws ModelNotFoundException<RecordModule|Record> 業務モジュールが無い・明細のモジュールのとき、レコードがその業務モジュールに無いとき
      */
@@ -98,6 +99,11 @@ class RecordFormQuery
         $module = $this->definitions->load($this->gate->topLevelModule($moduleCode));
         $editable = $this->records->editable($requester, $module, $recordId, $date, $localeCode);
 
-        return ['values' => $editable['values'], 'details' => $editable['details'], 'version' => $editable['version']];
+        return [
+            'values' => $editable['values'],
+            'details' => $editable['details'],
+            'version' => $editable['version'],
+            'rowAccessRestricted' => $editable['rowAccess']['restricted'],
+        ];
     }
 }

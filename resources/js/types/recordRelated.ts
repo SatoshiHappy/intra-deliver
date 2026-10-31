@@ -9,6 +9,7 @@ import type {
     RecordHeadingGroup,
     RecordModuleDefinition,
     RecordModuleSummary,
+    RowAccessInput,
 } from './records';
 import type { RecordReferenceValue } from './recordReference';
 
@@ -47,6 +48,7 @@ export type RecordRelatedForm = {
     value: RecordReferenceValue; // このレコード(表示名つき)
     module: RecordModuleDefinition;
     headings: RecordHeadingGroup[];
+    rowAccess: RowAccessInput; // 参照元の業務モジュールの参照制限の既定と空の参照者(設計/業務データの入れ物/レコードの共通機能/関連レコード.md の 4.2 節)
 };
 
 /** Records/Show の関連レコードの props */

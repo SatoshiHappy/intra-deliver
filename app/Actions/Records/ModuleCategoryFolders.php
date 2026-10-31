@@ -27,7 +27,7 @@ class ModuleCategoryFolders
 {
     use WritesCommonMaster;
 
-    /** 分類のフォルダの並びの帯の始まり(初期のアイテム 0〜2 の後。10 + 位置 = README.md 2 節) */
+    /** 分類のフォルダの並びの帯の始まり(10 + 位置 = README.md 2 節) */
     public const FIRST_SORT_NUMBER = 10;
 
     /** 分類の数の上限(帯 10〜99) */

@@ -11,6 +11,7 @@ use App\Enums\Records\RecordFieldType;
  *
  * @phpstan-import-type ReferenceTarget from RecordValueReader
  * @phpstan-import-type FieldEntry from RecordRevisionLabels
+ * @phpstan-import-type RowAccessChange from RecordRevisionRowAccess
  *
  * @phpstan-type RevisionCopy array{snapshot: array<array-key, mixed>, labels: array<array-key, mixed>}
  * @phpstan-type RawRow array<int, mixed>
@@ -19,11 +20,14 @@ use App\Enums\Records\RecordFieldType;
  * @phpstan-type RawAttachmentChange array{change: 'added'|'removed', attachment: array<array-key, mixed>}
  * @phpstan-type Changes array{fields: list<array{field: FieldEntry, before: mixed, after: mixed}>,
  *     details: list<array{field: FieldEntry, entries: list<FieldEntry>, rows: list<RawRowChange>}>,
- *     attachments: list<RawAttachmentChange>}
+ *     attachments: list<RawAttachmentChange>, rowAccess: RowAccessChange|null}
  */
 class RecordRevisionComparison
 {
-    public function __construct(private RecordRevisionLabels $labels) {}
+    public function __construct(
+        private RecordRevisionLabels $labels,
+        private RecordRevisionRowAccess $rowAccess,
+    ) {}
 
     /**
      * @param  RevisionCopy  $before
@@ -47,6 +51,7 @@ class RecordRevisionComparison
             'fields' => $fields,
             'details' => $this->details($entries, $before['snapshot'], $after['snapshot']),
             'attachments' => $this->attachments($before['snapshot'], $after['snapshot']),
+            'rowAccess' => $this->rowAccess->compare($before['snapshot'], $after['snapshot']),
         ];
     }
 
@@ -55,7 +60,8 @@ class RecordRevisionComparison
      */
     public function isEmpty(array $changes): bool
     {
-        return $changes['fields'] === [] && $changes['details'] === [] && $changes['attachments'] === [];
+        return $changes['fields'] === [] && $changes['details'] === [] && $changes['attachments'] === []
+            && $changes['rowAccess'] === null;
     }
 
     /**

@@ -35,7 +35,7 @@ final class DeleteRecordUncheckedAuthorizationTest extends TransactionalTestCase
 {
     use BuildsRowAccessRecords;
 
-    /** 業務モジュールの判定(認可の表)と行の判定(作成者・関係する人の印の条件)の SQL */
+    /** 業務モジュールの判定(認可の表)と行の判定(作成者・関係者の印の条件)の SQL */
     private const AUTHORIZATION_SQL = '/authz_|created_by_user_id|grants_row_access/';
 
     /** 聞き手を登録したか(登録した聞き手はテストの終わりまで残るので 1 回だけ) */
@@ -92,7 +92,7 @@ final class DeleteRecordUncheckedAuthorizationTest extends TransactionalTestCase
     {
         return [
             '業務モジュールの delete を持たない' => ['no-delete', AuthorizationException::class],
-            '行の判定で見えない(関係する人でない)' => ['hidden-row', ModelNotFoundException::class],
+            '行の判定で見えない(関係者でない)' => ['hidden-row', ModelNotFoundException::class],
         ];
     }
 

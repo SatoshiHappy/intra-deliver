@@ -45,6 +45,7 @@ export default function Edit({ module, headings, record, hold }: Props) {
                     headings={headings}
                     recordId={record.id}
                     initialData={editFormData(module, record)}
+                    initialRowAccess={record.rowAccess}
                     version={record.version}
                     action={update({ module: module.code, record: record.id })}
                     submitLabel="更新"

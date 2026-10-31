@@ -100,20 +100,30 @@ export function nodeOf(
 }
 
 /**
+ * 選んでいる処理担当者の選択肢(選んだ id が選択肢に無ければ先頭 = 既定。選択肢が無ければ undefined)。
+ */
+export function chosenPrincipalOf(
+    choices: WorkflowPrincipal[],
+    selected: string,
+): WorkflowPrincipal | undefined {
+    return (
+        choices.find((choice) => String(choice.id) === selected) ?? choices[0]
+    );
+}
+
+/**
  * 送る処理者 principal_user_id(自分なら null)。選択肢が無ければ props の値(引戻し = h の処理者、取止め = 申請者)をそのまま送る。
- * 選んだ id が選択肢に無ければ先頭(既定)として扱う。
  */
 export function principalValueOf(
     choices: WorkflowPrincipal[],
     selected: string,
     fixedId: number | null,
 ): number | null {
-    if (choices.length === 0) {
+    const chosen = chosenPrincipalOf(choices, selected);
+
+    if (chosen === undefined) {
         return fixedId;
     }
-
-    const chosen =
-        choices.find((choice) => String(choice.id) === selected) ?? choices[0];
 
     return chosen.isSelf ? null : chosen.id;
 }
@@ -193,6 +203,22 @@ export function payloadOf(
  */
 export function showsPrincipalField(node: CaseActionNode | undefined): boolean {
     return (node?.principals.length ?? 0) >= 2;
+}
+
+/**
+ * ダイアログの上部に出す案件の誤り。欄の下に出せない誤りも寄せる: 処理担当者の欄が無いとき(画面から起きるのは選択肢の古さだけ)の
+ * principal_user_id と、添付の欄が無いとき(可否が偽の入口へ送った 422)の attachments。
+ */
+export function noticeErrorOf(
+    errors: Record<string, string | undefined>,
+    node: CaseActionNode | undefined,
+    attachable: boolean,
+): string | undefined {
+    return (
+        errors.case ??
+        (showsPrincipalField(node) ? undefined : errors.principal_user_id) ??
+        (attachable ? undefined : errors.attachments)
+    );
 }
 
 /** 縦配置の子の否認のダイアログの文(docs の 設計/ワークフロー/ルートの深さ/画面/案件の側の画面.md 6 節) */

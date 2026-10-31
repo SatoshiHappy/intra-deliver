@@ -1,8 +1,8 @@
 import { FormBlock, UnshownErrors } from '@/components/FormBlock';
 import { RecordDetailsEditor } from '@/components/RecordDetailsEditor';
+import { RecordFieldBadges } from '@/components/RecordFieldBadges';
 import { RecordFieldInput } from '@/components/RecordFieldInput';
 import { RecordHeadingGroups } from '@/components/RecordHeadingGroups';
-import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import type { RecordFieldDraft, RecordFormData } from '@/lib/recordForm';
 import { drawnDetailsFields, isWideField, valueFields } from '@/lib/recordForm';
@@ -91,9 +91,7 @@ function FieldRow({
         <FormBlock
             id={id}
             label={field.name}
-            labelAddon={
-                required ? <Badge variant="secondary">必須</Badge> : undefined
-            }
+            labelAddon={<RecordFieldBadges field={field} required={required} />}
             error={error}
             hint={fixed?.hint}
             className={isWideField(field) ? 'md:col-span-2' : undefined}

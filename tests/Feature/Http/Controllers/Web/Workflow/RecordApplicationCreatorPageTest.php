@@ -3,15 +3,14 @@
 namespace Tests\Feature\Http\Controllers\Web\Workflow;
 
 use App\Actions\Workflow\RecordApplicationSteps;
-use App\Enums\Records\RowAccessScope;
 use App\Enums\Workflow\WorkflowProxyKind;
 use App\Models\Records\Record;
-use App\Models\Records\RecordModule;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Collection;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\Support\AppliesFromRecords;
 use Tests\Support\RegistersProxies;
+use Tests\Support\RowAccessRestriction;
 use Tests\Support\TransactionalTestCase;
 
 /**
@@ -69,7 +68,7 @@ final class RecordApplicationCreatorPageTest extends TransactionalTestCase
         $this->addProxy($principal, $proxy, WorkflowProxyKind::Apply, $this->flowIdOf(self::FLOW_CODE));
         $principals = $this->projectRecord($principal);
         $others = $this->projectRecord($this->seededUser('u0003'));
-        RecordModule::query()->where('code', self::PROJECT)->update(['row_access_scope' => RowAccessScope::Related]);
+        RowAccessRestriction::restrictCode(self::PROJECT);
         $this->actingAs($proxy);
 
         $hidden = $this->recordedSql(fn () => $this->get($this->formUrl($others->id))->assertNotFound());

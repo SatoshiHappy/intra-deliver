@@ -108,7 +108,7 @@ describe('toFieldPayload(1 つか複数か)', () => {
     });
 });
 
-describe('toFieldPayload(関係する人)', () => {
+describe('toFieldPayload(関係者)', () => {
     const flagged = (type: RecordFieldType): FieldFormData => ({
         ...formData(type, null),
         grantsRowAccess: true,
@@ -142,7 +142,7 @@ describe('toFieldPayload(関係する人)', () => {
 });
 
 describe('initialFieldData', () => {
-    it('追加は関係する人の旗がオフ、編集は今の旗を持つ', () => {
+    it('追加は関係者の印がオフ、編集は今の旗を持つ', () => {
         expect(initialFieldData(null).grantsRowAccess).toBe(false);
         expect(
             initialFieldData({

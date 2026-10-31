@@ -5,7 +5,7 @@ use App\Http\Middleware\Account\ShareCurrentAccount;
 use App\Http\Middleware\Authz\AuthorizeRoute;
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
-use App\Http\Middleware\Menu\ShareGlobalNavigation;
+use App\Http\Middleware\Menu\ShareAppNavigation;
 use App\Http\Middleware\Notice\ShareNotices;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
@@ -21,14 +21,14 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
         // アプリのルートはすべて認可を通す(docs の 設計/メニュー/認可との結び付け.md 2.3): routes/web.php を web グループと
         // ルートの認可を付けた 1 つのグループで読み込む(web: に渡すと認可の無いグループで読み込まれるので渡さない)。
-        // グローバルナビの共有はルートの認可の後に付ける(docs の 設計/メニュー/表示.md 3.2)。今の利用者と利用者メニューの節の共有は
-        // グローバルナビの共有の後(docs の 設計/デモユーザー切替/今の利用者.md 5.7)。通知の共有はそれらの後
+        // 骨格の共有はルートの認可の後に付ける(docs の 設計/メニュー/表示.md 3.2)。今の利用者と利用者メニューの節の共有は
+        // 骨格の共有の後(docs の 設計/デモユーザー切替/今の利用者.md 5.7)。通知の共有はそれらの後
         // (設計/ワークフロー/案件の運用/通知.md の 7 節)
         then: function (): void {
             Route::middleware([
                 'web',
                 AuthorizeRoute::class,
-                ShareGlobalNavigation::class,
+                ShareAppNavigation::class,
                 ShareCurrentAccount::class,
                 ShareNotices::class,
             ])->group(__DIR__.'/../routes/web.php');

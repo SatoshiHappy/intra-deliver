@@ -40,7 +40,7 @@ interface RecordScreenAddons
     public function index(AccessContext $context): array;
 
     /**
-     * 一覧の行の札(行の id → 札の一覧)。$recordIds = 今のページの行(見える範囲で絞った後)。渡していない id は返さない。
+     * 一覧の行の札(行の id → 札の一覧)。$recordIds = 今のページの行(行の判定で絞った後)。渡していない id は返さない。
      * 今のページに行が無ければ呼ばない。
      *
      * @param  non-empty-list<int>  $recordIds

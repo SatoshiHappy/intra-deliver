@@ -26,9 +26,15 @@ class RecordWriter
      * @param  Record|null  $parent  明細の行の親のレコード(親なら null)
      * @param  int|null  $userId  作成者・更新者(null = ゲスト)
      * @param  bool  $always  変わっていなくても書く(親のレコード)
+     * @param  bool|null  $rowAccessRestricted  親のレコードのチェック「参照を制限する」(明細の行は null = 書かない。列の既定の偽のまま)
      */
-    public function write(RecordDraft $draft, ?Record $parent, ?int $userId, bool $always): Record
-    {
+    public function write(
+        RecordDraft $draft,
+        ?Record $parent,
+        ?int $userId,
+        bool $always,
+        ?bool $rowAccessRestricted = null,
+    ): Record {
         $fieldValues = $this->fieldValues($draft);
         $record = $draft->record ?? new Record([
             'record_module_id' => $draft->module->id,
@@ -39,6 +45,7 @@ class RecordWriter
 
         if ($always || ! $record->exists || $this->differs($draft, $record, $fieldValues)) {
             $record->fill(['sort_key' => $draft->sortKey, 'field_values' => $fieldValues, 'updated_by_user_id' => $userId]);
+            $record->fill($rowAccessRestricted === null ? [] : ['row_access_restricted' => $rowAccessRestricted]);
             $this->save($record);
         }
 

@@ -36,12 +36,15 @@ final readonly class ApplicationInput
     }
 
     /**
-     * 業務データの入れ物の口へ渡す入力(値と明細、この送信の添付、一時保存から移す実体)。
+     * 業務データの入れ物の口へ渡す入力(値と明細、この送信の添付、一時保存から移す実体、ワークフローが決めた参照制限 = 送らないなら null。
+     * 入口が受けた参照制限のキーはここで捨てる = {@see ApplicationRowAccess})。
      *
      * @param  list<RecordUploadInput>  $attachUploads
      */
-    public function recordInput(array $attachUploads = []): RecordInput
+    public function recordInput(array $attachUploads = [], ?true $rowAccessRestricted = null): RecordInput
     {
-        return new RecordInput($this->record->values, $this->record->details, $this->attachFiles, $attachUploads);
+        return new RecordInput(
+            $this->record->values, $this->record->details, $this->attachFiles, $attachUploads, $rowAccessRestricted,
+        );
     }
 }

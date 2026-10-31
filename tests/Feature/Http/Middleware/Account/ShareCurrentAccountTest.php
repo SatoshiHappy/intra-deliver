@@ -92,7 +92,7 @@ final class ShareCurrentAccountTest extends TransactionalTestCase
         $this->registerSections();
 
         $this->get('/')->assertInertia(fn (Assert $page) => $page
-            ->reloadOnly('globalNavigation', fn (Assert $reload) => $reload
+            ->reloadOnly('appNavigation', fn (Assert $reload) => $reload
                 ->where('account.user', null)
                 ->where('userMenuSections', [self::workflowSection([]), ...$this->expectedSections('guest')])
             )

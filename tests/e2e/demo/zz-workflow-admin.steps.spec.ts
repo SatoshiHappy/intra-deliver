@@ -32,8 +32,9 @@ async function save(page: Page, node: string) {
         page.getByRole('button', { name: '保存', exact: true }),
         new RegExp(`node=${node}`),
     );
+    // 続けて保存すると前のトーストがまだ残るので、最後に出たものを見る
     await expect(
-        page.getByText('ステップの設定を保存しました', { exact: true }),
+        page.getByText('ステップの設定を保存しました', { exact: true }).last(),
     ).toBeVisible();
 }
 

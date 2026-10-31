@@ -2,9 +2,16 @@ import { expect, test } from './support/test';
 import type { Page } from '@playwright/test';
 import { seededDate, shownDate } from './support/seed-dates';
 import { submitAndExpectUrl } from './support/submit';
+import {
+    adminMenuButton,
+    openApp,
+    sidebarLink,
+    sidebarHeading,
+    untitledSections,
+} from './support/app-navigation';
 
 // 業務データの入れ物の業務の画面(docs の 設計/業務データの入れ物/画面/README.md 6 節の main のうち業務の分)。初期データ(RecordsSeeder)の
-// プロジェクト・課題を使い、ゲストだけで成り立つ。画面は PC の幅だけを前提にする。ナビの中は見出しでグループを絞ってから引く。
+// プロジェクト・課題を使い、ゲストだけで成り立つ。画面は PC の幅だけを前提にする。業務のアプリは、ランチャーのタイルで開き、サイドバーの見出し(h2)「業務」と区画で引く。
 // 書き込む筋は、足したものを同じ筋の中で消して初期データに戻す(ほかの筋の件数を変えない)。
 // ワークフローの申請が作り案件が指すレコードは消せないので、プロジェクトの一覧の件数・並びは
 // ほかの筋に依らない形(開始日で業務データの入れ物の初期データの 3 件に絞る・初期データの行を名前で確かめる)で確かめる。
@@ -15,18 +22,6 @@ test.use({ viewport: { width: 1280, height: 720 } });
  */
 const SEEDED_PROJECTS_FILTER = `filter%5Bstart_date%5D%5Bto%5D=${seededDate('2026-11-01')}`;
 const SEEDED_PROJECTS = `/records/data/project?${SEEDED_PROJECTS_FILTER}`;
-
-/**
- * グローバルナビの中の、見出し(h2)が name のグループ。
- */
-function navigationGroup(page: Page, name: string) {
-    return page
-        .getByRole('navigation', { name: 'グローバルナビ' })
-        .locator('[data-sidebar="group"]')
-        .filter({
-            has: page.getByRole('heading', { level: 2, name, exact: true }),
-        });
-}
 
 /**
  * 一覧の表の面。
@@ -67,11 +62,13 @@ async function openSearch(page: Page) {
     await expect(searchForm(page)).toBeVisible();
 }
 
-test('サイドバーの「業務」に業務モジュールが並び、「プロジェクト」で一覧が出る', async ({
+test('ランチャーの「業務」でサイドバーに業務モジュールが並び、「プロジェクト」で一覧が出る', async ({
     page,
 }) => {
     await page.goto('/');
-    const group = navigationGroup(page, '業務');
+    await openApp(page, '業務');
+    // 業務モジュールは直下のアイテムなので、見出しなしの区画に並ぶ(モジュール分類のフォルダがあれば、その見出しの区画が前に付く)
+    const group = untitledSections(page);
 
     for (const [name, icon] of [
         ['プロジェクト', 'folder-kanban'],
@@ -837,16 +834,14 @@ test('日付の欄はクリックでカレンダーを開き、Tab で入った�
     expect(pageErrors).toHaveLength(0);
 });
 
-test('ゲストのサイドバーに「管理」は無く、管理の業務モジュールの一覧とモジュール分類の画面は 403', async ({
+test('ゲストには歯車も「管理」のアプリも無く、管理の業務モジュールの一覧とモジュール分類の画面は 403', async ({
     page,
 }) => {
     await page.goto('/');
 
-    await expect(
-        page
-            .getByRole('navigation', { name: 'グローバルナビ' })
-            .getByRole('heading', { level: 2, name: '管理', exact: true }),
-    ).toHaveCount(0);
+    await expect(adminMenuButton(page)).toHaveCount(0);
+    await expect(sidebarHeading(page)).toHaveText('アプリ');
+    await expect(sidebarLink(page, '管理')).toHaveCount(0);
 
     const response = await page.goto('/records/admin/modules');
 

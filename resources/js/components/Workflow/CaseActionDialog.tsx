@@ -3,6 +3,7 @@ import type { MouseEvent, RefObject } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { CaseActionForm } from '@/components/Workflow/CaseActionForm';
+import type { PageAttach } from '@/lib/Workflow/caseActionAttach';
 import { OPERATION_TEXTS } from '@/lib/Workflow/caseActions';
 import type { CaseActionTarget } from '@/lib/Workflow/caseActions';
 
@@ -93,7 +94,10 @@ export function useCaseActionDialog() {
     };
 }
 
-type DialogProps = ReturnType<typeof useCaseActionDialog>['dialogProps'];
+type DialogProps = ReturnType<typeof useCaseActionDialog>['dialogProps'] & {
+    /** ページの今の props から作る添付の読み口(開いた時の写しでなく、誤りの戻りの後の可否を読む) */
+    attach: PageAttach;
+};
 
 /** 戻し先のボタンが DOM に残っていればフォーカスを戻す */
 function focusIfConnected(ref: RefObject<HTMLElement | null>) {
@@ -112,6 +116,7 @@ export function CaseActionDialog({
     target,
     openCount,
     returnFocusTo,
+    attach,
     onClose,
     onSucceeded,
 }: DialogProps) {
@@ -136,6 +141,7 @@ export function CaseActionDialog({
                         key={openCount}
                         target={target}
                         openCount={openCount}
+                        attach={attach}
                         onSucceeded={onSucceeded}
                     />
                 )}

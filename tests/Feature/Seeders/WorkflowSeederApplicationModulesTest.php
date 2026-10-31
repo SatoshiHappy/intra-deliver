@@ -6,6 +6,7 @@ use App\Enums\Menu\WorkMenuGroup;
 use App\Enums\Records\RecordModuleAction;
 use App\Models\Master\User;
 use App\Models\Menu\Menu;
+use App\Models\Records\Record;
 use App\Models\Records\RecordModule;
 use App\Models\Workflow\WorkflowContent;
 use App\Queries\Authz\Api\Requester;
@@ -31,28 +32,30 @@ final class WorkflowSeederApplicationModulesTest extends TransactionalTestCase
     ];
 
     /**
-     * グループ「ワークフロー」(グローバルナビ・サイトマップ)の、申請する・申請一覧の後に、申請書の業務モジュールの一覧へのアイテム
-     * (docs の 設計/ワークフロー/申請の周辺/メニューと導線.md の 1.1 節)。表示名とアイコンは業務モジュールの名前とアイコン。
+     * グループ「ワークフロー」(グローバルナビ・サイトマップ)の見出しのフォルダ「申請書」の中の、申請書の業務モジュールの一覧へのアイテム
+     * (docs の 設計/ワークフロー/申請の周辺/メニューと導線.md の 1.1 節、設計/メニュー/初期データ.md 4 節)。表示名とアイコンは業務モジュールの名前と
+     * アイコン。ID はフォルダに入れても変わらない(<グループ ID>-records-data-index-<コード>)。
      */
-    public function test_the_group_workflow_has_the_items_of_the_application_modules_after_the_two_initial_items(): void
+    public function test_the_forms_folder_of_the_group_workflow_has_the_items_of_the_application_modules(): void
     {
         $trees = ['global-nav' => WorkMenuGroup::GlobalNavigation, 'sitemap' => WorkMenuGroup::Sitemap];
 
         foreach ($trees as $prefix => $work) {
             $group = Menu::query()->where('code', "{$prefix}-workflow")->sole();
-            $children = Menu::query()->where('parent_id', $group->id)->orderBy('sort_number')->get();
+            $folder = Menu::query()->where('code', "{$group->code}-folder-forms")->sole();
+            $children = Menu::query()->where('parent_id', $folder->id)->orderBy('sort_number')->get();
 
+            $this->assertSame($group->id, $folder->parent_id);
             $this->assertSame([
-                "{$group->code}-workflow-flows-index", "{$group->code}-workflow-cases-index",
                 "{$group->code}-records-data-index-project-plan-application",
                 "{$group->code}-records-data-index-issue-resolution-application",
             ], $children->pluck('code')->all());
-            $this->assertSame([0, 1, 2, 3], $children->pluck('sort_number')->all());
+            $this->assertSame([0, 1], $children->pluck('sort_number')->all());
 
             $codes = [WorkflowApplicationModules::PLAN, WorkflowApplicationModules::ISSUE];
 
             foreach ($codes as $position => $moduleCode) {
-                $item = $children->get($position + 2);
+                $item = $children->get($position);
                 $this->assertInstanceOf(Menu::class, $item);
                 $module = RecordModule::query()->where('code', $moduleCode)->sole();
 
@@ -124,6 +127,30 @@ final class WorkflowSeederApplicationModulesTest extends TransactionalTestCase
     /**
      * 予算は必須(分岐の条件が読む)。課題の対応の申請の「プロジェクト」は、課題の「プロジェクト」と同じコード・同じ型・同じ参照先。
      */
+    /**
+     * 見え方(設計/ワークフロー/初期データ.md の 3 節): 申請書の業務モジュールは参照制限の既定が「する」で関係者の印の項目を持たず、見本の申請書のレコードは
+     * どれも参照制限ありで参照者が無い(業務の画面で見られるのは作成者 = 申請者と全件の参照の人)。プロジェクト・課題は既定「しない」。
+     */
+    public function test_the_application_modules_restrict_their_records_and_the_application_targets_do_not(): void
+    {
+        $modules = RecordModule::query()->with('recordFields')
+            ->whereIn('code', [...array_keys(self::APPLICATION_MODULES), 'project', 'project_issue'])
+            ->get()->keyBy('code')->all();
+
+        foreach (array_keys(self::APPLICATION_MODULES) as $code) {
+            $module = $modules[$code];
+            $this->assertTrue($module->row_access_restricted_by_default, $code);
+            $this->assertFalse($module->recordFields->contains('grants_row_access', true), $code);
+            $records = Record::query()->where('record_module_id', $module->id)->whereNull('parent_record_id');
+            $this->assertGreaterThan(0, $records->count(), $code);
+            $this->assertSame(0, (clone $records)->where('row_access_restricted', false)->count(), $code);
+            $this->assertSame(0, (clone $records)->whereHas('rowAccessViewers')->count(), $code);
+        }
+
+        $this->assertFalse($modules['project']->row_access_restricted_by_default);
+        $this->assertFalse($modules['project_issue']->row_access_restricted_by_default);
+    }
+
     public function test_the_budget_is_required_and_the_issue_application_has_the_project_of_the_issue(): void
     {
         $budget = $this->declarations($this->definition('project_plan_application'))['budget'];

@@ -1,8 +1,14 @@
-import { ChevronDown } from 'lucide-react';
 import { Fragment, useState } from 'react';
-import type { Dispatch, ReactNode, SetStateAction } from 'react';
+import type {
+    ComponentProps,
+    Dispatch,
+    ReactNode,
+    SetStateAction,
+} from 'react';
 import { FolderHoverPanel } from '@/layouts/FolderHoverPanel';
 import { GlobalNavigationEntries } from '@/layouts/GlobalNavigationEntries';
+import { FolderTriggerContent } from '@/layouts/FolderTriggerContent';
+import { SidebarAppHeading } from '@/layouts/SidebarAppHeading';
 import { MenuIcon } from '@/components/MenuIcon';
 import { MenuItemLink } from '@/components/Menu/MenuItemLink';
 import {
@@ -37,14 +43,12 @@ import {
     flyoutContentClass,
     sidebarIconClass,
 } from '@/lib/Menu/menuClasses';
+import type { SidebarView } from '@/lib/Menu/appNavigationView';
+import { folderContainsCurrent } from '@/lib/Menu/menuTree';
+import type { SidebarSection } from '@/lib/Menu/sidebarSections';
 import { nameOrCode } from '@/lib/nameOrCode';
 import { cn } from '@/lib/utils';
-import type {
-    MenuFolderNode,
-    MenuGroup,
-    MenuItemNode,
-    MenuNode,
-} from '@/types';
+import type { MenuFolderNode, MenuItemNode, MenuNode } from '@/types';
 
 // 項目の高さ 44px・帯では 44px の正方形の中央に 20px のアイコン(docs の 設計/画面の意匠/README.md の寸法の表)
 const menuButtonClass = cn(
@@ -55,37 +59,21 @@ const menuButtonClass = cn(
 // 入れ子の行の高さ 40px
 const subButtonClass = cn('h-10', sidebarIconClass);
 
-// フォルダの行の山形。開くと 180 度回す(引き金の data-state を group/folder で見る)
-const chevronClass =
-    'ml-auto transition-transform group-data-[state=open]/folder:rotate-180';
-
 type IsCurrentItem = (item: MenuItemNode) => boolean;
 
-/** フォルダの子孫に現在地のアイテムがあるか(フォルダの初めの開き具合) */
-function containsCurrent(
-    folder: MenuFolderNode,
-    isCurrentItem: IsCurrentItem,
-): boolean {
-    return folder.children.some((node) =>
-        node.type === 'item'
-            ? isCurrentItem(node)
-            : containsCurrent(node, isCurrentItem),
-    );
-}
-
 /**
- * グローバルナビ(共有プロパティ globalNavigation)をサイドバーに描く(docs の 設計/画面の意匠/サイドバーとアイコン.md 4 節)。
- * グループは見出し、アイテムはアイコンと表示名のリンク、フォルダは開閉できる入れ子(深さは制限しない)。畳んだ帯(広い幅で畳んだとき)では、
+ * グローバルナビ(今のアプリの見出しと区画、または今のアプリが無いときのアプリの一覧。lib/Menu/appNavigationView の sidebarView)を
+ * サイドバーに描く(docs の 設計/画面の意匠/サイドバーとアイコン.md 4 節)。区画ごとに SidebarGroup(見出しの区画は h3、アプリの一覧は h2)、
+ * アイテムはアイコンと表示名のリンク、フォルダは開閉できる入れ子(深さは制限しない)。畳んだ帯(広い幅で畳んだとき)では、
  * 直下のフォルダは、マウスを乗せると右のパネルに中身を出し(FolderHoverPanel)、押すと右に一覧(DropdownMenu。RailFolder)を開く。
  * 狭い幅のシートの中では、畳んでいてもフォルダは開閉できる入れ子のまま。
  * 広げたサイドバー(狭い幅でない)では、閉じたフォルダ(どの段でも)にマウスを乗せると中身を右のパネルに出す(FolderHoverPanel)。
  * 現在地の判定の関数はここで 1 回だけ作り、フォルダの初めの開き具合のために子へ渡す。
  * 帯で一覧を開いているフォルダ(1 つまで)の state もここで持つ(帯のどれかの一覧が開いている間は、帯のどのフォルダもパネルを出さないため)。
  */
-export function GlobalNavigationTree({ groups }: { groups: MenuGroup[] }) {
+export function GlobalNavigationTree({ view }: { view: SidebarView }) {
     const { state, isMobile } = useSidebar();
     const isRail = state === 'collapsed' && !isMobile;
-    const canHover = state === 'expanded' && !isMobile;
     const isCurrentItem = useIsCurrentItem();
     // 帯で一覧を開いているフォルダのコード(帯でなくなったら閉じる。後で帯に戻ったとき、押さずに開かないように。
     // props に合わせて状態を直す React の作法 = 描画の中で自分の状態だけを変える)
@@ -97,49 +85,56 @@ export function GlobalNavigationTree({ groups }: { groups: MenuGroup[] }) {
 
     return (
         <nav aria-label="グローバルナビ" className="flex flex-col gap-2">
-            {groups.map((group, index) => (
-                <Fragment key={group.code}>
-                    {/* 帯の区切り線(広げたときは見出しで分かるので出さない) */}
+            {view.app !== null && <SidebarAppHeading app={view.app} />}
+            {view.sections.map((section, index) => (
+                <Fragment key={section.key}>
+                    {/* 区画の境の線。見出しなしの区画の頭は広げたときも出し、見出しの区画の頭は帯だけに出す(広げたときは見出しで分かる) */}
                     {index > 0 && (
-                        <SidebarSeparator className="hidden group-data-[collapsible=icon]:block" />
+                        <SidebarSeparator
+                            className={
+                                section.heading === null
+                                    ? undefined
+                                    : 'hidden group-data-[collapsible=icon]:block'
+                            }
+                        />
                     )}
-                    <SidebarGroup>
-                        <SidebarGroupLabel
-                            asChild
-                            className="text-muted-foreground"
-                        >
-                            <h2>{nameOrCode(group)}</h2>
-                        </SidebarGroupLabel>
-                        <SidebarMenu>
-                            {group.children.map((node) => (
-                                <TopNode
-                                    key={node.code}
-                                    node={node}
-                                    isRail={isRail}
-                                    canHover={canHover}
-                                    isCurrentItem={isCurrentItem}
-                                    openRailFolder={openRailFolder}
-                                    onOpenRailFolderChange={setOpenRailFolder}
-                                />
-                            ))}
-                        </SidebarMenu>
-                    </SidebarGroup>
+                    <SectionGroup
+                        section={section}
+                        Heading={view.app === null ? 'h2' : 'h3'}
+                        isRail={isRail}
+                        canHover={state === 'expanded' && !isMobile}
+                        isCurrentItem={isCurrentItem}
+                        openRailFolder={openRailFolder}
+                        onOpenRailFolderChange={setOpenRailFolder}
+                    />
                 </Fragment>
             ))}
         </nav>
     );
 }
 
-/**
- * 広げたときのフォルダの引き金の中身: アイコン・表示名・山形。容器の [&>svg:first-child] の規則がアイコンに当たるよう、要素で包まずに返す。
- */
-function FolderTriggerContent({ folder }: { folder: MenuFolderNode }) {
+/** 区画 1 つ(SidebarGroup)。見出しがあれば SidebarGroupLabel を Heading(アプリの一覧は h2、今のアプリの区画は h3)で描く */
+function SectionGroup({
+    section,
+    Heading,
+    ...context
+}: {
+    section: SidebarSection;
+    Heading: 'h2' | 'h3';
+} & Omit<ComponentProps<typeof TopNode>, 'node'>) {
     return (
-        <>
-            <MenuIcon name={folder.icon} />
-            <span className="truncate">{nameOrCode(folder)}</span>
-            <ChevronDown className={chevronClass} />
-        </>
+        <SidebarGroup>
+            {section.heading !== null && (
+                <SidebarGroupLabel asChild className="text-muted-foreground">
+                    <Heading>{section.heading}</Heading>
+                </SidebarGroupLabel>
+            )}
+            <SidebarMenu>
+                {section.nodes.map((node) => (
+                    <TopNode key={node.code} node={node} {...context} />
+                ))}
+            </SidebarMenu>
+        </SidebarGroup>
     );
 }
 
@@ -290,7 +285,7 @@ type FolderProps = {
  */
 function FolderNode(props: FolderProps) {
     const [isExpanded, setIsExpanded] = useState(() =>
-        containsCurrent(props.folder, props.isCurrentItem),
+        folderContainsCurrent(props.folder, props.isCurrentItem),
     );
 
     return props.canHover ? (

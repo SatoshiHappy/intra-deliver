@@ -53,7 +53,7 @@ const ROW_ACCESS_TYPES: RecordFieldType[] = [
 ];
 
 /**
- * 関係する人の旗を持てる型か。
+ * 関係者の印を持てる型か。
  */
 export function canGrantRowAccess(type: RecordFieldType | ''): boolean {
     return type !== '' && ROW_ACCESS_TYPES.includes(type);

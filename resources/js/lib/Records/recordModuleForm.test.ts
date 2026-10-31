@@ -15,7 +15,7 @@ const module: RecordAdminModuleForm = {
     isDetails: false,
     categoryIds: ['b'],
     isAttachmentEnabled: false,
-    rowAccessScope: 'related',
+    rowAccessRestrictedByDefault: true,
 };
 
 const details: RecordAdminModuleForm = {
@@ -26,7 +26,7 @@ const details: RecordAdminModuleForm = {
     isDetails: true,
     categoryIds: null,
     isAttachmentEnabled: null,
-    rowAccessScope: null,
+    rowAccessRestrictedByDefault: null,
 };
 
 const categories = [
@@ -35,9 +35,13 @@ const categories = [
 ];
 
 describe('initialModuleData', () => {
-    it('見える範囲は今の値、明細のモジュール(null)は全員にしておく', () => {
-        expect(initialModuleData(module).row_access_scope).toBe('related');
-        expect(initialModuleData(details).row_access_scope).toBe('all');
+    it('参照制限の既定は今の値、明細のモジュール(null)は制限しないにしておく', () => {
+        expect(initialModuleData(module).row_access_restricted_by_default).toBe(
+            true,
+        );
+        expect(
+            initialModuleData(details).row_access_restricted_by_default,
+        ).toBe(false);
     });
 
     it('添付の使用は今の値、明細のモジュール(null)は使用するにしておく', () => {
@@ -61,7 +65,7 @@ describe('withVisibilityStop', () => {
 });
 
 describe('toModulePayload', () => {
-    it('添付の使用を is_attachment_enabled、見える範囲を row_access_scope で送る', () => {
+    it('添付の使用を is_attachment_enabled、参照制限の既定を row_access_restricted_by_default で送る', () => {
         expect(
             toModulePayload(initialModuleData(module), false, categories),
         ).toEqual({
@@ -71,7 +75,7 @@ describe('toModulePayload', () => {
             is_visible: true,
             categories: ['b'],
             is_attachment_enabled: false,
-            row_access_scope: 'related',
+            row_access_restricted_by_default: true,
         });
     });
 
@@ -85,7 +89,7 @@ describe('toModulePayload', () => {
         expect([payload.is_visible, payload.categories]).toEqual([false, []]);
     });
 
-    it('明細のモジュールは名前と説明だけで、見える範囲を送らない', () => {
+    it('明細のモジュールは名前と説明だけで、参照制限の既定を送らない', () => {
         expect(
             toModulePayload(initialModuleData(details), true, categories),
         ).toEqual({ name: '会議', description: '' });

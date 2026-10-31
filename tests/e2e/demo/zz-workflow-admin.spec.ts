@@ -1,4 +1,5 @@
 import { expect, test } from '../support/test';
+import { openAdminMenu, sidebarHeading } from '../support/app-navigation';
 import { openAsAdministrator } from '../support/records-headings';
 import { todayInTokyo } from '../support/seed-dates';
 import { submitAndExpectUrl } from '../support/submit';
@@ -19,27 +20,21 @@ test.describe.configure({ mode: 'serial' });
 
 const PLAN = '/workflow/admin/flows/project_plan';
 
-test('システム管理者: サイドバーの「管理」に「フロー定義」が「申請操作」の前にあり、一覧に 2 つのフローと現在の版が出る', async ({
+test('システム管理者: 歯車の「管理」に「フロー定義」が「申請操作」の前にあり、一覧に 2 つのフローと現在の版が出る', async ({
     page,
 }) => {
     await openAsAdministrator(page, '/');
-    const group = page
-        .getByRole('navigation', { name: 'グローバルナビ' })
-        .locator('[data-sidebar="group"]')
-        .filter({
-            has: page.getByRole('heading', {
-                level: 2,
-                name: '管理',
-                exact: true,
-            }),
-        });
-    const links = (await group.getByRole('link').allTextContents()).map(
+    const menu = await openAdminMenu(page);
+    const links = (await menu.getByRole('menuitem').allTextContents()).map(
         (text) => text.trim(),
     );
     expect(links.slice(-3)).toEqual(['フロー定義', '申請操作', '代理の管理']);
 
-    await group.getByRole('link', { name: 'フロー定義', exact: true }).click();
+    await menu
+        .getByRole('menuitem', { name: 'フロー定義', exact: true })
+        .click();
     await expect(page).toHaveURL(/\/workflow\/admin\/flows$/);
+    await expect(sidebarHeading(page)).toHaveText('管理');
     await expect(
         page.getByRole('heading', { level: 1, name: 'フロー定義' }),
     ).toBeVisible();

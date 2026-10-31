@@ -16,6 +16,7 @@ use App\Queries\Records\RecordListQuery;
 use App\Queries\Records\RecordPageQuery;
 use App\Queries\Records\RecordQuery;
 use App\Queries\Records\RecordRelatedProps;
+use App\Queries\Records\RecordRowAccessValues;
 use App\Queries\Records\RecordScreenAddonCatalog;
 use App\Support\AccessContext;
 use Illuminate\Http\RedirectResponse;
@@ -48,6 +49,7 @@ class RecordController extends Controller
         private RecordShowPanelQuery $panels,
         private RecordScreenAddonCatalog $addons,
         private RecordRelatedProps $related,
+        private RecordRowAccessValues $rowAccess,
     ) {}
 
     public function index(Request $request, string $module): Response
@@ -63,7 +65,7 @@ class RecordController extends Controller
             'query' => $listed['query'],
             'can' => fn () => $this->pages->can($requester, $opened, [RecordModuleAction::Create], $context->date),
             'addons' => fn () => self::withObjectProps($this->addons->index($context, $module)),
-            // 行と同じ読み取りの結果(見える範囲で絞った後)から id を取り、行の判定を二重にしない(業務の画面.md 2.5)
+            // 行と同じ読み取りの結果(行の判定で絞った後)から id を取り、行の判定を二重にしない(設計/業務データの入れ物/画面/業務の画面.md の 2.5)
             'addonBadges' => fn () => (object) $this->addons
                 ->badges($context, $module, array_column($listed['records']['data'], 'id')),
         ]);
@@ -90,6 +92,7 @@ class RecordController extends Controller
             'module' => fn () => $this->pages->definition($opened),
             'headings' => fn () => $this->panels->headings($opened->id),
             'can' => fn () => $this->pages->can($requester, $opened, [RecordModuleAction::Read], $context->date),
+            'rowAccess' => fn () => $this->rowAccess->initial($opened),
             'copySource' => fn () => $copyId === null
                 ? null
                 : $this->records->copySource($requester, $opened, $copyId, $context->date, $context->localeCode),
@@ -102,7 +105,8 @@ class RecordController extends Controller
      */
     public function store(RecordStoreRequest $request, string $module): RedirectResponse
     {
-        $recordId = $this->createRecord->execute(AccessContext::of($request), $module, $request->recordInput());
+        $input = $request->recordInputWithRowAccess();
+        $recordId = $this->createRecord->execute(AccessContext::of($request), $module, $input);
 
         if ($request->isRelated()) {
             return redirect()->back(303);
@@ -139,7 +143,7 @@ class RecordController extends Controller
             'module' => fn () => $this->pages->definition($opened),
             'headings' => fn () => $this->panels->headings($opened->id),
             'record' => fn () => $this->records
-                ->show($requester, $opened, $recordId, $context->date, $context->localeCode),
+                ->detail($requester, $opened, $recordId, $context->date, $context->localeCode),
             'can' => fn () => $this->pages->detailCan($requester, $opened, $context->date, $applyEntries()),
             'applyEntries' => fn () => $applyEntries(),
             'hold' => fn () => $this->pages->hold($recordId),
@@ -223,7 +227,8 @@ class RecordController extends Controller
 
     public function update(RecordUpdateRequest $request, string $module, string $record): RedirectResponse
     {
-        $this->updateRecord->execute(AccessContext::of($request), $module, (int) $record, $request->recordInput(), $request->recordVersion(), holder: null);
+        $input = $request->recordInputWithRowAccess();
+        $this->updateRecord->execute(AccessContext::of($request), $module, (int) $record, $input, $request->recordVersion(), holder: null);
 
         return $this->redirectAfterWrite($request, $module, (int) $record, '更新しました');
     }

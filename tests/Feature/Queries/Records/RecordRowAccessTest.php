@@ -12,33 +12,19 @@ use Tests\Support\BuildsRecordModules;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * 行の判定の 1 か所(docs の 設計/業務データの入れ物/認可とメニュー/行の権限.md 2.4)に渡す業務モジュールの確かめ: 見える範囲か親の列を読んでいない
+ * 行の判定の 1 か所(docs の 設計/業務データの入れ物/認可とメニュー/行の権限.md 2.4)に渡す業務モジュールの確かめ: 親の列を読んでいない
  * 業務モジュールと明細のモジュールは、絞らない側に倒さず作りの誤りとして止める。関係者を返す口は、ほかの業務モジュールのレコードに空を返す。
  */
 final class RecordRowAccessTest extends TransactionalTestCase
 {
     use BuildsRecordModules;
 
-    public function test_a_module_read_without_the_row_access_scope_column_is_refused(): void
+    public function test_a_module_read_without_the_parent_column_is_refused(): void
     {
         $module = RecordModule::query()->select('id')->whereKey($this->recordModule('meetings')->id)->firstOrFail();
 
         $this->expectException(LogicException::class);
         $this->rowAccess()->constrain(Record::query(), new Requester(null, null), $module, $this->today());
-    }
-
-    public function test_a_created_module_without_the_default_row_access_scope_is_refused(): void
-    {
-        $module = RecordModule::query()->create([
-            'code' => 'meetings',
-            'name' => '会議',
-            'icon' => 'table',
-            'parent_record_module_id' => null,
-            'sort_key' => 0,
-        ]);
-
-        $this->expectException(LogicException::class);
-        $this->rowAccess()->allows(new Requester(null, null), $module, 1, $this->today());
     }
 
     public function test_a_detail_module_is_refused(): void

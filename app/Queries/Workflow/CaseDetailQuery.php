@@ -136,7 +136,8 @@ class CaseDetailQuery
         $designations = $this->designations->of($situation->case->id, $approveIds, $date, $context->localeCode);
         $designated = fn (array $action) => [...$action, 'designations' => $designations[$action['nodeId']] ?? []];
         $pullBackAttach = array_column($choices['pullBackNodes'], 'canAttach');
-        $attachable = in_array(true, [$choices['canAttachOnWithdraw'], ...$pullBackAttach], true);
+        $attachable = CaseNodeActions::anyCanAttach($choices['nodeActions'])
+            || in_array(true, [$choices['canAttachOnWithdraw'], ...$pullBackAttach], true);
 
         return [
             'can' => [

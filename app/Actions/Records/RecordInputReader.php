@@ -209,16 +209,29 @@ class RecordInputReader
             return "{$field->name}の値が正しくありません";
         }
 
-        $max = self::MAX_MULTIPLE_TARGETS;
         $keys = array_map(
             fn (int|array $target) => is_int($target) ? (string) $target : RecordParty::key($target),
             $targets,
         );
 
+        return self::countError($field->name, $keys) ?? $targets;
+    }
+
+    /**
+     * 複数の相手の数と重なりの誤り(上限を超える・同じ相手が 2 度。無ければ null)。複数選べる参照と参照者が同じ規則・文言を使う 1 か所
+     * (設計/業務データの入れ物/項目と規則/README.md の 5 節、設計/業務データの入れ物/項目と規則/規則と業務処理/失敗と定義の変更.md の 10 節)。
+     *
+     * @param  string  $name  文言の {項目名}
+     * @param  list<string>  $keys  相手の鍵の並び(同じ相手は同じ鍵)
+     */
+    public static function countError(string $name, array $keys): ?string
+    {
+        $max = self::MAX_MULTIPLE_TARGETS;
+
         return match (true) {
-            count($targets) > $max => "{$field->name}は {$max} 件までにしてください",
-            count(array_unique($keys)) !== count($keys) => "{$field->name}に同じ値が重複しています",
-            default => $targets,
+            count($keys) > $max => "{$name}は {$max} 件までにしてください",
+            count(array_unique($keys)) !== count($keys) => "{$name}に同じ値が重複しています",
+            default => null,
         };
     }
 

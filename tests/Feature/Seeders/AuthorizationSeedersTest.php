@@ -2,21 +2,14 @@
 
 namespace Tests\Feature\Seeders;
 
-use App\Enums\Menu\MenuType;
 use App\Models\Authz\AuthzPolicy;
 use App\Models\Authz\AuthzResource;
 use App\Models\Authz\AuthzResourceGroup;
 use App\Models\Authz\AuthzSubjectCategory;
 use App\Models\Authz\AuthzSubjectGroup;
 use App\Models\Authz\AuthzSubjectGroupTranslation;
-use App\Models\Menu\Menu;
-use App\Models\Menu\MenuGroup;
 use App\Models\Menu\MenuGroupCategory;
-use App\Models\Menu\MenuGroupCategoryInclusion;
-use App\Models\Menu\MenuGroupCategoryTranslation;
-use App\Models\Menu\MenuTranslation;
 use App\Queries\Authz\ResourceTypeCatalog;
-use App\Queries\Authz\RouteResources;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\Support\FindsAppRouteViolations;
 use Tests\Support\TransactionalTestCase;
@@ -25,10 +18,8 @@ use Tests\Support\TransactionalTestCase;
  * 認可・メニュー・今の利用者の初期データ(docs の 設計/メニュー/初期データ.md 4 節、設計/デモユーザー切替/今の利用者.md 5.8)と、初期データを入れた後の付け忘れ・登録もれの検査
  * (認可との結び付け.md 2.3 の検査 2・3、初期データ.md の全部を許すロールの検査)。検査 2 は、ルートのリソースのリソースグループ ID と親も、
  * 名前から決まるもの(2.3 の表)であることを確かめる(判定は {@see FindsAppRouteViolations})。
- * メニューのアイテムとポリシーの件数は、ワークフローの申請書の業務モジュール 2 つ(設計/ワークフロー/初期データ.md の 3 節)の分を含む:
- * 業務モジュールを作る業務処理が足すアイテム 2 × 2(コンテンツを作る業務処理が消すので 0 = ADR 0031)と初期ポリシー 8 × 2、
- * グループ「ワークフロー」に MenuSeeder が足すアイテム 2 × 2(設計/ワークフロー/認可と一覧.md の 6 節)
- * と、グループ「管理」の「フロー定義」「申請操作」「代理の管理」3 × 2(設計/ワークフロー/ルートの深さ/認可と一覧.md の 5 節、設計/ワークフロー/案件の運用/認可と一覧.md の 5 節)。
+ * ポリシーの件数は、ワークフローの申請書の業務モジュール 2 つ(設計/ワークフロー/初期データ.md の 3 節)の初期ポリシー 8 × 2 を含む。
+ * メニューのカテゴリ・グループ・アイテムの中身は {@see MenuSeederTest}。
  */
 final class AuthorizationSeedersTest extends TransactionalTestCase
 {
@@ -37,24 +28,6 @@ final class AuthorizationSeedersTest extends TransactionalTestCase
     public function test_every_app_route_has_its_service_resource_in_the_resource_groups_given_by_its_name(): void
     {
         $this->assertSame([], $this->routesWithoutTheirResource($this->routeResources()->appRoutes()));
-    }
-
-    public function test_every_menu_item_points_to_an_external_site_or_an_app_route_with_its_resource(): void
-    {
-        $routeResources = app(RouteResources::class);
-
-        $invalid = Menu::query()->where('type', MenuType::Item)->get()->reject(function (Menu $item) use ($routeResources) {
-            if (str_starts_with((string) $item->url, 'http://') || str_starts_with((string) $item->url, 'https://')) {
-                return true;
-            }
-
-            $route = $routeResources->match($item->method->value, (string) $item->url);
-
-            return $route?->getName() !== null && AuthzResource::query()->where('uri', $routeResources->uriOf($route->getName()))->exists();
-        });
-
-        $this->assertSame([], $invalid->pluck('code')->all());
-        $this->assertSame(26 + 4 + 6, Menu::query()->where('type', MenuType::Item)->count());
     }
 
     public function test_the_system_administrator_is_permitted_every_action_of_the_types_in_each_set(): void
@@ -75,7 +48,7 @@ final class AuthorizationSeedersTest extends TransactionalTestCase
     {
         // imm_* = ワークフローの処理対象者と参照者の条件(ユーザー・組織・役職)で、サブジェクトタイプが新しいときだけ足すカテゴリ(設計/共通マスタ/ロールと認可/対象者.md)
         $this->assertSame(['b_m_role', 'im_authz_meta_subject', 'imm_company_post', 'imm_department', 'imm_user'], AuthzSubjectCategory::query()->orderBy('code')->pluck('code')->all());
-        $this->assertSame(['home_quick_actions_pc', 'im_global_nav_pc', 'im_global_nav_sp', 'im_personal_settings_pc', 'im_site_help_pc', 'im_sitemap_pc', 'im_sitemap_sp'], MenuGroupCategory::query()->orderBy('code')->pluck('code')->all());
+        $this->assertSame(['admin_menu_pc', 'home_quick_actions_pc', 'im_global_nav_pc', 'im_global_nav_sp', 'im_personal_settings_pc', 'im_site_help_pc', 'im_sitemap_pc', 'im_sitemap_sp'], MenuGroupCategory::query()->orderBy('code')->pluck('code')->all());
         $this->assertEqualsCanonicalizing([
             'http-services service:execute permit システム管理者',
             'im-menu-group im-menu-group:read permit システム管理者',
@@ -108,58 +81,11 @@ final class AuthorizationSeedersTest extends TransactionalTestCase
         ], $this->policySummaries());
     }
 
-    public function test_seeds_the_display_names_and_the_selectability_of_the_categories_of_the_design(): void
-    {
-        $categories = MenuGroupCategory::query()->with('menuGroupCategoryTranslations.locale')->orderBy('code')->get()
-            ->map(fn (MenuGroupCategory $category) => [
-                $category->code,
-                $category->menuGroupCategoryTranslations->sortBy(fn (MenuGroupCategoryTranslation $translation) => $translation->locale?->code)
-                    ->map(fn (MenuGroupCategoryTranslation $translation) => "{$translation->locale?->code} {$translation->display_name}")->values()->all(),
-                $category->is_selectable,
-            ])
-            ->all();
-
-        $this->assertSame([
-            ['home_quick_actions_pc', ['en Home quick actions (PC)', 'ja ホームの主な操作（PC用）'], true],
-            ['im_global_nav_pc', ['en Global navigation (PC)', 'ja グローバルナビ（PC用）'], true],
-            ['im_global_nav_sp', ['en Global navigation (smartphone)', 'ja グローバルナビ（スマートフォン用）'], true],
-            ['im_personal_settings_pc', ['en Personal settings (PC)', 'ja 個人設定（PC用）'], true],
-            ['im_site_help_pc', ['en Help (PC)', 'ja ヘルプ（PC用）'], true],
-            ['im_sitemap_pc', ['en Sitemap (PC)', 'ja サイトマップ（PC用）'], true],
-            ['im_sitemap_sp', ['en Sitemap (smartphone)', 'ja サイトマップ（スマートフォン用）'], true],
-        ], $categories);
-    }
-
-    public function test_seeds_the_menu_groups_of_the_design(): void
-    {
-        $groups = MenuGroup::query()->with(['menu.menuTranslations.locale', 'menuGroupCategoryInclusions.menuGroupCategory'])->get()
-            ->map(fn (MenuGroup $group) => [
-                $group->menu?->code,
-                $group->menuGroupCategoryInclusions->map(fn (MenuGroupCategoryInclusion $inclusion) => $inclusion->menuGroupCategory?->code)->all(),
-                $group->menu?->sort_number,
-                $group->menu?->icon_32,
-                $group->menu?->menuTranslations->sortBy(fn (MenuTranslation $translation) => $translation->locale?->code)
-                    ->map(fn (MenuTranslation $translation) => "{$translation->locale?->code} {$translation->display_name}")->values()->all(),
-            ])
-            ->sortBy(fn (array $group) => $group[0])
-            ->values()
-            ->all();
-
-        $this->assertSame([
-            ['global-nav-admin', ['im_global_nav_pc'], 100, null, ['en Administration', 'ja 管理']],
-            ['global-nav-main', ['im_global_nav_pc'], 0, null, ['en Work', 'ja 業務']],
-            ['global-nav-workflow', ['im_global_nav_pc'], 50, null, ['en Workflow', 'ja ワークフロー']],
-            ['home-quick-actions', ['home_quick_actions_pc'], 0, null, ['en Quick actions', 'ja 主な操作']],
-            ['sitemap-admin', ['im_sitemap_pc'], 100, null, ['en Administration', 'ja 管理']],
-            ['sitemap-main', ['im_sitemap_pc'], 0, null, ['en Work', 'ja 業務']],
-            ['sitemap-workflow', ['im_sitemap_pc'], 50, null, ['en Workflow', 'ja ワークフロー']],
-        ], $groups);
-    }
-
     /**
      * 後の seeder は対象者を条件で引き直し、同じ対象者を作り足さない(FindsAuthzSubjects)。対象者 = ポリシーの 3 と、ワークフローの処理対象者・参照者・確認する人の 6(用途 selection。
-     * ルート・フローの業務処理が作る = 設計/ワークフロー/初期データ.md 2 節)の計 9。ポリシー = 162(56 + メニューのワークフローのグループ 4 + ホームの主な操作のグループ 1 + ワークフローのルート
-     * 62 = ルートの深さ/初期データ.md 6 節と案件の運用の 11 本の 22・写しの値の入口 2。通知のルート 8・フローのセット 2 = 設計/ワークフロー/案件の運用/認可と一覧.md の 4 節・3 節。
+     * ルート・フローの業務処理が作る = 設計/ワークフロー/初期データ.md 2 節)の計 9。ポリシー = 164(56 + メニューのワークフローのグループ 4 + ホームの主な操作のグループ 1 + ワークフローのルート
+     * 64 = ルートの深さ/初期データ.md 6 節と案件の運用の 11 本の 22・写しの値の入口 2・ワークフローのホーム 2
+     * = 設計/ワークフロー/認可と一覧.md 4 節。通知のルート 8・フローのセット 2 = 設計/ワークフロー/案件の運用/認可と一覧.md の 4 節・3 節。
      * 業務モジュールの全件の参照 1 = 設計/業務データの入れ物/認可とメニュー/README.md の 3 節。添付と外した時点のファイルのルート 6 × 2 = 12、コメントのルート 3 × 2 = 6 =
      * 設計/業務データの入れ物/レコードの共通機能/認可と初期データ.md の 2.3 節。組み込みの会議の業務モジュール 8 = 設計/業務ツール/モジュール境界.md の「組み込みの業務モジュールの置き場」。
      * 会議のルート 2 × 2 = 4 = 設計/業務ツール/会議/処理.md の 3.2・3.7。定義の管理・申請操作はポリシーなし)と、申請書の業務モジュールの 16(クラスの注)。
@@ -167,7 +93,7 @@ final class AuthorizationSeedersTest extends TransactionalTestCase
     public function test_the_seeders_reuse_the_subjects(): void
     {
         $this->assertEquals(['policy' => 3, 'selection' => 6], AuthzSubjectGroup::query()->groupBy('purpose')->orderBy('purpose')->selectRaw('purpose, count(*) as subject_groups')->pluck('subject_groups', 'purpose')->all());
-        $this->assertCount(162 + 16, $this->policySummaries());
+        $this->assertCount(164 + 16, $this->policySummaries());
     }
 
     public function test_a_guest_sees_the_home_and_the_sitemap(): void
@@ -220,14 +146,14 @@ final class AuthorizationSeedersTest extends TransactionalTestCase
     }
 
     /**
-     * ワークフローの初期データのポリシー(ルート 31 本 × ゲストユーザ・認証済みユーザの execute = docs の 設計/ワークフロー/認可と一覧.md 4 節、ルートの深さ/認可と一覧.md 4.1)。
+     * ワークフローの初期データのポリシー(ルート 32 本 × ゲストユーザ・認証済みユーザの execute = docs の 設計/ワークフロー/認可と一覧.md 4 節、ルートの深さ/認可と一覧.md 4.1)。
      *
      * @return list<string>
      */
     private function workflowPolicySummaries(): array
     {
         $routes = [
-            'flows.index', 'applications.create', 'applications.store', 'drafts.store', 'drafts.edit', 'drafts.update', 'drafts.apply', 'drafts.destroy',
+            'home', 'flows.index', 'applications.create', 'applications.store', 'drafts.store', 'drafts.edit', 'drafts.update', 'drafts.apply', 'drafts.destroy',
             'cases.index', 'cases.show', 'cases.approve', 'cases.approve-early', 'cases.reject', 'cases.send-back', 'cases.pull-back', 'cases.withdraw', 'cases.bulk-approve', 'cases.bulk-confirm', 'cases.hold', 'cases.release', 'cases.transfer', 'cases.confirm', 'target-values', 'record-candidates', 'proxies.index', 'proxies.store', 'proxies.destroy',
             'reapplications.create', 'reapplications.store', 'cases.assignee-candidates', 'user-candidates',
         ];

@@ -13,8 +13,8 @@ import type { WorkflowCaseShowProps } from '@/types';
 type NodeAction = WorkflowCaseShowProps['nodeActions'][number];
 type Can = WorkflowCaseShowProps['can'];
 
-const self = { id: 9, name: '吉田 達也', isSelf: true };
-const principal = { id: 3, name: '高橋 誠', isSelf: false };
+const self = { id: 9, name: '吉田 達也', isSelf: true, canAttach: false };
+const principal = { id: 3, name: '高橋 誠', isSelf: false, canAttach: false };
 
 function nodeAction(overrides: Partial<NodeAction> = {}): NodeAction {
     return {

@@ -21,6 +21,7 @@ use Illuminate\Support\Collection;
  * @phpstan-import-type FieldEntry from RecordRevisionLabels
  * @phpstan-import-type RowChange from RecordRevisionQuery
  * @phpstan-import-type Diff from RecordRevisionQuery
+ * @phpstan-import-type ShownRowAccessChange from RecordRevisionRowAccess
  *
  * @phpstan-type RevisionField array{code: string, name: string, type: string, isMultiline: bool,
  *     referencedModule: array{code: string}|null}
@@ -29,7 +30,7 @@ use Illuminate\Support\Collection;
  * @phpstan-type RevisionChanges array{
  *     fields: list<array{code: string, name: string, field: RevisionField, before: mixed, after: mixed}>,
  *     details: list<array{code: string, name: string, fields: list<RevisionField>, rows: list<RowChange>}>,
- *     attachments: list<RevisionAttachmentChange>}
+ *     attachments: list<RevisionAttachmentChange>, rowAccess: ShownRowAccessChange|null}
  * @phpstan-type RevisionRow array{id: int, revision: int, at: string|null, action: 'create'|'update',
  *     actor: ReferenceValue|null, principal: ReferenceValue|null,
  *     origin: array{operation: string, nodeName: string|null}|null, noPreviousRecord: bool,
@@ -140,6 +141,7 @@ class RecordRevisionRows
                 'previewable' => false,
                 'purgeDueOn' => null,
             ], $diff['attachments']),
+            'rowAccess' => $diff['rowAccess'],
         ];
     }
 
@@ -215,7 +217,8 @@ class RecordRevisionRows
      */
     private function isEmpty(array $diff): bool
     {
-        return $diff['fields'] === [] && $diff['details'] === [] && $diff['attachments'] === [];
+        return $diff['fields'] === [] && $diff['details'] === [] && $diff['attachments'] === []
+            && $diff['rowAccess'] === null;
     }
 
     /**

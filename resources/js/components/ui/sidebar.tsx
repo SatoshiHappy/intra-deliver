@@ -197,7 +197,7 @@ function Sidebar({
         >
           <SheetHeader className="sr-only">
             <SheetTitle>サイドバー</SheetTitle>
-            <SheetDescription>グローバルナビを表示します。</SheetDescription>
+            <SheetDescription>メニューを表示します。</SheetDescription>
           </SheetHeader>
           <div className="flex h-full w-full flex-col">{children}</div>
         </SheetContent>

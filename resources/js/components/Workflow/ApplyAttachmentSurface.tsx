@@ -1,12 +1,13 @@
-import { useRef } from 'react';
-import type { ChangeEvent } from 'react';
 import { FormSurface } from '@/components/FormLayout';
+import {
+    PickFiles,
+    SurfaceErrors,
+} from '@/components/Workflow/AttachmentPicker';
 import {
     AddedFiles,
     AttachedFiles,
     DraftFiles,
 } from '@/components/Workflow/ApplyAttachmentRows';
-import { Button } from '@/components/ui/button';
 import type { useApplyAttachment } from '@/hooks/Workflow/use-apply-attachment';
 import type { useApplyForm } from '@/hooks/Workflow/use-apply-form';
 import {
@@ -16,58 +17,6 @@ import {
 import type { WorkflowApplyAttachment, WorkflowApplyProps } from '@/types';
 
 type ApplyAttachmentState = ReturnType<typeof useApplyAttachment>;
-
-/** 「ファイルを選択」(複数。accept は props の形式の対応表の拡張子。選び終えたら同じファイルをまた選べるよう値を空にする) */
-function PickFiles({
-    accept,
-    onPick,
-}: {
-    accept: string;
-    onPick: (files: File[]) => void;
-}) {
-    const input = useRef<HTMLInputElement>(null);
-    const change = (event: ChangeEvent<HTMLInputElement>) => {
-        onPick(Array.from(event.target.files ?? []));
-        event.target.value = '';
-    };
-
-    return (
-        <>
-            <input
-                ref={input}
-                type="file"
-                multiple
-                hidden
-                accept={accept}
-                aria-label="添付するファイル"
-                onChange={change}
-            />
-            <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="self-start"
-                onClick={() => input.current?.click()}
-            >
-                ファイルを選択
-            </Button>
-        </>
-    );
-}
-
-/** 面の下に出す誤り(attachments・remove_attachment_ids) */
-function SurfaceErrors({ messages }: { messages: string[] }) {
-    return messages.map((message) => (
-        <p
-            key={message}
-            role="alert"
-            tabIndex={-1}
-            className="text-sm text-destructive"
-        >
-            {message}
-        </p>
-    ));
-}
 
 /** 使えるときの中身(並びの正本 = 設計/ワークフロー/申請の周辺/画面.md の 2 節) */
 function FullContent({

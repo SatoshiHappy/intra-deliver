@@ -7,11 +7,12 @@ use App\Models\Records\RecordField;
 use App\Models\Records\RecordFieldOption;
 use App\Models\Records\RecordModule;
 use App\Models\Records\RecordReference;
+use App\Models\Records\RecordRowAccessViewer;
 use App\Models\Records\RecordRule;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * 業務データの入れ物の 6 表の設計どおりの列(docs の 設計/業務データの入れ物/データモデル/表.md 2 節。型は 1 節で採った共通の規則 4 節)。
+ * 業務データの入れ物の 7 表の設計どおりの列(docs の 設計/業務データの入れ物/データモデル/表.md 2 節。型は 1 節で採った共通の規則 4 節)。
  * 書き方は {@see CommonMasterSchema} と同じ(列 → PostgreSQL の format_type と NOT NULL・既定値。id・created_at・updated_at は SchemaTest が足す)。
  * 生成列は「generated always as (式) stored」と書く(式は pg_get_expr の形)。
  */
@@ -39,6 +40,7 @@ final class RecordsSchema
         'record_rules' => RecordRule::class,
         'records' => Record::class,
         'record_references' => RecordReference::class,
+        'record_row_access_viewers' => RecordRowAccessViewer::class,
     ];
 
     /**
@@ -73,6 +75,12 @@ final class RecordsSchema
         ],
         [RecordReference::class, null, ['user_id'], 'users', ['id'], 'restrict', 'user', null],
         [RecordReference::class, 'forDepartment', ['department_id'], 'departments', ['id'], 'restrict', 'department', null],
+        [RecordRowAccessViewer::class, null, ['record_id'], 'records', ['id'], 'cascade', 'record', 'rowAccessViewers'],
+        [RecordRowAccessViewer::class, null, ['user_id'], 'users', ['id'], 'restrict', 'user', null],
+        [
+            RecordRowAccessViewer::class, 'forDepartment', ['department_id'], 'departments', ['id'], 'restrict',
+            'department', null,
+        ],
     ];
 
     /** @var array<string, array<string, string>> */
@@ -130,21 +138,28 @@ final class RecordsSchema
             'user_id' => self::OPTIONAL_KEY,
             'department_id' => self::OPTIONAL_KEY,
         ],
+        'record_row_access_viewers' => [
+            'record_id' => self::KEY,
+            'user_id' => self::OPTIONAL_KEY,
+            'department_id' => self::OPTIONAL_KEY,
+            'sort_key' => self::SORT_KEY,
+        ],
     ];
 
     /**
      * 表を作った後のマイグレーションで足した列(表の末尾に付く。書き方は COLUMNS と同じ。データモデル/表.md 2.1、制約の分担と検査.md 5 節。
      * is_attachment_enabled = 設計/業務データの入れ物/レコードの共通機能/データモデル/表.md の 2.8 節、
-     * is_builtin = 設計/業務ツール/共通データ.md の「入れ物の拡張」)。
+     * is_builtin = 設計/業務ツール/共通データ.md の「入れ物の拡張」、
+     * row_access_restricted_by_default・row_access_restricted = 2.1・2.5 の参照制限 = ADR 0026)。
      *
      * @var array<string, array<string, string>>
      */
     public const COLUMNS_ADDED_LATER = [
         'record_modules' => [
             'icon' => 'character varying(100)',
-            'row_access_scope' => "character varying(20) not null default 'all'::character varying",
             'is_attachment_enabled' => 'boolean not null default true',
             'is_builtin' => self::FLAG,
+            'row_access_restricted_by_default' => self::FLAG,
         ],
         'record_fields' => [
             'is_multiple' => self::FLAG,
@@ -153,6 +168,9 @@ final class RecordsSchema
         ],
         'record_field_options' => [
             'is_builtin' => self::FLAG,
+        ],
+        'records' => [
+            'row_access_restricted' => self::FLAG,
         ],
         'record_references' => [
             'sort_key' => self::SORT_KEY,

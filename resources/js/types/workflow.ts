@@ -20,6 +20,7 @@ import type {
     WorkflowCurrentSummary,
     WorkflowDeadline,
     WorkflowPerson,
+    WorkflowPrincipal,
     WorkflowPullBackNode,
 } from './workflowRows';
 import type {
@@ -212,9 +213,6 @@ export type WorkflowNodeOperation =
     | 'hold'
     | 'release'
     | 'transfer';
-
-/** 処理担当者の選択肢 1 つ(自分か代理元。並び = 自分が先、代理元はその後) */
-export type WorkflowPrincipal = { id: number; name: string; isSelf: boolean };
 
 /** 案件の詳細のステップごとの操作の可否(ルートの深さ/画面/案件の側の画面.md 7 節、案件の運用/画面/案件の画面.md の 4 節) */
 type WorkflowNodeAction = {

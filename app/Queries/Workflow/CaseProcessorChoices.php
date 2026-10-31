@@ -8,6 +8,7 @@ use App\Enums\Workflow\WorkflowOperation;
 use App\Queries\Authz\Api\Requester;
 use App\Queries\Authz\Api\SubjectGroupMembership;
 use App\Support\AccessContext;
+use Closure;
 
 /**
  * 詳細のだれとして処理するか(docs の 設計/ワークフロー/案件の運用/案件の操作/README.md の 4.3 節・4.5 節、
@@ -32,6 +33,7 @@ class CaseProcessorChoices
         private CaseOperationDecider $decider,
         private CaseNodeActions $nodeActions,
         private CaseAttachEntries $attachEntries,
+        private CaseAttachability $attachability,
         private WorkflowProxies $proxies,
         private FlowPermissions $flowPermissions,
         private SubjectGroupMembership $membership,
@@ -51,12 +53,15 @@ class CaseProcessorChoices
         $people = $candidates === null ? [] : $this->people->users(
             [$candidates->userId, ...$candidates->principalIds()], $date, $context->localeCode,
         );
-        $nodeActions = $this->nodeActions->of($requester, $date, $own, $candidates, $people);
+        $moduleEnabled = $this->moduleEnabledOf($own);
+        $nodeActions = $this->nodeActions->of($requester, $date, $own, $candidates, $people, $moduleEnabled);
         $ownCan = $this->decider->detailCanOf($requester, $date, $own);
         $withdrawAs = $this->withdrawPrincipalOf($requester, $context, $own, $candidates);
         $canWithdraw = $ownCan['withdraw'] || $withdrawAs !== null;
-        $attach = $this->attachEntries->of([$own], [$own->case->id => $canWithdraw])[$own->case->id];
-        $pullBackNodes = $this->pullBackNodesOf($requester, $context, $own, $candidates, $kinds, $attach['pullBack']);
+        $attach = $this->attachEntries->of([$own], [$own->case->id => $canWithdraw], $moduleEnabled)[$own->case->id];
+        $pullBackNodes = $this->pullBackNodesOf(
+            $requester, $context, $own, $candidates, $kinds, $attach['pullBack'], $moduleEnabled,
+        );
         $hasOwnCaseOperation = $ownCan['withdraw'] || $ownCan['reapply'];
         $reapplyAs = $this->reapplyPrincipals->of($requester, $date, [$own])[$own->case->id] ?? null;
         $caseOperationAs = $withdrawAs ?? $reapplyAs;
@@ -72,6 +77,22 @@ class CaseProcessorChoices
             ),
             'canAttachOnWithdraw' => $attach['withdraw'],
         ];
+    }
+
+    /**
+     * 案件のフローの業務モジュールの「添付ファイルの追加・削除を許可」の今の値(1 回の詳細の表示で、入口の可否を求めるときに 1 回だけ読む遅延の値。
+     * どの入口も求めなければ読まない)。
+     *
+     * @return Closure(): bool
+     */
+    private function moduleEnabledOf(CaseSituation $situation): Closure
+    {
+        $flow = CaseRows::flowOf($situation->case);
+        $value = null;
+
+        return function () use (&$value, $flow): bool {
+            return $value ??= $this->attachability->moduleEnabledByFlows([$flow])[$flow->id];
+        };
     }
 
     /**
@@ -137,6 +158,7 @@ class CaseProcessorChoices
      *
      * @param  array<int, WorkflowNodeKind>  $kinds
      * @param  array<int, bool>  $ownCanAttach  自分が引戻せるノードの id → 添付の可否
+     * @param  Closure(): bool  $moduleEnabled  案件のフローの業務モジュールの値(詳細の表示で共有する)
      * @return list<DetailPullBackNode>
      */
     private function pullBackNodesOf(
@@ -146,6 +168,7 @@ class CaseProcessorChoices
         ?ProcessorCandidates $candidates,
         array $kinds,
         array $ownCanAttach,
+        Closure $moduleEnabled,
     ): array {
         $rows = [];
 
@@ -154,7 +177,10 @@ class CaseProcessorChoices
         }
 
         if ($candidates !== null) {
-            $rows = [...$rows, ...$this->principalsPullBacks($requester, $context, $situation, $candidates, $kinds)];
+            $rows = [
+                ...$rows,
+                ...$this->principalsPullBacks($requester, $context, $situation, $candidates, $kinds, $moduleEnabled),
+            ];
         }
 
         $order = array_flip(array_keys($kinds));
@@ -167,6 +193,7 @@ class CaseProcessorChoices
      * 代理元ごとに、代理元を処理者として読んだ状況の引戻せるノード。
      *
      * @param  array<int, WorkflowNodeKind>  $kinds
+     * @param  Closure(): bool  $moduleEnabled
      * @return list<DetailPullBackNode>
      */
     private function principalsPullBacks(
@@ -175,13 +202,17 @@ class CaseProcessorChoices
         CaseSituation $own,
         ProcessorCandidates $candidates,
         array $kinds,
+        Closure $moduleEnabled,
     ): array {
         $case = $own->case;
         $rows = [];
 
         foreach ($candidates->principalIds() as $principalId) {
             $principal = $this->decider->situationsOf($requester, $context->date, [$case], $principalId)[$case->id];
-            $rows = [...$rows, ...$this->principalPullBacks($requester, $context, $principal, $candidates, $kinds)];
+            $rows = [
+                ...$rows,
+                ...$this->principalPullBacks($requester, $context, $principal, $candidates, $kinds, $moduleEnabled),
+            ];
         }
 
         return $rows;
@@ -191,6 +222,7 @@ class CaseProcessorChoices
      * 代理元を処理者として読んだ状況の引戻せるノードのうち、そのノードの種類の代理が効き、表が許すもの。
      *
      * @param  array<int, WorkflowNodeKind>  $kinds
+     * @param  Closure(): bool  $moduleEnabled
      * @return list<DetailPullBackNode>
      */
     private function principalPullBacks(
@@ -199,6 +231,7 @@ class CaseProcessorChoices
         CaseSituation $situation,
         ProcessorCandidates $candidates,
         array $kinds,
+        Closure $moduleEnabled,
     ): array {
         $principalId = $situation->processorUserId;
         $permits = fn (int $nodeId) => $this->decider
@@ -211,7 +244,7 @@ class CaseProcessorChoices
             return [];
         }
 
-        $canAttach = $this->attachEntries->of([$situation], [])[$situation->case->id]['pullBack'];
+        $canAttach = $this->attachEntries->of([$situation], [], $moduleEnabled)[$situation->case->id]['pullBack'];
 
         $rows = [];
 

@@ -17,7 +17,7 @@ function adminField(
 }
 
 describe('fieldAttributeBadges', () => {
-    it('関係する人の旗は「表示の項目」の後・既定値の前に札「関係する人」', () => {
+    it('関係者の印は「表示の項目」の後・既定値の前に札「関係者」', () => {
         expect(
             fieldAttributeBadges(
                 adminField('owner', 'user', {
@@ -25,7 +25,7 @@ describe('fieldAttributeBadges', () => {
                     grantsRowAccess: true,
                 }),
             ),
-        ).toEqual(['必須', '一覧', '検索', '関係する人']);
+        ).toEqual(['必須', '一覧', '検索', '関係者']);
         expect(
             fieldAttributeBadges(
                 adminField('title', 'string', {
@@ -51,10 +51,10 @@ describe('fieldAttributeBadges', () => {
         );
     });
 
-    it('旗が無ければ札「関係する人」を出さない', () => {
+    it('印が無ければ札「関係者」を出さない', () => {
         expect(
             fieldAttributeBadges(adminField('owner', 'department')),
-        ).not.toContain('関係する人');
+        ).not.toContain('関係者');
     });
 });
 

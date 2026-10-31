@@ -14,10 +14,11 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
  * レコード(業務データの 1 行。親を持つ行は明細の行)。表 records(docs の 設計/業務データの入れ物/データモデル/表.md 2.5)。
  * 通常の項目の値 field_values は、項目の id をキーにした値の JSON のオブジェクト(設計/業務データの入れ物/データモデル/値の形と直列化.md 3 節。{@see FieldValues})。
  * 参照の項目の値は record_references、明細は子のレコード。作成者・更新者が null の行はゲストが書いた。
+ * チェック row_access_restricted と参照者 record_row_access_viewers は参照制限(ADR 0026。明細の行はどちらも持たない)。
  *
  * @phpstan-type Party array{type: 'user'|'department', id: int}
  */
-#[Fillable(['record_module_id', 'parent_record_module_id', 'parent_record_id', 'sort_key', 'field_values', 'created_by_user_id', 'updated_by_user_id'])]
+#[Fillable(['record_module_id', 'parent_record_module_id', 'parent_record_id', 'sort_key', 'field_values', 'created_by_user_id', 'updated_by_user_id', 'row_access_restricted'])]
 class Record extends Model
 {
     /** @use HasFactory<RecordFactory> */
@@ -31,6 +32,7 @@ class Record extends Model
         return [
             'sort_key' => 'integer',
             'field_values' => FieldValues::class,
+            'row_access_restricted' => 'boolean',
         ];
     }
 
@@ -70,6 +72,17 @@ class Record extends Model
     public function recordReferences(): HasMany
     {
         return $this->hasMany(RecordReference::class);
+    }
+
+    /**
+     * 参照者の行(sort_key の順)。読むのはチェックが付いているときだけ(付いていないレコードは参照者を持たない =
+     * 設計/業務データの入れ物/認可とメニュー/行の権限.md 2.4 の「レコードの参照制限」)。
+     *
+     * @return HasMany<RecordRowAccessViewer, $this>
+     */
+    public function rowAccessViewers(): HasMany
+    {
+        return $this->hasMany(RecordRowAccessViewer::class)->orderBy('sort_key');
     }
 
     /**

@@ -162,7 +162,7 @@ const MEETING_KIND_REASONS = new Map([
     ],
     [
         'meeting.minutes_failed truncated',
-        '議事録が長すぎて途中で切れました。再作成の追加の指示で短くするよう頼んでください。',
+        '議事録が長すぎました。再作成の追加の指示で短くするよう頼んでください。',
     ],
 ]);
 

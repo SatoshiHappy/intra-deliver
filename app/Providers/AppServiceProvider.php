@@ -39,6 +39,7 @@ use App\Queries\Workflow\ProxyTargetTerm;
 use App\Queries\Workflow\WorkflowApplicationTargetSection;
 use App\Queries\Workflow\WorkflowCountersHomeSection;
 use App\Queries\Workflow\WorkflowFlowResourceTypes;
+use App\Queries\Workflow\WorkflowHomeSections;
 use App\Queries\Workflow\WorkflowLeadHomeSection;
 use App\Queries\Workflow\WorkflowNoticeTargets;
 use App\Queries\Workflow\WorkflowRecordApplyEntries;
@@ -129,19 +130,20 @@ class AppServiceProvider extends ServiceProvider
     }
 
     /**
-     * 依存の逆転: ホームの入口が、各モジュールの足す節を登録の順に出す(docs の 設計/メニュー/ホーム.md 6.2)。
-     * 右列 = 主な操作 → 進行中の申請(主な操作をワークフローの経路の節より前に = ホーム.md 6.5、ワークフローの 5 つはこの順 = 設計/ワークフロー/画面/ホームと意匠とE2E.md 7 節)
+     * 依存の逆転: ワークフローのホームの入口が、主な操作とワークフローの 5 つの節を登録の順に出す(docs の 設計/メニュー/ホーム.md 6.2・6.7。
+     * 順の正本 = 設計/ワークフロー/画面/ホームと意匠とE2E.md 7 節。右列 = 主な操作 → 進行中の申請)。全体のホームのタグ {@see HomeSections::TAG} には
+     * ここで何も付けない(全体のホームの節は取り外せる切替のモジュールが付ける)。
      */
     private function tagHomeSections(): void
     {
         $this->app->tag([
-            QuickActionsHomeSection::class,
             WorkflowLeadHomeSection::class,
             WorkflowCountersHomeSection::class,
             PendingCasesHomeSection::class,
             ProcessedThisMonthHomeSection::class,
+            QuickActionsHomeSection::class,
             ActiveApplicationsHomeSection::class,
-        ], HomeSections::TAG);
+        ], WorkflowHomeSections::TAG);
     }
 
     /**

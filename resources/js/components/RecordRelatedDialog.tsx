@@ -3,6 +3,7 @@ import { useRef, useState } from 'react';
 import type { FormEvent } from 'react';
 import { UnshownErrors } from '@/components/FormBlock';
 import { RecordFields } from '@/components/RecordFields';
+import { RecordRowAccessSection } from '@/components/RecordRowAccessSection';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -16,6 +17,11 @@ import { useFocusFirstInvalid } from '@/hooks/use-focus-first-invalid';
 import { clearRowErrors } from '@/lib/formErrors';
 import type { RecordFormData } from '@/lib/recordForm';
 import { toPayload } from '@/lib/recordPayload';
+import {
+    isRowAccessKey,
+    rowAccessDraft,
+    rowAccessPayload,
+} from '@/lib/recordRowAccess';
 import { isRecordFieldKey } from '@/lib/recordFormErrors';
 import type { RelatedDialogStatus } from '@/lib/recordRelated';
 import { addedMessage, relatedFormData } from '@/lib/recordRelated';
@@ -40,17 +46,21 @@ type FormProps = {
 };
 
 /**
- * 送信(送る形 = 登録の画面と同じ値に related を足す)。「登録して続けて作成」は閉じずに入力を初期値へ戻し、登録した数を数える。
+ * 送信(送る形 = 登録の画面と同じ値(参照制限を含む)に related を足す)。「登録して続けて作成」は閉じずに入力を初期値へ戻し、登録した数を数える。
  * 誤り(422)はダイアログを開いたまま欄の下に出し、最初の誤りの欄へフォーカスを移す合図を増やす(4.2 節)。
  */
 function useRelatedSubmit({ form, recordId, storeAction, onClose }: FormProps) {
     const data = useForm<RecordFormData>(relatedFormData(form));
+    const [rowAccess, setRowAccess] = useState(() =>
+        rowAccessDraft(form.rowAccess),
+    );
     const [added, setAdded] = useState(0);
     const [focusRequest, setFocusRequest] = useState(0);
 
     const send = (continues: boolean) => {
         data.transform((current) => ({
             ...toPayload(form.module, current),
+            ...rowAccessPayload(rowAccess),
             related: { field: form.field, record: recordId },
         }));
         data.submit(storeAction(form.module.code), {
@@ -65,12 +75,26 @@ function useRelatedSubmit({ form, recordId, storeAction, onClose }: FormProps) {
                 setAdded((count) => count + 1);
                 data.clearErrors();
                 data.setData(relatedFormData(form));
+                setRowAccess(rowAccessDraft(form.rowAccess));
             },
             onError: () => setFocusRequest((count) => count + 1),
         });
     };
 
-    return { data, added, focusRequest, send };
+    const onSubmit = (event: FormEvent) => {
+        event.preventDefault();
+        send(false);
+    };
+
+    return {
+        data,
+        rowAccess,
+        setRowAccess,
+        added,
+        focusRequest,
+        send,
+        onSubmit,
+    };
 }
 
 /** ダイアログのボタンの列(主ボタン「登録」が右端) */
@@ -108,22 +132,18 @@ function RelatedButtons({
  */
 function RelatedForm(props: FormProps) {
     const { form } = props;
-    const { data, added, focusRequest, send } = useRelatedSubmit(props);
+    const related = useRelatedSubmit(props);
+    const { data, added, focusRequest } = related;
     const errors = data.errors as Record<string, string | undefined>;
+    const clearErrors = (prefix: string) => clearRowErrors(data, prefix);
     const formRef = useRef<HTMLFormElement>(null);
-
     useFocusFirstInvalid(formRef, focusRequest);
-
-    const submit = (event: FormEvent) => {
-        event.preventDefault();
-        send(false);
-    };
 
     return (
         <form
             ref={formRef}
             noValidate
-            onSubmit={submit}
+            onSubmit={related.onSubmit}
             aria-label={`${form.module.name}の入力`}
             className="flex min-h-0 flex-col gap-4"
         >
@@ -141,15 +161,21 @@ function RelatedForm(props: FormProps) {
                     recordId={null}
                     data={data.data}
                     onChange={(update) => data.setData(update)}
-                    onRowsReordered={(prefix) => clearRowErrors(data, prefix)}
+                    onRowsReordered={clearErrors}
                     errors={errors}
                     fixedField={fixedFieldOf(form)}
+                />
+                <RecordRowAccessSection
+                    draft={related.rowAccess}
+                    onChange={related.setRowAccess}
+                    errors={errors}
+                    onClearErrors={clearErrors}
                 />
             </div>
             <RelatedButtons
                 processing={data.processing}
                 onCancel={props.onClose}
-                onContinue={() => send(true)}
+                onContinue={() => related.send(true)}
             />
         </form>
     );
@@ -181,12 +207,14 @@ function LoadingLine({ failed }: { failed: boolean }) {
     );
 }
 
-/** 業務の欄に結びつかない誤り(related など。フォームの上に出す) */
+/** 業務の欄と参照制限に結びつかない誤り(related など。フォームの上に出す) */
 function unshownErrors(
     errors: Record<string, string | undefined>,
 ): Record<string, string | undefined> {
     return Object.fromEntries(
-        Object.entries(errors).filter(([key]) => !isRecordFieldKey(key)),
+        Object.entries(errors).filter(
+            ([key]) => !isRecordFieldKey(key) && !isRowAccessKey(key),
+        ),
     );
 }
 

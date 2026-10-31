@@ -34,7 +34,7 @@ final class RecordModuleMenuItemsTest extends TransactionalTestCase
 
         $this->assertSame(
             ['global-nav-main-records-project_issue', 'global-nav-main-records-meeting'],
-            $this->recordItemCodes($response, 'globalNavigation'),
+            $this->recordItemCodes($response, 'appNavigation.launcher'),
         );
         $this->assertSame(
             ['sitemap-main-records-project_issue', 'sitemap-main-records-meeting'],
@@ -53,7 +53,7 @@ final class RecordModuleMenuItemsTest extends TransactionalTestCase
 
         $this->assertSame(
             ['global-nav-workflow-records-data-index-issue-resolution-application'],
-            $this->recordItemCodes($response, 'globalNavigation', '-workflow'),
+            $this->recordItemCodes($response, 'appNavigation.launcher', '-workflow'),
         );
         $this->assertSame(
             ['sitemap-workflow-records-data-index-issue-resolution-application'],
@@ -65,7 +65,7 @@ final class RecordModuleMenuItemsTest extends TransactionalTestCase
                 'global-nav-main-records-project', 'global-nav-main-records-project_issue',
                 'global-nav-main-records-meeting',
             ],
-            $this->recordItemCodes($response, 'globalNavigation'),
+            $this->recordItemCodes($response, 'appNavigation.launcher'),
         );
         $this->assertSame(
             ['sitemap-main-records-project', 'sitemap-main-records-project_issue', 'sitemap-main-records-meeting'],
@@ -97,13 +97,13 @@ final class RecordModuleMenuItemsTest extends TransactionalTestCase
         app(AddMenu::class)->execute($root->id, $item);
         $user = User::query()->where('code', 'u0001')->sole();
 
-        $permitted = $this->actingAs($user)->get('/');
+        $permitted = $this->actingAs($user)->get('/workflow');
         $this->deny('project', RecordModuleAction::Read);
-        $denied = $this->actingAs($user)->get('/');
+        $denied = $this->actingAs($user)->get('/workflow');
 
         $this->assertContains('home-quick-actions-records-project', $this->quickActionCodes($permitted));
         $this->assertNotContains('home-quick-actions-records-project', $this->quickActionCodes($denied));
-        $this->assertContains('home-quick-actions-master-organization-chart', $this->quickActionCodes($denied));
+        $this->assertContains('home-quick-actions-workflow-flows-index', $this->quickActionCodes($denied));
     }
 
     /**
@@ -119,7 +119,7 @@ final class RecordModuleMenuItemsTest extends TransactionalTestCase
         $response->assertOk();
         $this->assertSame(
             ['global-nav-main-records-project_issue', 'global-nav-main-records-meeting'],
-            $this->recordItemCodes($response, 'globalNavigation'),
+            $this->recordItemCodes($response, 'appNavigation.launcher'),
         );
         $this->assertSame('project_issue', $response->inertiaProps('module.code'));
     }
@@ -136,8 +136,8 @@ final class RecordModuleMenuItemsTest extends TransactionalTestCase
     }
 
     /**
-     * グループ(既定は「業務」。メニュー ID の末尾で選ぶ)の、業務の一覧のアイテムのメニュー ID(並びの順)。
-     * グループの一覧の prop = globalNavigation(サイドバー)か groups(サイトマップ)。
+     * グループ(既定は「業務」。メニュー ID の末尾で選ぶ)の、業務の一覧のアイテムのメニュー ID(並びの順。フォルダの中を含む)。
+     * グループの一覧の prop = appNavigation.launcher(ランチャーのアプリ)か groups(サイトマップ)。
      *
      * @param  TestResponse<Response>  $response
      * @return list<string>
@@ -148,7 +148,7 @@ final class RecordModuleMenuItemsTest extends TransactionalTestCase
         $this->assertIsArray($groups);
         $isGroup = fn (mixed $group) => str_ends_with((string) data_get($group, 'code'), $groupSuffix);
         $group = array_values(array_filter($groups, $isGroup));
-        $codes = $this->codesOf(data_get($group, '0.children'));
+        $codes = $this->treeCodesOf(data_get($group, '0.children'));
 
         return array_values(array_filter($codes, fn (string $code) => str_contains($code, '-records-')));
     }
@@ -167,6 +167,23 @@ final class RecordModuleMenuItemsTest extends TransactionalTestCase
         $quickActions = array_values(array_filter($sections, $isQuickActions));
 
         return $this->codesOf(data_get($quickActions, '0.items'));
+    }
+
+    /**
+     * 木の節点のメニュー ID(前順。フォルダの中を含む)。
+     *
+     * @return list<string>
+     */
+    private function treeCodesOf(mixed $nodes): array
+    {
+        $codes = [];
+
+        foreach ($this->codesOf($nodes) as $position => $code) {
+            $children = data_get($nodes, "{$position}.children");
+            $codes = [...$codes, $code, ...($children === null ? [] : $this->treeCodesOf($children))];
+        }
+
+        return $codes;
     }
 
     /**

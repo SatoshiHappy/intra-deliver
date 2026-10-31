@@ -11,15 +11,21 @@ use Illuminate\Support\Arr;
  * フォルダ(グループのルートを含む)は子孫に表示するアイテムが 1 つでもあれば出し、外部メニューリンクは出さない
  * (docs の 設計/メニュー/表示.md 3.1 の 3〜5)。
  *
- * 返す形: グループ = {code, name, children}、フォルダ = {code, type: 'folder', name, icon, children}、
+ * 返す形: グループ = {code, name, icon, description, entry, children}、フォルダ = {code, type: 'folder', name, icon, children}、
  * アイテム = {code, type: 'item', name, icon, href, isExternal}。表示名が無ければ name は null。icon は icon_32 の値か null
  * (lucide のアイコン名。docs の 設計/画面の意匠/サイドバーとアイコン.md 5 節)。使わない列と method は返さない。
+ * グループの icon・description はルートの icon_32・notes、entry は先頭の画面(木を並びの順にたどった最初の表示するアイテムの href と
+ * isExternal。フォルダは中を先にたどる = 表示.md 3.3.1)。表示するグループはアイテムを 1 つ以上持つので entry は null にならない。
  *
  * href(docs の 設計/メニュー/表示.md 3.1 の「`href` と引数」。表示するアイテムのすべてに同じ規則): 引数が無ければ url のまま。あれば url の # から後
  * (フラグメント)を先に分け、前の部分が ? を含めば &、含まなければ ? の後に、引数を名前の順に並べたクエリ文字列(Arr::query = RFC 3986 の形)を付け、
  * フラグメントを戻す。照合と現在地の強調はパスだけで行う(引数は判定と表示の有無を変えない)。
  *
  * @phpstan-type VisibleItem array{code: string, type: string, name: string|null, icon: string|null, href: string, isExternal: bool}
+ * @phpstan-type VisibleGroup array{
+ *     code: string, name: string|null, icon: string|null, description: string|null,
+ *     entry: array{href: string, isExternal: bool}, children: list<array<string, mixed>>,
+ * }
  */
 final readonly class VisibleMenuTree
 {
@@ -50,14 +56,25 @@ final readonly class VisibleMenuTree
     /**
      * グループ(ルートのメニュー)。表示するアイテムが子孫に無ければ null。
      *
-     * @return array{code: string, name: string|null, children: list<array<string, mixed>>}|null
+     * @return VisibleGroup|null
      */
     public function group(Menu $root): ?array
     {
         $items = [];
         $children = $this->children($root, $items);
 
-        return $children === [] ? null : ['code' => $root->code, 'name' => $this->nameOf($root), 'children' => $children];
+        if ($items === []) {
+            return null;
+        }
+
+        return [
+            'code' => $root->code,
+            'name' => $this->nameOf($root),
+            'icon' => $root->icon_32,
+            'description' => $root->notes,
+            'entry' => ['href' => $items[0]['href'], 'isExternal' => $items[0]['isExternal']],
+            'children' => $children,
+        ];
     }
 
     /**

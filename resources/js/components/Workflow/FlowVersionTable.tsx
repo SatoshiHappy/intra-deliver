@@ -1,4 +1,5 @@
 import { Link } from '@inertiajs/react';
+import { StatusBadge } from '@/components/StatusBadge';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -82,9 +83,14 @@ function VersionLine({
                 )}
             </TableCell>
             <TableCell>
-                <Badge variant={version.isDisabled ? 'secondary' : 'outline'}>
-                    {versionStateLabel(version.isDisabled)}
-                </Badge>
+                {version.isDisabled ? (
+                    <StatusBadge
+                        label={versionStateLabel(true)}
+                        tone="settled"
+                    />
+                ) : (
+                    <Badge variant="outline">{versionStateLabel(false)}</Badge>
+                )}
             </TableCell>
             <TableCell>
                 <VersionActions flowCode={flowCode} version={version} />

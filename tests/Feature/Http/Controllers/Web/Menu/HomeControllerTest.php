@@ -5,7 +5,6 @@ namespace Tests\Feature\Http\Controllers\Web\Menu;
 use App\Models\Master\User;
 use App\Queries\Menu\Api\HomeSections;
 use Carbon\CarbonImmutable;
-use Illuminate\Support\Collection;
 use Inertia\Testing\AssertableInertia as Assert;
 use RuntimeException;
 use Tests\Support\FixedHomeSection;
@@ -13,8 +12,8 @@ use Tests\Support\ThrowingHomeSection;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * ホームの入口(docs の 設計/メニュー/ホーム.md 6.1・6.2・6.6): ページ Menu/Home の props today に基準日 d(YYYY-MM-DD)、sections に
- * タグ HomeSections::TAG で登録した実装の null でない節を登録の順に渡す。節が無ければ空。実装が例外を投げればホームは 500
+ * 全体のホームの入口(docs の 設計/メニュー/ホーム.md 6.1・6.2・6.6): ページ Menu/Home の props today に基準日 d(YYYY-MM-DD)、sections に
+ * タグ HomeSections::TAG で登録した実装の null でない節を登録の順に渡し、app は null。節が無ければ空。実装が例外を投げればホームは 500
  * (実装は投げない契約 = 設計/ワークフロー/業務データとの接続/公開の口.md 8.1)。
  * 初期データ(ゲストへの許可)を入れ、今日を 2026-10-15(Asia/Tokyo)に固定し、ルートの認可を外さずに開く。
  *
@@ -32,11 +31,12 @@ final class HomeControllerTest extends TransactionalTestCase
     /**
      * today は Asia/Tokyo の暦の日付(UTC では前の日の 15:30 = 東京の 0:30)。
      */
-    public function test_passes_the_date_of_the_request_as_today(): void
+    public function test_passes_the_date_of_the_request_as_today_and_no_app(): void
     {
         $this->get(route('menu.home'))->assertInertia(fn (Assert $page) => $page
             ->component('Menu/Home')
             ->where('today', '2026-10-15')
+            ->where('app', null)
         );
     }
 
@@ -49,16 +49,15 @@ final class HomeControllerTest extends TransactionalTestCase
     }
 
     /**
-     * d に有効な利用者には、起動が登録した主な操作とワークフローの 5 つの節が登録の順に出る。d に有効でない利用者(退職者 u0014)でログインした要求は
-     * ゲストと同じホーム(account.user が null = あいさつ欄の見出しが「ようこそ」、ワークフローの節と主な操作が無い)になる(6.1 のゲストの定義)。
+     * ワークフローの節と主な操作(workflow- で始まる code と menu-quick-actions)は全体のホームに出ない(ワークフローのホームのタグに登録する =
+     * 6.7。デモはオフなので全体のホームの節は無い)。d に有効でない利用者(退職者 u0014)でログインした要求はゲストと同じホーム(account.user が null = あいさつ欄の見出しが「ようこそ」)
+     * になる(6.1 のゲストの定義)。
      */
-    public function test_a_user_gets_the_registered_sections_and_a_user_not_effective_today_gets_the_guest_home(): void
+    public function test_a_user_gets_no_workflow_section_and_a_retiree_gets_the_guest_home(): void
     {
         $this->actingAs($this->user('u0001'))->get('/')->assertInertia(fn (Assert $page) => $page
             ->where('account.user.code', 'u0001')
-            ->where('sections', fn (Collection $sections) => $sections->pluck('code')->all() === [
-                'menu-quick-actions', 'workflow-lead', 'workflow-counters', 'workflow-pending', 'workflow-processed-this-month', 'workflow-active-applications',
-            ])
+            ->where('sections', [])
         );
 
         $this->actingAs($this->user('u0014'))->get('/')->assertInertia(fn (Assert $page) => $page

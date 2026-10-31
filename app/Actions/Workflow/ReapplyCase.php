@@ -36,6 +36,7 @@ class ReapplyCase
         private CaseAttachmentRules $attachmentRules,
         private ContactValidator $contactValidator,
         private SendCaseNotices $notices,
+        private ApplicationRowAccess $rowAccess,
     ) {}
 
     /**
@@ -70,7 +71,8 @@ class ReapplyCase
             $origin = $this->records->origin(WorkflowAction::Reapply, $permit->node()->displayName(), $actor);
             $holder = WorkflowRecordHolds::holderOf($case->id);
             $moduleCode = $this->records->moduleCodeOf($flow);
-            $record = $input->recordInput();
+            $restricted = $this->rowAccess->forUpdate($principal, $flow, $input->record, $moduleCode, $recordId);
+            $record = $input->recordInput([], $restricted);
             $this->updateRecord
                 ->execute($principal, $moduleCode, $recordId, $record, version: null, holder: $holder, origin: $origin);
             $revisionId = $this->records->revisionOf($recordId);

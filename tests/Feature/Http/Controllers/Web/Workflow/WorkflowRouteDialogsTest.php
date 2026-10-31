@@ -46,7 +46,9 @@ final class WorkflowRouteDialogsTest extends TransactionalTestCase
     {
         $case = $this->applyOnBranch('u0001', 350);
         $this->actingAsUser('u0002');
-        $self = [['id' => $this->seededUser('u0002')->id, 'name' => '中村 美咲', 'isSelf' => true]];
+        $self = [[
+            'id' => $this->seededUser('u0002')->id, 'name' => '中村 美咲', 'isSelf' => true, 'canAttach' => true,
+        ]];
         $principals = array_fill_keys(['approve', 'approveEarly', 'reject', 'sendBack', 'hold', 'transfer'], $self);
 
         $this->get("/workflow/cases/{$case}")->assertOk()->assertInertia(fn (Assert $page) => $page

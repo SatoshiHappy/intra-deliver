@@ -33,11 +33,13 @@ class LockedRecordUpdate
     ) {}
 
     /**
-     * 渡した鍵と違う持ち主があれば拒む(9.2 の 2 の持ち主の規則)。
+     * 渡した鍵と違う持ち主があれば拒む(9.2 の 2 の持ち主の規則)。鍵を渡したのに、そのレコードの持ち主にその鍵が無ければ呼び手の誤り
+     * (鍵だけで行の判定を飛ばすので = 9.2 の 2 の更新と添付の結果の表。添付の口 {@see RecordAttachmentGate::ensureWritable()} と同じ)。
      *
      * @param  string|null  $holder  持ち主の鍵(null = 鍵を渡さない = 持ち主があれば拒む)
      *
      * @throws ValidationException 渡した鍵と違う持ち主があるとき(キー record)
+     * @throws InvalidArgumentException 鍵を渡したのに、そのレコードの持ち主にその鍵が無いとき
      */
     public function throwIfHeld(Record $record, ?string $holder): void
     {
@@ -45,6 +47,10 @@ class LockedRecordUpdate
 
         if ($hold !== null) {
             throw ValidationException::withMessages(['record' => [$hold->reason]]);
+        }
+
+        if ($holder !== null && ! $this->holds->isHeldBy($record->id, $holder)) {
+            throw new InvalidArgumentException("レコード {$record->id} の持ち主に鍵 {$holder} が無い");
         }
     }
 

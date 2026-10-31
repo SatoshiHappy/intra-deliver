@@ -2,7 +2,6 @@
 
 namespace Tests\Feature\Meeting;
 
-use App\Actions\Ai\Api\FailedRun;
 use App\Actions\Ai\Api\RunCompletionFailed;
 use App\Actions\Ai\ExecutePrompt;
 use App\Actions\Ai\PromptAgent;
@@ -12,6 +11,7 @@ use App\Actions\Records\Api\RecordInput;
 use App\Actions\Records\Api\UpdateRecord;
 use App\Enums\Ai\AiRunErrorCode;
 use App\Enums\Ai\AiRunStatus;
+use App\Enums\Builtin\Meeting;
 use App\Enums\Meeting\MeetingNoticeReason;
 use App\Enums\Meeting\MeetingNoticeType;
 use App\Enums\Records\RecordModuleAction;
@@ -24,7 +24,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * 議事録の種類の完了と失敗の受け手(docs の 設計/業務ツール/会議/処理.md の 3.4〜3.6、出力の形 = 文字起こしと議事録.md の 5.2、
+ * 議事録の種類の完了(docs の 設計/業務ツール/会議/処理.md の 3.4〜3.6、出力の形 = 文字起こしと議事録.md の 5.2、
  * 通知 = 通知と削除予定日.md の 6 節)。外部の AI は呼ばず PromptAgent::fake で応答を作る。
  */
 final class MeetingMinutesKindTest extends TransactionalTestCase
@@ -100,6 +100,37 @@ final class MeetingMinutesKindTest extends TransactionalTestCase
         );
     }
 
+    /**
+     * 作成者でない依頼者を、処理中に関係者の項目から外しても(行の判定だけが変わる)、議事録は書かれ、版の操作した人は依頼者のまま。
+     * 通知の宛先は完了の時点に閲覧できる関係者(作成者)で、起こした人は依頼者(通知と削除予定日.md の 6.2、ADR 0029)。
+     */
+    public function test_the_minutes_are_written_after_a_non_creator_requester_leaves_the_related_parties(): void
+    {
+        $creator = $this->user();
+        $requester = $this->user();
+        $party = ['type' => 'user', 'id' => $requester->id];
+        $recordId = $this->pastedMeeting($creator, values: [Meeting::RelatedParties->value => [$party]]);
+        $this->completeMinutes($this->lastRunIdOf($recordId));
+        app(RegenerateMinutes::class)->execute($this->contextOf($requester), $recordId, null);
+        $removed = new RecordInput([Meeting::RelatedParties->value => []]);
+        app(UpdateRecord::class)->execute($this->contextOf($creator), Meeting::CODE, $recordId, $removed, null);
+
+        $run = $this->completeMinutes($this->lastRunIdOf($recordId), [...self::OUTPUT, 'summary' => '再作成の要約']);
+
+        $this->assertSame(AiRunStatus::Succeeded, $run->status);
+        $this->assertSame('再作成の要約', $this->valuesOf($recordId)['summary'] ?? null);
+        $this->assertSame(['AI(議事録の再作成)', $requester->id], $this->lastRevisionOf($recordId));
+        $this->assertSame($requester->id, Record::query()->findOrFail($recordId)->updated_by_user_id);
+        $regenerated = array_values(array_filter(
+            $this->meetingNotices($recordId),
+            fn (array $notice) => $notice[0] === MeetingNoticeType::MinutesRegenerated->value,
+        ));
+        $this->assertSame(
+            [[$creator->id, $requester->id]],
+            array_map(fn (array $notice) => [$notice[1], $notice[2]], $regenerated),
+        );
+    }
+
     public function test_a_meeting_deleted_before_the_completion_is_not_written_or_notified_and_the_run_succeeds(): void
     {
         $recordId = $this->pastedMeeting($this->user());
@@ -125,21 +156,29 @@ final class MeetingMinutesKindTest extends TransactionalTestCase
     }
 
     /**
-     * @return array<string, array{array<string, mixed>, string}>
+     * 形の外れ = ほか、長さの外れ = 長すぎた(同じ材料で再作成しても外れうる。追加の指示で短く頼める)。
+     *
+     * @return array<string, array{array<string, mixed>, string, MeetingNoticeReason}>
      */
     public static function rejectedOutputs(): array
     {
         $output = self::OUTPUT;
         unset($output['decisions']);
+        $malformed = MeetingNoticeReason::Other;
+        $tooLong = MeetingNoticeReason::Truncated;
 
         return [
-            '項目が無い' => [$output, MeetingMinutesKind::MALFORMED],
-            '文字列でない' => [[...self::OUTPUT, 'topics' => ['見出し']], MeetingMinutesKind::MALFORMED],
-            '欄が空' => [[...self::OUTPUT, 'open_issues' => " \n"], MeetingMinutesKind::MALFORMED],
-            '件名が空' => [[...self::OUTPUT, 'title' => ''], MeetingMinutesKind::MALFORMED],
-            '件名に改行' => [[...self::OUTPUT, 'title' => "件名\n続き"], MeetingMinutesKind::MALFORMED],
-            '欄が長い' => [[...self::OUTPUT, 'summary' => str_repeat('長', 20_001)], MeetingMinutesKind::TOO_LONG],
-            '件名が長い' => [[...self::OUTPUT, 'title' => str_repeat('長', 101)], MeetingMinutesKind::TOO_LONG],
+            '項目が無い' => [$output, MeetingMinutesKind::MALFORMED, $malformed],
+            '文字列でない' => [[...self::OUTPUT, 'topics' => ['見出し']], MeetingMinutesKind::MALFORMED, $malformed],
+            '欄が空' => [[...self::OUTPUT, 'open_issues' => " \n"], MeetingMinutesKind::MALFORMED, $malformed],
+            '件名が空' => [[...self::OUTPUT, 'title' => ''], MeetingMinutesKind::MALFORMED, $malformed],
+            '件名に改行' => [[...self::OUTPUT, 'title' => "件名\n続き"], MeetingMinutesKind::MALFORMED, $malformed],
+            '欄が長い' => [
+                [...self::OUTPUT, 'summary' => str_repeat('長', 20_001)], MeetingMinutesKind::TOO_LONG, $tooLong,
+            ],
+            '件名が長い' => [
+                [...self::OUTPUT, 'title' => str_repeat('長', 101)], MeetingMinutesKind::TOO_LONG, $tooLong,
+            ],
         ];
     }
 
@@ -147,8 +186,11 @@ final class MeetingMinutesKindTest extends TransactionalTestCase
      * @param  array<string, mixed>  $output
      */
     #[DataProvider('rejectedOutputs')]
-    public function test_an_output_out_of_shape_or_length_fails_and_notifies(array $output, string $reason): void
-    {
+    public function test_an_output_out_of_shape_or_length_fails_and_notifies(
+        array $output,
+        string $reason,
+        MeetingNoticeReason $noticeReason,
+    ): void {
         $creator = $this->user();
         $recordId = $this->pastedMeeting($creator);
 
@@ -167,7 +209,7 @@ final class MeetingMinutesKindTest extends TransactionalTestCase
         $this->assertArrayNotHasKey('summary', $this->valuesOf($recordId));
         $this->assertSame([[
             MeetingNoticeType::MinutesFailed->value, $creator->id, $creator->id,
-            ['title' => '貼り付けたテキスト', 'reason' => MeetingNoticeReason::Other->value],
+            ['title' => '貼り付けたテキスト', 'reason' => $noticeReason->value],
         ]], $this->meetingNotices($recordId));
     }
 
@@ -189,65 +231,6 @@ final class MeetingMinutesKindTest extends TransactionalTestCase
             [[MeetingNoticeType::MinutesCreated->value, $creator->id, $creator->id, ['title' => 'AI の件名']]],
             $this->meetingNotices($recordId),
         );
-    }
-
-    /**
-     * @return array<string, array{string, string|null, MeetingNoticeReason}>
-     */
-    public static function failures(): array
-    {
-        return [
-            '出力が切れた' => ['incomplete', FailedRun::OUTPUT_TRUNCATED, MeetingNoticeReason::Truncated],
-            '応答を断った' => ['incomplete', FailedRun::CONTENT_REFUSED, MeetingNoticeReason::Other],
-            'レコードが見つからない(会議が無ければ通知は出ない。写すのはほか)' => [
-                'completion',
-                FailedRun::RECORD_NOT_FOUND,
-                MeetingNoticeReason::Other,
-            ],
-            '入れ物の検証で断られた' => ['completion', FailedRun::RECORD_REJECTED, MeetingNoticeReason::RecordUnavailable],
-            '形の外れ' => ['completion', MeetingMinutesKind::MALFORMED, MeetingNoticeReason::Other],
-            '接続先の誤り' => ['provider', null, MeetingNoticeReason::Other],
-            '時間切れ' => ['timeout', null, MeetingNoticeReason::Other],
-        ];
-    }
-
-    /**
-     * 失敗の受け手は対応の行を読まない(種類・依頼者・理由は失敗の値が持つ)。
-     */
-    #[DataProvider('failures')]
-    public function test_the_failure_receiver_notifies_with_the_reason_without_reading_the_run_row(
-        string $errorCode,
-        ?string $reason,
-        MeetingNoticeReason $expected,
-    ): void {
-        $creator = $this->user();
-        $recordId = $this->pastedMeeting($creator);
-        MeetingRun::query()->where('record_id', $recordId)->delete();
-        $requester = $this->user();
-
-        $failed = new FailedRun(1, MeetingMinutesKind::CODE, $recordId, $requester->id, $errorCode, $reason);
-        app(MeetingMinutesKind::class)->failed($failed);
-
-        $this->assertSame(
-            [[
-                MeetingNoticeType::MinutesFailed->value, $creator->id, $requester->id,
-                ['title' => '貼り付けたテキスト', 'reason' => $expected->value],
-            ]],
-            $this->meetingNotices($recordId),
-        );
-    }
-
-    public function test_the_failure_receiver_does_nothing_for_a_deleted_or_missing_meeting(): void
-    {
-        $recordId = $this->pastedMeeting($this->user());
-        Record::query()->whereKey($recordId)->delete();
-
-        $requesterId = $this->user()->id;
-        $kind = app(MeetingMinutesKind::class);
-        $kind->failed(new FailedRun(1, MeetingMinutesKind::CODE, $recordId, $requesterId, 'provider', null));
-        $kind->failed(new FailedRun(1, MeetingMinutesKind::CODE, null, $requesterId, 'provider', null));
-
-        $this->assertSame([], $this->meetingNotices($recordId));
     }
 
     /**

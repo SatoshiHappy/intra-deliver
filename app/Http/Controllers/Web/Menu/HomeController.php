@@ -11,8 +11,9 @@ use Inertia\Inertia;
 use Inertia\Response;
 
 /**
- * ホーム(docs の 設計/メニュー/ホーム.md 6.1・6.2): ページ Menu/Home に、基準日 d(today。YYYY-MM-DD)と、タグ {@see HomeSections::TAG} で
- * 登録した実装を登録の順に呼んだ null でない節(sections。登録が無ければ空の一覧 = あいさつ欄の見出しと日付だけのホーム)を渡す。
+ * 全体のホーム(docs の 設計/メニュー/ホーム.md 6.1・6.2): ページ Menu/Home に、基準日 d(today。YYYY-MM-DD)と、タグ {@see HomeSections::TAG} で
+ * 登録した実装を登録の順に呼んだ null でない節(sections。登録が無ければ空の一覧 = あいさつ欄の見出しと日付だけのホーム)と、
+ * アプリの名前 app = null(アプリのホームでない = ホーム.md 6.7)を渡す。
  * 判定の入力は {@see AccessContext} から作る。実装が投げた例外は握らない(実装は投げない契約。投げればホームが 500 になる)。
  *
  * @phpstan-import-type HomeLeadSection from HomeSections
@@ -36,6 +37,7 @@ class HomeController extends Controller
         return Inertia::render('Menu/Home', [
             'today' => $context->date->toDateString(),
             'sections' => $this->sectionsOf($context),
+            'app' => null,
         ]);
     }
 
@@ -46,8 +48,8 @@ class HomeController extends Controller
     {
         $sections = [];
 
-        foreach ($this->homeSections as $homeSections) {
-            $section = $homeSections->section($context);
+        foreach ($this->homeSections as $implementation) {
+            $section = $implementation->section($context);
 
             if ($section !== null) {
                 $sections[] = $section;

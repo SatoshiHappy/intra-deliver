@@ -66,7 +66,8 @@ class UpdateRecord
      * @throws AuthorizationException 更新を許されないとき
      * @throws ValidationException 渡した鍵と違う持ち主があるとき・開いた後に更新されているとき(キー record)、検証に失敗したとき・
      *                             添付を使用しない業務モジュールに添付を渡したとき(キー attachments)
-     * @throws InvalidArgumentException 契機の実行者が AccessContext の利用者と同じとき・上げ済みの実体が持ち主の無い実体でないとき
+     * @throws InvalidArgumentException 契機の実行者が AccessContext の利用者と同じとき・上げ済みの実体が持ち主の無い実体でないとき・
+     *                                  渡した持ち主の鍵がそのレコードの持ち主に無いとき(呼び手の誤り)
      */
     public function execute(
         AccessContext $context,

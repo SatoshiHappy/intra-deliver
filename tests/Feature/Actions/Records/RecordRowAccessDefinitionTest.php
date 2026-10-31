@@ -6,7 +6,6 @@ use App\Actions\Records\AddRecordField;
 use App\Actions\Records\UpdateRecordField;
 use App\Actions\Records\UpdateRecordModule;
 use App\Enums\Records\RecordFieldType;
-use App\Enums\Records\RowAccessScope;
 use App\Models\Master\User;
 use App\Models\Records\RecordField;
 use App\Models\Records\RecordModule;
@@ -18,16 +17,16 @@ use Tests\Support\TransactionalTestCase;
 
 /**
  * 行の権限の定義(docs の 設計/業務データの入れ物/項目と規則/規則と業務処理/失敗と定義の変更.md 11 節、レコードの共通機能/業務モジュールの管理.md 2 節、
- * 認可とメニュー/メニューと初期データ.md 8 節の「定義」): 関係する人の旗はユーザー・組織の項目(1 つと複数、明細のモジュールの項目を含む)だけで、
- * ほかの型は 422 grants_row_access。見える範囲は all・related だけで、明細のモジュールは 422 row_access_scope。どちらも変えられ、送らない・null なら今のまま。
- * 管理の画面の props に rowAccessScope(明細のモジュールは null)と grantsRowAccess。
+ * 認可とメニュー/メニューと初期データ.md 8 節の「定義」): 関係者の印はユーザー・組織・ユーザーと組織の項目(1 つと複数、明細のモジュールの項目を含む)だけで、
+ * ほかの型は 422 grants_row_access。参照制限の既定は真偽だけで、明細のモジュールは 422 row_access_restricted_by_default。どちらも変えられ、
+ * 送らない・null なら今のまま。管理の画面の props に rowAccessRestrictedByDefault(明細のモジュールは null)と grantsRowAccess。
  */
 final class RecordRowAccessDefinitionTest extends TransactionalTestCase
 {
     use BuildsRecordModules;
     use CatchesValidationErrors;
 
-    private const ONLY_USER_OR_DEPARTMENT = '関係する人はユーザー・組織・ユーザーと組織の項目だけに設定できます';
+    private const ONLY_USER_OR_DEPARTMENT = '関係者はユーザー・組織・ユーザーと組織の項目だけに設定できます';
 
     #[TestWith(['user', false])]
     #[TestWith(['user', true])]
@@ -102,73 +101,77 @@ final class RecordRowAccessDefinitionTest extends TransactionalTestCase
         $this->assertSame('出席者', $field->refresh()->name);
     }
 
-    public function test_the_scope_can_be_changed_and_is_kept_when_not_sent(): void
+    public function test_the_default_can_be_changed_and_is_kept_when_not_sent(): void
     {
         $this->recordModule('meetings');
-        $update = function (array $input): RowAccessScope {
+        $update = function (array $input): bool {
             $this->updateModule('meetings', $input);
 
-            return RecordModule::query()->where('code', 'meetings')->sole()->row_access_scope;
+            return RecordModule::query()->where('code', 'meetings')->sole()->row_access_restricted_by_default;
         };
 
-        $this->assertSame(RowAccessScope::Related, $update(['row_access_scope' => 'related']));
-        $this->assertSame(RowAccessScope::Related, $update(['name' => '会議']));
-        $this->assertSame(RowAccessScope::Related, $update(['row_access_scope' => null]));
-        $this->assertSame(RowAccessScope::All, $update(['row_access_scope' => 'all']));
+        $this->assertTrue($update(['row_access_restricted_by_default' => true]));
+        $this->assertTrue($update(['name' => '会議']));
+        $this->assertTrue($update(['row_access_restricted_by_default' => null]));
+        $this->assertFalse($update(['row_access_restricted_by_default' => false]));
     }
 
-    #[TestWith(['none'])]
+    #[TestWith(['true'])]
     #[TestWith([1])]
-    #[TestWith([['related']])]
-    public function test_rejects_a_scope_other_than_all_and_related(mixed $scope): void
+    #[TestWith([[true]])]
+    public function test_rejects_a_default_other_than_a_boolean(mixed $default): void
     {
         $this->recordModule('meetings');
 
         $this->assertSame(
-            ['row_access_scope' => '見える範囲は全員か関係する人だけを選択してください'],
-            $this->validationErrors(fn () => $this->updateModule('meetings', ['row_access_scope' => $scope])),
+            ['row_access_restricted_by_default' => '真偽(true・false)で指定してください'],
+            $this->validationErrors(
+                fn () => $this->updateModule('meetings', ['row_access_restricted_by_default' => $default]),
+            ),
         );
     }
 
-    #[TestWith(['all'])]
-    #[TestWith(['related'])]
-    public function test_rejects_a_scope_on_a_details_module(string $scope): void
+    #[TestWith([true])]
+    #[TestWith([false])]
+    public function test_rejects_a_default_on_a_details_module(bool $default): void
     {
         $child = $this->childOf($this->detailsField($this->recordModule('meetings'), 'rows'));
 
         $this->assertSame(
-            ['row_access_scope' => '明細には設定できません'],
-            $this->validationErrors(fn () => $this->updateModule($child->code, ['row_access_scope' => $scope])),
+            ['row_access_restricted_by_default' => '明細には設定できません'],
+            $this->validationErrors(
+                fn () => $this->updateModule($child->code, ['row_access_restricted_by_default' => $default]),
+            ),
         );
-        $this->assertSame(RowAccessScope::All, $child->refresh()->row_access_scope);
+        $this->assertFalse($child->refresh()->row_access_restricted_by_default);
     }
 
-    public function test_the_admin_pages_carry_the_scope_and_the_flag(): void
+    public function test_the_admin_pages_carry_the_default_and_the_flag(): void
     {
         $this->withoutVite();
         $module = $this->recordModule('meetings');
-        $module->update(['row_access_scope' => RowAccessScope::Related]);
+        $module->update(['row_access_restricted_by_default' => true]);
         $this->field($module, 'attendee', RecordFieldType::User, ['grants_row_access' => true]);
         $child = $this->childOf($this->detailsField($module, 'rows'));
         $this->actingAs(User::query()->where('code', 'u0004')->sole());
 
         $this->get('/records/admin/modules/meetings')->assertOk()->assertInertia(fn (Assert $page) => $page
-            ->where('module.rowAccessScope', 'related')
+            ->where('module.rowAccessRestrictedByDefault', true)
             ->where('module.fields.0.grantsRowAccess', true)
             ->where('module.fields.1.grantsRowAccess', false));
-        $this->assertProp('/records/admin/modules/meetings/edit', 'module.rowAccessScope', 'related');
-        $this->assertProp("/records/admin/modules/{$child->code}", 'module.rowAccessScope', null);
-        $this->assertProp("/records/admin/modules/{$child->code}/edit", 'module.rowAccessScope', null);
+        $this->assertProp('/records/admin/modules/meetings/edit', 'module.rowAccessRestrictedByDefault', true);
+        $this->assertProp("/records/admin/modules/{$child->code}", 'module.rowAccessRestrictedByDefault', null);
+        $this->assertProp("/records/admin/modules/{$child->code}/edit", 'module.rowAccessRestrictedByDefault', null);
         $this->assertProp('/records/admin/modules/meetings/fields/attendee/edit', 'field.grantsRowAccess', true);
     }
 
-    public function test_the_admin_entrances_pass_the_scope_and_the_flag_to_the_definition_writes(): void
+    public function test_the_admin_entrances_pass_the_default_and_the_flag_to_the_definition_writes(): void
     {
         $module = $this->recordModule('meetings');
         $field = $this->field($module, 'attendee', RecordFieldType::User);
         $this->actingAs(User::query()->where('code', 'u0004')->sole());
 
-        $this->put('/records/admin/modules/meetings', ['row_access_scope' => 'related'])
+        $this->put('/records/admin/modules/meetings', ['row_access_restricted_by_default' => true])
             ->assertStatus(303)
             ->assertSessionHasNoErrors();
         $this->put('/records/admin/modules/meetings/fields/attendee', ['grants_row_access' => true])
@@ -178,7 +181,7 @@ final class RecordRowAccessDefinitionTest extends TransactionalTestCase
         $this->post('/records/admin/modules/meetings/fields', $flaggedString)
             ->assertSessionHasErrors(['grants_row_access' => self::ONLY_USER_OR_DEPARTMENT]);
 
-        $this->assertSame(RowAccessScope::Related, $module->refresh()->row_access_scope);
+        $this->assertTrue($module->refresh()->row_access_restricted_by_default);
         $this->assertTrue($field->refresh()->grants_row_access);
     }
 

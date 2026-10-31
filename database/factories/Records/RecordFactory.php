@@ -14,6 +14,8 @@ class RecordFactory extends Factory
 {
     /**
      * Define the model's default state(親の無い業務モジュールのレコード。値なし、ゲストが作った).
+     * チェック「参照を制限する」は登録と同じく業務モジュールの参照制限の既定(明細の行は偽 = 検査制約
+     * records_parent_record_id_row_access_restricted_check)。業務モジュールと親が決まった後に読む。
      *
      * @return array<string, mixed>
      */
@@ -27,6 +29,9 @@ class RecordFactory extends Factory
             'field_values' => [],
             'created_by_user_id' => null,
             'updated_by_user_id' => null,
+            'row_access_restricted' => fn (array $attributes) => $attributes['parent_record_id'] === null
+                && RecordModule::query()->whereKey($attributes['record_module_id'])
+                    ->value('row_access_restricted_by_default') === true,
         ];
     }
 

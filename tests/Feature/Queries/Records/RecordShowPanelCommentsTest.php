@@ -13,7 +13,7 @@ use Tests\Support\TransactionalTestCase;
 /**
  * サイドパネルのコメントの欄(docs の 設計/業務データの入れ物/レコードの共通機能/コメント.md の 7 節、詳細の画面/README.md の 2 節・6 節):
  * 帯の項目(添付ファイルと更新履歴の間・件数は削除の印も数える)と、開いた欄の中身(新しい順の 5 件と続き・削除の印の行・書いた人・宛先・
- * 自分の分・書けるか・ほかの人の分も消せるか)。見える範囲が「関係する人だけ」の業務モジュール meetings と、初期データのプロジェクトの
+ * 自分の分・書けるか・ほかの人の分も消せるか)。参照制限の既定が「制限する」の業務モジュール meetings と、初期データのプロジェクトの
  * 見本のコメントで確かめる。
  */
 final class RecordShowPanelCommentsTest extends TransactionalTestCase

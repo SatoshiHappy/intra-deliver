@@ -11,7 +11,7 @@ import {
     revisionOperation,
 } from '@/lib/recordShow';
 import type { DetailRowCell } from '@/lib/recordRevisions';
-import { detailRowCells } from '@/lib/recordRevisions';
+import { detailRowCells, rowAccessLines } from '@/lib/recordRevisions';
 import { formatDate, formatDatetime } from '@/lib/recordValues';
 import { cn } from '@/lib/utils';
 import type {
@@ -167,6 +167,20 @@ function DetailChanges({
     });
 }
 
+/** 参照制限・参照者の変化(項目の変化と同じ形の行。設計/業務データの入れ物/レコードの共通機能/更新履歴.md の 5.2 節) */
+function RowAccessChanges({ row }: { row: RecordRevisionRow }) {
+    return rowAccessLines(row.changes?.rowAccess ?? null).map((line) => (
+        <Change key={line.code} change="changed" label={line.field.name}>
+            <RecordRevisionValueChange
+                field={line.field}
+                before={line.before}
+                after={line.after}
+                row={row}
+            />
+        </Change>
+    ));
+}
+
 function Changes({ row }: { row: RecordRevisionRow }) {
     if (row.noPreviousRecord) {
         return (
@@ -201,6 +215,7 @@ function Changes({ row }: { row: RecordRevisionRow }) {
                     change={change}
                 />
             ))}
+            <RowAccessChanges row={row} />
         </ul>
     );
 }

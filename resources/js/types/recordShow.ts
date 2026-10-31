@@ -4,7 +4,7 @@
  * 節の口(詳細の画面/節の口.md の 1 節)の @phpstan-type を同じ名前で写す。records.ts が大きさの上限に近いので分けた。
  * 後ろのモジュールが一覧と詳細に足すものの型も、ここに置く(末尾)。
  */
-import type { RecordReferenceValue } from './recordReference';
+import type { RecordPartyValue, RecordReferenceValue } from './recordReference';
 import type { RecordFieldType, RecordFieldValue } from './records';
 import type { StatusTone } from './status';
 
@@ -155,7 +155,16 @@ export type RecordRevisionAttachmentChange = {
     previewUrl: string | null;
 };
 
-/** 版の変化(項目 → 明細 → 添付の順) */
+/**
+ * 版の参照制限の変化(設計/業務データの入れ物/レコードの共通機能/更新履歴.md の 5.2 節)。restricted = チェックが違うとき、viewers = 参照者の集合が違うとき(並びの順。
+ * 相手の種類と参照の値)。どちらかの版に参照制限の記録が無ければ変化の全体が null
+ */
+export type RecordRevisionRowAccessChange = {
+    restricted: { before: boolean; after: boolean } | null;
+    viewers: { before: RecordPartyValue[]; after: RecordPartyValue[] } | null;
+};
+
+/** 版の変化(項目 → 明細 → 添付 → 参照制限の順) */
 export type RecordRevisionChanges = {
     fields: {
         code: string;
@@ -171,6 +180,7 @@ export type RecordRevisionChanges = {
         rows: RecordRevisionRowChange[];
     }[];
     attachments: RecordRevisionAttachmentChange[];
+    rowAccess: RecordRevisionRowAccessChange | null;
 };
 
 /**

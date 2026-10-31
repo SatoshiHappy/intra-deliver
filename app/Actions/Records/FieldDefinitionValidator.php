@@ -264,7 +264,7 @@ class FieldDefinitionValidator
     {
         $isAllowed = in_array($type, self::ROW_ACCESS_TYPES, true);
 
-        return $attributes['grants_row_access'] && ! $isAllowed ? '関係する人はユーザー・組織・ユーザーと組織の項目だけに設定できます' : null;
+        return $attributes['grants_row_access'] && ! $isAllowed ? '関係者はユーザー・組織・ユーザーと組織の項目だけに設定できます' : null;
     }
 
     /**

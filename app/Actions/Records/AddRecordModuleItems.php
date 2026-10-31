@@ -21,7 +21,7 @@ class AddRecordModuleItems
 {
     use WritesCommonMaster;
 
-    /** 最初の業務モジュールのアイテムの並び(初期のアイテム(0〜2)の後) */
+    /** 最初の業務モジュールのアイテムの並び(分類のフォルダの帯 10〜99 の後) */
     public const FIRST_SORT_NUMBER = 100;
 
     /** 業務モジュールのアイテムの並びの間隔(作った順に、そのグループの最大 + この値) */

@@ -71,7 +71,12 @@ describe('送る内容と決定', () => {
 
 describe('保留解除のダイアログの対象', () => {
     it('面の releaseNodes の並びで、自分の処理対象の行はその行(処理担当者の選択肢つき)、ほかは処理者を自分にする', () => {
-        const self = { id: 9, name: '吉田 達也', isSelf: true };
+        const self = {
+            id: 9,
+            name: '吉田 達也',
+            isSelf: true,
+            canAttach: false,
+        };
         const rows = [
             nodeAction({
                 nodeId: 21,

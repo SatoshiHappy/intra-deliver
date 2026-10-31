@@ -23,6 +23,8 @@ use LogicException;
  * 有無は whereIn 1 本。相手の数だけ問い合わせない)。結果は {@see ReferenceCheck} に入れ、{@see self::accepts()} が引く。
  * 相手の種類(ユーザー・組織・参照先の業務モジュール)は {@see self::kindOf()} が項目の型ごとに決める(型「ユーザーと組織」は相手の種類。
  * 型の分岐は既定の枝に落とさず全部の型を挙げる = 新しい型を足したら静的解析が漏れを知らせる)。
+ * 項目を受けない入口 {@see self::prepareParties()}・{@see self::acceptsParty()} は、参照者(ADR 0026。ユーザー・組織の相手の列)を
+ * 同じ有効の問い合わせで確かめる(docs の 設計/業務データの入れ物/項目と規則/規則と業務処理/README.md 9.2 の 4)。
  *
  * @phpstan-import-type Party from RecordParty
  */
@@ -82,6 +84,33 @@ class ReferenceTargets
     }
 
     /**
+     * 項目を受けない入口: 新しく指す相手(ユーザー・組織)が d に有効かをまとめて確かめ、結果を check に入れる(種類ごとに whereIn 1 本)。
+     *
+     * @param  list<Party>  $parties
+     */
+    public function prepareParties(ReferenceCheck $check, array $parties): void
+    {
+        foreach ([RecordFieldType::User, RecordFieldType::Department] as $kind) {
+            $ofKind = array_filter($parties, fn (array $party) => $party['type'] === $kind->value);
+            $asked = array_values(array_unique(array_column($ofKind, 'id')));
+
+            if ($asked !== []) {
+                $check->remember(self::groupOf($kind, null), $asked, $this->effectiveIds($kind, $asked, $check));
+            }
+        }
+    }
+
+    /**
+     * 項目を受けない入口: 新しく指す相手を受けるか({@see self::prepareParties()} で確かめた結果を引く。確かめていない相手は例外)。
+     *
+     * @param  Party  $party
+     */
+    public function acceptsParty(array $party, ReferenceCheck $check): bool
+    {
+        return $check->accepts(self::groupOf(RecordFieldType::from($party['type']), null), $party['id']);
+    }
+
+    /**
      * 相手の種類(ユーザー・組織・他モジュール参照のどれか)と id。型「ユーザーと組織」は相手の種類、ほかの参照の型は項目の型。
      *
      * @param  int|Party  $target
@@ -112,11 +141,11 @@ class ReferenceTargets
     }
 
     /**
-     * 確かめの束の鍵(相手の種類と、他モジュール参照なら参照先の業務モジュール)。
+     * 確かめの束の鍵(相手の種類と、他モジュール参照なら参照先の業務モジュール。ユーザー・組織は項目によらず同じ束)。
      */
-    private static function groupOf(RecordFieldType $kind, RecordField $field): string
+    private static function groupOf(RecordFieldType $kind, ?RecordField $field): string
     {
-        return $kind->value.':'.($kind === RecordFieldType::Record ? $field->referenced_record_module_id : '');
+        return $kind->value.':'.($kind === RecordFieldType::Record ? $field?->referenced_record_module_id : '');
     }
 
     /**
@@ -129,12 +158,7 @@ class ReferenceTargets
     private function acceptedIds(RecordFieldType $kind, RecordField $field, array $ids, ReferenceCheck $check): array
     {
         return match ($kind) {
-            RecordFieldType::User => array_values(
-                User::query()->whereKey($ids)->effectiveOn($check->date)->pluck('id')->all(),
-            ),
-            RecordFieldType::Department => array_values(
-                Department::query()->whereKey($ids)->effectiveOn($check->date)->pluck('id')->all(),
-            ),
+            RecordFieldType::User, RecordFieldType::Department => $this->effectiveIds($kind, $ids, $check),
             RecordFieldType::Record => $this->readableRecordIds($field, $ids, $check),
             RecordFieldType::UserOrDepartment,
             RecordFieldType::String,
@@ -146,6 +170,20 @@ class ReferenceTargets
             RecordFieldType::Choice,
             RecordFieldType::Details => throw new LogicException("相手の種類でない型: {$kind->value}"),
         };
+    }
+
+    /**
+     * d に有効なユーザー・組織の id(項目の参照と参照者が同じ問い合わせを使う)。
+     *
+     * @param  RecordFieldType::User|RecordFieldType::Department  $kind
+     * @param  list<int>  $ids
+     * @return list<int>
+     */
+    private function effectiveIds(RecordFieldType $kind, array $ids, ReferenceCheck $check): array
+    {
+        $query = $kind === RecordFieldType::User ? User::query() : Department::query();
+
+        return array_values($query->whereKey($ids)->effectiveOn($check->date)->pluck('id')->all());
     }
 
     /**

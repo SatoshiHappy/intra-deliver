@@ -9,7 +9,6 @@ use App\Actions\Menu\UpdateMenuDisplay;
 use App\Enums\Menu\WorkMenuGroup;
 use App\Enums\Records\RecordModuleAction;
 use App\Enums\Records\RecordModuleVisibilityChange;
-use App\Enums\Records\RowAccessScope;
 use App\Models\Records\RecordModule;
 use App\Queries\Records\ModuleCategoryQuery;
 use App\Queries\Records\RecordModuleVisibility;
@@ -19,7 +18,7 @@ use Illuminate\Validation\ValidationException;
 
 /**
  * 業務モジュールを変える(明細のモジュールも)。規則の正本 = docs の 設計/業務データの入れ物/項目と規則/規則と業務処理/失敗と定義の変更.md
- * 11 節の「業務モジュールを変える」と「表示の止め」(入力の名前 = 設計/業務データの入れ物/画面/管理の画面.md 3.5、添付と見える範囲 =
+ * 11 節の「業務モジュールを変える」と「表示の止め」(入力の名前 = 設計/業務データの入れ物/画面/管理の画面.md 3.5、添付と参照制限の既定 =
  * 設計/業務データの入れ物/レコードの共通機能/業務モジュールの管理.md 2 節、分類 = 設計/業務データの入れ物/モジュール分類/業務処理.md 3.7)。
  */
 class UpdateRecordModule
@@ -131,7 +130,7 @@ class UpdateRecordModule
         $isVisible = $input['is_visible'] ?? null;
         $categories = $input['categories'] ?? null;
         $attachment = $input['is_attachment_enabled'] ?? null;
-        $scope = $input['row_access_scope'] ?? null;
+        $restricted = $input['row_access_restricted_by_default'] ?? null;
         $this->throwIfAny([
             'name' => array_key_exists('name', $input) ? $this->textError($input['name'], '名前') : null,
             'description' => array_key_exists('description', $input) ? $this->descriptionError($input['description']) : null,
@@ -147,14 +146,14 @@ class UpdateRecordModule
                 $isDetails => '明細には設定できません',
                 default => $this->flagError($attachment),
             },
-            'row_access_scope' => $this->scopeError($scope, $isDetails),
+            'row_access_restricted_by_default' => $this->restrictedByDefaultError($restricted, $isDetails),
         ]);
 
         return [
             array_intersect_key($input, array_flip(['name', 'description']))
                 + ($icon === null ? [] : ['icon' => $icon])
                 + ($attachment === null ? [] : ['is_attachment_enabled' => $attachment])
-                + ($scope === null ? [] : ['row_access_scope' => $scope]),
+                + ($restricted === null ? [] : ['row_access_restricted_by_default' => $restricted]),
             is_bool($isVisible) ? $isVisible : null,
             is_array($categories) ? array_values(array_map(strval(...), $categories)) : null,
         ];
@@ -190,16 +189,15 @@ class UpdateRecordModule
     }
 
     /**
-     * row_access_scope の誤り(無ければ null。null は未指定): 明細のモジュールでないこと(明細の行は親のレコードの判定に従う)、all・related のどちらかであること
-     * (レコードの共通機能/業務モジュールの管理.md 2 節)。
+     * 明細の行は親のレコードの参照制限に従うので、明細のモジュールには参照制限の既定を持たせない
+     * (設計/業務データの入れ物/レコードの共通機能/業務モジュールの管理.md の 2 節)。
      */
-    private function scopeError(mixed $scope, bool $isDetails): ?string
+    private function restrictedByDefaultError(mixed $restricted, bool $isDetails): ?string
     {
         return match (true) {
-            $scope === null => null,
+            $restricted === null => null,
             $isDetails => '明細には設定できません',
-            ! is_string($scope) || RowAccessScope::tryFrom($scope) === null => '見える範囲は全員か関係する人だけを選択してください',
-            default => null,
+            default => $this->flagError($restricted),
         };
     }
 }

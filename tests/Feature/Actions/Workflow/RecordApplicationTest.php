@@ -6,11 +6,9 @@ use App\Actions\Workflow\ApplicationBaseDate;
 use App\Actions\Workflow\ApplyCase;
 use App\Actions\Workflow\RecordApplicationSteps;
 use App\Enums\Records\RecordModuleAction;
-use App\Enums\Records\RowAccessScope;
 use App\Enums\Workflow\WorkflowCaseState;
 use App\Enums\Workflow\WorkflowProxyKind;
 use App\Models\Records\Record;
-use App\Models\Records\RecordModule;
 use App\Models\Records\RecordRevision;
 use App\Models\Workflow\WorkflowCase;
 use App\Models\Workflow\WorkflowCaseHistory;
@@ -20,6 +18,7 @@ use Illuminate\Support\Facades\DB;
 use Tests\Support\AppliesFromRecords;
 use Tests\Support\CatchesValidationErrors;
 use Tests\Support\RegistersProxies;
+use Tests\Support\RowAccessRestriction;
 use Tests\Support\TransactionalTestCase;
 
 /**
@@ -108,7 +107,7 @@ final class RecordApplicationTest extends TransactionalTestCase
         $record = $this->projectRecord($u0001);
         $this->allowOnly(self::PROJECT, RecordModuleAction::Read, $u0003);
         $this->allowOnly(self::PROJECT, RecordModuleAction::Update, $u0003);
-        RecordModule::query()->where('code', self::PROJECT)->update(['row_access_scope' => RowAccessScope::Related]);
+        RowAccessRestriction::restrictCode(self::PROJECT);
         $counts = $this->workflowCounts();
 
         $this->assertSame('404', $this->outcome(fn () => $this->applyFromRecord($u0003, $record->id)));

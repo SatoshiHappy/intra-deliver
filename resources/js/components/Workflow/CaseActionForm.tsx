@@ -15,7 +15,8 @@ import {
 } from '@/components/Workflow/CaseActionFields';
 import { CaseActionNotices } from '@/components/Workflow/CaseActionNotices';
 import { useCaseActionForm } from '@/hooks/Workflow/use-case-action-form';
-import { showsPrincipalField } from '@/lib/Workflow/caseActionForm';
+import { noticeErrorOf } from '@/lib/Workflow/caseActionForm';
+import type { PageAttach } from '@/lib/Workflow/caseActionAttach';
 import { GUARD_TITLES, OPERATION_TEXTS } from '@/lib/Workflow/caseActions';
 import type { CaseActionTarget } from '@/lib/Workflow/caseActions';
 
@@ -69,13 +70,15 @@ function CaseActionFieldArea(
 export function CaseActionForm({
     target,
     openCount,
+    attach,
     onSucceeded,
 }: {
     target: CaseActionTarget;
     openCount: number;
+    attach: PageAttach;
     onSucceeded: (count: number) => void;
 }) {
-    const state = useCaseActionForm(target, openCount, onSucceeded);
+    const state = useCaseActionForm(target, openCount, onSucceeded, attach);
     const { form, errors, node, submit } = state;
     const text = OPERATION_TEXTS[target.operation];
     const blockedTitle = GUARD_TITLES[target.operation];
@@ -83,10 +86,6 @@ export function CaseActionForm({
         blockedTitle === undefined ? null : (node?.blockedReason ?? null);
     const { account } = usePage().props;
     const selfName = account.user?.name ?? account.user?.code ?? '';
-    // 処理担当者の欄が無いときの誤り(画面から起きるのは選択肢の古さだけ)は上部に出す
-    const hiddenPrincipalError = showsPrincipalField(node)
-        ? undefined
-        : errors.principal_user_id;
     const fields = { ...state, target, selfName };
 
     return (
@@ -102,7 +101,11 @@ export function CaseActionForm({
                 </DialogDescription>
             </DialogHeader>
             <CaseActionNotices
-                caseError={errors.case ?? hiddenPrincipalError}
+                caseError={noticeErrorOf(
+                    errors,
+                    node,
+                    state.attachment.attachable,
+                )}
                 blockedTitle={blockedTitle}
                 blockedReason={blockedReason}
             />

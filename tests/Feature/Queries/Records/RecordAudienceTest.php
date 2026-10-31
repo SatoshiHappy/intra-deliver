@@ -11,7 +11,6 @@ use App\Actions\Records\CreateRecordModule;
 use App\Enums\Authz\PolicyEffect;
 use App\Enums\Records\RecordFieldType;
 use App\Enums\Records\RecordModuleAction;
-use App\Enums\Records\RowAccessScope;
 use App\Models\Authz\AuthzResource;
 use App\Models\Master\User;
 use App\Models\Records\Record;
@@ -24,7 +23,8 @@ use Tests\Support\TransactionalTestCase;
 
 /**
  * 関係者のうち閲覧できる人(docs の 設計/業務データの入れ物/認可とメニュー/行の権限.md の 2.4 節の「通知」): 候補は行の判定の「関係者」と
- * 同じ定義で、d に有効で read のある人だけ。重ねず昇順。レコードが無い・明細の行は空。
+ * 同じ定義で、d に有効で read のある人だけ。参照者の欄だけに入った人と、参照制限の無いレコードで read を持つだけの人は入らない。
+ * 重ねず昇順。レコードが無い・明細の行は空。
  *
  * @phpstan-import-type RowAccessFixture from BuildsRowAccessRecords
  */
@@ -38,6 +38,21 @@ final class RecordAudienceTest extends TransactionalTestCase
 
         $this->assertSame($this->idsOf($fixture, self::RELATED), $this->viewers($fixture['recordId']));
         $this->assertSame([$fixture['people']['stranger']->id], $this->viewers($fixture['otherId']));
+    }
+
+    public function test_the_viewers_of_the_record_and_people_with_only_read_are_not_the_audience(): void
+    {
+        $fixture = $this->rowAccessFixture();
+        $openId = $this->openMeeting($fixture);
+        $audience = $this->viewers($fixture['recordId']);
+
+        foreach (self::VIEWERS as $key) {
+            $this->assertTrue($this->canView($fixture['people'][$key]->id, $fixture['recordId']), $key);
+            $this->assertNotContains($fixture['people'][$key]->id, $audience, $key);
+        }
+
+        $this->assertTrue($this->canView($fixture['people']['watcher']->id, $openId));
+        $this->assertSame([$fixture['people']['stranger']->id], $this->viewers($openId));
     }
 
     public function test_reading_all_does_not_make_an_unrelated_person_a_viewer(): void
@@ -74,12 +89,12 @@ final class RecordAudienceTest extends TransactionalTestCase
         $retired = $this->user([['2020-01-01', '2026-10-12']]);
         $disabled = $this->user([['2020-01-01', '2026-10-12'], ['2026-10-12', null, true]]);
         $recordId = $this->createMeeting($retired, '退職', ['attendees' => [$disabled->id, $people['member']->id]], []);
-        $fixture['module']->update(['row_access_scope' => RowAccessScope::All]);
+        Record::query()->whereKey($recordId)->update(['row_access_restricted' => false]);
 
         $related = $this->sorted([$retired->id, $disabled->id, $people['member']->id]);
         $this->assertSame($related, $this->viewers($recordId));
         $this->assertSame([$people['member']->id], $this->viewers($recordId, '2026-10-12'));
-        $this->assertTrue($this->canView(null, $recordId, '2026-10-12'), '見える範囲が全員で、ゲストに read がある');
+        $this->assertTrue($this->canView(null, $recordId, '2026-10-12'), '参照制限が無く、ゲストに read がある');
     }
 
     public function test_a_related_person_without_read_is_not_a_viewer(): void
@@ -134,7 +149,8 @@ final class RecordAudienceTest extends TransactionalTestCase
 
         foreach ($fixture['people'] as $key => $person) {
             $canView = $this->canView($person->id, $fixture['recordId']);
-            $this->assertSame($canView, in_array($person->id, $viewers, true), $key);
+            $isAudience = in_array($person->id, $viewers, true);
+            $this->assertSame($canView, $isAudience || in_array($key, self::VIEWERS, true), $key);
         }
     }
 

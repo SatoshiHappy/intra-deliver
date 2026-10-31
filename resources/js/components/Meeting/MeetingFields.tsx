@@ -4,8 +4,8 @@ import {
     dialogFields,
     TITLE_FIELD_CODE,
 } from '@/components/Meeting/createMeetingForm';
+import { RecordFieldBadges } from '@/components/RecordFieldBadges';
 import { RecordFieldInput } from '@/components/RecordFieldInput';
-import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import type { RecordFieldDraft } from '@/lib/recordForm';
 import { isWideField } from '@/lib/recordForm';
@@ -135,9 +135,7 @@ function FieldRow({
         <FormBlock
             id={id}
             label={field.name}
-            labelAddon={
-                required ? <Badge variant="secondary">必須</Badge> : undefined
-            }
+            labelAddon={<RecordFieldBadges field={field} required={required} />}
             hint={HINTS[field.code]}
             error={error}
             className={isWideField(field) ? 'md:col-span-2' : undefined}

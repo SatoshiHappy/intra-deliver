@@ -85,6 +85,8 @@ class UpdateRecordUnchecked
      */
     private static function throwIfUnacceptedInput(RecordModule $module, RecordInput $input): void
     {
+        self::throwIfRowAccessInput($input);
+
         if ($input->details !== []) {
             throw new LogicException('判定しない更新は明細の入力を受けない: '.implode(', ', array_keys($input->details)));
         }
@@ -99,8 +101,20 @@ class UpdateRecordUnchecked
             }
 
             if ($field instanceof RecordField && $field->grants_row_access) {
-                throw new LogicException("判定しない更新は関係する人の印の付いた項目を受けない: {$code}");
+                throw new LogicException("判定しない更新は関係者の印の付いた項目を受けない: {$code}");
             }
+        }
+    }
+
+    /**
+     * 参照制限の 2 つのキー(どちらかが null でない = 指定した)を断る(参照制限と関係者を決める入力 = 設計/ワークフロー/業務データとの接続/公開の口.md の 7 節の判定しない更新の行)。
+     *
+     * @throws LogicException どちらかを渡したとき
+     */
+    private static function throwIfRowAccessInput(RecordInput $input): void
+    {
+        if ($input->rowAccessRestricted !== null || $input->rowAccessViewers !== null) {
+            throw new LogicException('判定しない更新は参照制限の入力(rowAccessRestricted・rowAccessViewers)を受けない');
         }
     }
 }

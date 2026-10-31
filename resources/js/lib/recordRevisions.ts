@@ -1,7 +1,15 @@
+import {
+    RESTRICTED_KEY,
+    restrictedText,
+    VIEWERS_FIELD,
+    VIEWERS_KEY,
+} from '@/lib/recordRowAccess';
 import type {
     RecordFieldDefinition,
+    RecordFieldType,
     RecordFieldValue,
     RecordRevisionField,
+    RecordRevisionRowAccessChange,
 } from '@/types';
 
 /**
@@ -62,4 +70,49 @@ export function detailRowCells(
         definition: revisionFieldDefinition(field),
         value: values[field.code] ?? null,
     }));
+}
+
+/** 参照制限の変化の 1 行(項目の変化と同じ部品で描く) */
+export type RowAccessLine = {
+    code: string;
+    field: RecordRevisionField;
+    before: RecordFieldValue;
+    after: RecordFieldValue;
+};
+
+/**
+ * 参照制限の変化の行(5.2 の「参照制限」。チェックが違えば「参照制限」、参照者の集合が違えば「参照者」の順。変化が無ければ空)。
+ * 参照者は型「ユーザーと組織(複数)」の値として描く(相手の種類の出し方と 0 人の「—」が同じになる)。
+ */
+export function rowAccessLines(
+    change: RecordRevisionRowAccessChange | null,
+): RowAccessLine[] {
+    const lines: RowAccessLine[] = [];
+    const field = (code: string, name: string, type: RecordFieldType) => ({
+        code,
+        name,
+        type,
+        isMultiline: false,
+        referencedModule: null,
+    });
+
+    if (change?.restricted) {
+        lines.push({
+            code: RESTRICTED_KEY,
+            field: field(RESTRICTED_KEY, '参照制限', 'string'),
+            before: restrictedText(change.restricted.before),
+            after: restrictedText(change.restricted.after),
+        });
+    }
+
+    if (change?.viewers) {
+        lines.push({
+            code: VIEWERS_KEY,
+            field: field(VIEWERS_KEY, VIEWERS_FIELD.name, VIEWERS_FIELD.type),
+            before: change.viewers.before,
+            after: change.viewers.after,
+        });
+    }
+
+    return lines;
 }

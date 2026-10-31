@@ -2,10 +2,10 @@ import { Head } from '@inertiajs/react';
 import { MenuTree } from '@/components/Menu/MenuTree';
 import { nameOrCode } from '@/lib/nameOrCode';
 import { sitemap } from '@/routes/menu';
-import type { MenuGroup } from '@/types';
+import type { MenuGroupNode } from '@/types';
 
 type Props = {
-    groups: MenuGroup[];
+    groups: MenuGroupNode[];
 };
 
 export default function Sitemap({ groups }: Props) {

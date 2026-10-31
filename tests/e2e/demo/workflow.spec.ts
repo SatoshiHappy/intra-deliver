@@ -5,10 +5,11 @@ import {
     fillVersionTwoBaseDate,
 } from '../support/seed-dates';
 import { submitAndExpectUrl } from '../support/submit';
+import { sidebarHeading, sidebarLink } from '../support/app-navigation';
 import * as home from '../support/workflow-home';
 
 // ワークフローの画面(docs の 設計/ワークフロー/画面/ホームと意匠とE2E.md 9 節の demo)。デモユーザー切替で利用者を替え、初期データの案件の見本(ルートの深さ/初期データ.md 4 節)と、
-// 筋の中で申請する案件を使う。画面は PC の幅だけを前提にする。筋は前の筋の結果(申請した案件・処理の後の状態)を使うので、順に走らせる
+// 筋の中で申請する案件を使う。ワークフローのホームは /workflow(全体のホームは /)。画面は PC の幅だけを前提にする。筋は前の筋の結果(申請した案件・処理の後の状態)を使うので、順に走らせる
 // (申請はレコードを作り、案件が指すレコードは消せないので、E2E の DB は流すたびに作り直す = scripts/ci/front)。
 // 同じ秒の提出と更新で注意が出ないことは Feature テスト(tests/Feature/Queries/Workflow/CaseDetailQueryTest.php)で確かめる。
 test.use({ viewport: { width: 1280, height: 720 } });
@@ -161,22 +162,21 @@ function counterCard(page: Page, label: string) {
 }
 
 /**
- * サイドバー(グローバルナビ)の「申請一覧」。
+ * サイドバー(グローバルナビ。今のアプリ = ワークフロー)の「申請一覧」。
  */
 function sidebarCaseList(page: Page) {
-    return page
-        .getByRole('navigation', { name: 'グローバルナビ' })
-        .getByRole('link', { name: '申請一覧', exact: true });
+    return sidebarLink(page, '申請一覧');
 }
 
-test('初期データの見本: 上長のホームに、あいさつ欄・件数カード・未処理の申請と今月の処理済みの表・主な操作が出る', async ({
+test('初期データの見本: 上長のワークフローのホームに、あいさつ欄・件数カード・未処理の申請と今月の処理済みの表・主な操作が出る', async ({
     page,
 }) => {
-    await openAs(page, 'chief', '/');
+    await openAs(page, 'chief', '/workflow');
 
-    await expect(
-        page.getByRole('heading', { level: 1, name: /^こんにちは、/ }),
-    ).toBeVisible();
+    // アプリのホームの h1 はアプリの名前(題・パンくず・日付は workflow-home.spec.ts)
+    await expect(page.getByRole('heading', { level: 1 })).toHaveText(
+        'ワークフロー',
+    );
     // 件数カード(4 枚)。数字と内訳の 1 行(設計/ワークフロー/案件の運用/初期データ.md 4 節: u0002 = 未処理 3(期限超過なし = WF-000005 は当日)・
     // 進行中 0・一時保存 0。今月の処理済みは流す日の日付で変わる = home.chiefProcessedThisMonth)
     await expect(counterCard(page, '未処理の申請')).toHaveText(
@@ -232,26 +232,22 @@ test('初期データの見本: 上長のホームに、あいさつ欄・件数
         }),
     ).toHaveAttribute('href', /\/workflow\/cases\?tab=processed$/);
 
-    // 主な操作の 4 枚(行き先のあるものだけ)
+    // 主な操作の 3 枚(組織図はメニューに出さない)
     const quick = homePanel(page, '主な操作');
     await expect(quick.getByRole('link')).toHaveText([
         '申請する',
         '承認する',
         '自分の申請',
-        '組織図',
     ]);
     await expect(
         quick.getByRole('link', { name: '申請する', exact: true }),
     ).toHaveAttribute('href', /\/workflow\/flows$/);
-    await expect(
-        quick.getByRole('link', { name: '組織図', exact: true }),
-    ).toHaveAttribute('href', /\/master\/organization-chart$/);
 });
 
-test('初期データの見本: 兼務の利用者のホームの今月の処理済みに、今月の合議の否認が印 × で出る', async ({
+test('初期データの見本: 兼務の利用者のワークフローのホームの今月の処理済みに、今月の合議の否認が印 × で出る', async ({
     page,
 }) => {
-    await openAs(page, 'concurrent', '/');
+    await openAs(page, 'concurrent', '/workflow');
     // u0009 = 合議の票(WF-000009 = D − 5・000012 の承認、WF-000011 = D − 12 の否認 = 案件の運用/初期データ.md 4.2)と route の承認。否認は今月の分だけ
     const processed = page.getByRole('table', { name: '今月の処理済み' });
     const rejected = processed.getByRole('row').filter({
@@ -268,8 +264,9 @@ test('初期データの見本: 兼務の利用者のホームの今月の処理
 test('初期データの見本: 上長のホームの件数カードを押すと未処理のタブ、タイルの「承認する」「自分の申請」で該当のタブが今のタブになり、サイドバーの「申請一覧」が現在地になる', async ({
     page,
 }) => {
-    await openAs(page, 'chief', '/');
-    // ホームにいる間は「申請一覧」は現在地でない
+    await openAs(page, 'chief', '/workflow');
+    // ワークフローのホームにいる間は、今のアプリはワークフローで、「申請一覧」は現在地でない
+    await expect(sidebarHeading(page)).toHaveText('ワークフロー');
     await expect(sidebarCaseList(page)).not.toHaveAttribute(
         'aria-current',
         'page',
@@ -284,7 +281,7 @@ test('初期データの見本: 上長のホームの件数カードを押すと
     await expect(caseTab(page, '未処理')).toHaveText('未処理3');
 
     // タイルの行き先は引数つき(?tab=…)でも、現在地はパスだけで比べる(表示.md 3.2)
-    await page.goto('/');
+    await page.goto('/workflow');
     await homePanel(page, '主な操作')
         .getByRole('link', { name: '承認する', exact: true })
         .click();
@@ -295,7 +292,7 @@ test('初期データの見本: 上長のホームの件数カードを押すと
     );
     await expect(sidebarCaseList(page)).toHaveAttribute('aria-current', 'page');
 
-    await page.goto('/');
+    await page.goto('/workflow');
     await homePanel(page, '主な操作')
         .getByRole('link', { name: '自分の申請', exact: true })
         .click();
@@ -307,10 +304,10 @@ test('初期データの見本: 上長のホームの件数カードを押すと
     await expect(sidebarCaseList(page)).toHaveAttribute('aria-current', 'page');
 });
 
-test('初期データの見本: 申請者のホームの進行中の申請に、保留中の案件がノードの状態どおりのステップの点と線で出る', async ({
+test('初期データの見本: 申請者のワークフローのホームの進行中の申請に、保留中の案件がノードの状態どおりのステップの点と線で出る', async ({
     page,
 }) => {
-    await openAs(page, 'applicant', '/');
+    await openAs(page, 'applicant', '/workflow');
 
     // u0001 = 未処理 1・進行中 10(2 段目の 4・版 3 の 2・案件の運用の 3・workflow-route.spec.ts の申請 1)・今月の処理済み 0・一時保存 1
     await expect(counterCard(page, '未処理の申請')).toHaveText(
@@ -478,25 +475,6 @@ test('一時保存のタブで、申請できる人の行は申請名がリン�
     ).toHaveCount(0);
 });
 
-test('システム管理者のサイドバーで「ワークフロー」は「業務」の後、「管理」の前に並ぶ', async ({
-    page,
-}) => {
-    await openAs(page, 'administrator', '/');
-
-    const headings = await page
-        .getByRole('navigation', { name: 'グローバルナビ' })
-        .getByRole('heading', { level: 2 })
-        .allTextContents();
-
-    expect(headings.indexOf('業務')).toBeGreaterThanOrEqual(0);
-    expect(headings.indexOf('ワークフロー')).toBeGreaterThan(
-        headings.indexOf('業務'),
-    );
-    expect(headings.indexOf('管理')).toBeGreaterThan(
-        headings.indexOf('ワークフロー'),
-    );
-});
-
 test('申請者が一時保存すると一時保存のタブの件数が 1 増え、一時保存から申請すると詳細に移動し、レコードは業務データの画面で変更できない', async ({
     page,
 }) => {
@@ -642,8 +620,8 @@ test('上長が差戻し先の「申請」を選択して差戻すと、申請�
         caseUrl,
     );
     await expect(page.getByText('差戻しました', { exact: true })).toBeVisible();
-    // 上長のホームの今月の処理済みの先頭がこの差戻しで、結果の札は印なし
-    await page.goto('/');
+    // 上長のワークフローのホームの今月の処理済みの先頭がこの差戻しで、結果の札は印なし
+    await page.goto('/workflow');
     const latest = resultCells(
         page,
         page.getByRole('table', { name: '今月の処理済み' }),
@@ -748,18 +726,18 @@ test('上長・部長が承認すると完了(承認)になり、完了の後も
         '完了(承認)',
     );
 
-    // 申請した申請書のレコードは完了の後も持ち主が外れない(docs の 設計/ワークフロー/業務データとの接続/申請と書き込み.md の 4 節)
+    // 完了の後も持ち主が外れない(設計/ワークフロー/業務データとの接続/申請と書き込み.md の 4 節)。開くのは参照制限のある申請書の作成者
+    await switchUser(page, USERS.manager[1], 'applicant');
     await openProjectRecord(page);
     await expect(
         page.getByText('申請済みのため変更できません', {
             exact: true,
         }),
     ).toBeVisible();
-    await expect(
-        page.getByRole('button', { name: '編集', exact: true }),
-    ).toBeDisabled();
+    const edit = page.getByRole('button', { name: '編集', exact: true });
+    await expect(edit).toBeDisabled();
 
-    await switchUser(page, USERS.manager[1], 'accounting');
+    await switchUser(page, USERS.applicant[1], 'accounting');
     await page.goto('/workflow/cases');
     await caseTab(page, '参照').click();
     await page

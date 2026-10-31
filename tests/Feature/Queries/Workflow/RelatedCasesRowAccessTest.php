@@ -3,18 +3,17 @@
 namespace Tests\Feature\Queries\Workflow;
 
 use App\Actions\Records\CreateRecordModule;
-use App\Enums\Records\RowAccessScope;
 use App\Models\Master\User;
 use App\Models\Records\Record;
-use App\Models\Records\RecordModule;
 use App\Models\Workflow\WorkflowCase;
 use App\Models\Workflow\WorkflowFlow;
 use Tests\Support\BuildsRelatedCases;
+use Tests\Support\RowAccessRestriction;
 use Tests\Support\TransactionalTestCase;
 
 /**
  * つながる申請の出すかの表(docs の 設計/ワークフロー/業務データとの接続/写しとつながる申請.md 6 節)の「T の閲覧 偽」「X の閲覧 偽」の行を、
- * 業務モジュールの read は持たせたまま行の判定(見える範囲「関係する人だけ」)で見えなくして通す。起点 R = 見る案件の申請書のレコード(m_plan)、
+ * 業務モジュールの read は持たせたまま行の判定(レコードの参照制限)で見えなくして通す。起点 R = 見る案件の申請書のレコード(m_plan)、
  * T = その申請対象(projects)、X = R が参照する issues のレコード。作成者はいつも行の判定を通るので、見える状態は作成者を見る人にして作る。
  */
 final class RelatedCasesRowAccessTest extends TransactionalTestCase
@@ -87,8 +86,7 @@ final class RelatedCasesRowAccessTest extends TransactionalTestCase
     {
         $projects = $this->recordModule('projects');
         $issues = $this->recordModule('issues');
-        RecordModule::query()->whereIn('id', [$projects->id, $issues->id])
-            ->update(['row_access_scope' => RowAccessScope::Related]);
+        RowAccessRestriction::restrict([$projects->id, $issues->id]);
         $this->plan = $this->targetFlow('plan', $projects, CreateRecordModule::EVERYONE_ACTIONS, [$this->applicant]);
         $this->issue = $this->targetFlow('issue', $issues, CreateRecordModule::EVERYONE_ACTIONS, [$this->applicant]);
         $this->referenceField($projects, 'main_issue', $issues);
@@ -127,7 +125,7 @@ final class RelatedCasesRowAccessTest extends TransactionalTestCase
     }
 
     /**
-     * 作成者を外して、見る人が行の判定を通らないレコードにする(見える範囲「関係する人だけ」で関係する人の項目は無い)。
+     * 作成者を外して、見る人が行の判定を通らないレコードにする(参照制限があり、関係者の印の項目は無い)。
      */
     private function hideFromViewer(Record $record): void
     {

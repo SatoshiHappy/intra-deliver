@@ -13,6 +13,7 @@ use App\Queries\Workflow\CaseListQuery;
 use App\Queries\Workflow\PendingCasesHomeSection;
 use App\Queries\Workflow\ProcessedThisMonthHomeSection;
 use App\Queries\Workflow\WorkflowCountersHomeSection;
+use App\Queries\Workflow\WorkflowHomeSections;
 use App\Queries\Workflow\WorkflowLeadHomeSection;
 use App\Support\AccessContext;
 use Carbon\CarbonImmutable;
@@ -41,9 +42,18 @@ final class WorkflowHomeSectionsTest extends TransactionalTestCase
         WorkflowCaseHistory::query()->update(['created_at' => '2026-10-13 03:00:00+00']);
     }
 
-    public function test_a_guest_gets_none_of_the_five(): void
+    /**
+     * ゲストには案内の一文(workflow-lead)だけが出て、ほかの 4 つは null。
+     */
+    public function test_a_guest_gets_only_the_lead_of_the_five(): void
     {
-        foreach (self::SECTIONS as $class) {
+        $text = 'ゲストは申請も処理もできません。';
+        $this->assertSame(
+            ['code' => 'workflow-lead', 'kind' => 'lead', 'area' => 'hero', 'text' => $text, 'action' => null],
+            app(WorkflowLeadHomeSection::class)->section($this->contextOf(null)),
+        );
+
+        foreach (array_slice(self::SECTIONS, 1) as $class) {
             $this->assertNull(app($class)->section($this->contextOf(null)), $class);
         }
     }
@@ -210,13 +220,17 @@ final class WorkflowHomeSectionsTest extends TransactionalTestCase
     }
 
     /**
-     * 起動がタグに登録する順(デモはオフ): 主な操作 → ワークフローの 5 つ(右列 = 主な操作 → 進行中の申請)。
+     * 起動がワークフローのホームのタグに登録する順(デモはオフ。ホームと意匠とE2E.md 7 節): 一文 → 件数 → 未処理 → 今月の処理済み → 主な操作 →
+     * 進行中の申請(右列 = 主な操作 → 進行中の申請)。全体のホームのタグには何も登録しない(デモの節だけ = 設計/メニュー/ホーム.md 6.2)。
      */
-    public function test_the_sections_are_registered_after_the_quick_actions_in_this_order(): void
+    public function test_the_sections_are_registered_to_the_workflow_home_in_this_order(): void
     {
-        $registered = array_map(fn (HomeSections $section) => $section::class, [...app()->tagged(HomeSections::TAG)]);
+        $tagged = [...app()->tagged(WorkflowHomeSections::TAG)];
+        $registered = array_map(fn (HomeSections $section) => $section::class, $tagged);
 
-        $this->assertSame([QuickActionsHomeSection::class, ...self::SECTIONS], $registered);
+        $expected = [...array_slice(self::SECTIONS, 0, 4), QuickActionsHomeSection::class, self::SECTIONS[4]];
+        $this->assertSame($expected, $registered);
+        $this->assertSame([], [...app()->tagged(HomeSections::TAG)]);
     }
 
     /**

@@ -3,7 +3,7 @@ import { formatRecordValue } from '@/lib/recordValues';
 import type { RecordAdminFieldDefinition } from '@/types';
 
 /**
- * 項目の表の属性の札(画面/管理の画面.md 3.3: 必須・一覧・検索・表示の項目・関係する人・既定値)。
+ * 項目の表の属性の札(設計/業務データの入れ物/画面/管理の画面.md の 3.3: 必須・一覧・検索・表示の項目・関係者・既定値)。
  */
 export function fieldAttributeBadges(
     field: RecordAdminFieldDefinition,
@@ -15,7 +15,7 @@ export function fieldAttributeBadges(
         field.isListed ? '一覧' : null,
         field.isSearchable ? '検索' : null,
         field.isTitle ? '表示の項目' : null,
-        field.grantsRowAccess ? '関係する人' : null,
+        field.grantsRowAccess ? '関係者' : null,
         defaultText === null ? null : `既定値: ${defaultText}`,
     ].filter((badge) => badge !== null);
 }

@@ -20,7 +20,7 @@ final class MeetingFailureReasons
     private const RECORD_REASONS = [FailedRun::RECORD_REJECTED];
 
     /**
-     * 段は、同じ失敗(出力が切れた)でも文字起こしと議事録で理由が分かれるため受け取る(分け方の正本 = 6.4)。
+     * 段は、同じ失敗でも文字起こしと議事録で理由が分かれるため受け取る(分け方の正本 = 6.4)。
      */
     public static function of(FailedRun $run, MeetingRunStage $stage): MeetingNoticeReason
     {
@@ -34,9 +34,13 @@ final class MeetingFailureReasons
                 && $run->reason === MeetingTranscriptionKind::TRANSCRIPT_EMPTY)
         );
 
+        $minutesTooLong = $stage === MeetingRunStage::Minutes
+            && $run->errorCode === AiRunErrorCode::Completion->value
+            && $run->reason === MeetingMinutesKind::TOO_LONG;
+
         return match (true) {
             $audioUnusable => MeetingNoticeReason::AudioUnusable,
-            $truncated => MeetingNoticeReason::Truncated,
+            $truncated, $minutesTooLong => MeetingNoticeReason::Truncated,
             in_array($run->reason, self::RECORD_REASONS, true) => MeetingNoticeReason::RecordUnavailable,
             default => MeetingNoticeReason::Other,
         };

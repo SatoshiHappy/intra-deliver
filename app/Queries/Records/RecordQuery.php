@@ -13,9 +13,10 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
  * レコード 1 件の読み取り(docs の 設計/業務データの入れ物/画面/業務の画面.md 2.3 の record と、2.2 の編集の record)。判定は呼び手の責任で、定義を読み込んだ業務モジュールを渡す
  * (入口 = 認可とメニュー/README.md 2.2 の詳細の read を {@see RecordPageQuery::open()} で通した後、ワークフローの口 = 閲覧の判定の後。
  * レコードの有無は判定の後に見る)。
- * 明細は明細の項目のコードごとに、行の並び(sort_key・id)の順。
+ * 明細は明細の項目のコードごとに、行の並び(sort_key・id)の順。rowAccess = 参照制限の今の値(チェックと参照者 = 業務の画面.md 2.2・2.3)。
  *
  * @phpstan-import-type ReferenceValue from RecordValueReader
+ * @phpstan-import-type ShownRowAccess from RecordRowAccessValues
  *
  * @phpstan-type DetailRow array{id: int, values: array<string, mixed>}
  */
@@ -24,6 +25,7 @@ class RecordQuery
     public function __construct(
         private RecordValueReader $reader,
         private RecordDefinitionQuery $definitions,
+        private RecordRowAccessValues $rowAccess,
     ) {}
 
     /**
@@ -35,17 +37,32 @@ class RecordQuery
      */
     public function show(?Requester $requester, RecordModule $module, int $recordId, DateTimeInterface $date, string $localeCode): array
     {
-        ['record' => $record, 'values' => $values, 'details' => $details] = $this->read($requester, $module, $recordId, $date, $localeCode);
-        $users = $this->reader->users(array_values(array_filter([$record->created_by_user_id, $record->updated_by_user_id])), $date, $localeCode);
+        return $this->shownOf($this->read($requester, $module, $recordId, $date, $localeCode), $date, $localeCode);
+    }
+
+    /**
+     * 業務の画面の詳細の record(設計/業務データの入れ物/画面/業務の画面.md の 2.3): {@see self::show()} に参照制限の今の値 rowAccess を足したもの(詳細の区画「参照制限」)。
+     * 引数と例外は {@see self::show()} と同じ(判定は呼び手の責任)。
+     *
+     * @param  RecordModule  $module  定義を読み込んだ業務モジュール(判定は呼び手の責任)
+     * @return array{id: int, values: array<string, mixed>, details: array<string, list<DetailRow>>,
+     *     createdAt: string|null, updatedAt: string|null, createdBy: ReferenceValue|null,
+     *     updatedBy: ReferenceValue|null, rowAccess: ShownRowAccess}
+     *
+     * @throws ModelNotFoundException<Record> レコードがその業務モジュールに無いとき(判定の後に見る)
+     */
+    public function detail(
+        Requester $requester,
+        RecordModule $module,
+        int $recordId,
+        DateTimeInterface $date,
+        string $localeCode,
+    ): array {
+        $read = $this->read($requester, $module, $recordId, $date, $localeCode);
 
         return [
-            'id' => $record->id,
-            'values' => $values,
-            'details' => $details,
-            'createdAt' => $record->created_at?->toIso8601String(),
-            'updatedAt' => $record->updated_at?->toIso8601String(),
-            'createdBy' => $record->created_by_user_id === null ? null : $users[$record->created_by_user_id] ?? null,
-            'updatedBy' => $record->updated_by_user_id === null ? null : $users[$record->updated_by_user_id] ?? null,
+            ...$this->shownOf($read, $date, $localeCode),
+            'rowAccess' => $this->rowAccess->shown($read['record'], $date, $localeCode),
         ];
     }
 
@@ -54,7 +71,8 @@ class RecordQuery
      * 古い版として拒まれる側に倒れる = 項目と規則/規則と業務処理/README.md 9.2 の 2)。引数と例外は {@see self::show()} と同じ。
      *
      * @param  RecordModule  $module  定義を読み込んだ業務モジュール(判定は呼び手の責任)
-     * @return array{id: int, values: array<string, mixed>, details: array<string, list<DetailRow>>, version: string}
+     * @return array{id: int, values: array<string, mixed>, details: array<string, list<DetailRow>>, version: string,
+     *     rowAccess: ShownRowAccess}
      *
      * @throws ModelNotFoundException<Record> レコードがその業務モジュールに無いとき(判定の後に見る)
      */
@@ -67,17 +85,18 @@ class RecordQuery
             'values' => $values,
             'details' => $details,
             'version' => $record->version(),
+            'rowAccess' => $this->rowAccess->shown($record, $date, $localeCode),
         ];
     }
 
     /**
-     * 複製の登録の画面の初期値(レコードの共通機能/複製.md の 1 節・2 節): 写すのはレコードの値(項目と明細)だけで、
-     * 明細の行は id を持たない。参照の表示名は編集の画面の初期値と同じ形(読めない参照先は label が null)。
+     * 複製の登録の画面の初期値(設計/業務データの入れ物/レコードの共通機能/複製.md の 1 節・2 節): 写すのはレコードの値(項目と明細)と参照制限の
+     * チェックと参照者(業務モジュールの参照制限の既定は使わない)だけで、明細の行は id を持たない。参照の表示名は編集の画面の初期値と同じ形(読めない参照先は label が null)。
      * 判定(create と元の read・行の判定)は呼び手の責任。引数と例外は {@see self::show()} と同じ。
      *
      * @param  RecordModule  $module  定義を読み込んだ業務モジュール(判定は呼び手の責任)
      * @return array{id: int, values: array<string, mixed>,
-     *     details: array<string, list<array{values: array<string, mixed>}>>}
+     *     details: array<string, list<array{values: array<string, mixed>}>>, rowAccess: ShownRowAccess}
      *
      * @throws ModelNotFoundException<Record> レコードがその業務モジュールに無いとき(判定の後に見る)
      */
@@ -94,6 +113,7 @@ class RecordQuery
             'id' => $read['record']->id,
             'values' => $read['values'],
             'details' => array_map(self::withoutIds(...), $read['details']),
+            'rowAccess' => $this->rowAccess->shown($read['record'], $date, $localeCode),
         ];
     }
 
@@ -119,7 +139,32 @@ class RecordQuery
     }
 
     /**
-     * 親の行(最初に読む)と、その値・明細。show と editable が同じ引き方・組み立てを使う 1 か所。
+     * 詳細の値(作成・更新の日時と人を足す)。show と detail が同じ読み取りの結果から作る 1 か所。
+     *
+     * @param  array{record: Record, values: array<string, mixed>, details: array<string, list<DetailRow>>}  $read
+     * @return array{id: int, values: array<string, mixed>, details: array<string, list<DetailRow>>,
+     *     createdAt: string|null, updatedAt: string|null, createdBy: ReferenceValue|null,
+     *     updatedBy: ReferenceValue|null}
+     */
+    private function shownOf(array $read, DateTimeInterface $date, string $localeCode): array
+    {
+        ['record' => $record, 'values' => $values, 'details' => $details] = $read;
+        $creators = array_values(array_filter([$record->created_by_user_id, $record->updated_by_user_id]));
+        $users = $this->reader->users($creators, $date, $localeCode);
+
+        return [
+            'id' => $record->id,
+            'values' => $values,
+            'details' => $details,
+            'createdAt' => $record->created_at?->toIso8601String(),
+            'updatedAt' => $record->updated_at?->toIso8601String(),
+            'createdBy' => $record->created_by_user_id === null ? null : $users[$record->created_by_user_id] ?? null,
+            'updatedBy' => $record->updated_by_user_id === null ? null : $users[$record->updated_by_user_id] ?? null,
+        ];
+    }
+
+    /**
+     * 親の行(最初に読む)と、その値・明細。show・detail・editable が同じ引き方・組み立てを使う 1 か所。
      *
      * @return array{record: Record, values: array<string, mixed>, details: array<string, list<DetailRow>>}
      */

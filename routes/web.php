@@ -39,6 +39,7 @@ use App\Http\Controllers\Web\Workflow\CaseConfirmationController;
 use App\Http\Controllers\Web\Workflow\CaseController;
 use App\Http\Controllers\Web\Workflow\DraftController;
 use App\Http\Controllers\Web\Workflow\FlowController;
+use App\Http\Controllers\Web\Workflow\HomeController as WorkflowHomeController;
 use App\Http\Controllers\Web\Workflow\ProxyController;
 use App\Http\Controllers\Web\Workflow\ReapplicationController;
 use App\Http\Controllers\Web\Workflow\RecordCandidateController;
@@ -169,6 +170,8 @@ Route::put('/records/admin/categories/{category}/modules', [ModuleCategoryContro
 
 // ワークフローの画面(docs の 設計/ワークフロー/画面/README.md 1.1)。{flow} = フローのコード、{case} = 案件の id(数字だけ。一時保存も同じ形で指す)。
 // 入口の判定は FormRequest の authorize と読み取りが持つ(設計/ワークフロー/案件の操作/操作.md の 3.1 節の 1)。
+// ワークフローのホーム(設計/メニュー/ホーム.md 6.7)。
+Route::get('/workflow', WorkflowHomeController::class)->name('workflow.home');
 Route::get('/workflow/flows', [FlowController::class, 'index'])->name('workflow.flows.index');
 Route::get('/workflow/flows/{flow}/apply', [ApplicationController::class, 'create'])->name('workflow.applications.create')->where('flow', '[a-z][a-z0-9_]{0,49}');
 Route::post('/workflow/flows/{flow}/apply', [ApplicationController::class, 'store'])->name('workflow.applications.store')->where('flow', '[a-z][a-z0-9_]{0,49}');

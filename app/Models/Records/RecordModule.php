@@ -2,7 +2,6 @@
 
 namespace App\Models\Records;
 
-use App\Enums\Records\RowAccessScope;
 use Database\Factories\Records\RecordModuleFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -13,12 +12,12 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 /**
  * 業務モジュール(業務データの表 1 つの定義。期間なしのマスタ)。表 record_modules(docs の 設計/業務データの入れ物/データモデル/表.md 2.1、
  * 添付ファイルの使用の列 = 設計/業務データの入れ物/レコードの共通機能/データモデル/表.md の 2.8 節)。
- * 見える範囲 row_access_scope = ADR 0018 の決定 2(参照制限への移行 = docs の 設計/業務データの入れ物/データモデル/表.md 2.1)。
+ * 参照制限の既定 row_access_restricted_by_default = ADR 0026 の決定 1(新しく登録するレコードのチェックの初期値。判定では読まない)。
  * 組み込みの旗 is_builtin = 設計/業務ツール/共通データ.md の「入れ物の拡張」(入力から立てないので fillable に入れない)。
  */
 #[Fillable([
     'code', 'name', 'description', 'icon', 'is_attachment_enabled', 'parent_record_module_id', 'sort_key',
-    'row_access_scope',
+    'row_access_restricted_by_default',
 ])]
 class RecordModule extends Model
 {
@@ -33,7 +32,7 @@ class RecordModule extends Model
         return [
             'is_attachment_enabled' => 'boolean',
             'sort_key' => 'integer',
-            'row_access_scope' => RowAccessScope::class,
+            'row_access_restricted_by_default' => 'boolean',
             'is_builtin' => 'boolean',
         ];
     }

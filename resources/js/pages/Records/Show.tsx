@@ -28,7 +28,6 @@ import {
 import attachments from '@/routes/records/data/attachments';
 import type {
     RecordApplyEntry,
-    RecordDetail,
     RecordDetailCan,
     RecordHeadingGroup,
     RecordHold,
@@ -36,6 +35,7 @@ import type {
     RecordPanelContent,
     RecordRelatedProps,
     RecordShowAddons,
+    RecordShowDetail,
     RecordShowPanelProps,
 } from '@/types';
 
@@ -44,7 +44,7 @@ type Props = RecordShowPanelProps &
         module: RecordModuleDefinition;
         /** 見出しのまとまり(詳細タブの項目を見出しごとに畳める) */
         headings: RecordHeadingGroup[];
-        record: RecordDetail;
+        record: RecordShowDetail;
         /** 権限の判定だけ(持ち主の有無は hold = 設計/業務データの入れ物/レコードの共通機能/詳細の画面/README.md の 5.1 節) */
         can: RecordDetailCan;
         hold: RecordHold | null;

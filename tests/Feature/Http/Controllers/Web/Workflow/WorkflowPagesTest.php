@@ -16,7 +16,7 @@ use Tests\Support\TransactionalTestCase;
 use Tests\Support\UsesSeededRecords;
 
 /**
- * ワークフローのページの props と見える範囲(docs の 設計/ワークフロー/画面/README.md 1.1〜2 節・画面/申請と案件.md 3〜5 節、認可と一覧.md 7 節の HTTP の Feature テスト):
+ * ワークフローのページの props と見られる範囲(docs の 設計/ワークフロー/画面/README.md 1.1〜2 節・画面/申請と案件.md 3〜5 節、認可と一覧.md 7 節の HTTP の Feature テスト):
  * フローの一覧・申請(新規・一時保存・
  * 再申請)・案件一覧・案件の詳細の props の形、u0001 が初期データの案件のうち自分の分だけを見て、ほかの案件の詳細は 404、操作の画面を開けないときの 404・403・
  * 詳細への移動(一時保存の画面 = 見えない 404 → 申請できる人でない 403 → 一時保存でなければ詳細へ、再申請の画面 = 見えない・一時保存 404 → update 403 →
@@ -260,7 +260,8 @@ final class WorkflowPagesTest extends TransactionalTestCase
         $u0002 = $this->userIdOf('u0002');
         $name = app(WorkflowPeople::class)->users([$u0002], CarbonImmutable::today(), 'ja')[$u0002]['name'];
         $operations = ['approve', 'approveEarly', 'reject', 'sendBack', 'hold', 'transfer'];
-        $principals = array_fill_keys($operations, [['id' => $u0002, 'name' => (string) $name, 'isSelf' => true]]);
+        $self = ['id' => $u0002, 'name' => (string) $name, 'isSelf' => true, 'canAttach' => true];
+        $principals = array_fill_keys($operations, [$self]);
 
         $this->get("/workflow/cases/{$case}")->assertOk()->assertInertia(fn (Assert $page) => $page
             ->component('Workflow/CaseShow')

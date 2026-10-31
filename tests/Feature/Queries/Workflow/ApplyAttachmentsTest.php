@@ -2,10 +2,8 @@
 
 namespace Tests\Feature\Queries\Workflow;
 
-use App\Enums\Records\RowAccessScope;
 use App\Models\Records\Record;
 use App\Models\Records\RecordAttachment;
-use App\Models\Records\RecordModule;
 use App\Models\Upload\Upload;
 use App\Models\Workflow\WorkflowCase;
 use App\Models\Workflow\WorkflowCaseDraftAttachment;
@@ -14,6 +12,7 @@ use App\Queries\Workflow\ApplicationFormQuery;
 use App\Queries\Workflow\ApplyAttachments;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Support\OperatesCaseAttachments;
+use Tests\Support\RowAccessRestriction;
 use Tests\Support\TransactionalTestCase;
 
 /**
@@ -141,8 +140,7 @@ final class ApplyAttachmentsTest extends TransactionalTestCase
         ]);
         $this->assertSame(1, $this->reapplyAttachment($case)['attachedCount']);
 
-        RecordModule::query()->whereKey($record->record_module_id)
-            ->update(['row_access_scope' => RowAccessScope::Related]);
+        RowAccessRestriction::restrict([$record->record_module_id]);
         $record->update(['created_by_user_id' => $this->seededUser('u0003')->id]);
 
         $attachment = $this->reapplyAttachment($case);

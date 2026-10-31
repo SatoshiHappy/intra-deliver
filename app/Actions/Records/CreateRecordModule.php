@@ -37,7 +37,7 @@ class CreateRecordModule
 
     /**
      * 初期ポリシーで全員に許すアクション(認可とメニュー/README.md 3 節)。全件の参照は置かない
-     * (置くと、見える範囲を「関係する人だけ」にしても全員が関係しないレコードを見る)。
+     * (置くと、参照を制限したレコードを全員が見る)。
      */
     public const EVERYONE_ACTIONS = [
         RecordModuleAction::Read,
@@ -66,7 +66,7 @@ class CreateRecordModule
             [$code, $name, $description, $icon] = $this->validated($input);
             $set = AuthzResourceGroup::query()->where('code', RecordModuleAction::SET_CODE)->first()
                 ?? throw ValidationException::withMessages(['module' => ['業務モジュールのセット '.RecordModuleAction::SET_CODE.' がありません']]);
-            // 列の既定(添付の使用・見える範囲)を書かずに DB に任せるので、作った後に読み直して返す(戻りの属性が null にならない)
+            // 列の既定(添付の使用・参照制限の既定)を書かずに DB に任せるので、作った後に読み直して返す(戻りの属性が null にならない)
             $module = RecordModule::query()->create(['code' => $code, 'name' => $name, 'description' => $description, 'icon' => $icon->value, 'parent_record_module_id' => null, 'sort_key' => 0])->refresh();
             $names = $this->forAllLocales($name);
             $resource = $this->createResource->execute(

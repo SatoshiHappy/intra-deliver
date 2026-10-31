@@ -79,19 +79,21 @@ export async function expectSnapshot(
 }
 
 /**
- * プロジェクトの行の見える範囲を「関係する人だけ」(関係者の印 = 責任者)にする tinker の文と、元に戻す文。
- * 作成者と責任者だけが見られる(認可設定の画面と別の筋が、この業務モジュールの見える範囲を変えるのはこの 2 つの筋だけ)。
+ * プロジェクトの業務モジュールの参照制限の既定と、プロジェクトの親の無いレコードのチェックを付ける(関係者の印 = 責任者)tinker の文と、
+ * 元に戻す文。作成者と責任者だけが見られる(認可設定の画面と別の筋が、この業務モジュールの参照制限を変えるのはこの 2 つの筋だけ)。
  */
-const PROJECT_SCOPE = (scope: string, grants: string) =>
+const PROJECT_RESTRICTION = (restricted: string) =>
     [
         '$id = DB::table("record_modules")->where("code", "project")->value("id");',
-        `DB::table("record_modules")->where("id", $id)->update(["row_access_scope" => "${scope}"]);`,
+        `DB::table("record_modules")->where("id", $id)->update(["row_access_restricted_by_default" => ${restricted}]);`,
+        'DB::table("records")->where("record_module_id", $id)->whereNull("parent_record_id")',
+        `->update(["row_access_restricted" => ${restricted}]);`,
         'DB::table("record_fields")->where("record_module_id", $id)->where("code", "manager")',
-        `->update(["grants_row_access" => ${grants}]);`,
+        `->update(["grants_row_access" => ${restricted}]);`,
     ].join('');
 
-export const RESTRICT_PROJECTS = PROJECT_SCOPE('related', 'true');
-export const RESTORE_PROJECTS = PROJECT_SCOPE('all', 'false');
+export const RESTRICT_PROJECTS = PROJECT_RESTRICTION('true');
+export const RESTORE_PROJECTS = PROJECT_RESTRICTION('false');
 
 /** 利用者のコードから id を出す tinker の文 */
 export const USER_ID = (code: string) =>

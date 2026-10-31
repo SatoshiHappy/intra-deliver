@@ -25,14 +25,14 @@ final class PromptKindsTest extends TransactionalTestCase
 
     /**
      * 今の設定の値で守る条件が成り立つ(区分の 1 依頼の見積もりの上限の最大 < 日の上限 = その日の最初の依頼が通る。
-     * 見積もりの上限 = 入力の上限の文字数と出力の上限で見積もった額。default は抜き出しの約 0.284 ドルが最大 < 5)。
+     * 見積もりの上限 = 入力の上限の文字数と出力の上限で見積もった額。default は議事録の約 0.161 ドルが最大 < 5)。
      */
     public function test_one_request_at_the_ceiling_fits_in_the_daily_budget_with_the_current_settings(): void
     {
         $ceiling = app(RunEstimates::class)->ceilingOf('default');
         $daily = app(AiSettings::class)->budget('default', 'daily_usd');
 
-        $this->assertSame('0.284000', $ceiling);
+        $this->assertSame('0.161000', $ceiling);
         $this->assertLessThan($daily, (float) $ceiling);
     }
 
@@ -51,7 +51,7 @@ final class PromptKindsTest extends TransactionalTestCase
 
     /**
      * 守る条件の右辺は、日・月・累計の上限のうち空でない最も小さいもの(実行と費用.md 5.2。3 つとも空なら確かめない)。
-     * 今の設定の default の 1 依頼の見積もりの上限の最大は 0.284000 ドル(上のテスト)。境界は見積もりの上限と同じ額(以上で止まる)と、
+     * 今の設定の default の 1 依頼の見積もりの上限の最大は 0.161000 ドル(上のテスト)。境界は見積もりの上限と同じ額(以上で止まる)と、
      * その両側の 100 万分の 1 ドル(額の刻み)。同じ額の期間が 2 つ以上なら短い期間の名前を出す。
      *
      * @return array<string, array{float|null, float|null, float|null, string|null}>
@@ -60,13 +60,13 @@ final class PromptKindsTest extends TransactionalTestCase
     {
         return [
             '3 つとも空' => [null, null, null, null],
-            '日が空・月が見積もりの上限の 1 刻み下' => [null, 0.283999, null, '月の上限 0.283999'],
-            '日が空・月が見積もりの上限と同じ' => [null, 0.284, null, '月の上限 0.284000'],
-            '日が空・月が見積もりの上限の 1 刻み上' => [null, 0.284001, null, null],
-            '日と月が空・累計が見積もりの上限と同じ' => [null, null, 0.284, '累計の上限 0.284000'],
-            '日が空・最も小さいのが累計' => [null, 100.0, 0.284, '累計の上限 0.284000'],
-            '月が日より小さい' => [1.0, 0.284, null, '月の上限 0.284000'],
-            '日と月が同じ額' => [0.284, 0.284, 200.0, '日の上限 0.284000'],
+            '日が空・月が見積もりの上限の 1 刻み下' => [null, 0.160999, null, '月の上限 0.160999'],
+            '日が空・月が見積もりの上限と同じ' => [null, 0.161, null, '月の上限 0.161000'],
+            '日が空・月が見積もりの上限の 1 刻み上' => [null, 0.161001, null, null],
+            '日と月が空・累計が見積もりの上限と同じ' => [null, null, 0.161, '累計の上限 0.161000'],
+            '日が空・最も小さいのが累計' => [null, 100.0, 0.161, '累計の上限 0.161000'],
+            '月が日より小さい' => [1.0, 0.161, null, '月の上限 0.161000'],
+            '日と月が同じ額' => [0.161, 0.161, 200.0, '日の上限 0.161000'],
             '今の公開デモの既定(日 5・月 50・累計 200)' => [5.0, 50.0, 200.0, null],
         ];
     }

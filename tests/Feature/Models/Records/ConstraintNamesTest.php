@@ -8,7 +8,7 @@ use Tests\Support\RecordsSchema;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * 業務データの入れ物の 6 表とレコードの共通機能の 6 表の制約と索引の名前(docs の 設計/業務データの入れ物/データモデル/制約の分担と検査.md 5 節・7 節: 名前は 設計/共通マスタ/共通の規則.md 9 節の形で、
+ * 業務データの入れ物の 7 表とレコードの共通機能の 6 表の制約と索引の名前(docs の 設計/業務データの入れ物/データモデル/制約の分担と検査.md 5 節・7 節: 名前は 設計/共通マスタ/共通の規則.md 9 節の形で、
  * 63 バイトを超える名前を PostgreSQL が切り詰めても重ならない)。設計どおりの名前を切り詰めた一覧と、マイグレーションの後の DB の名前を照合する
  * (共通機能の表の名前 = 設計/業務データの入れ物/レコードの共通機能/データモデル/表.md の 2 節)。
  */
@@ -30,8 +30,7 @@ final class ConstraintNamesTest extends TransactionalTestCase
         'record_modules_parent_record_module_id_icon_check',
         'record_modules_parent_record_module_id_is_attachment_enabled_check',
         'record_modules_sort_key_check',
-        'record_modules_row_access_scope_check',
-        'record_modules_parent_record_module_id_row_access_scope_check',
+        'record_modules_row_access_restricted_by_default_check',
         'record_fields_pkey',
         'record_fields_record_module_id_code_unique',
         'record_fields_record_module_id_id_unique',
@@ -91,6 +90,7 @@ final class ConstraintNamesTest extends TransactionalTestCase
         'records_parent_record_module_id_parent_record_id_check',
         'records_field_values_check',
         'records_parent_record_id_sort_key_check',
+        'records_parent_record_id_row_access_restricted_check',
         'records_sort_key_check',
         'record_references_pkey',
         'record_references_record_id_record_field_id_sort_key_unique',
@@ -113,6 +113,17 @@ final class ConstraintNamesTest extends TransactionalTestCase
         'record_references_user_id_index',
         'record_references_department_id_index',
         'record_references_referenced_record_id_user_id_department_id_referenced_record_module_id_check',
+        'record_row_access_viewers_pkey',
+        'record_row_access_viewers_record_id_sort_key_unique',
+        'record_row_access_viewers_record_id_user_id_unique',
+        'record_row_access_viewers_record_id_department_id_unique',
+        'record_row_access_viewers_record_id_foreign',
+        'record_row_access_viewers_user_id_foreign',
+        'record_row_access_viewers_department_id_foreign',
+        'record_row_access_viewers_user_id_index',
+        'record_row_access_viewers_department_id_index',
+        'record_row_access_viewers_user_id_department_id_check',
+        'record_row_access_viewers_sort_key_check',
         'record_revisions_pkey',
         'record_revisions_record_id_revision_unique',
         'record_revisions_user_id_foreign',

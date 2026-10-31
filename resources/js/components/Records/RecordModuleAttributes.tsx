@@ -1,7 +1,7 @@
 import { Link } from '@inertiajs/react';
 import { formErrorId, invalidProps } from '@/components/FormBlock';
 import { FormSurface } from '@/components/FormLayout';
-import { RecordRowAccessScopeField } from '@/components/Records/RecordRowAccessScopeField';
+import { RecordRowAccessDefaultField } from '@/components/Records/RecordRowAccessDefaultField';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { index as categoriesIndex } from '@/routes/records/admin/categories';
@@ -205,7 +205,7 @@ type ModuleAttributesProps = {
 
 /**
  * 枠「属性」(docs の 設計/業務データの入れ物/画面/管理の画面.md 3.5、レコードの共通機能/業務モジュールの管理.md の 2 節。明細のモジュールには出さない):
- * 並び = サイドバーに表示 → モジュール分類(表示の選択)→ 添付ファイルの追加・削除を許可 → 見える範囲。
+ * 並び = サイドバーに表示 → モジュール分類(表示の選択)→ 添付ファイルの追加・削除を許可 → 参照制限の既定。
  */
 export function ModuleAttributes({
     data,
@@ -243,10 +243,12 @@ export function ModuleAttributes({
                 }
                 error={errors.is_attachment_enabled}
             />
-            <RecordRowAccessScopeField
-                value={data.row_access_scope}
-                onChange={(scope) => onChange('row_access_scope', scope)}
-                error={errors.row_access_scope}
+            <RecordRowAccessDefaultField
+                value={data.row_access_restricted_by_default}
+                onChange={(restricted) =>
+                    onChange('row_access_restricted_by_default', restricted)
+                }
+                error={errors.row_access_restricted_by_default}
             />
         </FormSurface>
     );

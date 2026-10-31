@@ -25,7 +25,7 @@ final class QuickActionsHomeSectionTest extends TransactionalTestCase
         $this->assertNull($this->section(null));
     }
 
-    public function test_an_authenticated_user_gets_the_four_tiles_in_order(): void
+    public function test_an_authenticated_user_gets_the_three_tiles_in_order(): void
     {
         $this->assertSame([
             'code' => 'menu-quick-actions',
@@ -36,7 +36,6 @@ final class QuickActionsHomeSectionTest extends TransactionalTestCase
                 ['code' => 'home-quick-actions-workflow-flows-index', 'label' => '申請する', 'icon' => 'send', 'url' => '/workflow/flows', 'isExternal' => false],
                 ['code' => 'home-quick-actions-workflow-cases-index-pending', 'label' => '承認する', 'icon' => 'inbox', 'url' => '/workflow/cases?tab=pending', 'isExternal' => false],
                 ['code' => 'home-quick-actions-workflow-cases-index-processed', 'label' => '自分の申請', 'icon' => 'folder', 'url' => '/workflow/cases?tab=processed', 'isExternal' => false],
-                ['code' => 'home-quick-actions-master-organization-chart', 'label' => '組織図', 'icon' => 'network', 'url' => '/master/organization-chart', 'isExternal' => false],
             ],
         ], $this->section($this->user('u0001')));
     }
@@ -46,10 +45,10 @@ final class QuickActionsHomeSectionTest extends TransactionalTestCase
      */
     public function test_a_tile_whose_route_is_not_permitted_is_left_out(): void
     {
-        AuthzPolicy::query()->whereRelation('authzResourceGroup', 'code', 'http-services.master.organization-chart')->delete();
+        AuthzPolicy::query()->whereRelation('authzResourceGroup', 'code', 'http-services.workflow.flows.index')->delete();
 
         $this->assertSame(
-            ['home-quick-actions-workflow-flows-index', 'home-quick-actions-workflow-cases-index-pending', 'home-quick-actions-workflow-cases-index-processed'],
+            ['home-quick-actions-workflow-cases-index-pending', 'home-quick-actions-workflow-cases-index-processed'],
             array_column($this->section($this->user('u0001'))['items'] ?? [], 'code'),
         );
     }

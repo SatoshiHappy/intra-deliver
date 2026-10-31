@@ -28,6 +28,7 @@ use Tests\Support\BuildsCommonMaster;
 use Tests\Support\BuildsRecordModules;
 use Tests\Support\BuildsUploads;
 use Tests\Support\CatchesValidationErrors;
+use Tests\Support\ChangesModuleAfterLock;
 use Tests\Support\RegistersRecordHolds;
 use Tests\Support\TransactionalTestCase;
 
@@ -41,6 +42,7 @@ final class RecordInputAttachmentsTest extends TransactionalTestCase
     use BuildsRecordModules;
     use BuildsUploads;
     use CatchesValidationErrors;
+    use ChangesModuleAfterLock;
     use RegistersRecordHolds;
 
     private RecordModule $module;
@@ -143,6 +145,22 @@ final class RecordInputAttachmentsTest extends TransactionalTestCase
 
         $this->assertSame(['attachments' => RecordAttachmentGate::DISABLED], $errors);
         $this->assertSame(0, Upload::query()->count());
+    }
+
+    /**
+     * 添付の許可は、業務モジュールの共有の鍵の後に読んだ値(鍵の直後に許可を外すと、添付つきの更新は 422 attachments)。
+     */
+    public function test_an_update_takes_the_attachment_setting_read_after_the_module_lock(): void
+    {
+        $recordId = $this->create(new RecordInput(['title' => '申請']));
+        $this->changeModuleAfterLock($this->module, ['is_attachment_enabled' => false]);
+        $input = new RecordInput(['title' => '再申請'], [], [$this->uploadedFile('a.pdf')]);
+
+        $errors = $this->validationErrors(
+            fn () => app(UpdateRecord::class)->execute($this->contextFor(), 'projects', $recordId, $input, null),
+        );
+
+        $this->assertSame(['attachments' => RecordAttachmentGate::DISABLED], $errors);
     }
 
     /**

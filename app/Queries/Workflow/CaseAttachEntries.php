@@ -4,6 +4,7 @@ namespace App\Queries\Workflow;
 
 use App\Enums\Workflow\WorkflowOperation;
 use App\Models\Workflow\WorkflowCaseNode;
+use Closure;
 use Illuminate\Database\Eloquent\Collection;
 use LogicException;
 
@@ -19,11 +20,12 @@ class CaseAttachEntries
     /**
      * @param  list<CaseSituation>  $situations  案件のフローを読み込んだ状況
      * @param  array<int, bool>  $withdrawable  案件の id → 取止めが許されるか(can.withdraw)
+     * @param  (Closure(): bool)|null  $moduleEnabled  詳細の 1 件の案件のフローの値(同じ表示で読んだ値を共有する。入口があるときに 1 回だけ呼ぶ)。null = ここで読む
      * @return array<int, array{pullBack: array<int, bool>, withdraw: bool}> 案件の id → 引戻せるノードの id ごとの値と取止めの値
      *
-     * @throws LogicException 案件のフローを読み込んでいない・引戻せるノードの行が無いとき
+     * @throws LogicException 案件のフローを読み込んでいない・引戻せるノードの行が無い・値を渡したのに要る案件が 2 件以上のとき
      */
-    public function of(array $situations, array $withdrawable): array
+    public function of(array $situations, array $withdrawable, ?Closure $moduleEnabled = null): array
     {
         $pullBackIds = [];
 
@@ -37,9 +39,7 @@ class CaseAttachEntries
                 || ($withdrawable[$situation->case->id] ?? false),
         ));
         $nodes = $this->nodesOf(array_merge([], ...array_values($pullBackIds)));
-        $modules = $this->attachability->moduleEnabledByFlows(
-            array_map(fn (CaseSituation $situation) => CaseRows::flowOf($situation->case), $needed),
-        );
+        $modules = $this->modulesOf($needed, $moduleEnabled);
         $result = array_fill_keys(array_keys($pullBackIds), ['pullBack' => [], 'withdraw' => false]);
 
         foreach ($needed as $situation) {
@@ -61,6 +61,29 @@ class CaseAttachEntries
         }
 
         return $result;
+    }
+
+    /**
+     * 要る案件のフローごとの業務モジュールの値。値(遅延)を渡されたときは詳細の 1 件の案件のものとして使う。
+     *
+     * @param  list<CaseSituation>  $needed
+     * @return array<int, bool> フローの id → 値
+     *
+     * @throws LogicException 値を渡したのに要る案件が 2 件以上のとき(呼び手の誤り)
+     */
+    private function modulesOf(array $needed, ?Closure $moduleEnabled): array
+    {
+        $flows = array_map(fn (CaseSituation $situation) => CaseRows::flowOf($situation->case), $needed);
+
+        if ($moduleEnabled === null || $flows === []) {
+            return $this->attachability->moduleEnabledByFlows($flows);
+        }
+
+        if (count($flows) > 1) {
+            throw new LogicException('渡した業務モジュールの値は 1 件の案件のものなので、要る案件が 2 件以上では使えない');
+        }
+
+        return [$flows[0]->id => $moduleEnabled()];
     }
 
     /**

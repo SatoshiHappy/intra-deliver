@@ -60,6 +60,7 @@ class ApplyCase
         private RecordApplicationSteps $fromRecord,
         private ContactValidator $contactValidator,
         private SendCaseNotices $notices,
+        private ApplicationRowAccess $rowAccess,
     ) {}
 
     /**
@@ -176,7 +177,8 @@ class ApplyCase
             $actor = CaseActor::forProcessor($applicantId, $context);
             $origin = $this->records->origin(WorkflowAction::Apply, $this->records->applyNodeName($versionId), $actor);
             $holder = WorkflowRecordHolds::holderOf($case->id);
-            [$record, $version] = [$input->recordInput(), $recordVersion ?? ''];
+            $restricted = $this->rowAccess->forUpdate($applicant, $flow, $input->record, $moduleCode, $recordId);
+            [$record, $version] = [$input->recordInput([], $restricted), $recordVersion ?? ''];
             $this->updateRecord->execute($applicant, $moduleCode, $recordId, $record, $version, $holder, $origin);
             $revisionId = $this->records->revisionOf($recordId);
             $application = [
@@ -217,7 +219,8 @@ class ApplyCase
         $origin = $this->records->origin(WorkflowAction::Apply, $this->records->applyNodeName($versionId), $actor);
         $moving = $this->draftAttachmentsToMove($flow, $draft, $input, $actor);
         $moduleCode = $this->records->moduleCodeOf($flow);
-        $record = $input->recordInput($this->attachments->uploadInputs($moving));
+        $restricted = $this->rowAccess->forRegistration($applicant, $flow, $input->record);
+        $record = $input->recordInput($this->attachments->uploadInputs($moving), $restricted);
         $recordId = $this->createRecord->execute($applicant, $moduleCode, $record, $origin);
         $this->attachments->forget($moving);
         $revisionId = $this->records->revisionOf($recordId);

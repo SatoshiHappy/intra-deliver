@@ -1,3 +1,4 @@
+import type { InertiaFormProps } from '@inertiajs/react';
 import type { WorkflowApplyAttachment, WorkflowApplyProps } from '@/types';
 
 /**
@@ -157,6 +158,22 @@ export function fileErrorKeysOf(
     errors: Record<string, string | undefined>,
 ): string[] {
     return Object.keys(errors).filter(isFileErrorKey);
+}
+
+/**
+ * ファイルの並びに当たる誤りを消す(ほかの誤りは残す。申請の画面と処理のダイアログが使う)。消すキーが無いときに clearErrors を呼ぶと
+ * 全部の誤りを消すので呼ばない。キーはフォームの型に無い(サーバーの誤りのキーは送る形の attachments.<添字>)ので、clearErrors の引数の型に指定する。
+ */
+export function clearFileErrors<T extends object>(
+    form: Pick<InertiaFormProps<T>, 'errors' | 'clearErrors'>,
+) {
+    const keys = fileErrorKeysOf(form.errors);
+
+    if (keys.length > 0) {
+        form.clearErrors(
+            ...(keys as Parameters<InertiaFormProps<T>['clearErrors']>),
+        );
+    }
 }
 
 /** ファイルの並びに当たる誤りのキーか(attachments・attachments.<添字>) */

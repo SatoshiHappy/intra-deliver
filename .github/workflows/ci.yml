@@ -32,7 +32,8 @@ jobs:
         # 写し(公開リポジトリ)でだけ動く(非公開のリポジトリの無料枠は月 2,000 分で、取り込みのたびに全段を流すと足りない)
         if: ${{ github.repository == 'SatoshiHappy/intra-deliver' }}
         runs-on: ubuntu-24.04
-        timeout-minutes: 60
+        # T の最後のクラスが 30 分止まってから通った回(2026-10-31)が 60 分では取り消されたので、止まったまま戻らないときの歯止めとして 75 分
+        timeout-minutes: 75
         permissions:
             contents: read
         defaults:
@@ -102,6 +103,30 @@ jobs:
                   docker compose logs db
                   exit 1
 
+            # .deb の取得が 25 kB/s ほどに落ちる回があるので、控えを持ち越す。大きさしか見ない apt には、署名された索引と照らした
+            # .deb だけを渡す(docs の 設計/コード構成/検査/一括検査の段.md 6.5)。中身の鍵は戻す前に分からないので、前方一致で最も新しい控えを戻す
+            - name: apt の控えを戻す
+              id: apt-cache
+              uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+              with:
+                  path: ~/apt-archives
+                  key: apt-ubuntu-24.04-${{ github.run_id }}
+                  restore-keys: apt-ubuntu-24.04-
+
+            # apt-get は取った .deb を /var/cache/apt/archives から使う(Playwright の --with-deps も apt-get を呼ぶ)。
+            # 照らせなかったときは控えを使わず、apt が取り直す(控えは速さのためで、門は変えない)
+            - name: apt の控えを apt に渡す
+              run: |
+                  mkdir -p ~/apt-archives
+                  sudo apt-get update
+                  if scripts/ci/apt-archives verify ~/apt-archives; then
+                      if compgen -G "$HOME/apt-archives/*.deb" > /dev/null; then
+                          sudo install -m 0644 -t /var/cache/apt/archives -- "$HOME"/apt-archives/*.deb
+                      fi
+                  else
+                      echo "::warning::apt の控えを照らせなかった(控えを使わず、apt が取り直す)"
+                  fi
+
             - name: 依存(composer・npm・Playwright のブラウザ)
               run: |
                   composer install --no-interaction --no-progress
@@ -112,6 +137,28 @@ jobs:
             # 音声の変換のテストは ffmpeg・ffprobe を実際に通す(docs の 設計/AI/実行と費用.md 4.2)。ランナーに無ければ入れる
             - name: ffmpeg
               run: command -v ffprobe > /dev/null || (sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg)
+
+            - name: apt の控えを集める
+              id: apt-collect
+              env:
+                  MATCHED_KEY: ${{ steps.apt-cache.outputs.cache-matched-key }}
+              run: |
+                  if key="$(scripts/ci/apt-archives collect /var/cache/apt/archives ~/apt-archives)"; then
+                      echo "apt の控えの鍵: ${key:-なし}"
+                      if [[ "$key" =~ ^[0-9a-f]{16}$ && "apt-ubuntu-24.04-$key" != "$MATCHED_KEY" ]]; then
+                          echo "save-key=apt-ubuntu-24.04-$key" >> "$GITHUB_OUTPUT"
+                      fi
+                  else
+                      echo "::warning::apt の控えを集められなかった(保存しない)"
+                  fi
+
+            # main の run だけ保存する(枝の控えが 10 GB を埋めて main の控えを追い出さないように)
+            - name: apt の控えを保存する
+              if: ${{ github.ref == 'refs/heads/main' && steps.apt-collect.outputs.save-key != '' }}
+              uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+              with:
+                  path: ~/apt-archives
+                  key: ${{ steps.apt-collect.outputs.save-key }}
 
             # laravel-vite-plugin は環境変数 CI があると Vite のサーバーを拒む。単体テスト(vitest)はそのサーバーで走るので、確かめを外す
             # (本番ビルドはもともと確かめの対象外)

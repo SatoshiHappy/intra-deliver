@@ -13,6 +13,14 @@ import type {
 /** 人(名前が無ければ画面はコードを出す) */
 export type WorkflowPerson = { id: number; code: string; name: string | null };
 
+/** 処理担当者の選択肢 1 つ(自分か代理元。並び = 自分が先、代理元はその後) */
+export type WorkflowPrincipal = {
+    id: number;
+    name: string;
+    isSelf: boolean;
+    canAttach: boolean; // この操作をこの人として行うときに添付を追加できる
+};
+
 /** 札の状態(再申請待ち > すべて保留中 > 承認待ち = 認可と一覧.md の 2.4 節) */
 type WorkflowLabelState = 'waiting' | 'reapply' | 'hold';
 

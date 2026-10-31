@@ -1,8 +1,4 @@
-import type {
-    ModuleCategoryChoice,
-    RecordAdminModuleForm,
-    RowAccessScope,
-} from '@/types';
+import type { ModuleCategoryChoice, RecordAdminModuleForm } from '@/types';
 
 /**
  * 管理の業務モジュールの編集のフォームの値と、業務処理の入力への変換(docs の 設計/業務データの入れ物/画面/管理の画面.md 3.5、
@@ -16,11 +12,11 @@ export type ModuleFormData = {
     is_visible: boolean;
     categories: string[];
     is_attachment_enabled: boolean;
-    row_access_scope: RowAccessScope;
+    row_access_restricted_by_default: boolean;
 };
 
 /**
- * フォームの初期値(今の定義。明細のモジュールの持たない値は空・偽・使用する・全員にしておき、送らない)。
+ * フォームの初期値(今の定義。明細のモジュールの持たない値は空・偽・使用する・制限しないにしておき、送らない)。
  * 表示の止めは {@link withVisibilityStop} で当てる。
  */
 export function initialModuleData(
@@ -34,7 +30,8 @@ export function initialModuleData(
         is_visible: module.isVisible === true,
         categories: module.categoryIds ?? [],
         is_attachment_enabled: module.isAttachmentEnabled !== false,
-        row_access_scope: module.rowAccessScope ?? 'all',
+        row_access_restricted_by_default:
+            module.rowAccessRestrictedByDefault === true,
     };
 
     return withVisibilityStop(data, visibilityStopReason);
@@ -53,7 +50,7 @@ export function withVisibilityStop(
 }
 
 /**
- * 業務処理の入力。明細のモジュールはアイコン・表示の状態・分類・添付の使用・見える範囲を持たないので名前と説明だけ(業務処理は null 以外を拒む)。
+ * 業務処理の入力。明細のモジュールはアイコン・表示の状態・分類・添付の使用・参照制限の既定を持たないので名前と説明だけ(業務処理は null 以外を拒む)。
  * サイドバーに出さないなら分類は [](選んだ状態は画面の中だけで保つ)。分類は一覧の並びの順で送る。
  */
 export function toModulePayload(
