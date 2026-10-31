@@ -5,7 +5,8 @@ import {
     isHiddenAttachmentError,
 } from '@/lib/Workflow/applyAttachment';
 import { applicationTargetOf } from '@/lib/Workflow/applicationTargetSnapshot';
-import { targetsText } from '@/lib/Workflow/workflowLabels';
+import type { NameSegment } from '@/lib/Workflow/nameSegments';
+import { targetsSegments } from '@/lib/Workflow/workflowLabels';
 import type { WorkflowApplyAttachment, WorkflowApplyProps } from '@/types';
 
 type Props = WorkflowApplyProps;
@@ -58,22 +59,32 @@ export function unshownKeysOf(
 }
 
 /**
- * 申請すると誰の未処理に出るかの 1 文(ルートの深さ/画面/案件の側の画面.md 5 節)。出せる人がいなければ空文字(0 人・版が無いときは別の文で示す)。
+ * 申請すると誰の未処理に出るかの 1 文(ルートの深さ/画面/案件の側の画面.md 5 節。人の名前は札の区切り)。出せる人がいなければ空
+ * (0 人・版が無いときは別の文で示す)。
  */
-export function nextText(next: Props['next'], operation: string): string {
+export function nextSegments(
+    next: Props['next'],
+    operation: string,
+): NameSegment[] {
     if (next.dependsOnContent) {
-        return `${operation}すると、内容に応じたステップの未処理に表示されます。`;
+        return [
+            `${operation}すると、内容に応じたステップの未処理に表示されます。`,
+        ];
     }
 
     const first = next.nodes[0];
 
     if (first === undefined || first.targets.length === 0) {
-        return '';
+        return [];
     }
 
     const more = next.nodes.length > 1 ? 'ほか' : '';
 
-    return `${operation}すると、${first.name}の${targetsText(first.targets)}${more}の未処理に表示されます。`;
+    return [
+        `${operation}すると、${first.name}の`,
+        ...targetsSegments(first.targets),
+        `${more}の未処理に表示されます。`,
+    ];
 }
 
 /**
@@ -136,10 +147,10 @@ function headingLeadOf(
  */
 export function headingLineOf(
     lead: string,
-    nextLine: string,
+    nextLine: NameSegment[],
     blocker: string | null,
-): string {
-    return `${lead}${blocker === null ? nextLine : ''}`;
+): NameSegment[] {
+    return [lead, ...(blocker === null ? nextLine : [])];
 }
 
 /**
@@ -189,7 +200,7 @@ export function applyViewOf(
     name: string,
 ) {
     const operation = operationOf(props.mode);
-    const nextLine = nextText(props.next, operation);
+    const nextLine = nextSegments(props.next, operation);
     const blocker = blockerOf(props);
     const defaultName = defaultNameOf(props, record);
 

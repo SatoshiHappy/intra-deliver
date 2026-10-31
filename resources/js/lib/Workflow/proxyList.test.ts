@@ -67,8 +67,18 @@ describe('代理の管理の URL', () => {
         expect(
             adminProxiesUrl(
                 {
-                    principal: { id: 3, code: 'u0003', name: '高橋 誠' },
-                    proxy: { id: 9, code: 'u0009', name: '吉田 達也' },
+                    principal: {
+                        id: 3,
+                        code: 'u0003',
+                        name: '高橋 誠',
+                        mainDepartmentId: null,
+                    },
+                    proxy: {
+                        id: 9,
+                        code: 'u0009',
+                        name: '吉田 達也',
+                        mainDepartmentId: null,
+                    },
                     kind: 'apply',
                     active: true,
                 },
@@ -83,7 +93,12 @@ describe('代理の管理の URL', () => {
 
 describe('adminEmptyTextOf', () => {
     const none = { principal: null, proxy: null, kind: null, active: false };
-    const person = { id: 3, code: 'u0003', name: '高橋 誠' };
+    const person = {
+        id: 3,
+        code: 'u0003',
+        name: '高橋 誠',
+        mainDepartmentId: null,
+    };
 
     it('絞り込みが無ければ「代理はありません」', () => {
         expect(adminEmptyTextOf(none)).toBe('代理はありません');

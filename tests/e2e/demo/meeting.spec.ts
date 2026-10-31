@@ -4,12 +4,12 @@ import {
     createFromAudio,
     createFromPaste,
     expectMinutesAndTranscript,
+    expectMinutesNote,
     FILE_GUIDE,
     fileField,
     meetingIdOf,
     meetingList,
     meetingRow,
-    MINUTES_NOTE,
     openCreateDialog,
     openMeeting,
     regenerateAndExpectProcessing,
@@ -184,7 +184,7 @@ test('見本の会議は関係者の一覧に出て、詳細に議事録と書�
         .click();
 
     await expect(page).toHaveURL(/\/records\/data\/meeting\/\d+$/);
-    await expect(page.getByText(MINUTES_NOTE, { exact: true })).toBeVisible();
+    await expectMinutesNote(page);
     await expect(
         page.getByRole('heading', { name: '検索の応答が遅い件' }),
     ).toBeVisible();

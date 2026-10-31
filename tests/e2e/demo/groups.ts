@@ -55,6 +55,7 @@ export const demoGroups = [
         // records-related-columns は初期データの「課題」の関連レコードの列を変え、筋の最後に未選択に戻す。
         // records-admin-visibility-stop は初期データの申請書の業務モジュールの編集の画面を開くだけで保存しない。
         // app-skeleton-administrator・workflow-home は切替で利用者を替えて画面を開くだけで、DB に書かない。
+        // workflow-person-links は初期データの見本の案件の処理のダイアログを開くが決定しない(DB に書かず、見本の案件の初期の状態を前提にする)。
         // app-skeleton-administrator の先頭の画面は初期データの業務の木を前提にする(前に流れる spec が業務の木を変えない))。
         // 時間の長い demo のファイルを上の 2 つの組から分けて、組どうしの時間をそろえる
         name: 'demo-ほか',
@@ -69,6 +70,7 @@ export const demoGroups = [
             'tests/e2e/demo/switch-user.spec.ts',
             'tests/e2e/demo/workflow-connected.spec.ts',
             'tests/e2e/demo/workflow-home.spec.ts',
+            'tests/e2e/demo/workflow-person-links.spec.ts',
         ],
     },
 ];

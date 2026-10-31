@@ -9,6 +9,7 @@ use App\Models\Workflow\WorkflowCaseHistory;
 use App\Queries\Authz\Api\Requester;
 use App\Support\AccessContext;
 use App\Support\PageNumbers;
+use Closure;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 
@@ -19,11 +20,12 @@ use Illuminate\Database\Eloquent\Collection;
  *
  * @phpstan-import-type CaseRow from CaseRows
  * @phpstan-import-type AttachmentLimits from WorkflowAttachmentLimits
+ * @phpstan-import-type Links from PersonLinks
  *
  * @phpstan-type CaseList array{
  *     query: array{tab: string, scope: string, q: string}, counts: Counts,
  *     cases: array{data: list<CaseRow>, currentPage: int, lastPage: int, total: int}, commentMaxLength: int,
- *     attachmentLimits: AttachmentLimits|null,
+ *     attachmentLimits: AttachmentLimits|null, links: Closure(): Links,
  * }
  * @phpstan-type Counts array{draft: int, pending: int, unconfirmed: int}
  */
@@ -58,6 +60,7 @@ class CaseListQuery
         private CaseVisibility $visibility,
         private CaseRows $rows,
         private WorkflowAttachmentLimits $limits,
+        private PersonLinks $links,
     ) {}
 
     /**
@@ -100,6 +103,7 @@ class CaseListQuery
             ],
             'commentMaxLength' => WorkflowCaseHistory::COMMENT_MAX,
             'attachmentLimits' => $this->limits->forPage($this->anyAttachable($rows)),
+            'links' => $this->links->lazy($context),
         ];
     }
 

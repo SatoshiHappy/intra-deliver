@@ -16,11 +16,15 @@ import type {
     WorkflowCaseCan,
 } from './workflowOperations';
 import type {
+    WorkflowActorView,
     WorkflowCaseRow,
     WorkflowCurrentSummary,
     WorkflowDeadline,
+    WorkflowLinkedPerson,
     WorkflowPerson,
+    WorkflowPersonLinks,
     WorkflowPrincipal,
+    WorkflowProcessedView,
     WorkflowPullBackNode,
 } from './workflowRows';
 import type {
@@ -72,7 +76,7 @@ export type WorkflowApplyProps = {
         departmentName: string | null; // 申請基準日のカレント組織 = 担当組織
         nodes: {
             name: string;
-            targets: WorkflowPerson[];
+            targets: WorkflowLinkedPerson[];
             blockedReason: string | null; // 申請者承認防止で今の展開が申請者本人だけのときの文言(申請を押せない)
         }[]; // 申請の次に到達するステップの今の展開(位置の順)
         dependsOnContent: boolean; // 次が分岐開始で、内容で到達するステップが決まる
@@ -82,6 +86,7 @@ export type WorkflowApplyProps = {
     recordTitle: string | null; // 既存のデータからの申請だけ: 見出しの表示の項目の値(無ければ null)
     applicants: WorkflowApplicant[]; // 申請者の選択肢
     applicant: number | null; // 既定の申請者(代理元。自分なら null。定義・next・申請基準日の範囲はこの人で引いた値)
+    links: WorkflowPersonLinks; // 名前の札の「…」のリンク
 } & WorkflowApplyTarget;
 
 /** 再申請の差分(再申請の行だけ。設計/ワークフロー/画面/申請と案件.md 5 節) */
@@ -113,7 +118,7 @@ export type WorkflowDiagramNode = {
     sequence: number | null; // 展開の行の番号(案件だけ)
     subtitle: string | null; // 設定から作った短い文(「課長が指定」など)
     state: WorkflowNodeState | null; // 案件だけ(定義は null)
-    people: (WorkflowPerson & { isMe: boolean })[]; // 案件: 現在のステップは処理対象者、処理済みは処理者
+    people: (WorkflowLinkedPerson & { isMe: boolean })[]; // 案件: 現在のステップは処理対象者、処理済みは処理者
     placeholders: { label: string; optional: boolean }[]; // 定義の配置のノードだけ
     consensus: { text: string } | null; // 縦配置だけ(「完了の条件 承認 2 人 現在 1 人」)
 };
@@ -132,19 +137,11 @@ export type WorkflowStepState = {
     label: string;
 };
 
-/** 処理実行者の表示(実行者が処理者と違えば「{executor}({actor}さんの代理)」= 案件の運用/画面/README.md の 1.2 節) */
-export type WorkflowActorView = {
-    actor: WorkflowPerson;
-    executor: WorkflowPerson | null; // 代理で処理したときだけ
-};
-
 /** 案件の詳細の図と表の 1 ノード(表のための処理担当者と、処理の種別・日時・処理実行者を持つ) */
 export type WorkflowCaseDiagramNode = WorkflowDiagramNode & {
     stepState: WorkflowStepState;
-    targets: (WorkflowPerson & { isMe: boolean })[]; // 現在のステップの処理担当者(ほかは空)
-    processed:
-        | ({ action: WorkflowAction; at: string | null } & WorkflowActorView)
-        | null; // 処理済みだけ
+    targets: (WorkflowLinkedPerson & { isMe: boolean })[]; // 現在のステップの処理担当者(ほかは空)
+    processed: WorkflowProcessedView | null; // 処理済みだけ(処理実行者は名前の札)
     // 処理の時に指定するステップで、まだ指定が無い。枠の文 = docs の 設計/ワークフロー/ルートの深さ/画面/図と意匠とE2E.md の 8 節(文言の持ち主は WorkflowDiagram.tsx)
     awaitingDesignation: boolean;
 };
@@ -161,7 +158,7 @@ export type WorkflowCouncil = {
         nodeId: number;
         name: string; // 表示名(画面には描かない)
         action: WorkflowAction | null; // 処理済みの行の処理の種別
-        person: (WorkflowPerson & { isMe: boolean }) | null;
+        person: (WorkflowLinkedPerson & { isMe: boolean }) | null;
         department: WorkflowPerson | null; // 申請基準日の所属
         at: string | null; // 処理日時
         stepState: WorkflowStepState;
@@ -184,7 +181,7 @@ export type WorkflowCaseHistory = WorkflowActorView & {
 };
 
 /** 処理対象者の候補(口 workflow.cases.assignee-candidates の users の要素) */
-export type WorkflowAssigneeCandidate = WorkflowPerson & {
+export type WorkflowAssigneeCandidate = WorkflowLinkedPerson & {
     mainDepartmentName: string | null;
 };
 
@@ -201,7 +198,7 @@ export type WorkflowDesignation = {
         value: number | null;
         required: number[]; // 人数 i + 1 のときの必要な数 k(添字 i。人数 1〜max。式はサーバーの WorkflowDecisionRule::required() の 1 か所)
     } | null; // 縦配置の可決の条件
-    initial: WorkflowPerson[]; // 今の指定
+    initial: WorkflowLinkedPerson[]; // 今の指定
 };
 
 /** ステップごとの処理の操作(承認・承認終了・否認・差戻しと、保留・保留解除・担当変更 = 案件の運用/画面/案件の画面.md の 4 節) */
@@ -291,4 +288,5 @@ export type WorkflowCaseShowProps = {
     commentMaxLength: number; // コメントの文字数の上限(処理のダイアログ)
     canAttachOnWithdraw: boolean; // 取止めで添付を追加できる
     attachmentLimits: WorkflowAttachmentLimits | null; // どの入口も添付を受けなければ null
+    links: WorkflowPersonLinks; // 名前の札の「…」のリンク
 };

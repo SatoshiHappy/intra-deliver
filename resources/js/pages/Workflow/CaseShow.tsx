@@ -11,6 +11,7 @@ import { CaseFlowInfo } from '@/components/Workflow/CaseFlowInfo';
 import { CaseHistoryList } from '@/components/Workflow/CaseHistoryList';
 import { CaseOperationArea } from '@/components/Workflow/CaseOperationArea';
 import { RelatedCases } from '@/components/Workflow/RelatedCases';
+import { PersonLinksContext } from '@/hooks/Workflow/use-person-links';
 import { showAttachOf } from '@/lib/Workflow/caseActionAttach';
 import { index, show } from '@/routes/workflow/cases';
 import type { WorkflowCaseShowProps } from '@/types';
@@ -21,14 +22,14 @@ type Props = WorkflowCaseShowProps;
  * 申請の詳細(docs の 設計/ワークフロー/案件の運用/画面/案件の画面.md の 4 節): 見出し = 申請名、右に操作のボタン({@see CaseActionBar})、
  * 見出しの下に代理の 1 行(proxyNote)。面 = 基本情報・申請内容・フロー情報(図と表の切替・合議の進み具合)・確認・履歴・関連する申請。
  * 処理のダイアログは描き分けの外に 1 つ(誤りの後に can が偽になっても閉じない = CaseActionDialog)。最後に申請操作の面({@see CaseOperationArea}。
- * operation があるときだけ)。
+ * operation があるときだけ)。名前の札の「…」のリンクは props の links をページ全体(ダイアログを含む)へ渡す。
  */
 export default function CaseShow(props: Props) {
     const { openAction, dialogProps } = useCaseActionDialog();
     const { case: workflowCase, content } = props;
 
     return (
-        <>
+        <PersonLinksContext value={props.links}>
             <Head title={workflowCase.name} />
 
             <div className="flex h-full flex-1 flex-col gap-6 p-4">
@@ -65,7 +66,7 @@ export default function CaseShow(props: Props) {
                 <CaseOperationArea {...props} onOpenAction={openAction} />
             </div>
             <CaseActionDialog {...dialogProps} attach={showAttachOf(props)} />
-        </>
+        </PersonLinksContext>
     );
 }
 

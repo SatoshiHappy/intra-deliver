@@ -1,4 +1,8 @@
-import type { WorkflowPerson } from './workflowRows';
+import type {
+    WorkflowLinkedPerson,
+    WorkflowPerson,
+    WorkflowPersonLinks,
+} from './workflowRows';
 import type { WorkflowProxyKind } from './workflowValues';
 
 /**
@@ -46,12 +50,13 @@ export type WorkflowProxiesProps = {
     flows: WorkflowProxyFlow[];
     /** サーバーの今日(YYYY-MM-DD。追加のダイアログの開始日の既定値) */
     today: string;
+    links: WorkflowPersonLinks; // 名前の札の「…」のリンク
 };
 
 /** 代理の管理の絞り込み(人はクエリの id から引いた結果。解釈できない値は null) */
 export type WorkflowAdminProxyQuery = {
-    principal: WorkflowPerson | null;
-    proxy: WorkflowPerson | null;
+    principal: WorkflowLinkedPerson | null;
+    proxy: WorkflowLinkedPerson | null;
     kind: WorkflowProxyKind | null;
     active: boolean;
 };
@@ -61,6 +66,7 @@ export type WorkflowAdminProxiesProps = {
     query: WorkflowAdminProxyQuery;
     flows: WorkflowProxyFlow[];
     today: string;
+    links: WorkflowPersonLinks; // 名前の札の「…」のリンク
     proxies: {
         data: WorkflowAdminProxyRow[];
         currentPage: number;

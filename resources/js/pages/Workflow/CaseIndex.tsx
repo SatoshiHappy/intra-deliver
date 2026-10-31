@@ -9,6 +9,7 @@ import { CaseListTabs } from '@/components/Workflow/CaseListTabs';
 import { CaseSearchField } from '@/components/Workflow/CaseSearchField';
 import { useBulkResult } from '@/hooks/Workflow/use-bulk-result';
 import { useCaseSearch } from '@/hooks/Workflow/use-case-search';
+import { PersonLinksContext } from '@/hooks/Workflow/use-person-links';
 import { indexAttachOf } from '@/lib/Workflow/caseActionAttach';
 import { caseListUrl, visitCaseList } from '@/lib/Workflow/caseListUrl';
 import { index } from '@/routes/workflow/cases';
@@ -27,7 +28,7 @@ export default function CaseIndex(props: WorkflowCaseIndexProps) {
     );
 
     return (
-        <>
+        <PersonLinksContext value={props.links}>
             <Head title="申請一覧" />
 
             <div className="flex h-full flex-1 flex-col gap-6 p-4">
@@ -60,7 +61,7 @@ export default function CaseIndex(props: WorkflowCaseIndexProps) {
                 isOpen={bulkResult.isOpen}
                 onClose={bulkResult.close}
             />
-        </>
+        </PersonLinksContext>
     );
 }
 

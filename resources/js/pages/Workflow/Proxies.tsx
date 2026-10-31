@@ -1,6 +1,7 @@
 import { Head, usePage } from '@inertiajs/react';
 import { ProxyAddDialog } from '@/components/Workflow/ProxyAddDialog';
 import { ProxySurface } from '@/components/Workflow/ProxySurface';
+import { PersonLinksContext } from '@/hooks/Workflow/use-person-links';
 import { ownTableRow } from '@/lib/Workflow/proxyList';
 import { destroy, index } from '@/routes/workflow/proxies';
 import type { WorkflowProxiesProps } from '@/types';
@@ -15,11 +16,12 @@ export default function Proxies({
     incoming,
     flows,
     today,
+    links,
 }: WorkflowProxiesProps) {
     const { account } = usePage().props;
 
     return (
-        <>
+        <PersonLinksContext value={links}>
             <Head title="代理の設定" />
 
             <div className="flex h-full flex-1 flex-col gap-6 p-4">
@@ -54,7 +56,7 @@ export default function Proxies({
                     rows={incoming.map(ownTableRow)}
                 />
             </div>
-        </>
+        </PersonLinksContext>
     );
 }
 

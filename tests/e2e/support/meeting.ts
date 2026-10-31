@@ -17,7 +17,7 @@ export const FILE_GUIDE =
 
 export const TEXT_LINES = ['最初の発言', '次の発言', '最後の発言'];
 
-export const MINUTES_NOTE =
+const MINUTES_NOTE =
     '議事録の 5 欄は、再作成で上書きされます。前の値は更新履歴で確認できます。';
 
 export function meetingList(page: Page): Locator {
@@ -103,7 +103,22 @@ export async function createFromAudio(page: Page, title: string) {
 }
 
 /**
- * 詳細の議事録の欄(リッチテキスト)・要約の上の注と、書き起こしの帯を開いた中身(発言の行 = lines)。
+ * 要約の名前の横の注のボタン(i)にマウスを乗せ、Tooltip に注の文が出ることと、読み上げ用の注の文が値の後ろの見えない dd に
+ * あること(名前 → 値 → 注の順)を確かめる。
+ */
+export async function expectMinutesNote(page: Page) {
+    await page.getByRole('button', { name: '要約の注', exact: true }).hover();
+    await expect(page.getByRole('tooltip')).toHaveText(MINUTES_NOTE);
+    // 読み上げ用の注の文は値の後ろの dd(名前 → 値 → 注の順)
+    const values = page.locator(
+        'div:has(> dt button[aria-label="要約の注"]) > dd',
+    );
+    await expect(values).toHaveCount(2);
+    await expect(values.last()).toHaveText(MINUTES_NOTE);
+}
+
+/**
+ * 詳細の議事録の欄(リッチテキスト)・要約の名前の横の注と、書き起こしの帯を開いた中身(発言の行 = lines)。
  */
 export async function expectMinutesAndTranscript(
     page: Page,
@@ -119,7 +134,7 @@ export async function expectMinutesAndTranscript(
     await expect(
         page.getByRole('heading', { name: '決めたこと' }),
     ).toBeVisible();
-    await expect(page.getByText(MINUTES_NOTE, { exact: true })).toBeVisible();
+    await expectMinutesNote(page);
 
     await page
         .getByRole('navigation', { name: 'サイドパネル', exact: true })

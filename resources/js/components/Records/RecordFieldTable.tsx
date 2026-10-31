@@ -15,7 +15,7 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import {
-    headingFieldCounts,
+    headingGrouping,
     isCountedField,
     itemId,
 } from '@/lib/Records/adminItems';
@@ -63,8 +63,8 @@ function FieldTableHead() {
 
 /**
  * 管理の項目の表(docs の 設計/業務データの入れ物/画面/管理の画面.md 3.3、レコードの共通機能/詳細の画面/見出し.md の 5 節。明細のモジュールの定義の画面も同じ部品):
- * 列 = 取っ手・名前・コード・型・属性・操作。行の順が見出しと項目の 1 本の並び(見出しの行は背景で区別する)。取っ手をつかんで(マウス、
- * またはフォーカスして Space → 矢印 → Space)動かすと、画面の並びを先に変えて records.admin.fields.reorder へ全見出しと全項目を新しい順
+ * 列 = 取っ手・名前・コード・型・属性・操作。行の順が見出しと項目の 1 本の並び(見出しの行は背景で区別し、見出しのまとまりの項目は
+ * 名前を字下げする)。取っ手をつかんで(マウス、またはフォーカスして Space → 矢印 → Space)動かすと、画面の並びを先に変えて records.admin.fields.reorder へ全見出しと全項目を新しい順
  * (items)に送り、module・fieldUsage・headings・items だけを読み直す。要求が終わったら(成否に依らず)手元の並びを捨てて props に戻る。
  * 成功はトーストなし、422 は文言をトースト、応答が無いときもトースト。送っている間は次のドラッグを受けない。
  */
@@ -80,7 +80,7 @@ export function RecordFieldTable({
     const [pending, setPending] = useState<RecordAdminItem[] | null>(null);
     const shown = pending ?? items;
     const ids = shown.map(itemId);
-    const counts = headingFieldCounts(shown, isCountedField(module));
+    const grouping = headingGrouping(shown, isCountedField(module));
 
     const drop = ({ active, over }: DragEndEvent) => {
         const move = moveWithin(ids, active.id, over?.id ?? null);
@@ -119,7 +119,7 @@ export function RecordFieldTable({
                                 module={module}
                                 item={item}
                                 headings={headings}
-                                counts={counts}
+                                grouping={grouping}
                                 fieldUsage={fieldUsage}
                                 nameMaxLength={nameMaxLength}
                             />

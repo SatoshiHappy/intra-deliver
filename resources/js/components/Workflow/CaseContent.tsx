@@ -1,3 +1,4 @@
+import { DetailItem } from '@/components/DetailItem';
 import {
     RecordColumnHeads,
     RecordFieldName,
@@ -51,23 +52,16 @@ export function CaseContent({
             </p>
             <dl className="grid grid-cols-1 gap-x-6 gap-y-4 text-sm md:grid-cols-2">
                 {plainFields.map((field) => (
-                    <div
+                    <DetailItem
                         key={field.code}
-                        className={cn(
-                            'flex min-w-0 flex-col gap-1',
-                            isWideField(field) && 'md:col-span-2',
-                        )}
+                        name={<RecordFieldName field={field} />}
+                        className={cn(isWideField(field) && 'md:col-span-2')}
                     >
-                        <dt className="text-xs text-muted-foreground">
-                            <RecordFieldName field={field} />
-                        </dt>
-                        <dd>
-                            <RecordValue
-                                field={field}
-                                value={record.values[field.code] ?? null}
-                            />
-                        </dd>
-                    </div>
+                        <RecordValue
+                            field={field}
+                            value={record.values[field.code] ?? null}
+                        />
+                    </DetailItem>
                 ))}
             </dl>
             {detailsFields.map((field) => {

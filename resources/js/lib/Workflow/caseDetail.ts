@@ -1,4 +1,6 @@
 import { EMPTY_VALUE, formatDate } from '@/lib/recordValues';
+import { joinedPeople, segmentsText } from '@/lib/Workflow/nameSegments';
+import type { NameSegment } from '@/lib/Workflow/nameSegments';
 import { personName } from '@/lib/Workflow/workflowLabels';
 import type {
     StatusTone,
@@ -7,6 +9,7 @@ import type {
     WorkflowCaseState,
     WorkflowConfirmationProgress,
     WorkflowDeadline,
+    WorkflowLinkedPerson,
     WorkflowPerson,
 } from '@/types';
 
@@ -15,12 +18,35 @@ import type {
  */
 
 /**
- * 処理実行者の表示(実行者が処理者と違えば「{実行者}({処理者}さんの代理)」、同じなら処理者の名前)。
+ * 処理実行者の表示の区切り(実行者が処理者と違えば「{実行者}({処理者}さんの代理)」、同じなら処理者の名前。人は札の区切り)。
+ */
+function processorViewParts<Person extends WorkflowPerson>(
+    view: WorkflowActorView<Person>,
+): (string | { person: Person; text: string })[] {
+    return view.executor === null
+        ? [{ person: view.actor, text: personName(view.actor) }]
+        : [
+              { person: view.executor, text: personName(view.executor) },
+              '(',
+              { person: view.actor, text: `${personName(view.actor)}さん` },
+              'の代理)',
+          ];
+}
+
+/**
+ * 処理実行者の表示(履歴の行の字)。
  */
 export function actorViewText(view: WorkflowActorView): string {
-    return view.executor === null
-        ? personName(view.actor)
-        : `${personName(view.executor)}(${personName(view.actor)}さんの代理)`;
+    return segmentsText(processorViewParts(view));
+}
+
+/**
+ * 処理実行者の表示の名前の札(フロー情報の表 = 設計/ワークフロー/申請の周辺/メニューと導線.md 2.2)。
+ */
+export function processorViewSegments(
+    view: WorkflowActorView<WorkflowLinkedPerson>,
+): NameSegment[] {
+    return processorViewParts(view);
 }
 
 /**
@@ -78,19 +104,17 @@ export function reachedDateOf(
 }
 
 /**
- * 処理担当者の列の文(現在のステップの処理担当者を「、」で並べ、自分に「(自分)」。いなければ null)。
+ * 人の並び(フロー情報の表の処理担当者の列と図。「、」で並べ、自分に「(自分)」。人の名前は札の区切り。いなければ null)。
  */
-export function targetsCellText(
-    targets: (WorkflowPerson & { isMe: boolean })[],
-): string | null {
-    return targets.length === 0
+export function markedPeopleSegments(
+    people: (WorkflowLinkedPerson & { isMe: boolean })[],
+): NameSegment[] | null {
+    return people.length === 0
         ? null
-        : targets
-              .map(
-                  (person) =>
-                      `${personName(person)}${person.isMe ? '(自分)' : ''}`,
-              )
-              .join('、');
+        : joinedPeople(
+              people,
+              (person) => `${personName(person)}${person.isMe ? '(自分)' : ''}`,
+          );
 }
 
 /** 確認の状態の札(語・色。色の無いもの = 省略・確認の行なしは札にせず文字だけ。docs の 設計/ワークフロー/案件の運用/案件の操作/README.md の 1.5 節) */

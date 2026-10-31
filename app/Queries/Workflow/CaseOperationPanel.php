@@ -21,23 +21,24 @@ use LogicException;
  * 戻り先の候補は {@see SendBackCandidates::ancestorCandidatesOf()} を引く(画面に出たボタンを押して表の 422 にならない)。
  * ダイアログの中身はボタンが真の操作だけ持つ(偽なら空)。どのボタンも偽なら null(面を出さない)。鍵を取らない。
  *
- * @phpstan-import-type Person from WorkflowPeople
+ * @phpstan-import-type LinkedPerson from WorkflowPeople
  *
  * @phpstan-type PanelButtons array{
  *     retarget: bool, reexpand: bool, move: bool, assign: bool, release: bool, destroy: bool,
  * }
  * @phpstan-type RetargetNode array{
- *     nodeId: int, name: string, single: bool, max: int, onHold: bool, targets: list<Person>,
+ *     nodeId: int, name: string, single: bool, max: int, onHold: bool, targets: list<LinkedPerson>,
  * }
  * @phpstan-type ReexpandNode array{
- *     nodeId: int, name: string, onHold: bool, targets: list<Person>, expanded: list<Person>, summary: string|null,
+ *     nodeId: int, name: string, onHold: bool, targets: list<LinkedPerson>, expanded: list<LinkedPerson>,
+ *     summary: string|null,
  * }
  * @phpstan-type BackNode array{nodeId: int, name: string}
  * @phpstan-type ReleaseNode array{nodeId: int, name: string}
  * @phpstan-type MoveNode array{nodeId: int, name: string, onHold: bool, canForward: bool, backNodes: list<BackNode>,
  *     defaultBackNodeId: int|null}
  * @phpstan-type AssignNode array{nodeId: int, name: string, kindLabel: string, min: int, max: int, ordered: bool,
- *     assigned: list<Person>}
+ *     assigned: list<LinkedPerson>}
  * @phpstan-type Panel array{caseName: string, buttons: PanelButtons, retargetNodes: list<RetargetNode>,
  *     reexpandNodes: list<ReexpandNode>, moveNodes: list<MoveNode>, assignNodes: list<AssignNode>,
  *     releaseNodes: list<ReleaseNode>}
@@ -178,18 +179,19 @@ class CaseOperationPanel
      * @param  list<CurrentNode>  $currentNodes
      * @param  list<list<int>>  $reexpanded
      * @param  array<int, list<int>>  $assigned
-     * @return array<int, Person>
+     * @return array<int, LinkedPerson>
      */
     private function peopleOf(AccessContext $context, array $currentNodes, array $reexpanded, array $assigned): array
     {
         $targets = array_map(fn (CurrentNode $node) => $node->targetUserIds, $currentNodes);
         $userIds = array_merge([], ...$targets, ...$reexpanded, ...array_values($assigned));
+        $people = $this->people->users($userIds, $context->date, $context->localeCode);
 
-        return $this->people->users($userIds, $context->date, $context->localeCode);
+        return $this->people->linked($people, $context->date, $context->localeCode);
     }
 
     /**
-     * @param  array<int, Person>  $people
+     * @param  array<int, LinkedPerson>  $people
      * @return RetargetNode
      */
     private function retargetNodeOf(CurrentNode $node, array $people): array
@@ -206,7 +208,7 @@ class CaseOperationPanel
 
     /**
      * @param  list<int>  $userIds  展開し直した人(0 人なら空)
-     * @param  array<int, Person>  $people
+     * @param  array<int, LinkedPerson>  $people
      * @return ReexpandNode
      */
     private function reexpandNodeOf(CurrentNode $node, array $userIds, array $people): array
@@ -247,7 +249,7 @@ class CaseOperationPanel
      * 今の指定 = {@see CurrentAssignments::of()}。
      *
      * @param  array<int, list<int>>  $assigned  Y の id → 今の指定の人
-     * @param  array<int, Person>  $people
+     * @param  array<int, LinkedPerson>  $people
      * @return AssignNode
      */
     private function assignNodeOf(WorkflowCaseNode $node, array $assigned, array $people): array
@@ -269,8 +271,8 @@ class CaseOperationPanel
 
     /**
      * @param  list<int>  $userIds
-     * @param  array<int, Person>  $people
-     * @return list<Person>
+     * @param  array<int, LinkedPerson>  $people
+     * @return list<LinkedPerson>
      */
     private static function peopleIn(array $userIds, array $people): array
     {

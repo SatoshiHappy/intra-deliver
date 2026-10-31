@@ -180,7 +180,10 @@ final class ApplicationNextTest extends TransactionalTestCase
     {
         $id = $this->seededUser($code)->id;
 
-        return app(WorkflowPeople::class)->users([$id], CarbonImmutable::parse('2026-10-13'), 'ja')[$id];
+        $people = app(WorkflowPeople::class);
+        $date = CarbonImmutable::parse('2026-10-13');
+
+        return $people->linked($people->users([$id], $date, 'ja'), $date, 'ja')[$id];
     }
 
     /**

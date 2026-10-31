@@ -17,6 +17,7 @@ import type {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { useEffect, useMemo } from 'react';
+import { DiagramPeople } from '@/components/Workflow/DiagramPeople';
 import {
     CaseStepBadge,
     StepStateBadge,
@@ -33,7 +34,6 @@ import type {
     RouteEdgeData,
     StepNodeData,
 } from '@/lib/Workflow/diagramLayout';
-import { personName } from '@/lib/Workflow/workflowLabels';
 import type { WorkflowDiagramEdge, WorkflowStepState } from '@/types';
 
 /** 図の高さの上限(px。版 3 の図が 1 倍で入る高さ)。超えたら 0.6 倍まで縮め、なお入らなければ図の中で移動(設計/ワークフロー/ルートの深さ/画面/図と意匠とE2E.md 8 節) */
@@ -97,23 +97,6 @@ function Handles() {
     );
 }
 
-/** 人の並び(自分には「(自分)」) */
-function PeopleText({ node }: { node: DiagramInputNode }) {
-    if (node.people.length === 0) {
-        return null;
-    }
-
-    const text = node.people
-        .map((person) => `${personName(person)}${person.isMe ? '(自分)' : ''}`)
-        .join('、');
-
-    return (
-        <span className="min-w-0 truncate" title={text}>
-            {text}
-        </span>
-    );
-}
-
 /** 申請・承認と展開の行の箱: 名前・短い文・人と状態の札 */
 function StepNode({ data, parentId }: NodeProps<Node<StepNodeData>>) {
     const { node } = data;
@@ -146,7 +129,7 @@ function StepNode({ data, parentId }: NodeProps<Node<StepNodeData>>) {
                         isChild ? 'flex-col items-start' : 'items-center',
                     )}
                 >
-                    <PeopleText node={node} />
+                    <DiagramPeople node={node} />
                     <span className={cn('shrink-0', !isChild && 'ml-auto')}>
                         <CaseStepBadge
                             stepState={node.stepState}

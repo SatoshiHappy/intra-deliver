@@ -22,9 +22,9 @@ use LogicException;
  * noVersionMessage = 版が無いときの文(申請基準日の日付入り。業務処理の 422 base_date と同じ文 = {@see EffectiveFlowVersions::NO_VERSION_MESSAGE}。版があれば null)。
  * blockedReason = 申請者承認防止のノードの展開が申請者として扱う人だけのときの文言(業務処理の 422 と同じ = 4.6。0 人は画面が 設計/ワークフロー/画面/申請と案件.md 3 節の文で示す)。鍵を取らない。
  *
- * @phpstan-import-type Person from WorkflowPeople
+ * @phpstan-import-type LinkedPerson from WorkflowPeople
  *
- * @phpstan-type Next array{version: int|null, noVersionMessage: string|null, departmentName: string|null, nodes: list<array{name: string, targets: list<Person>, blockedReason: string|null}>, dependsOnContent: bool}
+ * @phpstan-type Next array{version: int|null, noVersionMessage: string|null, departmentName: string|null, nodes: list<array{name: string, targets: list<LinkedPerson>, blockedReason: string|null}>, dependsOnContent: bool}
  */
 class ApplicationNext
 {
@@ -62,7 +62,7 @@ class ApplicationNext
             'version' => WorkflowFlowVersion::query()->findOrFail($versionId)->number,
             'noVersionMessage' => null,
             'departmentName' => $departmentName,
-            ...$this->reached($nodes, array_values($edges), $origin, $baseDate, $context->localeCode),
+            ...$this->reached($nodes, array_values($edges), $origin, $baseDate, $context),
         ];
     }
 
@@ -84,7 +84,7 @@ class ApplicationNext
             'version' => $case->workflowFlowVersion()->firstOrFail()->number,
             'noVersionMessage' => null,
             'departmentName' => $this->departmentName($case->department_id, $baseDate, $context->localeCode),
-            ...$this->reached($nodes, array_values($edges), $origin, $baseDate, $context->localeCode),
+            ...$this->reached($nodes, array_values($edges), $origin, $baseDate, $context),
         ];
     }
 
@@ -118,9 +118,9 @@ class ApplicationNext
      * @param  array<int, WorkflowRouteNode|WorkflowCaseNode>  $nodes  id → ノード(展開の行を除く)
      * @param  list<array{int, int}>  $edges  [出る id, 入る id]
      * @param  array{department: int|null, previous: int|null, applicants: non-empty-list<int>}  $origin  担当組織・前処理者の起点の組織・申請者として扱う人
-     * @return array{nodes: list<array{name: string, targets: list<Person>, blockedReason: string|null}>, dependsOnContent: bool}
+     * @return array{nodes: list<array{name: string, targets: list<LinkedPerson>, blockedReason: string|null}>, dependsOnContent: bool}
      */
-    private function reached(array $nodes, array $edges, array $origin, CarbonImmutable $baseDate, string $localeCode): array
+    private function reached(array $nodes, array $edges, array $origin, CarbonImmutable $baseDate, AccessContext $context): array
     {
         $apply = array_values(array_filter($nodes, fn (WorkflowRouteNode|WorkflowCaseNode $node) => $node->kind === WorkflowNodeKind::Apply))[0]
             ?? throw new LogicException('申請のノードが無い');
@@ -147,7 +147,8 @@ class ApplicationNext
 
         usort($reached, fn (WorkflowRouteNode|WorkflowCaseNode $a, WorkflowRouteNode|WorkflowCaseNode $b) => [$a->position, $a->id] <=> [$b->position, $b->id]);
         $targets = array_map(fn (WorkflowRouteNode|WorkflowCaseNode $node) => $this->expansion->expand($node, $origin['department'], $origin['previous'], $baseDate), $reached);
-        $people = $this->people->users(array_merge([], ...$targets), $baseDate, $localeCode);
+        $people = $this->people->users(array_merge([], ...$targets), $baseDate, $context->localeCode);
+        $people = $this->people->linked($people, $context->date, $context->localeCode);
 
         return [
             'nodes' => array_map(fn (WorkflowRouteNode|WorkflowCaseNode $node, array $ids) => [

@@ -5,7 +5,7 @@ namespace App\Queries\Workflow;
 use App\Enums\Workflow\WorkflowDecisionRule;
 use App\Enums\Workflow\WorkflowNodeKind;
 use App\Models\Workflow\WorkflowCaseNode;
-use DateTimeInterface;
+use App\Support\AccessContext;
 use LogicException;
 
 /**
@@ -14,9 +14,9 @@ use LogicException;
  * {@see CurrentAssignments::latestOf()}。差戻しの後も引戻しの後も前の指定から始める。無い・0 人なら空)。計画の今の指定とは別。
  * 鍵を取らない。
  *
- * @phpstan-import-type Person from WorkflowPeople
+ * @phpstan-import-type LinkedPerson from WorkflowPeople
  *
- * @phpstan-type Designation array{nodeId: int, name: string, kind: string, kindLabel: string, min: int, max: int, decision: array{rule: string, value: int|null, required: list<int>}|null, initial: list<Person>}
+ * @phpstan-type Designation array{nodeId: int, name: string, kind: string, kindLabel: string, min: int, max: int, decision: array{rule: string, value: int|null, required: list<int>}|null, initial: list<LinkedPerson>}
  */
 class CaseDesignations
 {
@@ -32,11 +32,13 @@ class CaseDesignations
      * @param  list<int>  $designatorIds  指定するノード X の候補(処理のダイアログを開けるノード)
      * @return array<int, list<Designation>> X の id → 指定されるノード(写した並び = 位置の順。X が指定しなければ空)
      */
-    public function of(int $caseId, array $designatorIds, DateTimeInterface $date, string $localeCode): array
+    public function of(int $caseId, array $designatorIds, AccessContext $context): array
     {
         $designated = $designatorIds === [] ? [] : WorkflowCaseNode::query()->where('workflow_case_id', $caseId)->whereIn('designator_workflow_case_node_id', $designatorIds)->orderBy('position')->orderBy('id')->get()->all();
         $current = $designated === [] ? [] : $this->assignments->latestOf($caseId);
-        $people = $this->people->users(array_merge([], ...array_values($current)), $date, $localeCode);
+        $userIds = array_merge([], ...array_values($current));
+        $people = $this->people->users($userIds, $context->date, $context->localeCode);
+        $people = $this->people->linked($people, $context->date, $context->localeCode);
         $result = array_fill_keys($designatorIds, []);
 
         foreach ($designated as $node) {

@@ -8,6 +8,7 @@ use App\Models\Workflow\WorkflowProxy;
 use App\Queries\Master\Api\MasterNames;
 use App\Support\AccessContext;
 use App\Support\PageNumbers;
+use Closure;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
@@ -15,12 +16,14 @@ use Illuminate\Database\Eloquent\Builder;
  * 代理の設定は自分が代理元・代理先の行だけ(ゲストは空)。代理の管理は全部の行で、見てよい範囲はルートの認可が決める
  * (設計/ワークフロー/案件の運用/認可と一覧.md の 4 節)。並びと状態は {@see WorkflowProxies::orderedByStatus()}。
  *
- * @phpstan-import-type Person from WorkflowPeople
+ * @phpstan-import-type LinkedPerson from WorkflowPeople
+ * @phpstan-import-type Links from PersonLinks
  * @phpstan-import-type ProxyRow from ProxyRows
  * @phpstan-import-type AdminProxyRow from ProxyRows
  *
  * @phpstan-type Flow array{code: string, name: string}
- * @phpstan-type AdminQuery array{principal: Person|null, proxy: Person|null, kind: string|null, active: bool}
+ * @phpstan-type AdminQuery array{principal: LinkedPerson|null, proxy: LinkedPerson|null, kind: string|null,
+ *     active: bool}
  */
 class ProxyList
 {
@@ -34,19 +37,26 @@ class ProxyList
         private WorkflowProxies $proxies,
         private ProxyRows $rows,
         private MasterNames $names,
+        private PersonLinks $links,
     ) {}
 
     /**
      * 代理の設定のページ Workflow/Proxies の props(outgoing = 代理元が自分、incoming = 代理先が自分。today は 2 つのページで同じ)。
      *
-     * @return array{outgoing: list<ProxyRow>, incoming: list<ProxyRow>, flows: list<Flow>, today: string}
+     * @return array{outgoing: list<ProxyRow>, incoming: list<ProxyRow>, flows: list<Flow>, today: string,
+     *     links: Closure(): Links}
      */
     public function own(AccessContext $context): array
     {
         $userId = $context->userId;
+        $commonProps = [
+            'flows' => $this->flows(),
+            'today' => self::today($context),
+            'links' => $this->links->lazy($context),
+        ];
 
         if ($userId === null) {
-            return ['outgoing' => [], 'incoming' => [], 'flows' => $this->flows(), 'today' => self::today($context)];
+            return ['outgoing' => [], 'incoming' => [], ...$commonProps];
         }
 
         $outgoing = $this->ordered(WorkflowProxy::query()->where('principal_user_id', $userId), $context)->get();
@@ -55,15 +65,14 @@ class ProxyList
         return [
             'outgoing' => $this->rows->own($outgoing, 'proxy_user_id', $context),
             'incoming' => $this->rows->own($incoming, 'principal_user_id', $context),
-            'flows' => $this->flows(),
-            'today' => self::today($context),
+            ...$commonProps,
         ];
     }
 
     /**
      * 代理の管理のページ Workflow/Admin/Proxies の props(クエリ principal・proxy・kind・active・page。解釈できない値は無いのと同じ)。
      *
-     * @return array{query: AdminQuery, flows: list<Flow>, today: string,
+     * @return array{query: AdminQuery, flows: list<Flow>, today: string, links: Closure(): Links,
      *     proxies: array{data: list<AdminProxyRow>, currentPage: int, lastPage: int, total: int}}
      */
     public function admin(
@@ -90,6 +99,7 @@ class ProxyList
             'query' => $query,
             'flows' => $this->flows(),
             'today' => self::today($context),
+            'links' => $this->links->lazy($context),
             'proxies' => [
                 'data' => $this->rows->admin($paginator->getCollection(), $context),
                 'currentPage' => $paginator->currentPage(),
@@ -153,9 +163,9 @@ class ProxyList
     }
 
     /**
-     * クエリの人(id の形でない・無いユーザーは null)。
+     * クエリの人(id の形でない・無いユーザーは null)。絞り込みの欄の札に出すので主所属の組織の id を持つ。
      *
-     * @return Person|null
+     * @return LinkedPerson|null
      */
     private function personOf(mixed $value, AccessContext $context): ?array
     {
@@ -166,6 +176,17 @@ class ProxyList
         $userId = (int) $value;
         $named = $this->names->users([$userId], $context->date, $context->localeCode)[$userId] ?? null;
 
-        return $named === null ? null : ['id' => $userId, 'code' => $named['code'], 'name' => $named['name']];
+        if ($named === null) {
+            return null;
+        }
+
+        $department = $this->names->mainDepartments([$userId], $context->date, $context->localeCode)[$userId] ?? null;
+
+        return [
+            'id' => $userId,
+            'code' => $named['code'],
+            'name' => $named['name'],
+            'mainDepartmentId' => $department['id'] ?? null,
+        ];
     }
 }

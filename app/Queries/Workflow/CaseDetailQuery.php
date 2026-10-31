@@ -10,6 +10,7 @@ use App\Queries\Authz\Api\Requester;
 use App\Queries\Records\Api\RecordDisplayQuery;
 use App\Support\AccessContext;
 use Carbon\CarbonImmutable;
+use Closure;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use LogicException;
@@ -37,6 +38,7 @@ use LogicException;
  * @phpstan-import-type DetailPullBackNode from CaseProcessorChoices
  * @phpstan-import-type Confirmation from CaseConfirmationPanel
  * @phpstan-import-type Panel from CaseOperationPanel
+ * @phpstan-import-type Links from PersonLinks
  *
  * @phpstan-type ShowCan array{pullBack: bool, reapply: bool, withdraw: bool, confirm: bool, operate: bool}
  * @phpstan-type Processing array{can: ShowCan,
@@ -49,7 +51,7 @@ use LogicException;
  *     nodeActions: list<array<string, mixed>>, pullBackNodes: list<DetailPullBackNode>, casePrincipal: int|null,
  *     proxyNote: string|null,
  *     confirmations: list<Confirmation>, commentMaxLength: int, canAttachOnWithdraw: bool,
- *     attachmentLimits: AttachmentLimits|null}
+ *     attachmentLimits: AttachmentLimits|null, links: Closure(): Links}
  */
 class CaseDetailQuery
 {
@@ -69,6 +71,7 @@ class CaseDetailQuery
         private CaseDeadlines $deadlines,
         private WorkflowAttachmentLimits $limits,
         private CaseOperationPanel $operationPanel,
+        private PersonLinks $links,
     ) {}
 
     /**
@@ -90,8 +93,9 @@ class CaseDetailQuery
         $content = $this->display->show($requester, $recordId, $context->date, $context->localeCode);
         $historiesById = $histories->keyBy('id');
         $assignments = $nodes->contains(fn (WorkflowCaseNode $node) => $node->designator_workflow_case_node_id !== null) ? $this->assignments->of($case->id) : [];
-        $councils = $this->councils->of($case, $nodes, $historiesById, $assignments, $situation, $requester->userId, $context->date, $context->localeCode);
-        $diagram = $this->diagram->of($case, $nodes, $historiesById, $assignments, $situation, $people, $councils, $requester->userId);
+        $councils = $this->councils->of($case, $nodes, $historiesById, $assignments, $situation, $requester->userId, $context);
+        $linked = $this->people->linked($people, $context->date, $context->localeCode);
+        $diagram = $this->diagram->of($case, $nodes, $historiesById, $assignments, $situation, $linked, $councils, $requester->userId);
         $updatedAfter = $this->updatedAfterSubmission($content['record']['updatedAt'], $histories);
         $operation = $this->operationPanel->of($requester, $context, $situation, $nodes);
         $detail = [
@@ -108,6 +112,7 @@ class CaseDetailQuery
             'confirmations' => $this->confirmationPanel
                 ->of($case, $nodes, $context->userId, $context->date, $context->localeCode),
             'commentMaxLength' => WorkflowCaseHistory::COMMENT_MAX,
+            'links' => $this->links->lazy($context),
         ];
         $this->visibleCase($requester, $context, $case->id);
 
@@ -133,7 +138,7 @@ class CaseDetailQuery
         $choices = $this->choices->of($requester, $context, $situation, $kinds);
         $approvable = array_filter($choices['nodeActions'], fn (array $action) => $action['approve']);
         $approveIds = array_values(array_map(fn (array $action) => $action['nodeId'], $approvable));
-        $designations = $this->designations->of($situation->case->id, $approveIds, $date, $context->localeCode);
+        $designations = $this->designations->of($situation->case->id, $approveIds, $context);
         $designated = fn (array $action) => [...$action, 'designations' => $designations[$action['nodeId']] ?? []];
         $pullBackAttach = array_column($choices['pullBackNodes'], 'canAttach');
         $attachable = CaseNodeActions::anyCanAttach($choices['nodeActions'])

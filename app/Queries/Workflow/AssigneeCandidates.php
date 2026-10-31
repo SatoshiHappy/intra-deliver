@@ -33,6 +33,7 @@ class AssigneeCandidates
         private MasterCandidates $candidates,
         private ApplicantApprovalGuard $applicantGuard,
         private WorkflowProxies $proxies,
+        private WorkflowPeople $people,
     ) {}
 
     /**
@@ -100,7 +101,8 @@ class AssigneeCandidates
     /**
      * 候補(申請基準日に有効なユーザー。並び = 共通マスタの口の並び)。{@see self::authorize()} を通った案件と Y を渡す。
      *
-     * @return list<array{id: int, code: string, name: string|null, mainDepartmentName: string|null}>
+     * @return list<array{id: int, code: string, name: string|null, mainDepartmentName: string|null,
+     *     mainDepartmentId: int|null}>
      */
     public function of(AccessContext $context, int $caseId, int $nodeId, string $keyword): array
     {
@@ -109,7 +111,12 @@ class AssigneeCandidates
         $baseDate = $case->base_date ?? throw new LogicException("申請した案件 {$case->id} に申請基準日が無い");
         $excluded = $designated->prevents_applicant_approval ? $this->applicantGuard->applicantUserIds($case) : [];
         $users = $this->candidates->usersOn($keyword, $baseDate, $context->localeCode, self::LIMIT + count($excluded));
+        $kept = array_values(array_filter($users, fn (array $user) => ! in_array($user['id'], $excluded, true)));
+        $users = array_slice($kept, 0, self::LIMIT);
+        $departmentIds = $this->people->mainDepartmentIds(
+            array_column($users, 'id'), $context->date, $context->localeCode,
+        );
 
-        return array_slice(array_values(array_filter($users, fn (array $user) => ! in_array($user['id'], $excluded, true))), 0, self::LIMIT);
+        return array_map(fn (array $user) => [...$user, 'mainDepartmentId' => $departmentIds[$user['id']] ?? null], $users);
     }
 }

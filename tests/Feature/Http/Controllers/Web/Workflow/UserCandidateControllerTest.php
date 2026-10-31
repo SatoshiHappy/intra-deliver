@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Http\Controllers\Web\Workflow;
 
+use App\Models\Master\Department;
 use App\Models\Workflow\WorkflowCase;
 use App\Models\Workflow\WorkflowFlow;
 use App\Queries\Master\Api\MasterCandidates;
@@ -11,7 +12,8 @@ use Tests\Support\TransactionalTestCase;
 
 /**
  * 人の候補の入口 workflow.user-candidates(docs の 設計/ワークフロー/案件の運用/画面/README.md の 1.1 節・1.3 節): q が空なら空、基準日 =
- * if(case){案件の申請基準日(見えない案件は 404)}elseif(on が今日〜今日 + 1 年){on}else{今日}、20 件まで、応答の形 { id, code, name, department }、
+ * if(case){案件の申請基準日(見えない案件は 404)}elseif(on が今日〜今日 + 1 年){on}else{今日}、20 件まで、
+ * 応答の形 { id, code, name, department, departmentId }(departmentId = 名前の札の「組織図で見る」の行き先 = 設計/ワークフロー/申請の周辺/メニューと導線.md 2.1)、
  * ゲストは空。今日 = 2026-10-13。u0015(林 翔太)は 2026-11-01 に入社、u0014(木村 綾)は 2025-10-01 に退職。初期データを入れ、ルートの認可を外さない。
  */
 final class UserCandidateControllerTest extends TransactionalTestCase
@@ -33,7 +35,10 @@ final class UserCandidateControllerTest extends TransactionalTestCase
 
         $response->assertHeader('Cache-Control', 'no-store, private');
         $u0010 = $this->seededUser('u0010')->id;
-        $expected = ['id' => $u0010, 'code' => 'u0010', 'name' => '山田 恵', 'department' => '経理部'];
+        $accounting = Department::query()->where('code', 'accounting')->sole()->id;
+        $expected = [
+            'id' => $u0010, 'code' => 'u0010', 'name' => '山田 恵', 'department' => '経理部', 'departmentId' => $accounting,
+        ];
         $this->assertSame([$expected], $response->json('users'));
         $this->assertSame([], $this->candidateCodes(''));
         $this->assertSame([], $this->candidateCodes('翔太'));
@@ -52,8 +57,9 @@ final class UserCandidateControllerTest extends TransactionalTestCase
         $this->assertSame([], $this->candidateCodes('翔太', '&on=2026-11-31'));
         $this->assertSame([], $this->candidateCodes('翔太', '&on[]=2026-11-05'));
         $this->assertSame([], $this->candidateCodes('木村', '&on=2025-09-01'));
-        $joined = $this->getJson($this->url('翔太', '&on=2026-11-05'))->json('users.0.department');
-        $this->assertSame('第二営業部', $joined);
+        $joined = $this->getJson($this->url('翔太', '&on=2026-11-05'))->json('users.0');
+        // 所属の名前は基準日、札の行き先の主所属は今日(今日はまだ所属が無い = 設計/ワークフロー/申請の周辺/メニューと導線.md 2.1)
+        $this->assertSame(['第二営業部', null], [$joined['department'], $joined['departmentId']]);
     }
 
     /**
