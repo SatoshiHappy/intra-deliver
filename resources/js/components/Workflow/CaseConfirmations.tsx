@@ -1,3 +1,4 @@
+import { HeadingHelp } from '@/components/HeadingHelp';
 import { Badge } from '@/components/ui/badge';
 import {
     Table,
@@ -121,7 +122,7 @@ function ConfirmationTable({
 }
 
 /**
- * 確認の面(確認する人を持つステップがあるときだけ。docs の 設計/ワークフロー/案件の運用/画面/案件の画面.md の 4 節): 1 行の説明・表・
+ * 確認の面(確認する人を持つステップがあるときだけ。docs の 設計/ワークフロー/案件の運用/画面/案件の画面.md の 4 節): 見出しの横の「?」の説明・表・
  * 確認できるとき(canConfirm)は面の下に主ボタン「確認」。確認が開く前のステップの人は、展開した人を表示だけに出す(サーバーが渡す)。
  */
 export function CaseConfirmations({
@@ -146,15 +147,17 @@ export function CaseConfirmations({
             aria-labelledby="case-confirmations-heading"
             className="flex flex-col gap-3 rounded-xl border bg-card p-5 text-card-foreground"
         >
-            <h2
-                id="case-confirmations-heading"
-                className="text-[15px] font-semibold"
-            >
-                確認
-            </h2>
-            <p className="text-sm text-muted-foreground">
-                {confirmationNoteOf(isConfirmer)}
-            </p>
+            <div className="flex items-center gap-1.5">
+                <h2
+                    id="case-confirmations-heading"
+                    className="text-[15px] font-semibold"
+                >
+                    確認
+                </h2>
+                <HeadingHelp label="確認">
+                    {confirmationNoteOf(isConfirmer)}
+                </HeadingHelp>
+            </div>
             <ConfirmationTable confirmations={confirmations} />
             {canConfirm && (
                 <div>

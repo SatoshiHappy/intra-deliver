@@ -555,7 +555,7 @@ test('申請者が一時保存すると一時保存のタブの件数が 1 増�
         page.getByRole('heading', { level: 1, name: CASE_NAME }),
     ).toBeVisible();
     caseUrl = page.url();
-    await expect(page.getByRole('region', { name: '基本情報' })).toContainText(
+    await expect(page.getByRole('region', { name: '申請情報' })).toContainText(
         /WF-\d{6}/,
     );
     const flowRows = (await flowTable(page)).getByRole('row');
@@ -722,7 +722,7 @@ test('上長・部長が承認すると完了(承認)になり、完了の後も
         dialog.getByRole('button', { name: '決定', exact: true }),
     );
     await expect(page.getByText('承認しました', { exact: true })).toBeVisible();
-    await expect(page.getByRole('region', { name: '基本情報' })).toContainText(
+    await expect(page.getByRole('region', { name: '申請情報' })).toContainText(
         '完了(承認)',
     );
 

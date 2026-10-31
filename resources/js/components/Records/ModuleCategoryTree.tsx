@@ -10,6 +10,7 @@ import { arrayMove, hasSortableData } from '@dnd-kit/sortable';
 import { GripVertical } from 'lucide-react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
+import { HeadingHelp } from '@/components/HeadingHelp';
 import { MenuIcon } from '@/components/MenuIcon';
 import {
     moveWithin,
@@ -305,20 +306,18 @@ function CategoryItem({
     );
 }
 
-/**
- * 「分類なし」の見出し(題と説明。業務モジュールの行を落とす先の見出しの当たり)。
- */
+/** 「分類なし」の見出し(題と、横の「?」の説明。業務モジュールの行を落とす先の見出しの当たり) */
 function UncategorizedHeading() {
     const { setNodeRef } = useDroppable({ id: headingId(null) });
 
     return (
-        <div ref={setNodeRef} className="flex flex-col gap-1">
+        <div ref={setNodeRef} className="flex items-center gap-1.5">
             <h2 id="uncategorized-heading" className="text-sm font-medium">
                 分類なし
             </h2>
-            <p className="text-sm text-muted-foreground">
+            <HeadingHelp label="分類なし">
                 表示中は「業務」の直下に表示されます。非表示はサイドバーに表示されません
-            </p>
+            </HeadingHelp>
         </div>
     );
 }

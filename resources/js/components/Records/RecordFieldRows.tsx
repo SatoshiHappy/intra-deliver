@@ -66,7 +66,7 @@ function FieldActions({
 }) {
     return (
         <div className="flex items-center justify-end gap-1">
-            <Button asChild variant="ghost" size="sm">
+            <Button asChild variant="outline" size="sm">
                 <Link
                     href={editField({
                         module: module.code,
@@ -92,7 +92,7 @@ function FieldActions({
 }
 
 /**
- * 項目の表の 1 行(先頭の取っ手でつかんで動かす。取っ手だけが並び替えを始める)。inHeading = 見出しのまとまりの項目(名前を字下げする。
+ * 項目の表の 1 行(先頭の取っ手でつかんで動かす。取っ手だけが並び替えを始める)。inHeading = 見出しのまとまり(頭の「基本情報」を含む)の項目(名前を字下げする。
  * 幅は業務モジュール一覧の明細の行と同じ)。
  */
 function FieldRow({

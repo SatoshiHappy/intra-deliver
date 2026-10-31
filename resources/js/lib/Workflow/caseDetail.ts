@@ -93,7 +93,7 @@ export function assignmentNoteOf(
 }
 
 /**
- * 基本情報の到達日(最も古い現在のステップの到達した日。YYYY/MM/DD。無ければ null)。
+ * 申請情報の到達日(最も古い現在のステップの到達した日。YYYY/MM/DD。無ければ null)。
  */
 export function reachedDateOf(
     deadline: WorkflowDeadline | null,
@@ -131,7 +131,7 @@ export const CONFIRMATION_BADGES: Record<
 };
 
 /**
- * 確認の面の 1 行(自分が確認する人かで 2 つの形)。
+ * 確認の面の見出しの横の「?」の説明(自分が確認する人かで 2 つの形)。
  */
 export function confirmationNoteOf(isConfirmer: boolean): string {
     return isConfirmer
@@ -139,7 +139,7 @@ export function confirmationNoteOf(isConfirmer: boolean): string {
         : '確認は処理に影響しません。確認する人は、ステップが処理済みになると確認できます。';
 }
 
-/** 基本情報の進み具合の項目(画面の並びの順) */
+/** 申請情報の進み具合の項目(画面の並びの順) */
 export type ProgressItemKey =
     | 'currentStep'
     | 'completedOn'
@@ -148,7 +148,7 @@ export type ProgressItemKey =
     | 'elapsedDays';
 
 /**
- * 基本情報の進み具合の項目の並び(docs の 設計/ワークフロー/案件の運用/画面/案件の画面.md の 4 節、設計/ワークフロー/画面/申請と案件.md の 5 節)。
+ * 申請情報の進み具合の項目の並び(docs の 設計/ワークフロー/案件の運用/画面/案件の画面.md の 4 節、設計/ワークフロー/画面/申請と案件.md の 5 節)。
  * 現在のステップはいつも出す(完了のときの値は「—」)。完了は完了日、未完了は期限・到達日・経過日数が続く。
  */
 export function progressItemKeysOf(

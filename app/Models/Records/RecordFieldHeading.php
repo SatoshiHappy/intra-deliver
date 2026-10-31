@@ -14,6 +14,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 #[Fillable(['record_module_id', 'name', 'sort_key'])]
 class RecordFieldHeading extends Model
 {
+    /**
+     * 最初の見出しより前の項目に画面で付ける固定の見出しの名前(データに持たない。画面側の正本は resources/js/lib/recordHeadingGroups.ts の HEAD_GROUP_NAME で、
+     * 同じ文字列。見出しの名前の重なりを拒むために、サーバーはこの名前も使われているものとして数える)。
+     */
+    public const HEAD_GROUP_NAME = '基本情報';
+
     /** @use HasFactory<RecordFieldHeadingFactory> */
     use HasFactory;
 

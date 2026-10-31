@@ -134,11 +134,11 @@ export async function expectTypedValues(page: Page, name: string) {
     await expect(values).toContainText('東京営業課');
     await expect(values).toContainText('中村 美咲');
     await expect(values).toContainText('100');
-    await values
-        .getByRole('tab', { name: 'マイルストーン 2', exact: true })
-        .click();
+    await expect(
+        values.getByRole('button', { name: /^マイルストーン\s*2 件$/ }),
+    ).toHaveAttribute('aria-expanded', 'true');
     const rows = values
-        .getByRole('tabpanel', { name: 'マイルストーン 2', exact: true })
+        .getByRole('region', { name: 'マイルストーン', exact: true })
         .getByRole('row');
     await expect(rows).toHaveCount(3);
     await expect(rows.nth(1)).toContainText('E2E の節目 1');
@@ -182,7 +182,10 @@ export async function expectNoDetails(
     const recordUrl = await openPlanRecord(page, name);
     const values = page.getByRole('region', { name: `${name}の値` });
     await expect(
-        values.getByRole('tab', { name: 'マイルストーン 0', exact: true }),
+        values.getByRole('button', { name: /^マイルストーン\s*0 件$/ }),
+    ).toBeVisible();
+    await expect(
+        values.getByText('明細はありません', { exact: true }),
     ).toBeVisible();
     await expect(values).not.toContainText('E2E の節目');
     await expect(await recordAttachmentNames(page, recordUrl)).toHaveText([

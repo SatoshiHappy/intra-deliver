@@ -19,7 +19,7 @@ use Tests\Support\TransactionalTestCase;
 
 /**
  * 見出しの追加・変更・削除(docs の 設計/業務データの入れ物/レコードの共通機能/詳細の画面/見出し.md の 4 節、6 節の「業務処理」):
- * 明細のモジュールには足せず、名前の空・1000 文字を超えるは 422、見出しを消しても項目は残る、
+ * 明細のモジュールには足せず、名前の空・1000 文字を超える・同じ業務モジュールのほかの見出しや固定の「基本情報」と同じは 422、見出しを消しても項目は残る、
  * 持ち主のあるレコードがあっても拒まない、見出しが無い・その業務モジュールのでないは 404。
  */
 final class RecordFieldHeadingTest extends TransactionalTestCase
@@ -53,6 +53,62 @@ final class RecordFieldHeadingTest extends TransactionalTestCase
 
         $this->assertSame([['name' => $message], ['name' => $message]], [$added, $updated]);
         $this->assertSame([['元', 5]], $this->headingRows($module));
+    }
+
+    private const DUPLICATE = 'ほかの見出しと同じ名前と「基本情報」は設定できません';
+
+    public function test_rejects_adding_a_name_used_by_another_heading_or_the_fixed_head_name(): void
+    {
+        $module = $this->projects();
+        $this->heading($module, '期間', 5);
+
+        foreach (['期間', ' 期間 ', '基本情報'] as $name) {
+            $errors = $this->validationErrors(fn () => $this->add('projects', $name));
+            $this->assertSame(['name' => self::DUPLICATE], $errors);
+        }
+
+        $this->assertSame([['期間', 5]], $this->headingRows($module));
+    }
+
+    public function test_the_same_name_in_another_module_is_accepted(): void
+    {
+        $this->projects();
+        $this->heading($this->recordModule('others'), '期間', 0);
+
+        $added = $this->add('projects', '期間');
+
+        $this->assertSame('期間', $added->name);
+    }
+
+    public function test_rejects_renaming_to_a_name_used_by_another_heading_or_the_fixed_head_name(): void
+    {
+        $module = $this->projects();
+        $this->heading($module, '期間', 5);
+        $heading = $this->heading($module, '元', 6);
+
+        foreach (['期間', ' 期間 ', '基本情報'] as $name) {
+            $errors = $this->validationErrors(fn () => $this->rename($heading, $name));
+            $this->assertSame(['name' => self::DUPLICATE], $errors);
+        }
+
+        $this->assertSame([['期間', 5], ['元', 6]], $this->headingRows($module));
+    }
+
+    public function test_renaming_to_its_own_name_or_a_name_of_another_module_is_accepted(): void
+    {
+        $this->heading($this->recordModule('others'), '別の期間', 0);
+        $heading = $this->heading($this->projects(), '元', 5);
+
+        $this->rename($heading, '元');
+        $this->rename($heading, ' 元 ');
+        $this->rename($heading, '別の期間');
+
+        $this->assertSame('別の期間', $heading->refresh()->name);
+    }
+
+    public function test_the_fixed_head_name_is_the_same_text_as_the_screens(): void
+    {
+        $this->assertSame('基本情報', RecordFieldHeading::HEAD_GROUP_NAME);
     }
 
     public function test_accepts_a_name_of_1000_characters_and_trims_the_edges(): void

@@ -468,12 +468,12 @@ test('「文字列(複数行)」で作った項目は編集で型が固定の表
     ).toHaveCount(0);
     await expect(editForm.getByText('並び順', { exact: true })).toHaveCount(0);
 
-    // 項目の並びは 品名・区分・メモ(前の筋で足した順)。品名を 1 つ下へ
+    // 項目の並びは 品名・区分・メモ(前の筋で足した順)。見出しが無いので先頭に固定の行「基本情報」が出る。品名を 1 つ下へ
     await page.goto('/records/admin/modules/equipment');
     const fields = page.getByRole('region', { name: '項目', exact: true });
     const rows = fields.getByRole('row');
-    await expect(rows.nth(1)).toContainText('品名');
-    await expect(rows.nth(2)).toContainText('区分');
+    await expect(rows.nth(2)).toContainText('品名');
+    await expect(rows.nth(3)).toContainText('区分');
     await moveByKeyboard(
         page,
         fields.getByRole('button', { name: '品名の並び順を変更', exact: true }),
@@ -482,13 +482,13 @@ test('「文字列(複数行)」で作った項目は編集で型が固定の表
         '/records/admin/modules/equipment/fields/reorder',
     );
 
-    await expect(rows.nth(1)).toContainText('区分');
-    await expect(rows.nth(2)).toContainText('品名');
-    await expect(rows.nth(3)).toContainText('メモ');
+    await expect(rows.nth(2)).toContainText('区分');
+    await expect(rows.nth(3)).toContainText('品名');
+    await expect(rows.nth(4)).toContainText('メモ');
 
     await page.reload();
-    await expect(rows.nth(1)).toContainText('区分');
-    await expect(rows.nth(2)).toContainText('品名');
+    await expect(rows.nth(2)).toContainText('区分');
+    await expect(rows.nth(3)).toContainText('品名');
 
     await page.goto('/records/data/equipment/create');
     const recordForm = page.getByRole('form', { name: '備品の入力' });

@@ -17,6 +17,24 @@ type Props = {
 };
 
 /**
+ * 行の「申請する」(申請の画面へ)。
+ */
+function ApplyLink({ flow }: { flow: WorkflowApplicableFlow }) {
+    return (
+        <div className="flex items-center justify-end">
+            <Button variant="outline" size="sm" asChild>
+                <Link
+                    href={create(flow.code)}
+                    aria-label={`${flow.name}を申請する`}
+                >
+                    申請する
+                </Link>
+            </Button>
+        </div>
+    );
+}
+
+/**
  * フローの一覧(docs の 設計/ワークフロー/画面/README.md 2 節): 申請できるフローの表(フロー名・説明・業務モジュール・「申請する」)。0 件なら「申請できるフローはありません」、
  * ゲスト(共有プロパティ account の利用者が無い)には続けて「ゲストは申請できません」。
  */
@@ -81,16 +99,7 @@ export default function FlowIndex({ flows }: Props) {
                                         </TableCell>
                                         <TableCell>{flow.moduleName}</TableCell>
                                         <TableCell>
-                                            <div className="flex items-center justify-end">
-                                                <Button size="sm" asChild>
-                                                    <Link
-                                                        href={create(flow.code)}
-                                                        aria-label={`${flow.name}を申請する`}
-                                                    >
-                                                        申請する
-                                                    </Link>
-                                                </Button>
-                                            </div>
+                                            <ApplyLink flow={flow} />
                                         </TableCell>
                                     </TableRow>
                                 ))}

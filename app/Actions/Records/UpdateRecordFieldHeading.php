@@ -10,7 +10,7 @@ use Illuminate\Validation\ValidationException;
 
 /**
  * 見出しの名前を変える(docs の 設計/業務データの入れ物/レコードの共通機能/詳細の画面/見出し.md の 4 節。入力 = 業務モジュールのコード・見出しの id・{ name })。
- * 見出しが無い・その業務モジュールのでないときは 404、名前の検証は {@see AddRecordFieldHeading} と同じ。位置は変えない。
+ * 見出しが無い・その業務モジュールのでないときは 404、名前の検証(重なりを含む。自分の名前のままは通る)は {@see AddRecordFieldHeading} と同じ。位置は変えない。
  * 共通マスタと業務モジュールの排他の勧告ロック({@see LocksRecordModule})の下で行う。
  */
 class UpdateRecordFieldHeading
@@ -34,7 +34,7 @@ class UpdateRecordFieldHeading
         return $this->writeCommonMaster(function () use ($moduleCode, $headingId, $input) {
             $module = $this->lockRecordModuleExclusively($moduleCode);
             $heading = RecordFieldHeading::query()->where('record_module_id', $module->id)->findOrFail($headingId);
-            $this->throwIfAny(['name' => $this->headingNameError($input['name'] ?? null)]);
+            $this->throwIfAny(['name' => $this->headingNameErrorIn($input['name'] ?? null, $module->id, $heading->id)]);
             $heading->update(['name' => $input['name']]);
 
             return $heading;

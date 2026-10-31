@@ -140,11 +140,11 @@ async function openActionDialog(page: Page, trigger: string, title: string) {
 }
 
 /**
- * 基本情報の「現在のステップ」の値。
+ * 申請情報の「現在のステップ」の値。
  */
 function currentSteps(page: Page) {
     return page
-        .getByRole('region', { name: '基本情報' })
+        .getByRole('region', { name: '申請情報' })
         .locator('div')
         .filter({ has: page.getByText('現在のステップ', { exact: true }) })
         .locator('dd');
@@ -332,7 +332,7 @@ test('申請者: 申請の画面に申請基準日(既定は今日)と担当組�
     );
     await expect(page.getByText('申請しました', { exact: true })).toBeVisible();
     caseUrl = page.url();
-    const basic = page.getByRole('region', { name: '基本情報' });
+    const basic = page.getByRole('region', { name: '申請情報' });
     await expect(basic).toContainText(today.replaceAll('-', '/'));
     await expect(basic).toContainText('版 3');
     await expect(currentSteps(page)).toHaveText('課長');

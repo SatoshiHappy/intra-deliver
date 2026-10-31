@@ -2,6 +2,7 @@
 
 namespace App\Actions\Records;
 
+use App\Models\Records\RecordFieldHeading;
 use App\Support\DefinitionText;
 
 /**
@@ -11,7 +12,28 @@ use App\Support\DefinitionText;
 trait ValidatesHeadingName
 {
     /**
-     * 見出しの名前の誤りの文言(無ければ null)。
+     * 見出しの名前の誤りの文言(無ければ null)。形の誤りを先に見て、次に同じ業務モジュールの中の重なり
+     * (ほかの見出しの名前・固定の見出し {@see RecordFieldHeading::HEAD_GROUP_NAME}。前後の空白を除いて比べる)を見る。
+     * exceptId = 名前を変える見出し自身の id(自分と同じ名前のままは重ならない)。業務モジュールの排他の勧告ロックの下で呼ぶ。
+     */
+    private function headingNameErrorIn(mixed $name, int $recordModuleId, ?int $exceptId = null): ?string
+    {
+        $error = $this->headingNameError($name);
+
+        if ($error !== null) {
+            return $error;
+        }
+
+        $others = RecordFieldHeading::query()->where('record_module_id', $recordModuleId)
+            ->when($exceptId !== null, fn ($query) => $query->whereKeyNot($exceptId))
+            ->pluck('name');
+        $used = [RecordFieldHeading::HEAD_GROUP_NAME, ...$others->map(fn (string $other) => trim($other))->all()];
+
+        return in_array($name, $used, true) ? 'ほかの見出しと同じ名前と「基本情報」は設定できません' : null;
+    }
+
+    /**
+     * 見出しの名前の形の誤りの文言(無ければ null)。
      */
     private function headingNameError(mixed $name): ?string
     {

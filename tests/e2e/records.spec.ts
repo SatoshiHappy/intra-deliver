@@ -1,6 +1,7 @@
 import { expect, test } from './support/test';
 import type { Page } from '@playwright/test';
 import { seededDate, shownDate } from './support/seed-dates';
+import { detailBand, milestonesSection } from './support/record-detail-bands';
 import { submitAndExpectUrl } from './support/submit';
 import {
     adminMenuButton,
@@ -42,16 +43,6 @@ function searchForm(page: Page) {
  */
 function searchToggle(page: Page) {
     return page.getByRole('button', { name: '検索条件', exact: true });
-}
-
-/**
- * 詳細の面(見出し heading の値)のタブで札 name を選び、その中身(tabpanel)を返す(詳細の本文はタブ = 画面/業務の画面.md 2.3)。
- */
-async function openDetailTab(page: Page, heading: string, name: string) {
-    const values = page.getByRole('region', { name: `${heading}の値` });
-    await values.getByRole('tab', { name, exact: true }).click();
-
-    return values.getByRole('tabpanel', { name, exact: true });
 }
 
 /**
@@ -287,7 +278,7 @@ test('列「開始日」を押すと昇順に並び、もう一度押すと降�
     );
 });
 
-test('「社内ポータル刷新」の詳細は札「詳細」で担当部署「開発部」・開始日(初期データの日付)が出て、札「マイルストーン 4」で 4 行が出て、再読み込みでも同じ札', async ({
+test('「社内ポータル刷新」の詳細は詳細タブに担当部署「開発部」・開始日(初期データの日付)と、明細の帯「マイルストーン 4 行」の表が出る', async ({
     page,
 }) => {
     await page.goto('/records/data/project');
@@ -308,19 +299,14 @@ test('「社内ポータル刷新」の詳細は札「詳細」で担当部署�
     const start = shownDate('2026-07-01');
     await expect(values.getByText(start, { exact: true })).toBeVisible();
 
-    const milestones = await openDetailTab(
+    const { section } = await detailBand(
         page,
         '社内ポータル刷新',
-        'マイルストーン 4',
+        'マイルストーン',
+        4,
     );
-    await expect(milestones.getByRole('row')).toHaveCount(5);
-    await expect(milestones.getByRole('row').nth(2)).toContainText('15.5');
-    await expect(values.getByText('開発部', { exact: true })).toBeHidden();
-
-    // 選んだ札は URL のクエリ tab に映す(レコードの共通機能/詳細の画面/README.md の 3 節)
-    await expect(page).toHaveURL(/\?tab=details-milestones$/);
-    await page.reload();
-    await expect(milestones.getByRole('row')).toHaveCount(5);
+    await expect(section.getByRole('row')).toHaveCount(5);
+    await expect(section.getByRole('row').nth(2)).toContainText('15.5');
 });
 
 test('課題の詳細の報告日時は YYYY/MM/DD HH:MM で出て、プロジェクトは参照先の詳細へのリンクになる', async ({
@@ -646,11 +632,7 @@ test('プロジェクトの編集は終了日を開始日より前にすると�
     await listRegion(page, 'プロジェクト')
         .getByRole('link', { name: '経費精算の電子化', exact: true })
         .click();
-    const milestones = await openDetailTab(
-        page,
-        '経費精算の電子化',
-        'マイルストーン 1',
-    );
+    const milestones = await milestonesSection(page, '経費精算の電子化', 1);
     await expect(milestones.getByRole('row')).toHaveCount(2);
     await page.getByRole('link', { name: '編集', exact: true }).click();
     const form = recordForm(page, 'プロジェクト');
@@ -681,11 +663,7 @@ test('プロジェクトの編集は終了日を開始日より前にすると�
     );
 
     await expect(page.getByText('更新しました', { exact: true })).toBeVisible();
-    const added = await openDetailTab(
-        page,
-        '経費精算の電子化',
-        'マイルストーン 2',
-    );
+    const added = await milestonesSection(page, '経費精算の電子化', 2);
     await expect(added.getByRole('row')).toHaveCount(3);
     await expect(added.getByRole('row').nth(2)).toContainText('E2E の節目');
 
@@ -701,11 +679,7 @@ test('プロジェクトの編集は終了日を開始日より前にすると�
         }),
     );
 
-    const restored = await openDetailTab(
-        page,
-        '経費精算の電子化',
-        'マイルストーン 1',
-    );
+    const restored = await milestonesSection(page, '経費精算の電子化', 1);
     await expect(restored.getByRole('row')).toHaveCount(2);
 });
 
@@ -751,11 +725,7 @@ test('同じプロジェクトを 2 つのページで編集すると、後の�
     }
 
     await page.reload();
-    const kept = await openDetailTab(
-        page,
-        '経費精算の電子化',
-        'マイルストーン 2',
-    );
+    const kept = await milestonesSection(page, '経費精算の電子化', 2);
     await expect(kept.getByRole('row').nth(2)).toContainText('E2E の同時編集');
 
     await other.reload();
@@ -773,11 +743,7 @@ test('同じプロジェクトを 2 つのページで編集すると、後の�
     await recordForm(page, 'プロジェクト')
         .getByRole('button', { name: '更新', exact: true })
         .click();
-    const restored = await openDetailTab(
-        page,
-        '経費精算の電子化',
-        'マイルストーン 1',
-    );
+    const restored = await milestonesSection(page, '経費精算の電子化', 1);
     await expect(restored.getByRole('row')).toHaveCount(2);
 });
 

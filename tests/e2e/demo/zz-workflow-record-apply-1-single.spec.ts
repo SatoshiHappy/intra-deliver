@@ -79,7 +79,7 @@ test('承認を進めて完了になっても、申請した申請書のレコ�
     await switchUser(page, CHIEF, 'manager');
     await page.goto(caseUrl);
     await approve(page);
-    await expect(page.getByRole('region', { name: '基本情報' })).toContainText(
+    await expect(page.getByRole('region', { name: '申請情報' })).toContainText(
         '完了(承認)',
     );
 

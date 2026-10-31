@@ -7,6 +7,7 @@ import {
     FormSurface,
     TWO_SURFACES_GRID,
 } from '@/components/FormLayout';
+import { HeadingHelp } from '@/components/HeadingHelp';
 import { MenuIcon } from '@/components/MenuIcon';
 import { ModuleAttributes } from '@/components/Records/RecordModuleAttributes';
 import { Button } from '@/components/ui/button';
@@ -79,14 +80,12 @@ export default function ModuleEdit({
             <h2 id="module-basic" className="text-[15px] font-semibold">
                 基本
             </h2>
-            <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-1.5">
                 <p className="text-sm">
                     <span className="text-muted-foreground">コード: </span>
                     {module.code}
                 </p>
-                <p className="text-xs text-muted-foreground">
-                    作成後は変更できません
-                </p>
+                <HeadingHelp label="コード">作成後は変更できません</HeadingHelp>
             </div>
             <FormBlock
                 id="module-name"

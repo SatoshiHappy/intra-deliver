@@ -253,10 +253,10 @@ test('項目を変えて保存すると、更新履歴の先頭に「編集」�
     );
 });
 
-test('ほかの画面から来ると詳細タブで、左のタブが帯に入らない幅では「その他」から選べ、選ぶとボタンの名前がそのタブの名前と件数になる', async ({
+test('ほかの画面から来ると詳細タブで、左のタブは 詳細 / 参照制限 / 関連レコードだけ(狭い幅でも「その他」が出ない)で、明細は詳細タブの帯に出る', async ({
     page,
 }) => {
-    // サイドバーを表示したまま幅を狭め、パネルを開いて左の面を狭くする(明細の札が帯に入らない)
+    // サイドバーを表示したまま幅を狭め、パネルを開いて左の面を狭くしても、タブは全部帯に並ぶ(あふれたときの形は置かない)
     await page.setViewportSize({ width: 960, height: 720 });
     await page.goto('/records/data/project');
     await page
@@ -271,16 +271,13 @@ test('ほかの画面から来ると詳細タブで、左のタブが帯に入�
     ).toHaveAttribute('aria-selected', 'true');
     await railButton(page, '更新履歴').click();
 
-    await values.getByRole('button', { name: 'その他' }).click();
-    await page
-        .getByRole('menuitem', { name: 'マイルストーン 4', exact: true })
-        .click();
-
-    await expect(page).toHaveURL(/tab=details-milestones/);
+    await expect(values.getByRole('tab')).toHaveText([
+        '詳細',
+        '参照制限',
+        /^関連レコード/,
+    ]);
+    await expect(values.getByRole('button', { name: 'その他' })).toHaveCount(0);
     await expect(
-        values.getByRole('button', { name: /^マイルストーン/ }),
-    ).toBeVisible();
-    await expect(
-        values.getByRole('tabpanel', { name: 'マイルストーン 4' }),
+        values.getByRole('button', { name: /^マイルストーン\s*4 件$/ }),
     ).toBeVisible();
 });

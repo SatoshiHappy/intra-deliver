@@ -122,6 +122,9 @@ test('準備: 業務モジュール「見出し確認」を作り、件名(必�
         form.getByRole('button', { name: '作成', exact: true }),
         HEADING_MODULE,
     );
+    // 項目が無くても、固定の行「基本情報」は「0 項目」で出る(見出し.md の 1 節)
+    await expect(tableRows(page).nth(1)).toContainText('基本情報');
+    await expect(tableRows(page).nth(1)).toContainText('0 項目');
 
     await addField(page, 'title', '件名', true, true);
     await addField(page, 'owner', '担当者', true);
@@ -136,21 +139,25 @@ test('見出しを足して取っ手で並べ替えると、再読み込みし�
 
     // 末尾に足した見出しを、担当者の前(1 つ目)と備考の前(2 つ目)へ動かす
     await addHeading(page, '担当情報');
-    await expect(rows.nth(4)).toContainText('担当情報');
-    await expect(rows.nth(4)).toContainText('0 項目');
+    await expect(rows.nth(5)).toContainText('担当情報');
+    await expect(rows.nth(5)).toContainText('0 項目');
     await moveHeadingUp(page, '担当情報', '備考');
     await moveHeadingUp(page, '担当情報', '担当者');
     await addHeading(page, '補足');
     await moveHeadingUp(page, '補足', '備考');
 
     await page.reload();
-    await expect(rows.nth(1)).toContainText('件名');
-    await expect(rows.nth(2)).toContainText('担当情報');
-    await expect(rows.nth(2)).toContainText('1 項目');
-    await expect(rows.nth(3)).toContainText('担当者');
-    await expect(rows.nth(4)).toContainText('補足');
-    await expect(rows.nth(4)).toContainText('1 項目');
-    await expect(rows.nth(5)).toContainText('備考');
+    // 先頭に固定の行「基本情報」(最初の見出しより前の項目 = 件名の 1 項目。取っ手も操作も無い)が出る
+    await expect(rows.nth(1)).toContainText('基本情報');
+    await expect(rows.nth(1)).toContainText('1 項目');
+    await expect(rows.nth(1).getByRole('button')).toHaveCount(0);
+    await expect(rows.nth(2)).toContainText('件名');
+    await expect(rows.nth(3)).toContainText('担当情報');
+    await expect(rows.nth(3)).toContainText('1 項目');
+    await expect(rows.nth(4)).toContainText('担当者');
+    await expect(rows.nth(5)).toContainText('補足');
+    await expect(rows.nth(5)).toContainText('1 項目');
+    await expect(rows.nth(6)).toContainText('備考');
 });
 
 test('見出しの名前を変えられ、消しても見出しの中の項目は消えない', async ({
@@ -171,7 +178,7 @@ test('見出しの名前を変えられ、消しても見出しの中の項目�
     await expect(
         page.getByText('見出しを更新しました', { exact: true }),
     ).toBeVisible();
-    await expect(tableRows(page).nth(4)).toContainText('補足事項');
+    await expect(tableRows(page).nth(5)).toContainText('補足事項');
 
     await addHeading(page, '不要');
     await page
@@ -188,5 +195,30 @@ test('見出しの名前を変えられ、消しても見出しの中の項目�
     await expect(
         page.getByText('見出しを削除しました', { exact: true }),
     ).toBeVisible();
-    await expect(tableRows(page)).toHaveCount(6);
+    await expect(tableRows(page)).toHaveCount(7);
+});
+
+test('見出しの名前は、ほかの見出しと同じ名前と「基本情報」にできない', async ({
+    page,
+}) => {
+    await openAsAdministrator(page, HEADING_MODULE);
+    await page
+        .getByRole('button', { name: '見出しを追加', exact: true })
+        .click();
+    const dialog = page.getByRole('dialog', { name: '見出しを追加' });
+
+    // 見出し.md の 4 節。固定の「基本情報」も、ほかの見出し(前の筋の「担当情報」)と同じく使われている名前に数える
+    for (const used of ['基本情報', '担当情報']) {
+        await dialog
+            .getByRole('textbox', { name: '名前', exact: true })
+            .fill(used);
+        await dialog.getByRole('button', { name: '追加', exact: true }).click();
+        await expect(dialog).toContainText(
+            'ほかの見出しと同じ名前と「基本情報」は設定できません',
+        );
+    }
+    await dialog
+        .getByRole('button', { name: 'キャンセル', exact: true })
+        .click();
+    await expect(tableRows(page)).toHaveCount(7);
 });

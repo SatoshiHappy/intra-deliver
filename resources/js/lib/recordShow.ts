@@ -13,10 +13,8 @@ import type {
 /** 左のタブの既定(詳細タブ = 3 節。保存形の details が明細を指すので fields) */
 export const FIELDS_TAB = 'fields';
 
-/** 明細の札のタブのキー */
-export function detailsTabKey(code: string): string {
-    return `details-${code}`;
-}
+/** 左のタブ「参照制限」のキー(クエリ tab の値 = 3 節) */
+export const ACCESS_TAB = 'access';
 
 /** 画面の URL(パスとクエリ)を読む(相対の URL も読めるよう、仮の起点を置く) */
 function parsed(url: string): URL {
@@ -78,35 +76,6 @@ export function isLinkableUrl(url: string): boolean {
     }
 
     return safeLinkUrl(url) !== null;
-}
-
-/**
- * タブの帯に並べる数(4 節のあふれ)。全部が入れば全部、入らなければ「その他」のボタンの幅を残して先頭から入るだけ(最低 1)。
- */
-export function fittingTabCount(
-    widths: number[],
-    available: number,
-    moreWidth: number,
-): number {
-    const total = widths.reduce((sum, width) => sum + width, 0);
-
-    if (total <= available) {
-        return widths.length;
-    }
-
-    let used = moreWidth;
-    let count = 0;
-
-    for (const width of widths) {
-        if (used + width > available) {
-            break;
-        }
-
-        used += width;
-        count++;
-    }
-
-    return Math.max(count, 1);
 }
 
 const KIB = 1024;

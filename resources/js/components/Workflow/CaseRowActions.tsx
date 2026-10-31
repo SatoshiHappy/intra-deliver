@@ -26,7 +26,7 @@ function DraftRowActions({ row }: { row: WorkflowCaseRow }) {
     return (
         <>
             {row.can.editDraft && (
-                <Button variant="ghost" size="sm" asChild>
+                <Button variant="outline" size="sm" asChild>
                     <Link href={edit(row.id)} aria-label={`${row.name}の編集`}>
                         編集
                     </Link>
@@ -65,7 +65,7 @@ function CaseRowLinks({ row, commentMaxLength, onOpen }: Props) {
     return (
         <>
             {row.can.reapply && (
-                <Button variant="ghost" size="sm" asChild>
+                <Button variant="outline" size="sm" asChild>
                     <Link
                         href={reapply(row.id)}
                         aria-label={`${row.name}の再申請`}
@@ -81,7 +81,7 @@ function CaseRowLinks({ row, commentMaxLength, onOpen }: Props) {
                     onOpen={onOpen}
                 />
             )}
-            <Button variant="ghost" size="sm" asChild>
+            <Button variant="outline" size="sm" asChild>
                 <Link href={show(row.id)} aria-label={`${row.name}の詳細`}>
                     詳細
                 </Link>

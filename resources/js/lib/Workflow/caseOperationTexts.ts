@@ -29,7 +29,7 @@ export const OPERATION_TITLES: Record<OperationKind, string> = {
     assign: '指定を変更する',
 };
 
-/** 面の 1 行 */
+/** 面の見出しの横の「?」の説明 */
 export const OPERATION_SURFACE_NOTE =
     '申請操作の権限がある人だけに表示されます。';
 

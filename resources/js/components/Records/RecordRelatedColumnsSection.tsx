@@ -1,3 +1,4 @@
+import { HeadingHelp } from '@/components/HeadingHelp';
 import { RecordRelatedColumnsDialog } from '@/components/Records/RecordRelatedColumnsDialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -77,6 +78,25 @@ function SettingRow({
 }
 
 /**
+ * 面の見出し(横の「?」に説明)。
+ */
+function SectionHeading() {
+    return (
+        <div className="flex items-center gap-1.5">
+            <h2
+                id="module-related-columns"
+                className="text-[15px] font-semibold"
+            >
+                関連レコードの列
+            </h2>
+            <HeadingHelp label="関連レコードの列">
+                参照の項目ごとに、参照先のレコードの詳細の「関連レコード」のタブに表示する列を選択します。未選択の場合は、一覧の列を使用します。
+            </HeadingHelp>
+        </div>
+    );
+}
+
+/**
  * 管理の業務モジュールの定義の面「関連レコードの列」(docs の 設計/業務データの入れ物/レコードの共通機能/業務モジュールの管理.md の
  * 4 節)。他モジュール参照の項目が無ければ(明細のモジュールも)面を出さない。
  */
@@ -96,15 +116,7 @@ export function RecordRelatedColumnsSection({
             aria-labelledby="module-related-columns"
             className="flex flex-col gap-2 rounded-xl border bg-card p-5 text-card-foreground"
         >
-            <h2
-                id="module-related-columns"
-                className="text-[15px] font-semibold"
-            >
-                関連レコードの列
-            </h2>
-            <p className="text-sm text-muted-foreground">
-                参照の項目ごとに、参照先のレコードの詳細の「関連レコード」のタブに表示する列を選択します。未選択の場合は、一覧の列を使用します。
-            </p>
+            <SectionHeading />
             <Table>
                 <TableHeader>
                     <TableRow>

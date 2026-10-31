@@ -87,11 +87,11 @@ async function searchUsers(page: Page, field: Locator, word: string) {
 }
 
 /**
- * 基本情報の 1 項目の値(項目名の dt の次の dd)。
+ * 申請情報の 1 項目の値(項目名の dt の次の dd)。
  */
 function basicItem(page: Page, label: string) {
     return page
-        .getByRole('region', { name: '基本情報' })
+        .getByRole('region', { name: '申請情報' })
         .getByText(label, { exact: true })
         .locator('xpath=following-sibling::dd');
 }

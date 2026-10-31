@@ -14,7 +14,7 @@ import type { WorkflowCaseShowProps } from '@/types';
 type CaseData = WorkflowCaseShowProps['case'];
 
 /**
- * 基本情報の 1 行(dt・dd)。
+ * 申請情報の 1 行(dt・dd)。
  */
 function Item({ label, children }: { label: string; children: ReactNode }) {
     return (
@@ -148,7 +148,7 @@ function ProgressItems({ data }: { data: CaseData }) {
 }
 
 /**
- * 基本情報の面(docs の 設計/ワークフロー/案件の運用/画面/案件の画面.md の 4 節): 状態の札(現在のステップがすべて保留中なら「保留中」)と、
+ * 申請情報の面(docs の 設計/ワークフロー/案件の運用/画面/案件の画面.md の 4 節): 状態の札(現在のステップがすべて保留中なら「保留中」)と、
  * 現在のステップの後に、未完了は期限・到達日・経過日数、完了は完了日。
  */
 export function CaseBasicInfo({ data }: { data: CaseData }) {
@@ -158,7 +158,7 @@ export function CaseBasicInfo({ data }: { data: CaseData }) {
             className="flex flex-col gap-4 rounded-xl border bg-card p-5 text-card-foreground"
         >
             <h2 id="case-basic-heading" className="text-[15px] font-semibold">
-                基本情報
+                申請情報
             </h2>
             <dl className="grid grid-cols-1 gap-x-6 gap-y-4 text-sm md:grid-cols-3">
                 <IdentityItems data={data} />
