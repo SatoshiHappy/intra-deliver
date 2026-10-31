@@ -21,7 +21,8 @@ import { formatDate } from '@/lib/recordValues';
 import type { WorkflowFlowVersionRow } from '@/types';
 
 /**
- * 版の行の操作(枠つきのボタン。「フロー図」= フロー図のタブでその版。開く画面の名前 = 画面の意匠の方針 9(a)、「無効にする」/「有効にする」= 確かめのダイアログの後に送る)。
+ * 版の行の操作(枠つきのボタン。「フロー図」= フロー図のタブでその版(語は開く画面の名前 = 設計/画面の意匠/README.md の方針 9(a))、
+ * 「無効にする」/「有効にする」= 確かめのダイアログの後に送る)。
  */
 function VersionActions({
     flowCode,
@@ -41,7 +42,7 @@ function VersionActions({
                     only={propsOfTab('diagram')}
                     preserveState
                     preserveScroll
-                    aria-label={`${versionLabel(version.number)} のフロー図`}
+                    aria-label={`${versionLabel(version.number)} のフロー図を表示`}
                 >
                     フロー図
                 </Link>

@@ -16,8 +16,9 @@ use Tests\Support\SendsFlowDefinitionRequests;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * フロー定義の一覧と詳細の props(docs の 設計/ワークフロー/ルートの深さ/画面/定義の管理の画面.md 2 節・3 節、クエリの既定 = 画面/README.md 1.1 節、
- * 今日の版 = 定義の管理.md 2 節)。初期データのプロジェクト計画の承認(版 1 = ユーザー無効、版 2、版 3 = 分岐 B)と課題の対応の承認(版 1)。
+ * フロー定義の一覧と詳細の props(docs の 設計/ワークフロー/ルートの深さ/画面/定義の管理の画面.md 2 節・3 節、
+ * クエリの既定 = 設計/ワークフロー/ルートの深さ/画面/README.md 1.1 節、今日の版 = 設計/ワークフロー/ルートの深さ/定義の管理.md 2 節)。
+ * 初期データのプロジェクト計画の承認(版 1 = ユーザー無効、版 2、版 3 = 分岐 B)と課題の対応の承認(版 1)。
  * 期待値は 設計/ワークフロー/ルートの深さ/初期データ.md の 2 節・3 節の値と画面の文から書いた(日付は流す日からの相対なので版の行から読む)。
  */
 final class FlowDefinitionPagesTest extends TransactionalTestCase
