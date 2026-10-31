@@ -27,16 +27,6 @@ return [
             'max_input_chars' => 80000,
             'provider_options' => ['output_config' => ['effort' => 'low']],
         ],
-        'meeting.extraction' => [
-            'type' => 'prompt',
-            'provider' => 'anthropic',
-            'model' => 'claude-sonnet-5-5',
-            'budget' => 'default',
-            'timeout_seconds' => 300,
-            'max_output_tokens' => 12000,
-            'max_input_chars' => 40000,
-            'provider_options' => ['output_config' => ['effort' => 'medium']],
-        ],
         'meeting.transcription' => [
             'type' => 'transcription',
             'provider' => 'gemini',

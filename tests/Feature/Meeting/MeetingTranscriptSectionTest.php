@@ -6,12 +6,15 @@ use App\Actions\Meeting\MeetingTranscriptWriter;
 use App\Actions\Meeting\TranscriptLine;
 use App\Actions\Records\Api\CreateRecord;
 use App\Actions\Records\Api\RecordInput;
+use App\Enums\Builtin\Meeting;
 use App\Enums\Meeting\TranscriptSource;
+use App\Models\Master\DepartmentSet;
 use App\Models\Master\User;
 use App\Models\Meeting\Transcript;
 use App\Queries\Meeting\MeetingTranscriptSection;
 use App\Queries\Records\Api\RecordShowPanelQuery;
 use Inertia\Testing\AssertableInertia as Assert;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Support\TransactionalTestCase;
 use Tests\Support\UsesSeededRecords;
 
@@ -123,6 +126,42 @@ final class MeetingTranscriptSectionTest extends TransactionalTestCase
                 ['kind' => true, 'code' => true],
             ),
         );
+    }
+
+    /**
+     * 作成者でない関係者(項目「関係者」の値のユーザー / 値の組織に所属する人)も節を開ける(行の判定を通る)。
+     *
+     * @param  'user'|'department'  $kind
+     */
+    #[DataProvider('relatedKinds')]
+    public function test_a_related_person_who_is_not_the_creator_opens_the_section(string $kind): void
+    {
+        $viewer = $this->user();
+        $party = $viewer;
+
+        if ($kind === 'department') {
+            $party = $this->department(DepartmentSet::factory()->create());
+            $this->join($viewer, $party, isMain: true);
+        }
+
+        $recordId = $this->pastedMeeting($this->creator, values: [
+            Meeting::RelatedParties->value => [['type' => $kind, 'id' => $party->id]],
+        ]);
+
+        $this->actingAs($viewer)->get("/records/data/meeting/{$recordId}?panel=meeting-transcript")->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('panelContent.kind', 'section')
+                ->where('panelContent.code', 'meeting-transcript')
+                ->where('panelContent.content.count', 2)
+            );
+    }
+
+    /**
+     * @return array<string, array{'user'|'department'}>
+     */
+    public static function relatedKinds(): array
+    {
+        return ['項目の値のユーザー' => ['user'], '項目の値の組織に所属する人' => ['department']];
     }
 
     private function section(): MeetingTranscriptSection

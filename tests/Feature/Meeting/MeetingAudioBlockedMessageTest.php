@@ -44,6 +44,10 @@ final class MeetingAudioBlockedMessageTest extends TransactionalTestCase
                 null, 'month', '今月の音声の取り込みの上限に近いため、音声は選べません。テキストの取り込みは使用できます。',
                 '今月の音声の取り込みの上限に近いため、音声から作り直せません。',
             ],
+            '文字起こしの区分だけ(累計)' => [
+                null, 'total', '音声の取り込みの上限に近いため、音声は選べません。テキストの取り込みは使用できます。',
+                '音声の取り込みの上限に近いため、音声から作り直せません。',
+            ],
             '両方' => ['day', 'day', $minutesDay.'音声は選べません。', $minutesDay.'音声から作り直せません。'],
         ];
     }

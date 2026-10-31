@@ -139,7 +139,7 @@ describe('noticeTemplate(会議の失敗の、種類によらない理由の文)
 describe('noticeTemplate(会議の失敗の、種類だけの理由の文)', () => {
     const of = meetingNotice;
 
-    it('音声の理由は文字起こしの失敗、出力が切れた理由は議事録の失敗だけの文で、合わない種類と知らない理由は「ほか」の文', () => {
+    it('音声の理由は文字起こしの失敗、長すぎた理由は議事録の失敗だけの文で、合わない種類と知らない理由は「ほか」の文', () => {
         const sentence = (type: string, reason: string | null) =>
             of(type, { reason }).sentence;
 
@@ -147,7 +147,7 @@ describe('noticeTemplate(会議の失敗の、種類だけの理由の文)', () 
             '定例会議　文字起こしに失敗しました。音声から書き起こせませんでした。音声を確かめて、音声から作成し直してください。',
         );
         expect(sentence('meeting.minutes_failed', 'truncated')).toBe(
-            '定例会議　議事録の作成に失敗しました。議事録が長すぎて途中で切れました。再作成の追加の指示で短くするよう頼んでください。',
+            '定例会議　議事録の作成に失敗しました。議事録が長すぎました。再作成の追加の指示で短くするよう頼んでください。',
         );
         expect(sentence('meeting.minutes_failed', 'audio_unusable')).toBe(
             '定例会議　議事録の作成に失敗しました。時間をおいて再作成してください。',
