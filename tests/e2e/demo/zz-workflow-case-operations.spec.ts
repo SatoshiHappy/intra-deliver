@@ -29,9 +29,14 @@ let caseUrl = '';
 async function openOperationSurface(page: Page): Promise<Locator> {
     await openAsAdministrator(page, new URL(caseUrl).pathname);
     const surface = page.getByRole('region', { name: '申請操作', exact: true });
-    await expect(surface).toContainText(
+    // 面の説明は見出しの横の「?」(フォーカスで開く Tooltip。docs の 設計/画面の意匠/README.md 方針 9(d))。見たら閉じる
+    await surface
+        .getByRole('button', { name: '申請操作の説明', exact: true })
+        .focus();
+    await expect(page.getByRole('tooltip')).toHaveText(
         '申請操作の権限がある人だけに表示されます。',
     );
+    await page.keyboard.press('Escape');
 
     return surface;
 }

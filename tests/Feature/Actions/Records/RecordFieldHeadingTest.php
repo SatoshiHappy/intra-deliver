@@ -106,9 +106,20 @@ final class RecordFieldHeadingTest extends TransactionalTestCase
         $this->assertSame('別の期間', $heading->refresh()->name);
     }
 
-    public function test_the_fixed_head_name_is_the_same_text_as_the_screens(): void
+    public function test_rejects_an_unchanged_name_already_duplicated_or_fixed(): void
     {
-        $this->assertSame('基本情報', RecordFieldHeading::HEAD_GROUP_NAME);
+        // 重なりを拒む前に保存した見出し(docs の 見出し.md の 6 節・データモデル/README.md の 5 節の既存の行)
+        $module = $this->projects();
+        $this->heading($module, '期間', 5);
+        $twin = $this->heading($module, '期間', 6);
+        $fixed = $this->heading($module, '基本情報', 7);
+
+        foreach ([[$twin, '期間'], [$fixed, '基本情報']] as [$heading, $name]) {
+            $errors = $this->validationErrors(fn () => $this->rename($heading, $name));
+            $this->assertSame(['name' => self::DUPLICATE], $errors);
+        }
+
+        $this->assertSame([['期間', 5], ['期間', 6], ['基本情報', 7]], $this->headingRows($module));
     }
 
     public function test_accepts_a_name_of_1000_characters_and_trims_the_edges(): void

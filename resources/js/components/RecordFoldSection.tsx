@@ -11,10 +11,10 @@ const BAR_GAP = 'gap-2';
 const BODY_INDENT = 'pl-8';
 
 type Props = {
-    /** 中身の id(名前の id は `<bodyId>-name`) */
+    /** 中身の id(名前の id は `<bodyId>-name`、補足の id は `<bodyId>-note`) */
     bodyId: string;
     name: string;
-    /** 名前の右の補足(無ければ出さない) */
+    /** 名前の右の補足(無ければ出さない)。区画の名前にも入る(同じ名前の見出しのまとまりと明細の帯の区画を分ける) */
     note?: string;
     isOpen: boolean;
     onToggle: () => void;
@@ -49,7 +49,10 @@ function FoldButton({ bodyId, name, note, isOpen, onToggle }: Props) {
                 {name}
             </span>
             {note !== undefined && (
-                <span className="text-xs font-normal text-muted-foreground">
+                <span
+                    id={`${bodyId}-note`}
+                    className="text-xs font-normal text-muted-foreground"
+                >
                     {note}
                 </span>
             )}
@@ -67,7 +70,13 @@ export function RecordFoldSection({
     ...props
 }: Props & { children: ReactNode }) {
     return (
-        <section aria-labelledby={`${props.bodyId}-name`}>
+        <section
+            aria-labelledby={
+                props.note === undefined
+                    ? `${props.bodyId}-name`
+                    : `${props.bodyId}-name ${props.bodyId}-note`
+            }
+        >
             <h3 className={cn('rounded-md bg-muted/50', BAR_PADDING)}>
                 <FoldButton {...props} />
             </h3>

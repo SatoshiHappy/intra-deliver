@@ -19,3 +19,18 @@ test('業務の一覧の見出しの横の「?」に業務モジュールの説�
         '社内のプロジェクトの担当・期間・状態',
     );
 });
+
+test('「?」にフォーカスすると、説明の全文が 1 度だけボタンの説明として読み上げに届く', async ({
+    page,
+}) => {
+    await page.goto('/records/data/project');
+
+    const help = page.getByRole('button', {
+        name: 'プロジェクトの説明',
+        exact: true,
+    });
+    await help.focus();
+    await expect(help).toHaveAccessibleDescription(
+        '社内のプロジェクトの担当・期間・状態',
+    );
+});

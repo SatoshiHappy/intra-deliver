@@ -1,5 +1,6 @@
 import { expect } from './test';
 import type { Page } from '@playwright/test';
+import { escapeRegExp } from './app-navigation';
 
 /**
  * 詳細タブの明細の帯(見出し heading の値の中。帯の文は「<name> <rows> 件」)と、その区画(帯と表)を返す(画面/業務の画面.md 2.3)。
@@ -13,11 +14,17 @@ export async function detailBand(
 ) {
     const values = page.getByRole('region', { name: `${heading}の値` });
     const band = values.getByRole('button', {
-        name: new RegExp(`^${name}\\s*${rows} 件$`),
+        name: new RegExp(`^${escapeRegExp(name)}\\s*${rows} 件$`),
     });
     await expect(band).toHaveAttribute('aria-expanded', 'true');
 
-    return { band, section: values.getByRole('region', { name, exact: true }) };
+    // 区画の名前は帯の文と同じ「<name> <rows> 件」(見出しのまとまりと同じ名前でも分かれる)
+    const section = values.getByRole('region', {
+        name: `${name} ${rows} 件`,
+        exact: true,
+    });
+
+    return { band, section };
 }
 
 /**

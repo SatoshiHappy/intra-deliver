@@ -269,9 +269,14 @@ test('確認の面: u0010 が未確認の申請の詳細で確認すると、ト
     await openCase(page, SECOND_QUARTER, '未確認の申請');
     const detailUrl = page.url();
     const panel = page.getByRole('region', { name: '確認', exact: true });
-    await expect(panel).toContainText(
+    // 面の説明は見出しの横の「?」(フォーカスで開く Tooltip。docs の 設計/画面の意匠/README.md 方針 9(d))
+    await panel
+        .getByRole('button', { name: '確認の説明', exact: true })
+        .focus();
+    await expect(page.getByRole('tooltip')).toHaveText(
         '確認は処理に影響しません。何度でも確認でき、確認した日時が残ります。',
     );
+    await page.keyboard.press('Escape');
     const rows = panel
         .getByRole('table', { name: '確認の状況' })
         .getByRole('row');

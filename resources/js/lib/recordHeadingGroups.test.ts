@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test';
 import type { RecordHeadingGroup } from '@/types';
 import {
-    HEAD_GROUP_NAME,
     headingIdsContaining,
     headingNameOf,
     toggleClosed,
@@ -16,7 +15,6 @@ const groups: RecordHeadingGroup[] = [
 
 describe('headingNameOf', () => {
     it('頭のまとまり(id・name が null)の見出しの行は固定の「基本情報」、ほかは見出しの名前', () => {
-        expect(HEAD_GROUP_NAME).toBe('基本情報');
         expect(groups.map(headingNameOf)).toEqual([
             '基本情報',
             '期間と予算',

@@ -3,7 +3,7 @@ import { RecordFoldSection } from '@/components/RecordFoldSection';
 import { RecordDetailsTable } from '@/components/Records/RecordDetailsTable';
 import type { RecordDetailRow, RecordFieldDefinition } from '@/types';
 
-/** 明細の帯 1 つ(帯「<明細の名前> <n> 件」と全幅の表。0 件でも出す。畳みは保たない = 既定は開く) */
+/** 明細の帯 1 つ(帯「<明細の名前> <n> 件」と全幅の表(字下げは見出しのまとまりの中と同じ)。0 件でも出す。畳みは保たない = 既定は開く) */
 function DetailBand({
     field,
     rows,
@@ -30,7 +30,7 @@ function DetailBand({
 
 /**
  * 詳細タブの明細(docs の 設計/業務データの入れ物/レコードの共通機能/詳細の画面/README.md の 4 節): 見出しのまとまりの後に、
- * 明細の項目の並びの順で、見出しの行と同じ薄い帯と全幅の表を出す。
+ * 明細の項目の並びの順で、見出しの行と同じ薄い帯と全幅の表(字下げは見出しのまとまりの中と同じ)を出す。
  */
 export function RecordDetailBands({
     fields,

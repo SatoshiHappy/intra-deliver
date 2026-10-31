@@ -1,6 +1,7 @@
 import { expect } from './test';
 import type { Locator, Page } from '@playwright/test';
 import { submitAndExpectUrl } from './submit';
+import { milestonesSection } from './record-detail-bands';
 import { submitApplication } from './workflow-operations';
 import {
     ADMIN,
@@ -134,12 +135,7 @@ export async function expectTypedValues(page: Page, name: string) {
     await expect(values).toContainText('東京営業課');
     await expect(values).toContainText('中村 美咲');
     await expect(values).toContainText('100');
-    await expect(
-        values.getByRole('button', { name: /^マイルストーン\s*2 件$/ }),
-    ).toHaveAttribute('aria-expanded', 'true');
-    const rows = values
-        .getByRole('region', { name: 'マイルストーン', exact: true })
-        .getByRole('row');
+    const rows = (await milestonesSection(page, name, 2)).getByRole('row');
     await expect(rows).toHaveCount(3);
     await expect(rows.nth(1)).toContainText('E2E の節目 1');
     await expect(rows.nth(1)).toContainText('はい');
