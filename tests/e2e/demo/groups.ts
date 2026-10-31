@@ -20,7 +20,8 @@ export const demoGroups = [
         // 3 つとも zz-workflow-record-apply-* の前に置く。zz-workflow-record-apply-* は番号の順に流す(名前に target を含む 3 つは
         // 申請対象からの申請で、プロジェクトを申請対象にするフローが 1 つのうちに流す。2 で 2 つ目のフローを足し、
         // 3 で申請書の業務モジュールの更新の許可を外すので、最後に置く。名前に attachment を含む 3 つの spec は 2 で足した 2 つ目のフローの入口のダイアログと、
-        // 申請書のレコードへの添付の追加(更新の許可)を使うので、2 と 3 の間に置く。名前の順に流れるので、番号をそう振る)。
+        // 申請書のレコードへの添付の追加(更新の許可)を使うので、2 と 3 の間に置く。名前の順に流れるので、番号をそう振る。処理のダイアログの
+        // 添付の spec(名前に attachment-process を含む)は更新の許可が無くても付くことを確かめるので、3 の後に置く)。
         // zz-workflow-case-operations は筋の中で申請した案件だけを変えて筋の最後に消すので、見本の案件も前の spec の件数も変えない
         // (申請と処理担当者の変更の通知が残る)。申請書の業務モジュールの更新の許可を外す apply-3 より前に流す(自分で作った申請だけを
         // 変えるので、どの spec の前提も変えない)
@@ -44,6 +45,7 @@ export const demoGroups = [
             'tests/e2e/demo/zz-workflow-record-apply-2d-attachment-limits.spec.ts',
             'tests/e2e/demo/zz-workflow-case-operations.spec.ts',
             'tests/e2e/demo/zz-workflow-record-apply-3-others.spec.ts',
+            'tests/e2e/demo/zz-workflow-record-apply-4-attachment-process.spec.ts',
         ],
     },
     {

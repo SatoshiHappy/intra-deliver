@@ -2,6 +2,7 @@ import { CountedTextInput } from '@/components/CountedTextInput';
 import { FormBlock } from '@/components/FormBlock';
 import { Badge } from '@/components/ui/badge';
 import { CaseActionAssigneeFields } from '@/components/Workflow/CaseActionAssigneeFields';
+import { CaseActionAttachmentField } from '@/components/Workflow/CaseActionAttachmentField';
 import { CaseActionContactField } from '@/components/Workflow/CaseActionContactField';
 import { CaseActionNodeSelect } from '@/components/Workflow/CaseActionNodeSelect';
 import { CaseActionCallout } from '@/components/Workflow/CaseActionNotices';
@@ -165,13 +166,14 @@ export function CaseActionMiddleFields({
 }
 
 /**
- * 欄の後半: コメントと連絡(添付の欄は後からコメントと連絡の間に入る)。
+ * 欄の後半: コメント・添付ファイル(選んだ入口が受けるときだけ)・連絡。
  */
 export function CaseActionTailFields({
     target,
     form,
     errors,
-}: Pick<Props, 'target' | 'form' | 'errors'>) {
+    attachment,
+}: Pick<Props, 'target' | 'form' | 'errors' | 'attachment'>) {
     return (
         <>
             <FormBlock
@@ -192,6 +194,10 @@ export function CaseActionTailFields({
                     }
                 />
             </FormBlock>
+            <CaseActionAttachmentField
+                attachment={attachment}
+                errors={errors}
+            />
             <CaseActionContactField
                 users={form.data.contact_users}
                 message={form.data.contact_message}

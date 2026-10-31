@@ -6,11 +6,14 @@ use App\Actions\Workflow\CaseAttachmentRules;
 use App\Models\Master\User;
 use App\Models\Workflow\WorkflowCase;
 use App\Queries\Authz\Api\Requester;
+use App\Queries\Workflow\CaseAttachEntries;
 use App\Queries\Workflow\CaseDetailQuery;
 use App\Queries\Workflow\CaseListQuery;
+use App\Queries\Workflow\CaseOperationDecider;
 use App\Queries\Workflow\CaseRows;
 use App\Queries\Workflow\WorkflowAttachmentLimits;
 use Illuminate\Database\Eloquent\Collection;
+use LogicException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Support\CatchesValidationErrors;
 use Tests\Support\OperatesStepAttachments;
@@ -156,6 +159,32 @@ final class CaseAttachEntriesTest extends TransactionalTestCase
         $canAttach = array_map(fn (array $row) => $row['pullBackNodes'][0]['canAttach'], array_values($rows));
         $this->assertSame([true, true, true], $canAttach);
         $this->assertSame(count($one), count($three));
+    }
+
+    /**
+     * 業務モジュールの値(遅延)を渡せるのは詳細の 1 件の案件だけ。要る案件が 2 件以上なら呼び手の誤りで投げる(1 件なら渡した値を使う)。
+     */
+    public function test_a_shared_module_value_is_only_for_one_case(): void
+    {
+        $u0001 = $this->seededUser('u0001');
+        $cases = [$this->applyAs($u0001), $this->applyAs($u0001)];
+        $requester = new Requester($u0001->id, null);
+        $loaded = array_map(fn (WorkflowCase $case) => $case->load('workflowFlow'), $cases);
+        $read = app(CaseOperationDecider::class)->situationsOf($requester, $this->operationDay(), $loaded);
+        $situations = array_values($read);
+        $withdrawable = [$cases[0]->id => true, $cases[1]->id => true];
+        $entries = app(CaseAttachEntries::class);
+        $reads = 0;
+        $shared = function () use (&$reads): bool {
+            $reads++;
+
+            return true;
+        };
+
+        $this->assertThrows(fn () => $entries->of($situations, $withdrawable, $shared), LogicException::class);
+        $this->assertSame(0, $reads);
+        $this->assertTrue($entries->of([$situations[0]], [$cases[0]->id => true], $shared)[$cases[0]->id]['withdraw']);
+        $this->assertSame(1, $reads);
     }
 
     /**

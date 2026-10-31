@@ -9,6 +9,7 @@ import { CaseListTabs } from '@/components/Workflow/CaseListTabs';
 import { CaseSearchField } from '@/components/Workflow/CaseSearchField';
 import { useBulkResult } from '@/hooks/Workflow/use-bulk-result';
 import { useCaseSearch } from '@/hooks/Workflow/use-case-search';
+import { indexAttachOf } from '@/lib/Workflow/caseActionAttach';
 import { caseListUrl, visitCaseList } from '@/lib/Workflow/caseListUrl';
 import { index } from '@/routes/workflow/cases';
 import type { WorkflowCaseIndexProps } from '@/types';
@@ -17,12 +18,8 @@ import type { WorkflowCaseIndexProps } from '@/types';
  * 申請一覧(docs の 設計/ワークフロー/案件の運用/画面/案件の画面.md の 2 節・3 節): タブと切替・検索の欄・一覧の面。タブ・切替・ページ・検索は
  * 部分の再読み込みで、どの移動の URL にも欄の語を入れる(打ってすぐ押した移動でも打った語を失わないため)。行の処理のダイアログと一括の結果のダイアログはページの直下に 1 つずつ(誤りの後に行が一覧から外れても閉じない)。
  */
-export default function CaseIndex({
-    query,
-    counts,
-    cases,
-    commentMaxLength,
-}: WorkflowCaseIndexProps) {
+export default function CaseIndex(props: WorkflowCaseIndexProps) {
+    const { query, counts, cases, commentMaxLength } = props;
     const { openAction, dialogProps } = useCaseActionDialog();
     const bulkResult = useBulkResult();
     const search = useCaseSearch(query.q, (q) =>
@@ -57,7 +54,7 @@ export default function CaseIndex({
                     onOpenAction={openAction}
                 />
             </div>
-            <CaseActionDialog {...dialogProps} />
+            <CaseActionDialog {...dialogProps} attach={indexAttachOf(props)} />
             <BulkResultDialog
                 result={bulkResult.result}
                 isOpen={bulkResult.isOpen}

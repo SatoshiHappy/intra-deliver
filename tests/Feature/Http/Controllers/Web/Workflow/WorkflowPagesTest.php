@@ -260,7 +260,8 @@ final class WorkflowPagesTest extends TransactionalTestCase
         $u0002 = $this->userIdOf('u0002');
         $name = app(WorkflowPeople::class)->users([$u0002], CarbonImmutable::today(), 'ja')[$u0002]['name'];
         $operations = ['approve', 'approveEarly', 'reject', 'sendBack', 'hold', 'transfer'];
-        $principals = array_fill_keys($operations, [['id' => $u0002, 'name' => (string) $name, 'isSelf' => true]]);
+        $self = ['id' => $u0002, 'name' => (string) $name, 'isSelf' => true, 'canAttach' => true];
+        $principals = array_fill_keys($operations, [$self]);
 
         $this->get("/workflow/cases/{$case}")->assertOk()->assertInertia(fn (Assert $page) => $page
             ->component('Workflow/CaseShow')

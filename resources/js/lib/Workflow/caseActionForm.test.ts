@@ -5,8 +5,10 @@ import {
     canAddUser,
     contactPayloadOf,
     defaultPrincipalOf,
+    chosenPrincipalOf,
     initialFormOf,
     nodeDefaults,
+    noticeErrorOf,
     payloadOf,
     principalNoteOf,
     principalValueOf,
@@ -15,9 +17,9 @@ import {
 import type { ActionForm } from './caseActionForm';
 import type { CaseActionNode, CaseActionTarget } from './caseActions';
 
-const self = { id: 9, name: '吉田 達也', isSelf: true };
-const takahashi = { id: 3, name: '高橋 誠', isSelf: false };
-const tanaka = { id: 4, name: '田中 花子', isSelf: false };
+const self = { id: 9, name: '吉田 達也', isSelf: true, canAttach: false };
+const takahashi = { id: 3, name: '高橋 誠', isSelf: false, canAttach: false };
+const tanaka = { id: 4, name: '田中 花子', isSelf: false, canAttach: false };
 
 function node(overrides: Partial<CaseActionNode> = {}): CaseActionNode {
     return {
@@ -236,5 +238,38 @@ describe('payloadOf: 操作ごとの入力', () => {
         expect(
             'node_id' in payloadOf(initialFormOf(withdraw), withdraw, []),
         ).toBe(false);
+    });
+});
+
+describe('選んでいる処理担当者', () => {
+    it('選んだ id の選択肢、無ければ先頭(既定)、選択肢が無ければ undefined', () => {
+        const choices = [self, takahashi];
+
+        expect(chosenPrincipalOf(choices, '3')).toBe(takahashi);
+        expect(chosenPrincipalOf(choices, '')).toBe(self);
+        expect(chosenPrincipalOf(choices, '99')).toBe(self);
+        expect(chosenPrincipalOf([], '3')).toBeUndefined();
+    });
+});
+
+describe('ダイアログの上部に出す誤り', () => {
+    const errors = {
+        case: '案件の誤り',
+        principal_user_id: '処理者の誤り',
+        attachments: '添付の誤り',
+    };
+    const two = node({ principals: [self, takahashi] });
+
+    it('案件の誤りが先、欄を出さない処理者・添付の誤りが次(欄を出しているときは寄せない)', () => {
+        expect(noticeErrorOf(errors, two, true)).toBe('案件の誤り');
+        expect(
+            noticeErrorOf({ ...errors, case: undefined }, node(), true),
+        ).toBe('処理者の誤り');
+        expect(noticeErrorOf({ ...errors, case: undefined }, two, false)).toBe(
+            '添付の誤り',
+        );
+        expect(noticeErrorOf({ attachments: '添付の誤り' }, two, true)).toBe(
+            undefined,
+        );
     });
 });

@@ -11,6 +11,7 @@ import { CaseFlowInfo } from '@/components/Workflow/CaseFlowInfo';
 import { CaseHistoryList } from '@/components/Workflow/CaseHistoryList';
 import { CaseOperationArea } from '@/components/Workflow/CaseOperationArea';
 import { RelatedCases } from '@/components/Workflow/RelatedCases';
+import { showAttachOf } from '@/lib/Workflow/caseActionAttach';
 import { index, show } from '@/routes/workflow/cases';
 import type { WorkflowCaseShowProps } from '@/types';
 
@@ -63,7 +64,7 @@ export default function CaseShow(props: Props) {
                 <RelatedCases related={props.related} />
                 <CaseOperationArea {...props} onOpenAction={openAction} />
             </div>
-            <CaseActionDialog {...dialogProps} />
+            <CaseActionDialog {...dialogProps} attach={showAttachOf(props)} />
         </>
     );
 }
