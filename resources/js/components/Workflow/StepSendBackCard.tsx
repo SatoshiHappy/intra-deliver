@@ -53,7 +53,7 @@ function SendBackChecks({
 }
 
 /**
- * カード 3「差戻しできる先」: 祖先のステップの Checkbox の並び。1 つも付けない場合の意味は「?」の説明。
+ * カード 3「差戻しできる先」: 祖先のステップの Checkbox の並び。「?」の説明は、カードの説明の文と 1 つも付けない場合の意味の 2 文。
  */
 export function StepSendBackCard({
     candidates,
@@ -69,8 +69,7 @@ export function StepSendBackCard({
             id={CARD_ID}
             number={3}
             heading="差戻しできる先"
-            line={SEND_BACK_LINE}
-            help={HELP.sendBack}
+            help={`${SEND_BACK_LINE}${HELP.sendBack}`}
         >
             <SendBackChecks candidates={candidates} form={form} />
             {error !== undefined && (

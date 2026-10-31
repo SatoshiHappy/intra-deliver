@@ -115,7 +115,7 @@ export type WorkflowDiagramNode = {
     state: WorkflowNodeState | null; // 案件だけ(定義は null)
     people: (WorkflowPerson & { isMe: boolean })[]; // 案件: 現在のステップは処理対象者、処理済みは処理者
     placeholders: { label: string; optional: boolean }[]; // 定義の配置のノードだけ
-    consensus: { text: string } | null; // 縦配置だけ(「完了の条件 承認 2 人 現在 1 人」)
+    consensus: { text: string } | null; // 縦配置だけ(案件の進み具合があれば「承認 1 / 2 人」、無ければ定義の条件「完了の条件 承認 2 人」)
 };
 
 /** 図の 1 辺。taken = 分岐開始から出る辺の到達の時の評価(false = 通らなかった枝)。ほかの辺と定義の図は null */
@@ -194,7 +194,7 @@ export type WorkflowDesignation = {
     nodeId: number;
     name: string;
     kind: 'approve' | 'serial' | 'parallel'; // 指定されるステップの種類(横配置は並べ替えのボタンを出す)
-    kindLabel: string; // 承認・横配置・縦配置
+    kindLabel: string; // 承認・順次承認・並列承認(画面の語)
     min: number;
     max: number;
     decision: {

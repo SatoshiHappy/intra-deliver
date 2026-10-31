@@ -7,7 +7,7 @@ import type { WorkflowNodeKind } from '@/types';
 const CARD_ID = 'step-card-prevents';
 
 /**
- * カード 2「申請者本人の承認を防ぐ」: オン・オフ(Checkbox。縦配置は合議の処理対象者に指定できない文)。
+ * カード 2「申請者本人の承認を防ぐ」: オン・オフ(Checkbox。見出しの下に置く。「?」の説明は、縦配置は合議の承認者に選択できない文)。
  */
 export function StepPreventsCard({
     kind,
@@ -24,21 +24,19 @@ export function StepPreventsCard({
             id={CARD_ID}
             number={2}
             heading="申請者本人の承認を防ぐ"
-            line={preventsLine(kind)}
-            aside={
-                <span className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <Checkbox
-                        checked={values.prevents}
-                        aria-labelledby={CARD_ID}
-                        aria-invalid={error === undefined ? undefined : true}
-                        onCheckedChange={(checked) =>
-                            set('prevents', checked === true)
-                        }
-                    />
-                    {values.prevents ? 'オン' : 'オフ'}
-                </span>
-            }
+            help={preventsLine(kind)}
         >
+            <span className="flex items-center gap-2 text-sm">
+                <Checkbox
+                    checked={values.prevents}
+                    aria-labelledby={CARD_ID}
+                    aria-invalid={error === undefined ? undefined : true}
+                    onCheckedChange={(checked) =>
+                        set('prevents', checked === true)
+                    }
+                />
+                {values.prevents ? 'オン' : 'オフ'}
+            </span>
             {error !== undefined && (
                 <p className="text-sm text-destructive">{error}</p>
             )}

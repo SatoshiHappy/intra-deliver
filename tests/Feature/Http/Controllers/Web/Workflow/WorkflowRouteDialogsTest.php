@@ -60,7 +60,7 @@ final class WorkflowRouteDialogsTest extends TransactionalTestCase
                 'blockedReason' => null, 'holdBlockedReason' => null, 'sendBackTargets' => [['id' => $this->nodeIdOf($case, 'apply'), 'name' => '申請']], 'sendBackRestricted' => false, 'isCouncilVote' => false,
                 'principals' => $principals,
                 'designations' => [
-                    ['nodeId' => $this->nodeIdOf($case, 'council'), 'name' => '関係部署の合議', 'kind' => 'parallel', 'kindLabel' => '縦配置', 'min' => 2, 'max' => 5, 'decision' => ['rule' => 'count', 'value' => 2, 'required' => [2, 2, 2, 2, 2]], 'initial' => []],
+                    ['nodeId' => $this->nodeIdOf($case, 'council'), 'name' => '関係部署の合議', 'kind' => 'parallel', 'kindLabel' => '並列承認', 'min' => 2, 'max' => 5, 'decision' => ['rule' => 'count', 'value' => 2, 'required' => [2, 2, 2, 2, 2]], 'initial' => []],
                     ['nodeId' => $this->nodeIdOf($case, 'owner'), 'name' => '責任者', 'kind' => 'approve', 'kindLabel' => '承認', 'min' => 1, 'max' => 1, 'decision' => null, 'initial' => []],
                 ],
             ]])

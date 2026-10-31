@@ -43,11 +43,11 @@ final class FlowDefinitionDiagramTest extends TransactionalTestCase
             array_column($diagram['nodes'], 'code'),
         );
         $this->assertSame([
-            '一般利用者', '申請者の所属組織 + 課長', null, '申請者の上位組織 + 部長', null, '処理担当者は課長が指定', '課長が指定',
+            '一般利用者', '申請者の所属組織 + 課長', null, '申請者の上位組織 + 部長', null, '承認者は課長が選択', '課長が選択',
         ], array_column($diagram['nodes'], 'subtitle'));
         $this->assertSame([
             ['label' => '承認 1', 'optional' => false], ['label' => '承認 2', 'optional' => false],
-            ['label' => '承認 3 から 5', 'optional' => true],
+            ['label' => '承認 3〜5', 'optional' => true],
         ], $node('council')['placeholders']);
         $this->assertSame([], $node('owner')['placeholders']);
         $this->assertSame(['text' => '完了の条件 承認 2 人　人数 2〜5 人'], $node('council')['consensus']);
@@ -75,7 +75,7 @@ final class FlowDefinitionDiagramTest extends TransactionalTestCase
         $summary = fn (string $code) => $this->detail(['node' => $code])['selectedNode']['summary'];
 
         $this->assertSame(['申請者の上位組織 + 部長', '申請者の上位組織の部長が承認します。'], [$subtitles['manager'], $summary('manager')]);
-        $this->assertSame(['課長が指定', '課長が選択した 1 人が承認します。'], [$subtitles['owner'], $summary('owner')]);
+        $this->assertSame(['課長が選択', '課長が選択した 1 人が承認します。'], [$subtitles['owner'], $summary('owner')]);
         $this->assertSame(['一般利用者', '一般利用者が申請できます。'], [$subtitles['apply'], $summary('apply')]);
     }
 

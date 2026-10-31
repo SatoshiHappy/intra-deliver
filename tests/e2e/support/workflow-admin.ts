@@ -10,11 +10,17 @@ import { submitAndExpectUrl } from './submit';
 export const plusDays = (date: string, days: number) =>
     new Date(Date.parse(date) + days * 86_400_000).toISOString().slice(0, 10);
 
-/** 詳細のタブのリンク(今のタブは aria-current) */
+/** 画面の日付の形(YYYY/MM/DD)。日付は YYYY-MM-DD で計算し、画面と比べるときにこの形にする */
+export const slashed = (date: string) => date.replaceAll('-', '/');
+
+/** 版の行の状態の札のセル(列 = 版・開始日・終了日・状態・操作) */
+export const stateCell = (row: Locator) => row.getByRole('cell').nth(3);
+
+/** 詳細のタブのリンク(今のタブは aria-current。「版」は名前の後に版の数の札) */
 export const tab = (page: Page, name: string) =>
     page
         .getByRole('navigation', { name: 'フロー定義のタブ' })
-        .getByRole('link', { name, exact: true });
+        .getByRole('link', { name: new RegExp(`^${name}( ?\\d+)?$`) });
 
 /** 表の本文の行 */
 export const bodyRows = (table: Locator, page: Page) =>
@@ -37,7 +43,8 @@ export async function openAddDialog(
             .getByRole('cell')
             .nth(1)
             .textContent()) ?? '';
-    const dayAfter = plusDays(lastStart, 1);
+    // 表の日付は YYYY/MM/DD。計算は YYYY-MM-DD で行う
+    const dayAfter = plusDays(lastStart.replaceAll('/', '-'), 1);
     const min = dayAfter > todayInTokyo() ? dayAfter : todayInTokyo();
     await page.getByRole('button', { name: '版を追加', exact: true }).click();
     await expect(dialog).toContainText(
@@ -49,8 +56,8 @@ export async function openAddDialog(
     await expect(start).toHaveAttribute('min', min);
     await expect(start).toHaveValue(min);
     await expect(
-        dialog.getByRole('textbox', { name: '複製元の版' }),
-    ).toHaveValue('版 3');
+        dialog.getByRole('group', { name: '複製元の版', exact: true }),
+    ).toContainText('版 3');
 
     return start;
 }

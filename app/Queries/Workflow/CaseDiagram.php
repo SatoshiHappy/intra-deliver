@@ -173,15 +173,15 @@ class CaseDiagram
     }
 
     /**
-     * 縦配置の完了の条件の 1 行(ワークフロー/画面/README.md 1.2: 進み具合があれば「完了の条件 承認 {k} 人　現在 {a} 人」、無ければ定義の条件)。
-     * 定義の条件の文は定義の図と同じ {@see StepDescriptions::consensus()}。
+     * 縦配置の完了の条件の札(図と意匠とE2E.md 8 節: 進み具合があれば「承認 {a} / {k} 人」= 可決の条件によらず同じ形。k は条件から決めた必要な人数。
+     * 進み具合が無い(到達していない・省略)なら定義の条件。定義の条件の文は定義の図と同じ {@see StepDescriptions::consensus()})。
      *
      * @param  Council|null  $council
      */
     private function consensusOf(WorkflowCaseNode $node, ?array $council): string
     {
         if ($council !== null) {
-            return "完了の条件 承認 {$council['required']} 人　現在 {$council['approved']} 人";
+            return "承認 {$council['approved']} / {$council['required']} 人";
         }
 
         return StepDescriptions::consensus($node->decision_rule, $node->decision_value);

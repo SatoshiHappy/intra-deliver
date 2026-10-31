@@ -20,7 +20,7 @@ type FlowShowQuery = {
 const TAB_PROPS: Record<WorkflowFlowDefinitionTab, string[]> = {
     diagram: ['tab', 'selectedVersion', 'diagram', 'selectedNode', 'options'],
     versions: ['tab', 'versions', 'today'],
-    referrers: ['tab', 'referrers'],
+    settings: ['tab', 'referrers'],
 };
 
 /**

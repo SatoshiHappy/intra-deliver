@@ -91,8 +91,8 @@ final class ReassignCaseNodeTest extends TransactionalTestCase
             ['user_ids' => '責任者の処理担当者は 1 人を指定してください'],
             ['user_ids' => '申請基準日に有効でないユーザーは指定できません'],
             ['user_ids' => '同じユーザーを重複して指定できません'],
-            ['user_ids' => '申請者本人は、このステップの処理担当者に指定できません'],
-            ['user_ids' => '申請者の代理先は、このステップの処理担当者に指定できません'],
+            ['user_ids' => '申請者本人は、このステップの承認者に選択できません'],
+            ['user_ids' => '申請者の代理先は、このステップの承認者に選択できません'],
             ['user_ids' => '自分自身は処理担当者に指定できません'],
         ], [
             $this->attemptReassign($case, 'council', ['u0006']),

@@ -47,7 +47,7 @@ trait SendsFlowDefinitionRequests
                 'put', "{$base}/versions/3/nodes/section_chief",
                 $this->nodeInput(3, 'section_chief', ['prevents_applicant_approval' => false]),
             ],
-            'workflow.admin.subject-candidates' => ['get', '/workflow/admin/subject-candidates?type=user&q=u000', []],
+            'workflow.admin.subject-candidates' => ['get', '/workflow/admin/subject-candidates?q=u000', []],
         ];
     }
 

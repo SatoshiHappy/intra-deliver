@@ -334,7 +334,7 @@
     "resources/js/components/Records/ModuleCategoryTree.tsx": 2,
     "resources/js/components/Records/RecordModuleAttributes.tsx": 1,
     "resources/js/components/Records/RecordSearchForm.tsx": 1,
-    "resources/js/components/Workflow/WorkflowDiagram.tsx": 2,
+    "resources/js/components/Workflow/WorkflowDiagram.tsx": 1,
     "resources/js/layouts/AppHeader.tsx": 1,
     "resources/js/layouts/AppSidebar.tsx": 1,
     "resources/js/layouts/UserMenu.tsx": 2,

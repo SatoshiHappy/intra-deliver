@@ -17,6 +17,20 @@ export type AddedNode =
     | { id: string; type: 'noop'; data: NoopNodeData }
     | { id: string; type: 'joint'; data: JointNodeData };
 
+/**
+ * 申請・承認と展開の行の箱の地(処理済み = 処理済みの札の地 status-settled、承認待ち = 承認待ちの札の地 status-pending と太い緑の縁。
+ * どちらも札は残す。ほかは card の地。定義の図は状態を持たないので plain = 図と意匠とE2E.md 8 節)
+ */
+export function stepBoxToneOf(
+    stepState: WorkflowStepState | undefined,
+): 'settled' | 'pending' | 'plain' {
+    if (stepState?.state === 'done') {
+        return 'settled';
+    }
+
+    return stepState?.state === 'current' ? 'pending' : 'plain';
+}
+
 /** 分岐・同期の印の塗りと縁(通過 = 処理済みの札の状態 done は塗り、省略は破線)。案件の図だけが状態を持つ */
 export function routingToneOf(
     stepState: WorkflowStepState | undefined,

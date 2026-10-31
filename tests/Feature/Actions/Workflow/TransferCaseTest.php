@@ -133,8 +133,8 @@ final class TransferCaseTest extends TransactionalTestCase
         ];
 
         $this->assertSame([
-            ['to_user_id' => '申請者本人は、このステップの処理担当者に指定できません'],
-            ['to_user_id' => '申請者の代理先は、このステップの処理担当者に指定できません'],
+            ['to_user_id' => '申請者本人は、このステップの承認者に選択できません'],
+            ['to_user_id' => '申請者の代理先は、このステップの承認者に選択できません'],
         ], $errors);
         $this->assertSame($before, $this->snapshot($case));
     }

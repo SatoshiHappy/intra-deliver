@@ -5,6 +5,8 @@ namespace Tests\Feature\Queries\Workflow;
 use App\Models\Authz\Role;
 use App\Models\Master\CompanyPost;
 use App\Models\Master\Department;
+use App\Models\Records\RecordModule;
+use App\Models\Workflow\WorkflowFlow;
 use App\Queries\Workflow\FlowDefinitionDetail;
 use App\Queries\Workflow\FlowDefinitionList;
 use App\Support\AccessContext;
@@ -35,7 +37,24 @@ final class FlowDefinitionPagesTest extends TransactionalTestCase
             $flows[0]['currentVersion'],
         );
         $this->assertSame(1, $flows[1]['currentVersion']['number'] ?? null);
-        $this->assertNotSame('', $flows[0]['moduleName']);
+    }
+
+    /**
+     * 業務モジュールの列と詳細の見出しは、申請対象の業務モジュール(コンテンツの target_record_module_id)の名前。申請対象なしは null(画面は「—」)。
+     */
+    public function test_the_module_name_is_the_application_target_module(): void
+    {
+        $names = fn () => array_column(app(FlowDefinitionList::class)->flows($this->today(), 'ja'), 'moduleName');
+        $expected = RecordModule::query()->whereIn('code', ['project', 'project_issue'])->pluck('name', 'code');
+
+        $this->assertSame([$expected['project'], $expected['project_issue']], $names());
+        $this->assertSame($expected['project'], $this->detail([])['flow']['moduleName']);
+
+        FlowDefinitionList::contentOf(WorkflowFlow::query()->where('code', self::PLAN)->sole())
+            ->update(['target_record_field_id' => null, 'target_record_module_id' => null]);
+
+        $this->assertSame([null, $expected['project_issue']], $names());
+        $this->assertNull($this->detail([])['flow']['moduleName']);
     }
 
     /**
@@ -61,7 +80,8 @@ final class FlowDefinitionPagesTest extends TransactionalTestCase
     }
 
     /**
-     * クエリの読み方: version = 無い・数でない・そのフローに無い番号は今日の版、有る番号はその版。tab = 3 つ、ほかは diagram。
+     * クエリの読み方: version = 無い・数でない・そのフローに無い番号は今日の版、有る番号はその版。
+     * tab = 3 つ(diagram・versions・settings)、ほかは diagram(前の referrers も diagram)。
      * node = 選んだ版に有るコード、無い・別の版にだけ有るコードは申請のノード(版を替えても同じコードがあれば選んだまま)。
      */
     public function test_the_query_is_read_into_the_selected_version_tab_and_node(): void
@@ -73,7 +93,8 @@ final class FlowDefinitionPagesTest extends TransactionalTestCase
         $this->assertSame([3, 'diagram', 'apply'], $selected([]));
         $this->assertSame([3, 'diagram', 'apply'], $selected(['version' => 'abc', 'tab' => 'other']));
         $this->assertSame([3, 'versions', 'apply'], $selected(['version' => '9', 'tab' => 'versions']));
-        $this->assertSame([2, 'referrers', 'apply'], $selected(['version' => '2', 'tab' => 'referrers']));
+        $this->assertSame([2, 'settings', 'apply'], $selected(['version' => '2', 'tab' => 'settings']));
+        $this->assertSame([3, 'diagram', 'apply'], $selected(['tab' => 'referrers']));
         $this->assertSame([3, 'diagram', 'manager'], $selected(['node' => 'manager']));
         $this->assertSame([2, 'diagram', 'manager'], $selected(['version' => '2', 'node' => 'manager']));
         $this->assertSame([2, 'diagram', 'apply'], $selected(['version' => '2', 'node' => 'budget']));

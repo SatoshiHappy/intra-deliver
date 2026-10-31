@@ -45,7 +45,7 @@ final class NodeSettingsValuesTest extends TransactionalTestCase
             ['designator_node_code' => $designator, 'min_assignees' => self::RANGE, 'max_assignees' => self::RANGE],
             'owner', ['designatorNodeCode' => null, 'minAssignees' => null, 'maxAssignees' => null],
         );
-        $sendBack = '差戻しできる先には、このステップに至る経路上の、申請または承認のステップ(横配置・縦配置を含む)を選択してください';
+        $sendBack = '差戻しできる先には、このステップに至る経路上の、申請または承認のステップ(順次承認・並列承認を含む)を選択してください';
         $this->assertErrors(
             ['send_back_node_codes' => $sendBack], 'owner', ['sendBackNodeCodes' => ['apply', 'nobody']],
         );

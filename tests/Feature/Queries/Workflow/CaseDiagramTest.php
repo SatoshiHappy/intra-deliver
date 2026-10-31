@@ -49,11 +49,11 @@ final class CaseDiagramTest extends TransactionalTestCase
             ['予算', 'branch_start', null, null, 'passed', [], null, null, null],
             ['部長', 'approve', null, null, 'done', ['u0003 0'], 'approve', null, null],
             ['分岐終了', 'branch_end', null, null, 'passed', [], null, null, null],
-            ['関係部署の合議', 'parallel', null, null, 'running', [], null, '処理担当者は課長が指定', '完了の条件 承認 2 人　現在 1 人'],
+            ['関係部署の合議', 'parallel', null, null, 'running', [], null, '承認者は課長が選択', '承認 1 / 2 人'],
             ['関係部署の合議 承認 1', 'approve', '関係部署の合議', 1, 'done', ['u0009 0'], 'approve', null, null],
             ['関係部署の合議 承認 2', 'approve', '関係部署の合議', 2, 'waiting', ['u0010 1'], null, null, null],
             ['関係部署の合議 承認 3', 'approve', '関係部署の合議', 3, 'waiting', ['u0016 0'], null, null, null],
-            ['責任者', 'approve', null, null, 'unreached', [], null, '課長が指定', null],
+            ['責任者', 'approve', null, null, 'unreached', [], null, '課長が選択', null],
         ], $this->compactNodes($detail['nodes']));
         $this->assertSame(['apply', 'section_chief', 'budget', 'manager', 'budget_end', 'council', null, null, null, 'owner'], array_column($detail['nodes'], 'code'));
         $this->assertSame([[]], array_values(array_unique(array_column($detail['nodes'], 'placeholders'), SORT_REGULAR)));
@@ -107,7 +107,7 @@ final class CaseDiagramTest extends TransactionalTestCase
             array_map(fn (string $name) => $this->stateOf($twelfth, $name), ['部長', '関係部署の合議', '責任者']),
         );
         $this->assertSame([['関係部署の合議', 2, 2, 0, true, ['done u0009', 'done u0010']]], $this->compactCouncils($twelfth));
-        $this->assertSame('完了の条件 承認 2 人　現在 2 人', $this->nodeOf($twelfth, '関係部署の合議')['consensus']['text'] ?? null);
+        $this->assertSame('承認 2 / 2 人', $this->nodeOf($twelfth, '関係部署の合議')['consensus']['text'] ?? null);
         $this->assertSame([['skipped', ['skipped', '省略']], ['running', ['current', '承認待ち']]], array_map(fn (string $name) => $this->stateOf($tenth, $name), ['部長', '関係部署の合議']));
         $this->assertSame([['関係部署の合議', 0, 2, 2, false, ['current u0009', 'current u0010']]], $this->compactCouncils($tenth));
     }

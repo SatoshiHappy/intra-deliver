@@ -66,10 +66,11 @@ final class CaseOperationErrors
 
     public const ASSIGNMENTS_NOT_EFFECTIVE = '申請基準日に有効でないユーザーは指定できません';
 
-    public const ASSIGNMENTS_APPLICANT = '申請者本人は、このステップの処理担当者に指定できません';
+    /** 申請者承認防止のステップの指定に、申請者本人(承認のステップだけに出るので「承認者」= 画面の意匠/文言.md 11.2) */
+    public const ASSIGNMENTS_APPLICANT = '申請者本人は、このステップの承認者に選択できません';
 
     /** 申請者承認防止のステップの指定に、今日の申請者の代理先(設計/ワークフロー/案件の運用/案件の操作/同時実行と検査.md の 13 節) */
-    public const ASSIGNMENTS_APPLICANT_PROXY = '申請者の代理先は、このステップの処理担当者に指定できません';
+    public const ASSIGNMENTS_APPLICANT_PROXY = '申請者の代理先は、このステップの承認者に選択できません';
 
     /** 先読みで辿り着く分岐開始でどの条件にも該当しない(422 case。%s = 分岐開始の名前。同 13 節) */
     public const NO_BRANCH_ROUTE = '分岐「%s」の条件に該当するルートがないため、申請できません';

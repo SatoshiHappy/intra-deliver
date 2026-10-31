@@ -101,27 +101,10 @@ export function targetLine(
 }
 
 /**
- * カード 2 の見出しの下の 1 行(縦配置は合議の処理対象者への指定)。
+ * カード 2 の見出しの下の 1 行(縦配置は合議の承認者への選択)。
  */
 export function preventsLine(kind: WorkflowNodeKind): string {
     return kind === 'parallel'
-        ? 'オンにすると、申請者本人を合議の処理対象者に指定できません。'
+        ? 'オンにすると、申請者本人を合議の承認者に選択できません。'
         : 'オンにすると、申請者本人はこのステップで自分の申請を承認できません。';
-}
-
-/** 数字だけの入力(符号なし) */
-const INTEGER_PATTERN = /^\d+$/;
-
-/**
- * 必要な人数の下の状態の文(可決の条件が人数で、必要な人数が数のとき。入力に応じて変わる表示なので画面に残す)。
- */
-export function requiredCountText(
-    rule: WorkflowDecisionRule | '',
-    value: string,
-): string | null {
-    const trimmed = value.trim();
-
-    return rule === 'count' && INTEGER_PATTERN.test(trimmed)
-        ? `${Number(trimmed)} 人が承認したら次へ進みます。`
-        : null;
 }

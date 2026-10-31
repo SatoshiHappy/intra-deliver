@@ -68,7 +68,7 @@ export function assignNode(
     return {
         nodeId: 31,
         name: '関係部署の合議',
-        kindLabel: '縦配置',
+        kindLabel: '並列承認',
         min: 0,
         max: 3,
         ordered: false,

@@ -44,7 +44,7 @@ final class FlowDefinitionErrors
 
     public const DECISION_RATIO_RANGE = '必要な割合は 1 から 100 の範囲で入力してください';
 
-    public const SEND_BACK_INVALID = '差戻しできる先には、このステップに至る経路上の、申請または承認のステップ(横配置・縦配置を含む)を選択してください';
+    public const SEND_BACK_INVALID = '差戻しできる先には、このステップに至る経路上の、申請または承認のステップ(順次承認・並列承認を含む)を選択してください';
 
     public const DESIGNATING_MIN_ZERO = 'このステップはほかのステップの処理対象者を指定するため、人数の最小は 1 以上にしてください';
 

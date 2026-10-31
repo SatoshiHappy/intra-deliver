@@ -7,6 +7,7 @@ import {
     shownErrorKeys,
     stepSignature,
 } from './stepForm';
+import { stepFieldsOf } from './stepFields';
 
 const SEND_BACK = {
     candidates: [
@@ -101,7 +102,7 @@ describe('formOf(縦配置・対象者)', () => {
 
         expect(form.targetKind).toBe('fixed');
         expect(form.rows).toEqual([
-            { key: 0, type: 'role', id: 3, name: '一般利用者' },
+            { type: 'role', id: 3, name: '一般利用者' },
         ]);
         expect(form.prevents).toBe(false);
         expect(form.sendBack).toEqual([]);
@@ -133,7 +134,7 @@ describe('payloadOf(指定の種類を替える)', () => {
         const toFixed = {
             ...formOf(base),
             targetKind: 'fixed' as const,
-            rows: [{ key: 0, type: 'user' as const, id: null, name: null }],
+            rows: [{ type: 'user' as const, id: 9, name: '吉田 達也' }],
         };
         const toDesignated = {
             ...formOf(base),
@@ -145,7 +146,7 @@ describe('payloadOf(指定の種類を替える)', () => {
 
         expect(payloadOf(toFixed, base)).toMatchObject({
             target_kind: 'fixed',
-            targets: [{ type: 'user', id: null }],
+            targets: [{ type: 'user', id: 9 }],
             relative_base: null,
             relative_scope: null,
             company_post_id: null,
@@ -235,12 +236,31 @@ describe('stepSignature', () => {
 });
 
 describe('shownErrorKeys', () => {
-    it('欄のキーと、行の誤り(targets.<添字>)を欄の下に出すキーにする。欄の無いキーは含まない', () => {
-        const keys = shownErrorKeys(['targets.0', 'targets.3', 'other']);
+    it('出している欄のキー・カード 2 と 3 のキー・行の誤り(targets.<添字>)を欄の下に出すキーにする。欄の無いキーは含まない', () => {
+        const keys = shownErrorKeys(
+            ['targets.0', 'targets.3', 'other'],
+            stepFieldsOf('approve', 'fixed', ''),
+        );
 
-        expect(keys).toContain('min_assignees');
+        expect(keys).toContain('target_kind');
+        expect(keys).toContain('targets');
+        expect(keys).toContain('prevents_applicant_approval');
+        expect(keys).toContain('send_back_node_codes');
         expect(keys).toContain('targets.0');
         expect(keys).toContain('targets.3');
+        expect(keys).not.toContain('min_assignees');
         expect(keys).not.toContain('other');
+    });
+
+    it('出していない欄(指定の方法・対象者の行)の誤りは欄の下に出すキーにしない(先頭に出る)', () => {
+        const keys = shownErrorKeys(
+            ['target_kind', 'targets.0'],
+            stepFieldsOf('parallel', 'designated', 'all'),
+        );
+
+        expect(keys).not.toContain('target_kind');
+        expect(keys).not.toContain('targets.0');
+        expect(keys).not.toContain('decision_value');
+        expect(keys).toContain('min_assignees');
     });
 });

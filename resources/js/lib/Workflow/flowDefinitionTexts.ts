@@ -1,3 +1,4 @@
+import { formatDate } from '@/lib/recordValues';
 import type {
     WorkflowFlowDefinitionTab,
     WorkflowFlowVersionPeriod,
@@ -16,7 +17,7 @@ export const NO_END_DATE = '終了日なし';
 export const FLOW_TABS: { tab: WorkflowFlowDefinitionTab; label: string }[] = [
     { tab: 'diagram', label: 'フロー図' },
     { tab: 'versions', label: '版' },
-    { tab: 'referrers', label: '参照者' },
+    { tab: 'settings', label: '設定' },
 ];
 
 /**
@@ -27,10 +28,19 @@ export function versionLabel(number: number): string {
 }
 
 /**
- * 版の期間(「2026-10-01 から 終了日なし」)。endDate は表示の終了日。
+ * フロー図のタブの版の選択の選択肢(「版 3」と全角の空白と「2026/10/01 から」。日付は YYYY/MM/DD = アプリのほかの画面と同じ)。
+ */
+export function versionOptionLabel(
+    version: Pick<WorkflowFlowVersionRow, 'number' | 'startDate'>,
+): string {
+    return `${versionLabel(version.number)}　${formatDate(version.startDate)} から`;
+}
+
+/**
+ * 版の期間(「2026/10/01 から 終了日なし」)。endDate は表示の終了日。
  */
 function periodText(startDate: string, endDate: string | null): string {
-    return `${startDate} から ${endDate ?? NO_END_DATE}`;
+    return `${formatDate(startDate)} から ${endDate === null ? NO_END_DATE : formatDate(endDate)}`;
 }
 
 /**
@@ -48,6 +58,13 @@ export function currentVersionLines(
 }
 
 /**
+ * 申請対象の業務モジュールの名前(一覧の列と詳細の見出しの下の 1 行。申請対象なしは「—」)。
+ */
+export function moduleNameText(moduleName: string | null): string {
+    return moduleName ?? '—';
+}
+
+/**
  * 一覧の参照者の欄(無ければ「指定なし」)。
  */
 export function referrerSummaryText(summary: string | null): string {
@@ -58,14 +75,14 @@ export function referrerSummaryText(summary: string | null): string {
  * 版の状態の語。
  */
 export function versionStateLabel(isDisabled: boolean): string {
-    return isDisabled ? 'ユーザー無効' : '有効';
+    return isDisabled ? '無効' : '有効';
 }
 
 /**
- * 詳細の見出しの下の 1 行(今日の版が無ければ「今日に有効な版はありません。」)。
+ * 詳細の見出しの下の 1 行(業務モジュール = 申請対象の業務モジュール。今日の版が無ければ「今日に有効な版はありません。」)。
  */
 export function flowHeadlineText(
-    moduleName: string,
+    moduleName: string | null,
     versions: WorkflowFlowVersionRow[],
 ): string {
     const current = versions.find((version) => version.isCurrent);
@@ -74,22 +91,20 @@ export function flowHeadlineText(
             ? '今日に有効な版はありません。'
             : `現在の版は${versionLabel(current.number)} です。`;
 
-    return `業務モジュール：${moduleName}　${tail}`;
+    return `業務モジュール：${moduleNameText(moduleName)}　${tail}`;
 }
 
 /** ステップの種類の語(分岐・同期は設定を持たないので種類の語を出さない) */
 const STEP_KIND_WORDS: Partial<Record<WorkflowNodeKind, string>> = {
     apply: '申請',
     approve: '承認',
-    serial: '横配置',
-    parallel: '縦配置',
+    serial: '順次承認',
+    parallel: '並列承認',
 };
 
 /**
- * 図で選んだステップの見出し(ステップの名前と種類の語。種類の語が無い分岐・同期は名前だけ)。
+ * 図で選んだステップの見出しの横の種類のチップの語(分岐・同期は種類の語が無く、見出しは名前だけ)。
  */
-export function stepHeadingText(name: string, kind: WorkflowNodeKind): string {
-    const word = STEP_KIND_WORDS[kind];
-
-    return word === undefined ? name : `${name} ${word}`;
+export function stepKindWord(kind: WorkflowNodeKind): string | null {
+    return STEP_KIND_WORDS[kind] ?? null;
 }

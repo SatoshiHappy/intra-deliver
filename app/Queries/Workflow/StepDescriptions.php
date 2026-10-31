@@ -75,7 +75,9 @@ final class StepDescriptions
     }
 
     /**
-     * 処理の時に指定するノードの図の短い文(承認・横配置 =「{指定するステップ}が指定」、縦配置 =「処理担当者は{指定するステップ}が指定」)。
+     * 処理の時に指定するノードの図の短い文(承認 =「{指定するステップ}が選択」、
+     * 横配置・縦配置の枠の右 =「承認者は{指定するステップ}が選択」。
+     * 人を選ぶ操作は「選択」、承認のステップだけに出る文は「承認者」= 画面の意匠/文言.md 11.2)。
      * 指定するノードの名前が null なら null(案件の図は処理の時に指定するノードの文だけを出す = 図と意匠とE2E.md 8 節)。
      */
     public static function designatorSubtitle(WorkflowNodeKind $kind, ?string $designatorName): ?string
@@ -84,7 +86,9 @@ final class StepDescriptions
             return null;
         }
 
-        return $kind === WorkflowNodeKind::Parallel ? "処理担当者は{$designatorName}が指定" : "{$designatorName}が指定";
+        $isFrame = in_array($kind, WorkflowNodeKind::expanding(), true);
+
+        return $isFrame ? "承認者は{$designatorName}が選択" : "{$designatorName}が選択";
     }
 
     /**
@@ -124,7 +128,7 @@ final class StepDescriptions
         }
 
         $first = $min + 1;
-        $label = $first === $max ? "承認 {$max}" : "承認 {$first} から {$max}";
+        $label = $first === $max ? "承認 {$max}" : "承認 {$first}〜{$max}";
 
         return [...$labels, ['label' => $label, 'optional' => true]];
     }

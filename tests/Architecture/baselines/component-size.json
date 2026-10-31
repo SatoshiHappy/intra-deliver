@@ -70,7 +70,7 @@
     "tests/e2e/demo/records-admin.spec.ts (無名)": [93, 92, 90, 80, 65, 55, 54],
     "tests/e2e/demo/records-corrections.spec.ts (ファイル)": 759,
     "tests/e2e/demo/records-corrections.spec.ts (無名)": [74, 67, 51, 51],
-    "tests/e2e/demo/workflow-route.spec.ts (ファイル)": 711,
+    "tests/e2e/demo/workflow-route.spec.ts (ファイル)": 699,
     "tests/e2e/demo/workflow-route.spec.ts (無名)": [115, 59],
     "tests/e2e/demo/workflow.spec.ts (ファイル)": 797,
     "tests/e2e/demo/workflow.spec.ts (無名)": [121, 105, 75, 58, 55],

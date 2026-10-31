@@ -70,7 +70,7 @@ final class AdminFlowDefinitionControllerTest extends TransactionalTestCase
             ->assertInertia(fn (Assert $page) => $page->component('Workflow/Admin/FlowIndex'));
         $this->get('/workflow/admin/flows/'.self::PLAN)->assertOk()
             ->assertInertia(fn (Assert $page) => $page->component('Workflow/Admin/FlowShow'));
-        $this->getJson('/workflow/admin/subject-candidates?type=role&q=user')->assertOk();
+        $this->getJson('/workflow/admin/subject-candidates?q=user')->assertOk();
     }
 
     /**
@@ -138,7 +138,7 @@ final class AdminFlowDefinitionControllerTest extends TransactionalTestCase
         $show = '/workflow/admin/flows/'.self::PLAN;
 
         return [
-            'referrers' => ['workflow.admin.flows.referrers.update', "{$show}?tab=referrers", '参照者を保存しました'],
+            'referrers' => ['workflow.admin.flows.referrers.update', "{$show}?tab=settings", '参照者を保存しました'],
             'store' => ['workflow.admin.versions.store', "{$show}?tab=versions&version=4", '版を追加しました'],
             'disable' => ['workflow.admin.versions.disable', "{$show}?tab=versions&version=2", '版を無効にしました'],
             'enable' => ['workflow.admin.versions.enable', "{$show}?tab=versions&version=1", '版を有効にしました'],

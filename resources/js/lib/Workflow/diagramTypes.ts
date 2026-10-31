@@ -11,7 +11,8 @@ export type DiagramInputNode = WorkflowDiagramNode & {
     awaitingDesignation?: boolean;
 };
 
-export type StepNodeData = { node: DiagramInputNode };
+/** 申請・承認と展開の行の箱(inCouncil = 並列承認の枠の中の箱。題を人の名前にする) */
+export type StepNodeData = { node: DiagramInputNode; inCouncil?: boolean };
 export type FrameNodeData = { node: DiagramInputNode; childCount: number };
 /** 定義の図の枠の中の仮の札(まだ指定していない処理対象者の席) */
 export type PlaceholderNodeData = { label: string; optional: boolean };

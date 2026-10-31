@@ -186,7 +186,7 @@ final class CaseOperationPanelTest extends TransactionalTestCase
         $operation = $this->operationOf(self::MANAGER, $case);
 
         $line = $this->idsAt($case, 'line')[0];
-        $this->assertSame([[$line, '順番の承認', '横配置', 1, 3, true, ['u0009', 'u0005']]], $this->assignRows($operation));
+        $this->assertSame([[$line, '順番の承認', '順次承認', 1, 3, true, ['u0009', 'u0005']]], $this->assignRows($operation));
         $this->assertSame(['高橋 誠'], array_column($operation['reexpandNodes'], 'summary'));
     }
 

@@ -68,7 +68,7 @@ describe('versionStartBounds の暦', () => {
 describe('versionChangeText', () => {
     it('開始日の前日を、最後の版の終了日として出す', () => {
         expect(versionChangeText(3, '2027-04-01')).toBe(
-            '版 3 の終了日が 2027-03-31 に変更されます。',
+            '版 3 の終了日が 2027/03/31 に変更されます。',
         );
     });
 

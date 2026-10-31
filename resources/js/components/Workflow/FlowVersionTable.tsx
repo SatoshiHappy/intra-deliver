@@ -17,10 +17,11 @@ import {
     versionStateLabel,
 } from '@/lib/Workflow/flowDefinitionTexts';
 import { flowShowUrl, propsOfTab } from '@/lib/Workflow/flowDefinitionUrl';
+import { formatDate } from '@/lib/recordValues';
 import type { WorkflowFlowVersionRow } from '@/types';
 
 /**
- * 版の行の操作(「図を見る」= フロー図のタブでその版、「無効にする」/「有効にする」= 確かめのダイアログの後に送る)。
+ * 版の行の操作(枠つきのボタン。「図を見る」= フロー図のタブでその版、「無効にする」/「有効にする」= 確かめのダイアログの後に送る)。
  */
 function VersionActions({
     flowCode,
@@ -31,7 +32,7 @@ function VersionActions({
 }) {
     return (
         <div className="flex items-center justify-end gap-1">
-            <Button variant="ghost" size="sm" asChild>
+            <Button variant="outline" size="sm" asChild>
                 <Link
                     href={flowShowUrl(flowCode, {
                         version: version.number,
@@ -55,7 +56,7 @@ function VersionActions({
 }
 
 /**
- * 版の表の 1 行(列 = 版・開始日・終了日・状態・操作)。終了日は次の版の開始日の前日(最後の版は「終了日なし」)。
+ * 版の表の 1 行(列 = 版・開始日・終了日・状態・操作)。状態の札は、有効 = 緑み(代理の管理の「有効」と同じ)、無効 = 灰色。日付は YYYY/MM/DD。終了日は次の版の開始日の前日(最後の版は「終了日なし」)。
  */
 function VersionLine({
     flowCode,
@@ -75,22 +76,20 @@ function VersionLine({
                 )}
             </TableCell>
             <TableCell className="font-num tabular-nums">
-                {version.startDate}
+                {formatDate(version.startDate)}
             </TableCell>
             <TableCell className="font-num tabular-nums">
-                {version.displayEndDate ?? (
+                {version.displayEndDate === null ? (
                     <span className="text-muted-foreground">{NO_END_DATE}</span>
+                ) : (
+                    formatDate(version.displayEndDate)
                 )}
             </TableCell>
             <TableCell>
-                {version.isDisabled ? (
-                    <StatusBadge
-                        label={versionStateLabel(true)}
-                        tone="settled"
-                    />
-                ) : (
-                    <Badge variant="outline">{versionStateLabel(false)}</Badge>
-                )}
+                <StatusBadge
+                    label={versionStateLabel(version.isDisabled)}
+                    tone={version.isDisabled ? 'settled' : 'pending'}
+                />
             </TableCell>
             <TableCell>
                 <VersionActions flowCode={flowCode} version={version} />

@@ -344,7 +344,7 @@ test('申請者: 申請の画面に申請基準日(既定は今日)と担当組�
     await expect(diagramStep(page, '申請')).toContainText('処理済み(申請)');
     await expect(diagramStep(page, '課長')).toContainText('中村 美咲');
     await expect(diagramStep(page, '課長')).toContainText('承認待ち');
-    await expect(diagramStep(page, '責任者')).toContainText('課長が指定');
+    await expect(diagramStep(page, '責任者')).toContainText('課長が選択');
     await expect(diagramStep(page, '責任者')).toContainText('到達していない');
     await expect(
         diagram(page).getByText('終了', { exact: true }),
@@ -352,7 +352,7 @@ test('申請者: 申請の画面に申請基準日(既定は今日)と担当組�
     await expect(councilProgress(page)).toHaveCount(0);
     // 課長がまだ合議の人を指定していないので、合議の枠に指定の前の文(画面/図と意匠とE2E.md 8 節)
     await expect(
-        diagram(page).getByText('処理担当者はまだ指定されていません', {
+        diagram(page).getByText('承認者はまだ選択されていません', {
             exact: true,
         }),
     ).toBeVisible();
@@ -394,7 +394,7 @@ test('最小 0 の知らせ: 合議の最小を 0 にした詳細の応答で上
 
     const dialog = await openActionDialog(page, '承認', '承認する');
     const council = dialog.getByRole('region', {
-        name: '指定するステップ　縦配置 関係部署の合議',
+        name: '指定するステップ　並列承認 関係部署の合議',
     });
     await expect(assigneeStatus(council)).toHaveText(
         '選択中 0 人　このステップは省略されます。',
@@ -412,7 +412,7 @@ test('上長: 承認のダイアログに指定するステップが 2 つ出て
     await openAs(page, 'chief', caseUrl);
     const dialog = await openActionDialog(page, '承認', '承認する');
     const council = dialog.getByRole('region', {
-        name: '指定するステップ　縦配置 関係部署の合議',
+        name: '指定するステップ　並列承認 関係部署の合議',
     });
     const owner = dialog.getByRole('region', {
         name: '指定するステップ　承認 責任者',
@@ -448,9 +448,9 @@ test('上長: 承認のダイアログに指定するステップが 2 つ出て
         '指定: 責任者 = 高橋 誠',
     ]);
     // 指定した後は、合議に到達する前(子の箱がまだ無い間)でも指定の前の文を出さない
-    await expect(diagram(page)).toContainText('縦配置「関係部署の合議」');
+    await expect(diagram(page)).toContainText('並列承認「関係部署の合議」');
     await expect(
-        diagram(page).getByText('処理担当者はまだ指定されていません'),
+        diagram(page).getByText('承認者はまだ選択されていません'),
     ).toHaveCount(0);
 });
 
@@ -529,16 +529,10 @@ test('部長: 承認すると合議の 3 人が承認待ちになり、現在の
         '通らなかった枝',
     );
     await expect(diagramStep(page, '部長')).toContainText('処理済み(承認)');
-    await expect(diagram(page)).toContainText('縦配置「関係部署の合議」');
-    await expect(diagram(page)).toContainText(
-        '完了の条件 承認 2 人　現在 0 人',
-    );
-    await expect(diagramStep(page, '関係部署の合議 承認 1')).toContainText(
-        '吉田 達也',
-    );
-    await expect(diagramStep(page, '関係部署の合議 承認 1')).toContainText(
-        '承認待ち',
-    );
+    await expect(diagram(page)).toContainText('並列承認「関係部署の合議」');
+    await expect(diagram(page)).toContainText('承認 0 / 2 人');
+    // 並列承認の中の箱の題は人の名前(番号の題は出さない)
+    await expect(diagramStep(page, '吉田 達也')).toContainText('承認待ち');
     const progress = councilProgress(page);
     await expect(progress).toContainText('0 人が承認　必要 2 人');
     await expect(progress).toContainText(
@@ -546,7 +540,7 @@ test('部長: 承認すると合議の 3 人が承認待ちになり、現在の
     );
     await expect(progress.getByRole('listitem')).toHaveCount(3);
     // 承認の後に配置と面の幅(進み具合の面が出る)が変わっても、全体が入る表示をやり直すので、合議の枠の右端の子の箱が図の面の中に見える
-    await expectInsideDiagram(page, '関係部署の合議 承認 3');
+    await expectInsideDiagram(page, '清水 美穂');
 });
 
 test('差戻し先の制限: 合議の子の差戻しのダイアログの差戻し先は「申請」「課長」だけで、制限の 1 行が出る', async ({
@@ -662,10 +656,8 @@ test('通らなかった枝: 予算 120 の見本 WF-000010 の詳細の図で�
     );
     // 点線 = 通らなかった枝(予算 → 部長)と、省略の部長から続く辺(部長 → 分岐終了)の 2 本。分岐終了から先は実線
     await expect(dashedEdges(page)).toHaveCount(2);
-    await expect(diagramStep(page, '関係部署の合議 承認 1')).toContainText(
-        '吉田 達也(自分)',
-    );
-    await expect(diagramStep(page, '関係部署の合議 承認 1')).toContainText(
+    // 並列承認の中の箱の題は人の名前(自分には「(自分)」)
+    await expect(diagramStep(page, '吉田 達也(自分)')).toContainText(
         '承認待ち',
     );
     await expect(councilProgress(page)).toContainText('0 人が承認　必要 2 人');
@@ -687,16 +679,12 @@ test('否認の票と通らなかった枝: 見本 WF-000011(合議が可決で�
         })
         .click();
 
-    await expect(diagramStep(page, '関係部署の合議 承認 1')).toContainText(
+    await expect(diagramStep(page, '吉田 達也(自分)')).toContainText(
         '処理済み(否認)',
     );
-    await expect(diagramStep(page, '関係部署の合議 承認 2')).toContainText(
-        '処理済み(否認)',
-    );
-    await expect(diagramStep(page, '関係部署の合議 承認 3')).toContainText(
-        '省略',
-    );
-    await expect(diagram(page)).toContainText('縦配置「関係部署の合議」');
+    await expect(diagramStep(page, '山田 恵')).toContainText('処理済み(否認)');
+    await expect(diagramStep(page, '清水 美穂')).toContainText('省略');
+    await expect(diagram(page)).toContainText('並列承認「関係部署の合議」');
     await expect(diagramStep(page, '責任者')).toContainText('到達していない');
     // 完了の時の片付けで省いた合議の前後の辺は実線のまま(点線は分岐から「何もしない」の箱へ、箱から分岐終了への 2 本)
     await expect(diagramStep(page, '何もしない')).toContainText(
@@ -706,6 +694,6 @@ test('否認の票と通らなかった枝: 見本 WF-000011(合議が可決で�
     // 省略の合議には進み具合の面を出さず、指定の前の文も出さない
     await expect(councilProgress(page)).toHaveCount(0);
     await expect(
-        diagram(page).getByText('処理担当者はまだ指定されていません'),
+        diagram(page).getByText('承認者はまだ選択されていません'),
     ).toHaveCount(0);
 });

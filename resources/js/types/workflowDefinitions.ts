@@ -19,11 +19,14 @@ export type WorkflowFlowVersionPeriod = {
     endDate: string | null;
 };
 
-/** フロー定義の一覧の行(currentVersion = 今日の版。無ければ null。referrerSummary = 参照者の名前を「、」で。無ければ null) */
+/**
+ * フロー定義の一覧の行(moduleName = 申請対象の業務モジュールの名前。申請対象なしは null。currentVersion = 今日の版。無ければ null。
+ * referrerSummary = 参照者の名前を「、」で。無ければ null)
+ */
 export type WorkflowFlowDefinitionRow = {
     code: string;
     name: string;
-    moduleName: string;
+    moduleName: string | null;
     currentVersion: WorkflowFlowVersionPeriod | null;
     versionCount: number;
     referrerSummary: string | null;
@@ -77,15 +80,16 @@ export type WorkflowStepSettings = {
     decision: { rule: WorkflowDecisionRule; value: number | null } | null; // 縦配置だけ
 };
 
-/** 詳細のタブ */
-export type WorkflowFlowDefinitionTab = 'diagram' | 'versions' | 'referrers';
+/** 詳細のタブ(settings = タブ「設定」。面「参照者」を持つ) */
+export type WorkflowFlowDefinitionTab = 'diagram' | 'versions' | 'settings';
 
 /**
  * 詳細のページ Workflow/Admin/FlowShow の props(selectedVersion・tab は解釈した後の値。diagram・selectedNode・referrers・options は
  * 部分の再読み込み(only)で取り直せる)
  */
 export type WorkflowAdminFlowShowProps = {
-    flow: { code: string; name: string; moduleName: string };
+    /** moduleName = 申請対象の業務モジュールの名前(申請対象なしは null) */
+    flow: { code: string; name: string; moduleName: string | null };
     versions: WorkflowFlowVersionRow[];
     selectedVersion: number;
     tab: WorkflowFlowDefinitionTab;
@@ -99,12 +103,21 @@ export type WorkflowAdminFlowShowProps = {
     };
 };
 
-/** 対象者の候補の応答 GET workflow.admin.subject-candidates(主所属はユーザーだけ。ほかは null) */
+/** 対象者の候補 1 つ(主所属はユーザーだけ。ほかは null) */
+export type WorkflowSubjectCandidate = {
+    id: number;
+    code: string;
+    name: string | null;
+    mainDepartmentName: string | null;
+};
+
+/**
+ * 対象者の候補の応答 GET workflow.admin.subject-candidates?q=(1 つの語で 4 種類をまとめて引く。群の並び = ユーザー・組織・役職・ロール。
+ * 上限は種類ごと。語が空なら 4 つの空の群)
+ */
 export type WorkflowSubjectCandidatesResponse = {
-    candidates: {
-        id: number;
-        code: string;
-        name: string | null;
-        mainDepartmentName: string | null;
+    groups: {
+        type: WorkflowSubjectType;
+        candidates: WorkflowSubjectCandidate[];
     }[];
 };

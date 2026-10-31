@@ -31,6 +31,6 @@ describe('propsOfTab', () => {
             'options',
         ]);
         expect(propsOfTab('versions')).toEqual(['tab', 'versions', 'today']);
-        expect(propsOfTab('referrers')).toEqual(['tab', 'referrers']);
+        expect(propsOfTab('settings')).toEqual(['tab', 'referrers']);
     });
 });

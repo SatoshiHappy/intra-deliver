@@ -1,10 +1,10 @@
 import { FlowDiagramTab } from '@/components/Workflow/FlowDiagramTab';
-import { FlowReferrersTab } from '@/components/Workflow/FlowReferrersTab';
+import { FlowSettingsTab } from '@/components/Workflow/FlowSettingsTab';
 import { FlowVersionsTab } from '@/components/Workflow/FlowVersionsTab';
 import type { WorkflowAdminFlowShowProps } from '@/types';
 
 /**
- * 詳細のタブごとの面(フロー図・版・参照者。今のタブの面だけを出す)。
+ * 詳細のタブごとの面(フロー図・版・設定。今のタブの面だけを出す)。
  */
 export function FlowTabPanel(props: WorkflowAdminFlowShowProps) {
     const { flow, versions, tab } = props;
@@ -20,11 +20,11 @@ export function FlowTabPanel(props: WorkflowAdminFlowShowProps) {
         );
     }
 
-    if (tab === 'referrers') {
+    if (tab === 'settings') {
         return (
-            <FlowReferrersTab
+            <FlowSettingsTab
                 flowCode={flow.code}
-                rows={props.referrers.rows}
+                referrers={props.referrers.rows}
             />
         );
     }

@@ -106,13 +106,11 @@ final class AdminFlowDefinitionInputTest extends TransactionalTestCase
 
     public function test_the_subject_candidates_query(): void
     {
-        $type = '種類の指定が正しくありません';
         $long = str_repeat('あ', 101);
 
-        $this->assertOnlyError('get', '/workflow/admin/subject-candidates?q=x', [], 'type', $type);
-        $this->assertOnlyError('get', '/workflow/admin/subject-candidates?type=group&q=x', [], 'type', $type);
         $tooLong = '検索する語は 100 文字以内にしてください';
-        $this->assertOnlyError('get', "/workflow/admin/subject-candidates?type=user&q={$long}", [], 'q', $tooLong);
+        $this->assertOnlyError('get', "/workflow/admin/subject-candidates?q={$long}", [], 'q', $tooLong);
+        $this->assertOnlyError('get', '/workflow/admin/subject-candidates?q[]=x', [], 'q', '検索する語の指定が正しくありません');
     }
 
     private function councilUrl(): string

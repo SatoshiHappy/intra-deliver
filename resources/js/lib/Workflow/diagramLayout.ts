@@ -6,6 +6,7 @@ import { dashedEdges } from '@/lib/Workflow/diagramEdges';
 import { addDiagramMarks, plainEdge } from '@/lib/Workflow/diagramMarks';
 import type { AddedNode } from '@/lib/Workflow/diagramMarks';
 import {
+    frameHeaderWidth,
     frameSize,
     placeChildren,
     slotsOf,
@@ -76,6 +77,7 @@ function sizeOf(node: DiagramInputNode, childCount: number) {
             node.kind === 'parallel',
             node.consensus !== null,
             childCount,
+            frameHeaderWidth(node),
         );
     }
 

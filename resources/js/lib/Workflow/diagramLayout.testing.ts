@@ -43,7 +43,7 @@ export function edge(
 export const PLACEHOLDERS = [
     { label: '承認 1', optional: false },
     { label: '承認 2', optional: false },
-    { label: '承認 3 から 5', optional: true },
+    { label: '承認 3〜5', optional: true },
 ];
 /** 版 3 と同じ形(申請 → 分岐 → 部長 / ステップの無い枝 → 分岐終了 → 縦配置 → 責任者) */
 export function branchRoute(taken: {

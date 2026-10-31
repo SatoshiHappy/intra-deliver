@@ -15,6 +15,7 @@ use LogicException;
 
 /**
  * フロー定義の詳細(docs の 設計/ワークフロー/ルートの深さ/画面/定義の管理の画面.md 3 節、クエリの既定 = 画面/README.md 1.1 節)。
+ * flow.moduleName = 申請対象の業務モジュールの名前(申請対象なしは null)。
  * クエリは解釈した後の値を返す(version = 無い・数でない・そのフローに無い番号なら今日の版、無ければ最後の版。tab = 既定 diagram。
  * node = 選んだ版に無ければ申請のノード)。today = サーバーの今日(版を追加の開始日の範囲に使う。遅延にしない)。
  * 図・選んだステップ・参照者・選択の欄の候補は部分の再読み込みのために遅延で評価する。鍵を取らない。
@@ -27,7 +28,8 @@ use LogicException;
  *
  * @phpstan-type VersionRow array{number: int, startDate: string, endDate: string|null, displayEndDate: string|null,
  *     isDisabled: bool, isCurrent: bool}
- * @phpstan-type Detail array{flow: array{code: string, name: string, moduleName: string}, versions: list<VersionRow>,
+ * @phpstan-type Detail array{flow: array{code: string, name: string, moduleName: string|null},
+ *     versions: list<VersionRow>,
  *     selectedVersion: int, tab: string, today: string,
  *     diagram: Closure(): array{nodes: list<DefinitionNode>, edges: list<DefinitionEdge>},
  *     selectedNode: Closure(): StepSettings, referrers: Closure(): array{rows: list<SubjectRow>},
@@ -36,7 +38,7 @@ use LogicException;
 class FlowDefinitionDetail
 {
     /** タブ(先頭が既定) */
-    private const TABS = ['diagram', 'versions', 'referrers'];
+    private const TABS = ['diagram', 'versions', 'settings'];
 
     public function __construct(
         private EffectiveFlowVersions $versions,
@@ -62,7 +64,8 @@ class FlowDefinitionDetail
         DateTimeInterface $today,
         string $localeCode,
     ): array {
-        $flow = WorkflowFlow::query()->with('workflowContent.recordModule')->where('code', $flowCode)->firstOrFail();
+        $flow = WorkflowFlow::query()->with('workflowContent.targetRecordModule')
+            ->where('code', $flowCode)->firstOrFail();
         $versions = WorkflowFlowVersion::query()->where('workflow_flow_id', $flow->id)->orderByDesc('number')->get();
         $currentId = $this->versions->idOn($flow->id, $today);
         $selected = self::selectedVersion($versions, $version, $currentId);
@@ -76,8 +79,7 @@ class FlowDefinitionDetail
             'flow' => [
                 'code' => $flow->code,
                 'name' => $flow->name,
-                'moduleName' => $flow->workflowContent->recordModule->name
-                    ?? throw new LogicException("フロー {$flow->code} のコンテンツの業務モジュールが無い"),
+                'moduleName' => FlowDefinitionList::contentOf($flow)->targetRecordModule?->name,
             ],
             'versions' => array_values($versions->map(fn (WorkflowFlowVersion $row) => [
                 'number' => $row->number,
@@ -91,7 +93,7 @@ class FlowDefinitionDetail
             'tab' => is_string($tab) && in_array($tab, self::TABS, true) ? $tab : self::TABS[0],
             'today' => $today->format('Y-m-d'),
             'diagram' => fn () => $this->diagram
-                ->of($routeOf(), $flow->workflowContent->record_module_id, $today, $localeCode),
+                ->of($routeOf(), FlowDefinitionList::contentOf($flow)->record_module_id, $today, $localeCode),
             'selectedNode' => fn () => $this->settings->of($routeOf(), $nodeOf(), $today, $localeCode),
             'referrers' => fn () => ['rows' => $this->referrerRows($flow, $today, $localeCode)],
             'options' => fn () => [

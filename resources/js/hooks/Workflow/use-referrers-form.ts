@@ -10,8 +10,8 @@ import type { WorkflowSubjectRow } from '@/types';
 export const REFERRERS_ERROR_KEY = 'referrers';
 
 /**
- * 参照者のタブの入力と送信(docs の 設計/ワークフロー/ルートの深さ/画面/定義の管理の画面.md の 3.4 節)。
- * 保存はすべての行を並びのまま 1 回で送る(0 行 = 参照者なし)。取消は今の値(サーバーの行)に戻す。
+ * タブ「設定」の面「参照者」の入力と送信(docs の 設計/ワークフロー/ルートの深さ/画面/定義の管理の画面.md の 3.4 節)。
+ * 保存はすべての行を並びのまま 1 回で送る(0 件 = 参照者なし)。キャンセルは今の値(サーバーの行)に戻す。
  * 並びが変わると添字の誤りは別の行に出てしまうので、行を変えたら行の誤りを消す。
  */
 export function useReferrersForm(flow: string, saved: WorkflowSubjectRow[]) {

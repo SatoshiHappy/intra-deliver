@@ -62,11 +62,20 @@ test('システム管理者: 図で「部長」を押すと右の欄が「部長
     await expect(cardHeading(page, '申請者本人の承認を防ぐ')).toBeVisible();
     await expect(cardHeading(page, '差戻しできる先')).toBeVisible();
     await expect(cardHeading(page, '合議の人数と可決の条件')).toHaveCount(0);
+    // カードの見出しの説明は見出しの横の「?」の中(カード 1 は指定の方法で変わる文)
+    await page
+        .getByRole('button', { name: '誰が承認するかの説明', exact: true })
+        .focus();
+    await expect(page.getByRole('tooltip')).toContainText(
+        '承認者を、基準にする人、組織、役職で指定します。',
+    );
+    // 承認のステップは指定の方法を選べ、基準にする人は切り替えボタン(申請者を選んでいる)
     await expect(
-        page.getByText('承認者を、基準にする人、組織、役職で指定します。', {
-            exact: true,
-        }),
+        page.getByRole('combobox', { name: '指定の方法', exact: true }),
     ).toBeVisible();
+    await expect(
+        page.getByRole('radio', { name: '申請者', exact: true }),
+    ).toHaveAttribute('aria-checked', 'true');
 
     await page
         .getByRole('button', { name: '基準にする人の説明', exact: true })
@@ -97,7 +106,7 @@ test('システム管理者: 部長の組織を替えて保存するとトース
     await expect(box).toContainText('申請者の上位組織 + 部長');
 });
 
-test('システム管理者: 縦配置「関係部署の合議」を選ぶとカード 4 が出て、最小・最大は共有され、可決の条件で入力できる欄が切り替わる', async ({
+test('システム管理者: 並列承認「関係部署の合議」を選ぶとカード 4 が出て、指定の方法は出さず、人数の最小・最大はカード 4 にだけ出る', async ({
     page,
 }) => {
     await openAsAdministrator(page, PLAN);
@@ -105,15 +114,21 @@ test('システム管理者: 縦配置「関係部署の合議」を選ぶとカ
 
     await expect(page).toHaveURL(/node=council/);
     await expect(
-        page.getByRole('heading', { level: 2, name: '関係部署の合議 縦配置' }),
+        page.getByRole('heading', {
+            level: 2,
+            name: '関係部署の合議 並列承認',
+        }),
     ).toBeVisible();
     await expect(cardHeading(page, '合議の人数と可決の条件')).toBeVisible();
-    await expect(
-        page.getByText(
-            'オンにすると、申請者本人を合議の処理対象者に指定できません。',
-            { exact: true },
-        ),
-    ).toBeVisible();
+    await page
+        .getByRole('button', {
+            name: '申請者本人の承認を防ぐの説明',
+            exact: true,
+        })
+        .focus();
+    await expect(page.getByRole('tooltip')).toContainText(
+        'オンにすると、申請者本人を合議の承認者に選択できません。',
+    );
     await expect(
         page.getByRole('checkbox', { name: '申請', exact: true }),
     ).toBeChecked();
@@ -121,36 +136,49 @@ test('システム管理者: 縦配置「関係部署の合議」を選ぶとカ
         page.getByRole('checkbox', { name: '部長', exact: true }),
     ).not.toBeChecked();
 
-    // 人数の最小・最大は、カード 1 とカード 4 で同じ値を共有する
-    const min = page.getByRole('spinbutton', { name: '人数の最小' });
-    await expect(min).toHaveCount(2);
-    await min.first().fill('1');
-    await expect(min.last()).toHaveValue('1');
+    // 選べるのが 1 つの指定の方法は出さず、人数の最小・最大はカード 4 にだけ出す
+    await expect(
+        page.getByRole('combobox', { name: '指定の方法', exact: true }),
+    ).toHaveCount(0);
+    await expect(
+        page.getByRole('combobox', { name: '選択する人', exact: true }),
+    ).toBeVisible();
+    await expect(
+        page.getByRole('spinbutton', { name: '人数の最小' }),
+    ).toHaveCount(1);
+});
 
-    // 可決の条件で選んだ欄だけを入力でき、必要な人数の下に状態の文が出る
+test('システム管理者: 縦配置の可決の条件は切り替えボタンで、キーボードでも選べ、選んだ条件の欄だけが出る(全員 = 欄なし)', async ({
+    page,
+}) => {
+    await openAsAdministrator(page, `${PLAN}?node=council`);
+    const rule = (name: string) =>
+        page.getByRole('radio', { name, exact: true });
     const count = page.getByRole('spinbutton', { name: '必要な人数' });
     const ratio = page.getByRole('spinbutton', { name: '必要な割合' });
-    await expect(count).toBeEnabled();
-    await expect(ratio).toBeDisabled();
-    await count.fill('3');
-    await expect(
-        page.getByText('3 人が承認したら次へ進みます。', { exact: true }),
-    ).toBeVisible();
-    await page.getByRole('combobox', { name: '可決の条件' }).click();
-    await page.getByRole('option', { name: '割合', exact: true }).click();
-    await expect(count).toBeDisabled();
-    await expect(ratio).toBeEnabled();
-    await expect(page.getByText(/人が承認したら次へ進みます。/)).toHaveCount(0);
+    await expect(rule('人数')).toHaveAttribute('aria-checked', 'true');
+    await expect(count).toHaveValue('2');
+    await expect(ratio).toHaveCount(0);
+    await rule('人数').focus();
+    await page.keyboard.press('ArrowRight');
+    await expect(rule('割合')).toBeFocused();
+    await page.keyboard.press('Space');
+    await expect(rule('割合')).toHaveAttribute('aria-checked', 'true');
+    await expect(count).toHaveCount(0);
+    await expect(ratio).toBeVisible();
+    await rule('全員').click();
+    await expect(count).toHaveCount(0);
+    await expect(ratio).toHaveCount(0);
+    // 選んだボタンをもう一度押しても外れない
+    await rule('全員').click();
+    await expect(rule('全員')).toHaveAttribute('aria-checked', 'true');
 });
 
 test('システム管理者: 規則に合わない入力で保存すると欄の下に誤りが出て、何も保存されない', async ({
     page,
 }) => {
     await openAsAdministrator(page, `${PLAN}?node=council`);
-    await page
-        .getByRole('spinbutton', { name: '人数の最小' })
-        .first()
-        .fill('0');
+    await page.getByRole('spinbutton', { name: '人数の最小' }).fill('0');
     await submitAndExpectUrl(
         page,
         page.getByRole('button', { name: '保存', exact: true }),
@@ -170,6 +198,39 @@ test('システム管理者: 規則に合わない入力で保存すると欄の
     // 開き直すと、保存されていない(最小は 2 のまま)
     await page.goto(`${PLAN}?node=council`);
     await expect(
-        page.getByRole('spinbutton', { name: '人数の最小' }).first(),
+        page.getByRole('spinbutton', { name: '人数の最小' }),
     ).toHaveValue('2');
+});
+
+test('システム管理者: 申請のステップの「対象者で指定」も参照者と同じ欄で、選んだ相手が札になって一覧から消え、× で外せる(保存しない)', async ({
+    page,
+}) => {
+    await openAsAdministrator(page, `${PLAN}?node=apply`);
+    const chips = page
+        .getByRole('list', { name: '対象者の選択' })
+        .getByRole('listitem');
+    await expect(chips).toHaveCount(1);
+    await expect(chips.first()).toContainText('一般利用者');
+    await expect(
+        chips.first().getByRole('img', { name: 'ロール', exact: true }),
+    ).toBeVisible();
+
+    const search = page.getByRole('combobox', { name: '対象者を追加' });
+    await search.click();
+    await page.getByPlaceholder('検索する語').fill('経理');
+    await page.getByRole('option', { name: /^経理部$/ }).click();
+    await expect(chips).toHaveCount(2);
+    await expect(
+        chips.nth(1).getByRole('img', { name: '組織', exact: true }),
+    ).toBeVisible();
+    await search.click();
+    await page.getByPlaceholder('検索する語').fill('経理');
+    await expect(page.getByText('検索中…')).toHaveCount(0);
+    await expect(page.getByRole('option', { name: /^経理部$/ })).toHaveCount(0);
+    await page.keyboard.press('Escape');
+
+    await page
+        .getByRole('button', { name: '経理部を外す', exact: true })
+        .click();
+    await expect(chips).toHaveCount(1);
 });

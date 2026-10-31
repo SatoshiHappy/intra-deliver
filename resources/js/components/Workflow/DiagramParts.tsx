@@ -3,6 +3,8 @@ import type { Edge, EdgeProps, Node, NodeProps } from '@xyflow/react';
 import { CaseStepBadge } from '@/components/Workflow/WorkflowStatusBadge';
 import { useNodeSelection } from '@/hooks/Workflow/use-diagram-selection';
 import { cn } from '@/lib/utils';
+import { councilBoxTitle } from '@/lib/Workflow/diagramFrames';
+import { stepBoxToneOf } from '@/lib/Workflow/diagramMarks';
 import type {
     DiagramInputNode,
     PlaceholderNodeData,
@@ -77,26 +79,84 @@ function PeopleText({ node }: { node: DiagramInputNode }) {
     );
 }
 
-/** 申請・承認と展開の行の箱: 名前・短い文・人と状態の札 */
+/** 箱の地(処理済み = 処理済みの札の地、承認待ち = 承認待ちの札の地と太い縁。stepBoxToneOf) */
+const TONE_CLASSES: Record<ReturnType<typeof stepBoxToneOf>, string> = {
+    settled: 'bg-status-settled',
+    pending: 'border-[3px] bg-status-pending',
+    plain: 'bg-card',
+};
+
+/**
+ * 箱の人と状態の札の行(枠の子の箱は幅が狭いので、札を人の行の下に置く)。showsPeople = 人の並びを出す(並列承認の枠の中の箱は
+ * 題が人の名前なので出さない)。地を塗った箱は地と札の地が同じ系統の色なので、札に縁を付ける。
+ */
+function StateLine({
+    node,
+    stepState,
+    isChild,
+    showsPeople,
+    isOutlined,
+}: {
+    node: DiagramInputNode;
+    stepState: WorkflowStepState;
+    isChild: boolean;
+    showsPeople: boolean;
+    isOutlined: boolean;
+}) {
+    return (
+        <span
+            className={cn(
+                'flex max-w-full min-w-0 items-center gap-x-2 gap-y-1 text-xs',
+                isChild && 'flex-col',
+            )}
+        >
+            {showsPeople && <PeopleText node={node} />}
+            <span
+                className={cn(
+                    'shrink-0',
+                    isOutlined && '[&>[data-slot=badge]]:border-current/30',
+                )}
+            >
+                <CaseStepBadge
+                    stepState={stepState}
+                    action={node.processed?.action ?? null}
+                    className="text-xs"
+                />
+            </span>
+        </span>
+    );
+}
+
+/**
+ * 申請・承認と展開の行の箱: 題(ステップの名前。並列承認の枠の中の箱は人の名前 = councilBoxTitle)・短い文・人と状態の札。
+ * 処理済み・承認待ちの箱は札を残して地を札の地で塗る(図と意匠とE2E.md 8 節)。
+ */
 export function StepNode({ data, parentId }: NodeProps<Node<StepNodeData>>) {
-    const { node } = data;
-    // 枠の子の箱は幅が狭いので、札を人の行の下に置く(人の名前と「処理済み(<種別>)」が切れずに入る)
-    const isChild = parentId !== undefined;
+    const { node, inCouncil = false } = data;
     const { isSelected, props } = useNodeSelection(node);
+    const tone = stepBoxToneOf(node.stepState);
+    const title = inCouncil ? councilBoxTitle(node) : node.name;
 
     return (
         <div
             {...props}
             className={cn(
                 'flex size-full flex-col items-center justify-center gap-1 rounded-lg',
-                'border-2 bg-card px-3 py-2 text-center text-card-foreground',
+                'border-2 px-3 py-2 text-center text-card-foreground',
+                TONE_CLASSES[tone],
                 borderOf(node, isSelected),
                 props.className,
             )}
         >
             <Handles />
-            <span className="truncate text-sm font-medium" title={node.name}>
-                {node.name}
+            <span
+                className={cn(
+                    'max-w-full truncate text-sm',
+                    inCouncil ? 'font-semibold' : 'font-medium',
+                )}
+                title={title}
+            >
+                {title}
             </span>
             {node.subtitle !== null && (
                 <span
@@ -107,28 +167,20 @@ export function StepNode({ data, parentId }: NodeProps<Node<StepNodeData>>) {
                 </span>
             )}
             {node.stepState !== undefined && (
-                <span
-                    className={cn(
-                        'flex max-w-full min-w-0 items-center gap-x-2 gap-y-1 text-xs',
-                        isChild && 'flex-col',
-                    )}
-                >
-                    <PeopleText node={node} />
-                    <span className="shrink-0">
-                        <CaseStepBadge
-                            stepState={node.stepState}
-                            action={node.processed?.action ?? null}
-                            className="text-xs"
-                        />
-                    </span>
-                </span>
+                <StateLine
+                    node={node}
+                    stepState={node.stepState}
+                    isChild={parentId !== undefined}
+                    showsPeople={!inCouncil}
+                    isOutlined={tone !== 'plain'}
+                />
             )}
         </div>
     );
 }
 
 /**
- * 定義の図の枠の中の仮の札(「承認 1」と「実行時に指定」、残りをまとめた札は「承認 3 から 5」と「任意」。
+ * 定義の図の枠の中の仮の札(「承認 1」と「実行時に選択」、残りをまとめた札は「承認 3〜5」と「任意」。
  * 設計/ワークフロー/ルートの深さ/画面/図と意匠とE2E.md 8 節)。必ず要る席は実線、任意の席は破線の縁。
  */
 export function PlaceholderNode({
@@ -151,7 +203,7 @@ export function PlaceholderNode({
                 {data.label}
             </span>
             <span className="text-xs text-muted-foreground">
-                {data.optional ? '任意' : '実行時に指定'}
+                {data.optional ? '任意' : '実行時に選択'}
             </span>
         </div>
     );

@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/table';
 import {
     currentVersionLines,
+    moduleNameText,
     referrerSummaryText,
 } from '@/lib/Workflow/flowDefinitionTexts';
 import { show } from '@/routes/workflow/admin/flows';
@@ -44,7 +45,7 @@ function FlowLine({ flow }: { flow: WorkflowFlowDefinitionRow }) {
     return (
         <TableRow>
             <TableCell className="font-medium">{flow.name}</TableCell>
-            <TableCell>{flow.moduleName}</TableCell>
+            <TableCell>{moduleNameText(flow.moduleName)}</TableCell>
             <CurrentVersionCell flow={flow} />
             <TableCell className="font-num tabular-nums">
                 {flow.versionCount}
@@ -69,7 +70,7 @@ function FlowLine({ flow }: { flow: WorkflowFlowDefinitionRow }) {
 }
 
 /**
- * フロー定義の一覧の表(列 = フロー名・業務モジュール・現在の版・版の数・参照者・操作。並び = フローの並び順)。
+ * フロー定義の一覧の表(列 = フロー名・業務モジュール(申請対象の業務モジュール)・現在の版・版の数・参照者・操作。並び = フローの並び順)。
  * 操作の列の見出しは読み上げ用だけ。
  */
 export function FlowDefinitionTable({

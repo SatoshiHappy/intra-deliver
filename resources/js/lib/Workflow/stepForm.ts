@@ -1,3 +1,5 @@
+import { fieldErrorKeys } from '@/lib/Workflow/stepFields';
+import type { StepFields } from '@/lib/Workflow/stepFields';
 import { draftsOf, rowsPayloadOf } from '@/lib/Workflow/subjectRows';
 import type {
     SubjectRowDraft,
@@ -222,28 +224,24 @@ export function stepSignature(step: WorkflowStepSettings): string {
     return JSON.stringify(step);
 }
 
-/** 欄の下に出す誤りのキー(行の誤り targets.<添字> は表の行の下に出す) */
-const SHOWN_KEYS = [
-    'target_kind',
-    'targets',
-    'relative_base',
-    'relative_scope',
-    'company_post_id',
-    'designator_node_code',
-    'min_assignees',
-    'max_assignees',
-    'prevents_applicant_approval',
-    'send_back_node_codes',
-    'decision_rule',
-    'decision_value',
-];
+/** カード 2・カード 3 の欄の下に出す誤りのキー(カードはステップが設定を持てば出る) */
+const CARD_KEYS = ['prevents_applicant_approval', 'send_back_node_codes'];
 
 /**
- * 欄の下に出すキー(誤りのうち、欄の無いキーだけを先頭に出すための照合。行の誤りを含む)。
+ * 欄の下に出すキー(誤りのうち、欄の無いキーだけを先頭に出すための照合)。カード 1・カード 4 は出している欄のキーだけ
+ * (出していない欄の誤りは先頭に出す)。行の誤り targets.<添字> は対象者の欄を出しているときだけ。
  */
-export function shownErrorKeys(errorKeys: string[]): string[] {
+export function shownErrorKeys(
+    errorKeys: string[],
+    fields: StepFields,
+): string[] {
+    const hasSubjects = fields.target.includes('subjects');
+
     return [
-        ...SHOWN_KEYS,
-        ...errorKeys.filter((key) => key.startsWith('targets.')),
+        ...fieldErrorKeys(fields),
+        ...CARD_KEYS,
+        ...(hasSubjects
+            ? errorKeys.filter((key) => key.startsWith('targets.'))
+            : []),
     ];
 }

@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test';
 import {
     preventsLine,
-    requiredCountText,
     targetHeading,
     targetKindChoices,
     targetLine,
@@ -59,13 +58,13 @@ describe('targetLine(見出しの下の 1 行の 5 行)', () => {
 });
 
 describe('preventsLine', () => {
-    it('縦配置だけ合議の処理対象者の文', () => {
+    it('縦配置だけ合議の承認者の文', () => {
         expect(preventsLine('approve')).toBe(
             'オンにすると、申請者本人はこのステップで自分の申請を承認できません。',
         );
         expect(preventsLine('serial')).toBe(preventsLine('approve'));
         expect(preventsLine('parallel')).toBe(
-            'オンにすると、申請者本人を合議の処理対象者に指定できません。',
+            'オンにすると、申請者本人を合議の承認者に選択できません。',
         );
     });
 });
@@ -82,25 +81,5 @@ describe('targetKindChoices', () => {
         expect(targetKindChoices('parallel')).toEqual(['designated']);
         expect(targetKindChoices('branch_start')).toEqual([]);
         expect(targetKindChoices('sync_end')).toEqual([]);
-    });
-});
-
-describe('requiredCountText', () => {
-    it('可決の条件が人数で必要な人数が数なら文を出す', () => {
-        expect(requiredCountText('count', '2')).toBe(
-            '2 人が承認したら次へ進みます。',
-        );
-        expect(requiredCountText('count', ' 03 ')).toBe(
-            '3 人が承認したら次へ進みます。',
-        );
-    });
-
-    it('人数でない条件・数でない入力・空は出さない', () => {
-        expect(requiredCountText('all', '2')).toBeNull();
-        expect(requiredCountText('ratio', '50')).toBeNull();
-        expect(requiredCountText('', '2')).toBeNull();
-        expect(requiredCountText('count', '')).toBeNull();
-        expect(requiredCountText('count', 'abc')).toBeNull();
-        expect(requiredCountText('count', '-1')).toBeNull();
     });
 });

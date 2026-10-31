@@ -5,7 +5,7 @@ import type { WorkflowAdminFlowIndexProps } from '@/types';
 
 /**
  * フロー定義の一覧(docs の 設計/ワークフロー/ルートの深さ/画面/定義の管理の画面.md の 2 節): 見出しと 1 行、フロー定義の表(全 N 件。
- * ページングしない)。行の「詳細」から詳細(フロー図・版・参照者)へ移る。
+ * ページングしない)。行の「詳細」から詳細(フロー図・版・設定)へ移る。
  */
 export default function FlowIndex({ flows }: WorkflowAdminFlowIndexProps) {
     return (
@@ -28,7 +28,7 @@ export default function FlowIndex({ flows }: WorkflowAdminFlowIndexProps) {
                             id="flow-definitions-heading"
                             className="text-[15px] font-semibold"
                         >
-                            フロー定義
+                            フロー定義の一覧
                         </h2>
                         <span className="text-sm text-muted-foreground">
                             全{' '}

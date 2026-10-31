@@ -69,7 +69,7 @@ function TriggerButton({
         <Button
             {...props}
             type="button"
-            variant="ghost"
+            variant="outline"
             size="sm"
             aria-haspopup="dialog"
             aria-label={`版 ${number} を${text}`}
@@ -91,7 +91,7 @@ export function VersionToggleDialog({
 }: {
     flowCode: string;
     number: number;
-    /** 今の状態(ユーザー無効なら「有効にする」、有効なら「無効にする」) */
+    /** 今の状態(無効なら「有効にする」、有効なら「無効にする」) */
     isDisabled: boolean;
 }) {
     const toggle = useToggle(flowCode, number, isDisabled);

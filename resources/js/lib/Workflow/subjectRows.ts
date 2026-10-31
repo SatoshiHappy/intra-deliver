@@ -1,11 +1,17 @@
-import type { WorkflowSubjectRow, WorkflowSubjectType } from '@/types';
+import type {
+    WorkflowSubjectCandidate,
+    WorkflowSubjectCandidatesResponse,
+    WorkflowSubjectRow,
+    WorkflowSubjectType,
+} from '@/types';
 
 /**
- * 対象者の行の入力(参照者のタブとステップの設定の「対象者で指定」が共有する。docs の
- * 設計/ワークフロー/ルートの深さ/画面/定義の管理の画面.md の 3.3 節・3.4 節)。行は種類と、候補の検索で選んだ相手。
+ * 対象者の欄の入力(参照者の面とステップの設定の「対象者で指定」が共有する。docs の
+ * 設計/ワークフロー/ルートの深さ/画面/定義の管理の画面.md の 3.3 節・3.4 節)。選んだ相手を札で並べ、1 つの候補の一覧から
+ * 4 種類(ユーザー・組織・役職・ロール)を選ぶ。保存の形は行 = 種類 + 相手(並びのまま)。
  */
 
-/** 種類の選択肢(並びの順。語は認可設定の列を追加と同じ) */
+/** 種類の語(並び = 候補の一覧の群の順。語は認可設定の列を追加と同じ) */
 export const SUBJECT_TYPES: { value: WorkflowSubjectType; label: string }[] = [
     { value: 'user', label: 'ユーザー' },
     { value: 'department', label: '組織' },
@@ -13,70 +19,86 @@ export const SUBJECT_TYPES: { value: WorkflowSubjectType; label: string }[] = [
     { value: 'role', label: 'ロール' },
 ];
 
-/** 編集中の行。key は行の識別(並びが変わっても入力の状態を保つ)、選んでいない相手は id が null */
-export type SubjectRowDraft = {
-    key: number;
-    type: WorkflowSubjectType;
-    id: number | null;
-    name: string | null;
+/** 選んだ相手(サーバーの行と同じ形。affiliation = ユーザーの主所属の名前。札に添える。サーバーの行には無い) */
+export type SubjectRowDraft = WorkflowSubjectRow & {
+    affiliation?: string | null;
 };
 
-/** 送る行(選んでいない相手は id を null で送り、サーバーが「対象者を選択してください」を返す) */
+/** 送る行 */
 export type SubjectRowPayload = {
     type: WorkflowSubjectType;
-    id: number | null;
+    id: number;
+};
+
+/** 候補の一覧の群 1 つ(選び済みの相手を除いた候補) */
+export type SubjectCandidateGroup = {
+    type: WorkflowSubjectType;
+    label: string;
+    candidates: WorkflowSubjectCandidate[];
 };
 
 /**
- * サーバーの行から編集中の行(key は並びの番号)。
+ * 相手の識別(種類と id。札の key と、選び済みの照合)。
+ */
+export function subjectKey(row: { type: WorkflowSubjectType; id: number }) {
+    return `${row.type}:${row.id}`;
+}
+
+/**
+ * サーバーの行から入力(並びのまま)。
  */
 export function draftsOf(rows: WorkflowSubjectRow[]): SubjectRowDraft[] {
-    return rows.map((row, index) => ({ ...row, key: index }));
+    return rows.map((row) => ({ ...row }));
 }
 
 /**
- * 行を末尾に足す(種類はユーザー、相手は未選択)。
+ * 候補を選んで札を末尾に足す(名前の無い相手はコード)。
  */
-export function withAddedRow(drafts: SubjectRowDraft[]): SubjectRowDraft[] {
-    const key = Math.max(-1, ...drafts.map((draft) => draft.key)) + 1;
-
-    return [...drafts, { key, type: 'user', id: null, name: null }];
-}
-
-/**
- * 行の種類を替える(相手は選び直し)。
- */
-export function withRowType(
+export function withPicked(
     drafts: SubjectRowDraft[],
-    key: number,
     type: WorkflowSubjectType,
+    candidate: WorkflowSubjectCandidate,
 ): SubjectRowDraft[] {
-    return drafts.map((draft) =>
-        draft.key === key ? { ...draft, type, id: null, name: null } : draft,
-    );
+    return [
+        ...drafts,
+        {
+            type,
+            id: candidate.id,
+            name: candidate.name ?? candidate.code,
+            affiliation: candidate.mainDepartmentName,
+        },
+    ];
 }
 
 /**
- * 行の相手を選ぶ。
+ * 札を外す。
  */
-export function withRowPicked(
+export function withoutSubject(
     drafts: SubjectRowDraft[],
-    key: number,
-    picked: { id: number; name: string },
+    key: string,
 ): SubjectRowDraft[] {
-    return drafts.map((draft) =>
-        draft.key === key ? { ...draft, ...picked } : draft,
-    );
+    return drafts.filter((draft) => subjectKey(draft) !== key);
 }
 
 /**
- * 行を削除する。
+ * 候補の一覧の群(並び = 応答の群の順。選び済みの相手を除き、候補の無い群は出さない)。
  */
-export function withoutRow(
-    drafts: SubjectRowDraft[],
-    key: number,
-): SubjectRowDraft[] {
-    return drafts.filter((draft) => draft.key !== key);
+export function candidateGroupsOf(
+    groups: WorkflowSubjectCandidatesResponse['groups'],
+    picked: SubjectRowDraft[],
+): SubjectCandidateGroup[] {
+    const pickedKeys = new Set(picked.map(subjectKey));
+
+    return groups.flatMap(({ type, candidates }) => {
+        const rest = candidates.filter(
+            (candidate) =>
+                !pickedKeys.has(subjectKey({ type, id: candidate.id })),
+        );
+        const label =
+            SUBJECT_TYPES.find((item) => item.value === type)?.label ?? type;
+
+        return rest.length === 0 ? [] : [{ type, label, candidates: rest }];
+    });
 }
 
 /**
@@ -90,5 +112,5 @@ export function rowsPayloadOf(drafts: SubjectRowDraft[]): SubjectRowPayload[] {
  * サーバーの行の識別(行が替わったら入力を作り直すための key)。
  */
 export function rowsSignature(rows: WorkflowSubjectRow[]): string {
-    return rows.map((row) => `${row.type}:${row.id}`).join(',');
+    return rows.map(subjectKey).join(',');
 }

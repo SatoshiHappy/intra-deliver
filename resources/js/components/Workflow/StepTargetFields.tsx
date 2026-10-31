@@ -1,10 +1,9 @@
-import { Button } from '@/components/ui/button';
 import { StepAssigneeRange } from '@/components/Workflow/StepAssigneeRange';
 import { StepChoiceSelect } from '@/components/Workflow/StepChoiceSelect';
-import { SubjectRowsField } from '@/components/Workflow/SubjectRowsField';
+import { StepChoiceToggle } from '@/components/Workflow/StepChoiceToggle';
+import { SubjectPartyField } from '@/components/Workflow/SubjectPartyField';
 import type { StepFormApi } from '@/hooks/Workflow/use-step-form';
 import { BASE_LABELS, HELP, SCOPE_LABELS } from '@/lib/Workflow/stepCardTexts';
-import { withAddedRow } from '@/lib/Workflow/subjectRows';
 import type {
     WorkflowAdminFlowShowProps,
     WorkflowRelativeBase,
@@ -20,37 +19,23 @@ function choicesOf<T extends string>(labels: Record<T, string>) {
 }
 
 /**
- * 対象者で指定: 対象者の行の表と「行を追加」(参照者のタブと同じ部品)。
+ * 対象者で指定: 対象者の欄(札と、1 つの候補の一覧から 4 種類を選ぶ検索の欄。参照者の面と同じ部品)。
  */
 export function FixedFields({ form }: { form: StepFormApi }) {
     return (
-        <div className="flex flex-col gap-2">
-            <div className="flex justify-end">
-                <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() =>
-                        form.set('rows', withAddedRow(form.values.rows))
-                    }
-                >
-                    行を追加
-                </Button>
-            </div>
-            <SubjectRowsField
-                idPrefix="step-target"
-                label="対象者"
-                rows={form.values.rows}
-                errors={form.errors}
-                errorKey="targets"
-                onChange={(rows) => form.set('rows', rows)}
-            />
-        </div>
+        <SubjectPartyField
+            id="step-target-subjects"
+            label="対象者"
+            rows={form.values.rows}
+            errors={form.errors}
+            errorKey="targets"
+            onChange={(rows) => form.set('rows', rows)}
+        />
     );
 }
 
 /**
- * 基準にする人で指定: 基準にする人(申請者・前の承認者)・組織(所属組織・上位組織・上位組織全て)・役職(任意。指定なしに戻せる)。
+ * 基準にする人で指定: 基準にする人(切り替えボタン。申請者・前の承認者)・組織(所属組織・上位組織・上位組織全て)・役職(任意。指定なしに戻せる)。
  */
 export function RelativeFields({
     form,
@@ -63,7 +48,7 @@ export function RelativeFields({
 
     return (
         <>
-            <StepChoiceSelect<WorkflowRelativeBase>
+            <StepChoiceToggle<WorkflowRelativeBase>
                 id="step-relative-base"
                 label="基準にする人"
                 help={HELP.base}
@@ -99,14 +84,16 @@ export function RelativeFields({
 }
 
 /**
- * 処理の時に指定: 選択する人(指定するステップ)・人数の最小・最大。
+ * 処理の時に指定: 選択する人(指定するステップ)と、hasRange なら人数の最小・最大(縦配置はカード 4 に出す)。
  */
 export function DesignatedFields({
     form,
     designators,
+    hasRange,
 }: {
     form: StepFormApi;
     designators: WorkflowAdminFlowShowProps['options']['designators'];
+    hasRange: boolean;
 }) {
     return (
         <>
@@ -121,7 +108,9 @@ export function DesignatedFields({
                 error={form.errors.designator_node_code}
                 onChange={(value) => form.set('designatorCode', value)}
             />
-            <StepAssigneeRange idPrefix="step-designated" form={form} />
+            {hasRange && (
+                <StepAssigneeRange idPrefix="step-designated" form={form} />
+            )}
         </>
     );
 }

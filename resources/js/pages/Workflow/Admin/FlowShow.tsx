@@ -9,7 +9,7 @@ type Props = WorkflowAdminFlowShowProps;
 
 /**
  * フロー定義の詳細(docs の 設計/ワークフロー/ルートの深さ/画面/定義の管理の画面.md の 3 節): 見出し = フロー名、下に業務モジュールと現在の版の 1 行、
- * タブ(フロー図・版・参照者。リンクの並びで aria-current)と、タブごとの面。選んだ版・タブ・ステップは URL のクエリに残り、
+ * タブ(フロー図・版・設定。リンクの並びで aria-current)と、タブごとの面。選んだ版・タブ・ステップは URL のクエリに残り、
  * タブの切替は部分の再読み込み。
  */
 export default function FlowShow(props: Props) {
@@ -26,6 +26,7 @@ export default function FlowShow(props: Props) {
                     version={selectedVersion}
                     node={selectedNode.code}
                     current={tab}
+                    versionCount={versions.length}
                 />
                 <FlowTabPanel {...props} />
             </div>

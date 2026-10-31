@@ -49,21 +49,21 @@ final class StepDescriptionsTest extends TestCase
                 StepTarget::relative(WorkflowRelativeBase::Previous, WorkflowRelativeScope::Ancestors, null, null),
                 null, null, '前の承認者の上位組織全ての所属の人が承認します。', '前の承認者の上位組織全て',
             ],
-            '動的承認' => [WorkflowNodeKind::Approve, $chief(0, 2), null, null, '課長が選択した 0 人から 2 人が承認します。', '課長が指定'],
-            '動的承認・最小 = 最大' => [WorkflowNodeKind::Approve, $chief(1, 1), null, null, '課長が選択した 1 人が承認します。', '課長が指定'],
-            '横配置' => [WorkflowNodeKind::Serial, $chief(1, 3), null, null, '課長が選択した 1 人から 3 人が、順に承認します。', '課長が指定'],
-            '横配置・最小 = 最大' => [WorkflowNodeKind::Serial, $chief(2, 2), null, null, '課長が選択した 2 人が、順に承認します。', '課長が指定'],
+            '動的承認' => [WorkflowNodeKind::Approve, $chief(0, 2), null, null, '課長が選択した 0 人から 2 人が承認します。', '課長が選択'],
+            '動的承認・最小 = 最大' => [WorkflowNodeKind::Approve, $chief(1, 1), null, null, '課長が選択した 1 人が承認します。', '課長が選択'],
+            '横配置' => [WorkflowNodeKind::Serial, $chief(1, 3), null, null, '課長が選択した 1 人から 3 人が、順に承認します。', '承認者は課長が選択'],
+            '横配置・最小 = 最大' => [WorkflowNodeKind::Serial, $chief(2, 2), null, null, '課長が選択した 2 人が、順に承認します。', '承認者は課長が選択'],
             '縦配置・人数' => [
                 WorkflowNodeKind::Parallel, $chief(2, 5), WorkflowDecisionRule::Count, 2,
-                '課長が選択した 2 人から 5 人のうち、2 人が承認すると次へ進みます。', '処理担当者は課長が指定',
+                '課長が選択した 2 人から 5 人のうち、2 人が承認すると次へ進みます。', '承認者は課長が選択',
             ],
             '縦配置・割合' => [
                 WorkflowNodeKind::Parallel, $chief(2, 5), WorkflowDecisionRule::Ratio, 50,
-                '課長が選択した 2 人から 5 人のうち、50% 以上が承認すると次へ進みます。', '処理担当者は課長が指定',
+                '課長が選択した 2 人から 5 人のうち、50% 以上が承認すると次へ進みます。', '承認者は課長が選択',
             ],
             '縦配置・全員・最小 = 最大' => [
                 WorkflowNodeKind::Parallel, $chief(3, 3), WorkflowDecisionRule::All, null,
-                '課長が選択した 3 人のうち、全員が承認すると次へ進みます。', '処理担当者は課長が指定',
+                '課長が選択した 3 人のうち、全員が承認すると次へ進みます。', '承認者は課長が選択',
             ],
             '分岐開始' => [WorkflowNodeKind::BranchStart, null, null, null, '分岐「予算」の条件に合う先へ、すべて進みます。', null],
             '分岐終了' => [WorkflowNodeKind::BranchEnd, null, null, null, '分岐の枝がここで合流します。', null],
@@ -122,9 +122,9 @@ final class StepDescriptionsTest extends TestCase
 
         return [
             '最小 = 最大' => [2, 2, [$required(1), $required(2)]],
-            '最小 0' => [0, 3, [['label' => '承認 1 から 3', 'optional' => true]]],
+            '最小 0' => [0, 3, [['label' => '承認 1〜3', 'optional' => true]]],
             '最小 0・最大 1' => [0, 1, [['label' => '承認 1', 'optional' => true]]],
-            '最小 < 最大' => [1, 5, [$required(1), ['label' => '承認 2 から 5', 'optional' => true]]],
+            '最小 < 最大' => [1, 5, [$required(1), ['label' => '承認 2〜5', 'optional' => true]]],
             '任意が 1 つ' => [2, 3, [$required(1), $required(2), ['label' => '承認 3', 'optional' => true]]],
         ];
     }

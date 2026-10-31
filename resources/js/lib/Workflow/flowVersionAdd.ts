@@ -1,7 +1,9 @@
+import { formatDate as displayDate } from '@/lib/recordValues';
+
 /**
  * 版を追加するダイアログの日付の計算(docs の 設計/ワークフロー/ルートの深さ/画面/定義の管理の画面.md の 4 節、
  * 設計/ワークフロー/ルートの深さ/定義の管理.md の 1 節)。日付は YYYY-MM-DD の文字列で、暦の計算は UTC の日付で行う
- * (端末の時刻帯に依らない)。範囲の判定はサーバーが持ち、画面は入力欄の min・max・既定値と「追加時の変更」の文を作る。
+ * (端末の時刻帯に依らない)。範囲の判定はサーバーが持ち、画面は入力欄の min・max・既定値と「追加時の変更」の文(日付は YYYY/MM/DD = アプリのほかの画面と同じ)を作る。
  */
 
 const DAY_MS = 86_400_000;
@@ -76,7 +78,7 @@ export function versionChangeText(
     startDate: string,
 ): string | null {
     return isDate(startDate)
-        ? `版 ${lastNumber} の終了日が ${addDays(startDate, -1)} に変更されます。`
+        ? `版 ${lastNumber} の終了日が ${displayDate(addDays(startDate, -1))} に変更されます。`
         : null;
 }
 

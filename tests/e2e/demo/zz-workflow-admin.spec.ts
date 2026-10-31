@@ -8,6 +8,8 @@ import {
     confirmToggle,
     openAddDialog,
     plusDays,
+    slashed,
+    stateCell,
     tab,
     versionRows,
 } from '../support/workflow-admin';
@@ -78,8 +80,8 @@ test('システム管理者: 「プロジェクト計画の承認」の詳細で
 
     const diagram = page.getByRole('group', { name: '版 3 のフロー図' });
     await expect(diagram).toContainText('分岐「予算」');
-    await expect(diagram).toContainText('縦配置「関係部署の合議」');
-    await expect(diagram).toContainText('承認 3 から 5');
+    await expect(diagram).toContainText('並列承認「関係部署の合議」');
+    await expect(diagram).toContainText('承認 3〜5');
     await expect(diagram).toContainText('任意');
     // 枝の札(辺の名前と条件の文)、ステップの無い枝の「何もしない」の箱、縦配置の下の「同期終了」の札
     await expect(diagram).toContainText('予算 300 万円未満');
@@ -96,7 +98,10 @@ test('システム管理者: 「プロジェクト計画の承認」の詳細で
     ).toBeVisible();
 
     await page.getByRole('combobox', { name: '版', exact: true }).click();
-    await page.getByRole('option', { name: '版 2', exact: true }).click();
+    // 選択肢は「版 {番号}」と全角の空白と「{開始日} から」
+    await page
+        .getByRole('option', { name: /^版 2　\d{4}-\d{2}-\d{2} から$/ })
+        .click();
     await expect(page).toHaveURL(/version=2/);
     const older = page.getByRole('group', { name: '版 2 のフロー図' });
     await expect(older).toBeVisible();
@@ -108,11 +113,13 @@ test('システム管理者: 版のタブに版の表が並び、版を追加す
 }) => {
     await openAsAdministrator(page, `${PLAN}?tab=versions`);
     await expect(tab(page, '版')).toHaveAttribute('aria-current', 'page');
+    // 「版」のタブの名前の後に版の数の札
+    await expect(tab(page, '版')).toContainText('3');
     const rows = versionRows(page);
     await expect(rows).toHaveCount(3);
     await expect(rows.filter({ hasText: '版 3' })).toContainText('現在');
-    await expect(rows.filter({ hasText: '版 1' })).toContainText(
-        'ユーザー無効',
+    await expect(stateCell(rows.filter({ hasText: '版 1' }))).toHaveText(
+        '無効',
     );
     await expect(
         page.getByText(
@@ -126,7 +133,7 @@ test('システム管理者: 版のタブに版の表が並び、版を追加す
     const added = plusDays(todayInTokyo(), 30);
     await start.fill(added);
     await expect(dialog).toContainText(
-        `版 3 の終了日が ${plusDays(added, -1)} に変更されます。`,
+        `版 3 の終了日が ${slashed(plusDays(added, -1))} に変更されます。`,
     );
     await submitAndExpectUrl(
         page,
@@ -137,11 +144,12 @@ test('システム管理者: 版のタブに版の表が並び、版を追加す
         page.getByText('版を追加しました', { exact: true }),
     ).toBeVisible();
     await expect(rows).toHaveCount(4);
+    await expect(tab(page, '版')).toContainText('4');
     const newest = rows.filter({ hasText: '版 4' });
-    await expect(newest).toContainText(added);
+    await expect(newest).toContainText(slashed(added));
     await expect(newest).toContainText('終了日なし');
     await expect(rows.filter({ hasText: '版 3' })).toContainText(
-        plusDays(added, -1),
+        slashed(plusDays(added, -1)),
     );
 });
 
@@ -157,57 +165,63 @@ test('システム管理者: 足した版を無効にして有効に戻すと、
         '版 4 を無効にします。無効にした版の期間には申請できません。',
     );
     await confirmToggle(page, '版を無効にする', '版を無効にしました');
-    await expect(newest).toContainText('ユーザー無効');
+    await expect(stateCell(newest)).toHaveText('無効');
 
     await newest.getByRole('button', { name: '版 4 を有効にする' }).click();
     await expect(
         page.getByRole('dialog', { name: '版を有効にする' }),
     ).toContainText('版 4 を有効にします。');
     await confirmToggle(page, '版を有効にする', '版を有効にしました');
-    await expect(newest).not.toContainText('ユーザー無効');
+    await expect(stateCell(newest)).toHaveText('有効');
 });
 
-test('システム管理者: 参照者のタブで行を足して保存するとトーストが出て、未選択の行は保存できず、取消で元に戻る', async ({
+test('システム管理者: タブ「設定」の面「参照者」で、1 つの候補の一覧から選んだ相手が札になって一覧から消え、保存するとトーストが出て、× で外してもキャンセルで元に戻る', async ({
     page,
 }) => {
-    await openAsAdministrator(page, `${PLAN}?tab=referrers`);
-    await expect(tab(page, '参照者')).toHaveAttribute('aria-current', 'page');
+    await openAsAdministrator(page, `${PLAN}?tab=settings`);
+    await expect(tab(page, '設定')).toHaveAttribute('aria-current', 'page');
     await expect(
-        page.getByRole('heading', { level: 2, name: '参照者の指定' }),
+        page.getByRole('heading', { level: 2, name: '参照者' }),
     ).toBeVisible();
-    const rows = bodyRows(page.getByRole('table', { name: '参照者' }), page);
-    await expect(rows).toHaveCount(1);
-    await expect(rows.first()).toContainText('経理部');
+    await page
+        .getByRole('button', { name: '参照者の説明', exact: true })
+        .focus();
+    await expect(page.getByRole('tooltip')).toContainText(
+        '参照者は、申請の閲覧のみ可能です。',
+    );
+    const chips = page
+        .getByRole('list', { name: '参照者の選択' })
+        .getByRole('listitem');
+    await expect(chips).toHaveCount(1);
+    await expect(chips.first()).toContainText('経理部');
 
-    const add = page.getByRole('button', { name: '行を追加', exact: true });
+    // 1 つの語でユーザー・組織・役職・ロールをまとめて引く。選び済みの経理部は候補に出ない
+    const search = page.getByRole('combobox', { name: '参照者を追加' });
+    const option = (name: RegExp) => page.getByRole('option', { name });
+    await search.click();
+    await page.getByPlaceholder('検索する語').fill('経理');
+    await expect(page.getByText('検索中…')).toHaveCount(0);
+    await expect(option(/^経理部$/)).toHaveCount(0);
+    await page.getByPlaceholder('検索する語').fill('達也');
+    await option(/吉田 達也/).click();
+    await expect(chips).toHaveCount(2);
+    await expect(chips.nth(1)).toContainText('吉田 達也');
+    await search.click();
+    await page.getByPlaceholder('検索する語').fill('達也');
+    await expect(page.getByText('該当する候補はありません')).toBeVisible();
+    await page.keyboard.press('Escape');
+
     const save = page.getByRole('button', { name: '保存', exact: true });
-    await add.click();
-    await expect(rows).toHaveCount(2);
-    const target = page.getByRole('combobox', {
-        name: '対象者 2 行目',
-        exact: true,
-    });
-    await target.click();
-    await page.getByPlaceholder('名前・コードで検索').fill('達也');
-    await page.getByRole('option', { name: /吉田 達也/ }).click();
-    await expect(target).toContainText('吉田 達也');
-    await submitAndExpectUrl(page, save, /tab=referrers/);
+    await submitAndExpectUrl(page, save, /tab=settings/);
     await expect(
         page.getByText('参照者を保存しました', { exact: true }),
     ).toBeVisible();
-    await expect(rows).toHaveCount(2);
-    await expect(rows.nth(1)).toContainText('吉田 達也');
 
-    // 相手を選ばない行は保存できず、行の下に誤りが出る。取消で今の値に戻る
-    await add.click();
-    await expect(rows).toHaveCount(3);
-    await submitAndExpectUrl(page, save);
-    await expect(
-        page.getByText('対象者を選択してください', { exact: true }),
-    ).toBeVisible();
-    await page.getByRole('button', { name: '取消', exact: true }).click();
-    await expect(rows).toHaveCount(2);
-    await expect(
-        page.getByText('対象者を選択してください', { exact: true }),
-    ).toHaveCount(0);
+    // × で外すと札が消え、キャンセルで今の値に戻る
+    await page
+        .getByRole('button', { name: '吉田 達也を外す', exact: true })
+        .click();
+    await expect(chips).toHaveCount(1);
+    await page.getByRole('button', { name: 'キャンセル', exact: true }).click();
+    await expect(chips).toHaveCount(2);
 });
