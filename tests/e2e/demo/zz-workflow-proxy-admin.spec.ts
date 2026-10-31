@@ -2,6 +2,7 @@ import { expect, test } from '../support/test';
 import type { Locator, Page } from '@playwright/test';
 import { todayInTokyo } from '../support/seed-dates';
 import { openAsAdministrator } from '../support/records-headings';
+import { openFromAdminMenu, sidebarHeading } from '../support/app-navigation';
 import {
     ADD_DIALOG,
     deleteRow,
@@ -17,22 +18,13 @@ import {
 test.use({ viewport: { width: 1280, height: 720 } });
 
 /**
- * システム管理者に切り替え、サイドバーの「管理」の「代理の管理」を開く。
+ * システム管理者に切り替え、歯車の「代理の管理」を開く(今のアプリは管理になる)。
  */
 async function openProxyAdministration(page: Page) {
     await openAsAdministrator(page, '/');
-    const group = page
-        .getByRole('navigation', { name: 'グローバルナビ' })
-        .locator('[data-sidebar="group"]')
-        .filter({
-            has: page.getByRole('heading', {
-                level: 2,
-                name: '管理',
-                exact: true,
-            }),
-        });
-    await group.getByRole('link', { name: '代理の管理', exact: true }).click();
+    await openFromAdminMenu(page, '代理の管理');
     await expect(page).toHaveURL(/\/workflow\/admin\/proxies$/);
+    await expect(sidebarHeading(page)).toHaveText('管理');
     await expect(
         page.getByRole('heading', { level: 1, name: '代理の管理' }),
     ).toBeVisible();
@@ -61,7 +53,7 @@ async function fillAdminDialog(page: Page, dialog: Locator) {
     );
 }
 
-test('システム管理者の代理の管理: サイドバーから開き、有効な代理だけで終了の行が消え、中村 美咲を代理元に足して消す', async ({
+test('システム管理者の代理の管理: 歯車から開き、有効な代理だけで終了の行が消え、中村 美咲を代理元に足して消す', async ({
     page,
 }) => {
     await openProxyAdministration(page);

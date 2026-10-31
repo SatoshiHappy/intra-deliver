@@ -4,12 +4,15 @@ namespace Tests\Feature\Queries\Menu;
 
 use App\Actions\Authz\CreateRouteResource;
 use App\Actions\Menu\AddMenu;
+use App\Actions\Menu\CreateMenuGroup;
 use App\Actions\Menu\CreateMenuGroupCategory;
 use App\Actions\Menu\MenuFolderInput;
 use App\Actions\Menu\MenuItemInput;
 use App\Enums\Menu\MenuMethod;
 use App\Enums\Menu\MenuType;
+use App\Models\Authz\AuthzResource;
 use App\Models\Menu\Menu;
+use App\Models\Menu\MenuGroupCategory;
 use Illuminate\Support\Facades\Route;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Support\TransactionalTestCase;
@@ -219,6 +222,9 @@ final class MenuDisplayQueryTest extends TransactionalTestCase
         $this->assertSame([[
             'code' => 'main',
             'name' => 'メニュー',
+            'icon' => null,
+            'description' => null,
+            'entry' => ['href' => '/test/posted?mode=new', 'isExternal' => false],
             'children' => [[
                 'code' => 'reports',
                 'type' => 'folder',
@@ -227,6 +233,47 @@ final class MenuDisplayQueryTest extends TransactionalTestCase
                 'children' => [['code' => 'post-item', 'type' => 'item', 'name' => '送る', 'icon' => 'b', 'href' => '/test/posted?mode=new', 'isExternal' => false]],
             ]],
         ]], $groups);
+    }
+
+    /**
+     * グループの icon・description はルートのメニューの icon_32・notes(docs の 設計/メニュー/表示.md 3.1 の返す形)。
+     */
+    public function test_returns_the_icon_and_the_description_of_the_group_from_its_root(): void
+    {
+        $this->arrangeAuthorization();
+        $category = MenuGroupCategory::query()->where('code', self::GLOBAL_NAVIGATION)->sole();
+        $root = new MenuFolderInput('main', [], notes: '業務のテーブル', icon16: 'a', icon32: 'briefcase', icon48: 'c');
+        $group = app(CreateMenuGroup::class)->execute($category->id, $root)->menu()->sole();
+        $resource = AuthzResource::query()->where('uri', 'im-menu-group://group/main')->sole();
+        $this->permitGuest($resource->authz_resource_group_id, 'im-menu-group', 'read');
+        $this->item($group, 'visible', '/test/permitted');
+
+        $groups = $this->visibleGroups();
+
+        $this->assertSame(['briefcase', '業務のテーブル'], [$groups[0]['icon'], $groups[0]['description']]);
+    }
+
+    /**
+     * 先頭の画面 entry(表示.md 3.3.1): 木を並びの順にたどった最初の表示するアイテム。フォルダは中を先にたどり、表示されないアイテム
+     * (ルートの execute が無い)を飛ばし、外部サイトのアイテムなら isExternal が真。
+     */
+    public function test_the_entry_is_the_first_visible_item_in_the_tree_order(): void
+    {
+        $this->arrangeAuthorization();
+        $nested = $this->group('nested', sortNumber: 1);
+        $this->item($nested, 'nested-forbidden', '/test/forbidden', sortNumber: -2);
+        $this->item($this->folder($nested, 'nested-folder', sortNumber: -1), 'nested-inside', '/test/permitted');
+        $this->item($nested, 'nested-direct', '/test/posted', sortNumber: 0, method: MenuMethod::Post);
+        $external = $this->group('external', sortNumber: 2);
+        $this->item($external, 'external-first', 'https://example.com/start', sortNumber: 0);
+        $this->item($external, 'external-second', '/test/permitted', sortNumber: 1);
+
+        $entries = array_column($this->visibleGroups(), 'entry', 'code');
+
+        $this->assertSame([
+            'nested' => ['href' => '/test/permitted', 'isExternal' => false],
+            'external' => ['href' => 'https://example.com/start', 'isExternal' => true],
+        ], $entries);
     }
 
     /**

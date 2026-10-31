@@ -1,52 +1,39 @@
 import { expect, test } from '../support/test';
 import type { Locator, Page, Request } from '@playwright/test';
 import { UNCATEGORIZED } from './records-admin-support';
+import { openAsAdministrator } from '../support/records-headings';
 import { submitAndExpectUrl } from '../support/submit';
+import {
+    openFromAdminMenu,
+    openWorkApp,
+    sidebarHeading,
+    sidebarLink,
+    sidebarSection,
+    untitledLink,
+    untitledSections,
+} from '../support/app-navigation';
 
 // 業務データの入れ物の管理の画面(docs の 設計/業務データの入れ物/画面/README.md 6 節の管理の分)。デモユーザー切替でシステム管理者になって
 // 確かめる(切替を使うので demo の持ち物 = docs の 設計/デモユーザー切替/デモの取り付け.md 6.1)。画面は PC の幅だけを前提にする。
+// 管理の画面は歯車から開き、業務のサイドバー(モジュール分類ごとの区画の見出しと見出しなしの区画)は業務のアプリの画面で引く(表示.md 3.3.7)。
 // 筋は前の筋の業務モジュール「備品」を使うので、順に走らせる(業務モジュールは消せないので、E2E の DB は流すたびに作り直す = scripts/ci/front)。
 test.use({ viewport: { width: 1280, height: 720 } });
 test.describe.configure({ mode: 'serial' });
 
 /**
- * 利用者メニューを開き、項目を選ぶ。label は押す前の表示(氏名と、あればカレント組織)。
+ * 業務のアプリの画面を開き、サイドバーの見出しなしの区画のリンクのうち among に当たるものが、expected の並びで出ていることを確かめる。
  */
-async function choose(page: Page, label: string, item: string) {
-    await page
-        .getByRole('button', { name: `利用者メニュー：${label}`, exact: true })
-        .click();
-    await submitAndExpectUrl(
-        page,
-        page.getByRole('menu').getByRole('menuitem').filter({ hasText: item }),
-    );
-}
-
-/**
- * ゲストからシステム管理者に切り替えて、path を開く。
- */
-async function openAsAdministrator(page: Page, path: string) {
-    await page.goto('/');
-    await choose(page, 'ゲスト', 'システム管理者');
+async function expectUntitledLinks(
+    page: Page,
+    among: string[],
+    expected: string[],
+) {
+    await openWorkApp(page);
     await expect(
-        page.getByRole('button', {
-            name: '利用者メニュー：伊藤 涼子（経営企画室）',
-            exact: true,
-        }),
-    ).toBeVisible();
-    await page.goto(path);
-}
-
-/**
- * グローバルナビの中の、見出し(h2)が name のグループ。
- */
-function navigationGroup(page: Page, name: string) {
-    return page
-        .getByRole('navigation', { name: 'グローバルナビ' })
-        .locator('[data-sidebar="group"]')
-        .filter({
-            has: page.getByRole('heading', { level: 2, name, exact: true }),
-        });
+        untitledSections(page)
+            .getByRole('link')
+            .filter({ hasText: new RegExp(`^(${among.join('|')})$`) }),
+    ).toHaveText(expected);
 }
 
 /**
@@ -68,18 +55,17 @@ async function startField(
     return form;
 }
 
-test('「管理」の「業務モジュール」で一覧が出て、業務モジュールを作るとサイドバーの「業務」に出る', async ({
+test('歯車の「業務モジュール」で一覧が出て、業務モジュールを作るとサイドバーの「業務」に出る', async ({
     page,
 }) => {
     await openAsAdministrator(page, '/');
-    const link = navigationGroup(page, '管理').getByRole('link', {
-        name: '業務モジュール',
-        exact: true,
-    });
-    await expect(link.locator('svg.lucide-database')).toHaveCount(1);
-    await link.click();
+    await openFromAdminMenu(page, '業務モジュール');
 
     await expect(page).toHaveURL('/records/admin/modules');
+    await expect(sidebarHeading(page)).toHaveText('管理');
+    await expect(
+        sidebarLink(page, '業務モジュール').locator('svg.lucide-database'),
+    ).toHaveCount(1);
     const list = page.getByRole('region', { name: '業務モジュールの一覧' });
     await expect(list.getByRole('row')).toHaveCount(8);
     // 列は名前・コード(と読み上げ用の業務の一覧)だけで、項目の数・レコードの数は出さない
@@ -113,10 +99,9 @@ test('「管理」の「業務モジュール」で一覧が出て、業務モ�
     await expect(
         page.getByRole('heading', { level: 1, name: '備品' }),
     ).toBeVisible();
+    await openWorkApp(page);
     await expect(
-        navigationGroup(page, '業務')
-            .getByRole('link', { name: '備品', exact: true })
-            .locator('svg.lucide-clipboard-list'),
+        untitledLink(page, '備品').locator('svg.lucide-clipboard-list'),
     ).toHaveCount(1);
 });
 
@@ -543,17 +528,11 @@ test('「備品」の定義の画面の「編集」で名前とアイコンを�
     await expect(
         page.getByRole('heading', { level: 1, name: '備品台帳' }),
     ).toBeVisible();
+    await openWorkApp(page);
     await expect(
-        navigationGroup(page, '業務')
-            .getByRole('link', { name: '備品台帳', exact: true })
-            .locator('svg.lucide-circle-alert'),
+        untitledLink(page, '備品台帳').locator('svg.lucide-circle-alert'),
     ).toHaveCount(1);
-    await expect(
-        navigationGroup(page, '業務').getByRole('link', {
-            name: '備品',
-            exact: true,
-        }),
-    ).toHaveCount(0);
+    await expect(untitledLink(page, '備品')).toHaveCount(0);
 });
 
 // 前の筋で「備品台帳」に名前を変えた業務モジュールを使う
@@ -578,12 +557,8 @@ test('「サイドバーに表示」を外して更新するとサイドバー�
             exact: true,
         }),
     ).toBeVisible();
-    await expect(
-        navigationGroup(page, '業務').getByRole('link', {
-            name: '備品台帳',
-            exact: true,
-        }),
-    ).toHaveCount(0);
+    await openWorkApp(page);
+    await expect(untitledLink(page, '備品台帳')).toHaveCount(0);
 
     await page.goto('/records/admin/modules');
     const row = page
@@ -610,8 +585,9 @@ test('「サイドバーに表示」を外して更新するとサイドバー�
             exact: true,
         }),
     ).toBeVisible();
+    await openWorkApp(page);
     await expect(
-        navigationGroup(page, '業務').getByRole('link').last(),
+        untitledSections(page).getByRole('link').last(),
     ).toHaveAccessibleName('備品台帳');
 });
 
@@ -691,11 +667,9 @@ test('一覧の「モジュール分類」で画面へ移り、「営業」を�
     page,
 }) => {
     await openAsAdministrator(page, '/records/admin/modules');
-    // サイドバーの「管理」のアイテム「モジュール分類」(22c)と、見出しの右のリンク(ボタンの見た目)は同じアイコン
+    // 管理のアプリのサイドバーのアイテム「モジュール分類」(22c)と、見出しの右のリンク(ボタンの見た目)は同じアイコン
     await expect(
-        navigationGroup(page, '管理')
-            .getByRole('link', { name: 'モジュール分類', exact: true })
-            .locator('svg.lucide-folder-tree'),
+        sidebarLink(page, 'モジュール分類').locator('svg.lucide-folder-tree'),
     ).toBeVisible();
     const toCategories = page
         .getByRole('main')
@@ -720,15 +694,12 @@ test('一覧の「モジュール分類」で画面へ移り、「営業」を�
     await expect(categoryRow(page, '営業')).toContainText(
         '0 件(サイドバーでは非表示)',
     );
-    await expect(
-        navigationGroup(page, '業務').getByRole('button', {
-            name: '営業',
-            exact: true,
-        }),
-    ).toHaveCount(0);
+    // 0 件の分類は業務のサイドバーに見出しを出さない
+    await openWorkApp(page);
+    await expect(sidebarSection(page, '営業')).toHaveCount(0);
 });
 
-test('「課題」の編集で「営業」を選ぶと、サイドバーの「業務」に「営業」のフォルダが出て直下から消え、閉じたフォルダに乗せると右のパネルの「課題」で一覧へ移れる', async ({
+test('「課題」の編集で「営業」を選ぶと、業務のサイドバーに見出し「営業」が出て、その下に「課題」があり、見出しなしの区画から消える。「課題」を押すと一覧へ移る', async ({
     page,
 }) => {
     await openAsAdministrator(
@@ -742,31 +713,23 @@ test('「課題」の編集で「営業」を選ぶと、サイドバーの「�
         form.getByRole('button', { name: '更新', exact: true }),
         '/records/admin/modules/project_issue',
     );
-    const work = navigationGroup(page, '業務');
-    const folder = work.getByRole('button', { name: '営業', exact: true });
-    await expect(folder.locator('svg.lucide-folder')).toHaveCount(1);
-    await expect(folder).toHaveAttribute('aria-expanded', 'false');
-    // 閉じたフォルダの中身は描かれないので、「課題」のリンクが無い = 直下から消えた
-    await expect(
-        work.getByRole('link', { name: '課題', exact: true }),
-    ).toHaveCount(0);
+    await openWorkApp(page);
+    // 分類のフォルダは区画の見出し(h3。開閉しない)になり、その下に中身のリンクが並ぶ
+    const section = sidebarSection(page, '営業');
+    await expect(section.getByRole('link')).toHaveText(['課題']);
+    await expect(untitledLink(page, '課題')).toHaveCount(0);
 
-    await folder.hover();
-    const panel = page.getByRole('dialog', { name: '営業' });
-    await panel.getByRole('link', { name: '課題', exact: true }).click();
+    await section.getByRole('link', { name: '課題', exact: true }).click();
 
     await expect(page).toHaveURL('/records/data/project_issue');
     await expect(
         page.getByRole('heading', { level: 1, name: '課題' }),
     ).toBeVisible();
-    await expect(panel).toHaveCount(0);
-
-    // フォルダを開くと中に「課題」がある
-    await page.goto('/records/admin/modules');
-    await folder.click();
+    // 課題の一覧でも今のアプリは業務のまま。見出し「営業」の下の「課題」が現在地
+    await expect(sidebarHeading(page)).toHaveText('業務');
     await expect(
-        work.getByRole('link', { name: '課題', exact: true }),
-    ).toBeVisible();
+        section.getByRole('link', { name: '課題', exact: true }),
+    ).toHaveAttribute('aria-current', 'page');
 });
 
 test('分類を 2 つにして取っ手を Space → 上矢印 → Space で動かすと、再読み込みしても同じ並び', async ({
@@ -795,7 +758,7 @@ test('分類を 2 つにして取っ手を Space → 上矢印 → Space で動�
     await expect(rows.nth(1)).toContainText('営業');
 });
 
-test('「分類なし」の「備品台帳」の取っ手を Space → 上矢印 → Space で動かすと、サイドバーの「業務」の直下で「会議」の前に出る', async ({
+test('「分類なし」の「備品台帳」の取っ手を Space → 上矢印 → Space で動かすと、業務のサイドバーの見出しなしの区画で「会議」の前に出る', async ({
     page,
 }) => {
     await openAsAdministrator(page, '/records/admin/categories');
@@ -819,11 +782,7 @@ test('「分類なし」の「備品台帳」の取っ手を Space → 上矢印
 
     await expect(uncategorized.nth(1)).toContainText('備品台帳');
     await expect(uncategorized.nth(2)).toContainText('会議');
-    await expect(
-        navigationGroup(page, '業務')
-            .getByRole('link')
-            .filter({ hasText: /^(備品台帳|会議)$/ }),
-    ).toHaveText(['備品台帳', '会議']);
+    await expectUntitledLinks(page, ['備品台帳', '会議'], ['備品台帳', '会議']);
 });
 
 test('「営業」を選んで削除の Dialog で消すと、件数の文が出て、「課題」が「業務」の直下の末尾に戻る', async ({
@@ -854,11 +813,11 @@ test('「営業」を選んで削除の Dialog で消すと、件数の文が出
     ).toBeVisible();
     await expect(dialog).toBeHidden();
     await expect(categoryRow(page, '営業')).toHaveCount(0);
-    const work = navigationGroup(page, '業務');
+    await openWorkApp(page);
+    await expect(sidebarSection(page, '営業')).toHaveCount(0);
     await expect(
-        work.getByRole('button', { name: '営業', exact: true }),
-    ).toHaveCount(0);
-    await expect(work.getByRole('link').last()).toHaveAccessibleName('課題');
+        untitledSections(page).getByRole('link').last(),
+    ).toHaveAccessibleName('課題');
 });
 
 // 以下の 2 筋は削除の筋の後の状態(分類は「総務」だけで 0 件、「分類なし」の表示中は UNCATEGORIZED.afterCategoryDelete)から始め、最後に分類を消して
@@ -1034,7 +993,7 @@ async function deleteCategory(page: Page, name: string) {
     await expect(categoryRow(page, name)).toHaveCount(0);
 }
 
-test('「総務」を選んで「業務モジュールの追加」の Dialog で「プロジェクト」「課題」を選択して更新すると、木の「総務」に 2 件が入り、サイドバーの「業務」に「総務」のフォルダが表示される', async ({
+test('「総務」を選んで「業務モジュールの追加」の Dialog で「プロジェクト」「課題」を選択して更新すると、木の「総務」に 2 件が入り、業務のサイドバーに見出し「総務」が表示される', async ({
     page,
 }) => {
     await openAsAdministrator(page, '/records/admin/categories');
@@ -1086,18 +1045,6 @@ test('「総務」を選んで「業務モジュールの追加」の Dialog で
     await expect(
         page.getByRole('list', { name: '分類なしの業務モジュール' }),
     ).toHaveText(UNCATEGORIZED.afterAdd);
-    const work = navigationGroup(page, '業務');
-    await expect(
-        work
-            .getByRole('button', { name: '総務', exact: true })
-            .locator('svg.lucide-folder'),
-    ).toHaveCount(1);
-    // 閉じたフォルダの中身は描かれないので、直下のリンクは「備品台帳」だけ
-    await expect(
-        work
-            .getByRole('link')
-            .filter({ hasText: /^(備品台帳|プロジェクト|課題)$/ }),
-    ).toHaveText(['備品台帳']);
 
     // 開き直すと、その分類の中の 2 件にチェックが付いている
     await add.click();
@@ -1114,6 +1061,17 @@ test('「総務」を選んで「業務モジュールの追加」の Dialog で
         .getByRole('button', { name: 'キャンセル', exact: true })
         .click();
     await expect(dialog).toBeHidden();
+
+    // 業務のサイドバー: 見出し「総務」の区画に 2 件が並び、見出しなしの区画のリンクは「備品台帳」だけ
+    await expectUntitledLinks(
+        page,
+        ['備品台帳', 'プロジェクト', '課題'],
+        ['備品台帳'],
+    );
+    await expect(sidebarSection(page, '総務').getByRole('link')).toHaveText([
+        'プロジェクト',
+        '課題',
+    ]);
 });
 
 test('取っ手をマウスで別の分類の行へドラッグすると、Ctrl なしは移動、Ctrl を押しながらはコピーになり、最後に分類を消すとすべて「業務」の直下に戻る', async ({
@@ -1202,9 +1160,9 @@ test('取っ手をマウスで別の分類の行へドラッグすると、Ctrl 
     // 分類を消して、すべての業務モジュールを「業務」の直下に戻す
     await deleteCategory(page, '総務');
     await deleteCategory(page, '営業');
-    await expect(
-        navigationGroup(page, '業務')
-            .getByRole('link')
-            .filter({ hasText: /^(備品台帳|プロジェクト|課題)$/ }),
-    ).toHaveText(['プロジェクト', '課題', '備品台帳']);
+    await expectUntitledLinks(
+        page,
+        ['備品台帳', 'プロジェクト', '課題'],
+        ['プロジェクト', '課題', '備品台帳'],
+    );
 });

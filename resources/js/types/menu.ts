@@ -24,10 +24,34 @@ export type MenuFolderNode = {
 
 export type MenuNode = MenuItemNode | MenuFolderNode;
 
-export type MenuGroup = {
+/** 先頭の画面(木を並びの順にたどった最初の表示するアイテム。フォルダは中を先。docs の 設計/メニュー/表示.md 3.3.1) */
+export type MenuEntry = {
+    href: string;
+    isExternal: boolean;
+};
+
+/** グループ(アプリ)。icon = ルートの icon_32、description = ルートの notes、entry = 先頭の画面(サーバーが作る) */
+export type MenuGroupNode = {
     code: string;
     name: string | null;
+    icon: string | null;
+    description: string | null;
+    entry: MenuEntry;
     children: MenuNode[];
+};
+
+/**
+ * 骨格の共有プロパティ appNavigation(サーバーの App\Http\Middleware\Menu\ShareAppNavigation。docs の 設計/メニュー/表示.md 3.2 の「置き場」・3.3)。
+ * launcher = ランチャーのアプリ(im_global_nav_pc の表示するグループ)、adminMenu = 歯車のアプリ(admin_menu_pc の表示するグループ)、
+ * currentApp = 今のアプリのグループの code(3.3.2。無ければ null)、currentItemPath = 現在地の強調のパス(区分を / でつないだ形。無ければ null)、
+ * showSitemap = サイトマップのルートの execute を許されるか。
+ */
+export type AppNavigation = {
+    launcher: MenuGroupNode[];
+    adminMenu: MenuGroupNode[];
+    currentApp: string | null;
+    currentItemPath: string | null;
+    showSitemap: boolean;
 };
 
 /**

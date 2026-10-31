@@ -51,10 +51,13 @@ export const demoGroups = [
         // records-corrections・records-headings-admin は自分で作る業務モジュールだけを使い、
         // records-headings-show は admin が作る業務モジュールを使う = 名前の順で admin が先に走る。
         // records-related-columns は初期データの「課題」の関連レコードの列を変え、筋の最後に未選択に戻す。
-        // records-admin-visibility-stop は初期データの申請書の業務モジュールの編集の画面を開くだけで保存しない)。
+        // records-admin-visibility-stop は初期データの申請書の業務モジュールの編集の画面を開くだけで保存しない。
+        // app-skeleton-administrator・workflow-home は切替で利用者を替えて画面を開くだけで、DB に書かない。
+        // app-skeleton-administrator の先頭の画面は初期データの業務の木を前提にする(前に流れる spec が業務の木を変えない))。
         // 時間の長い demo のファイルを上の 2 つの組から分けて、組どうしの時間をそろえる
         name: 'demo-ほか',
         files: [
+            'tests/e2e/demo/app-skeleton-administrator.spec.ts',
             'tests/e2e/demo/authz.spec.ts',
             'tests/e2e/demo/records-admin-visibility-stop.spec.ts',
             'tests/e2e/demo/records-corrections.spec.ts',
@@ -63,6 +66,7 @@ export const demoGroups = [
             'tests/e2e/demo/records-related-columns.spec.ts',
             'tests/e2e/demo/switch-user.spec.ts',
             'tests/e2e/demo/workflow-connected.spec.ts',
+            'tests/e2e/demo/workflow-home.spec.ts',
         ],
     },
 ];

@@ -6,8 +6,9 @@ use App\Support\AccessContext;
 
 /**
  * ホームに、モジュールが足す節を返す口(依存の逆転 = docs の 設計/コード構成/README.md 3 節、形の正本 = 設計/メニュー/ホーム.md 6.2)。
- * 節を足すモジュールが自分の読み取りの層にこれを実装し(1 節 1 クラス)、起動(App\Providers)がタグ {@see self::TAG} で登録する。
- * ホームの入口(App\Http\Controllers\Web\Menu\HomeController)が、タグで束ねた実装を登録の順に呼び、null でない節をページの props sections に渡す。
+ * 節を足すモジュールが自分の読み取りの層にこれを実装し(1 節 1 クラス)、起動(App\Providers)が出すホームのタグで登録する(全体のホーム =
+ * {@see self::TAG}、アプリのホーム = そのアプリのモジュールが持つタグ = 設計/メニュー/ホーム.md 6.2・6.7)。各ホームの入口が、自分のタグで束ねた
+ * 実装を登録の順に呼び、null でない節をページの props sections に渡す。
  *
  * 節の形 = 種類(kind)で判別する共用体(下の型の別名。実装は @phpstan-import-type で使う)。描き方の種類は Menu が持ち、各モジュールはデータだけを返す。
  * lead はあいさつ欄(hero)にだけ、ほかの種類はあいさつ欄の外(top・main・side)にだけ置く。code は全節で一意の <モジュール名の小文字>-<節の名前>、
@@ -26,7 +27,7 @@ use App\Support\AccessContext;
  */
 interface HomeSections
 {
-    /** 実装を束ねるコンテナのタグ */
+    /** 全体のホームの実装を束ねるコンテナのタグ */
     public const TAG = 'menu.home-sections';
 
     /**

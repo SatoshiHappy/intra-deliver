@@ -1,29 +1,20 @@
 import { expect, test } from './support/test';
 import type { Page } from '@playwright/test';
+import {
+    expectSidebarSectionHeadings,
+    headerSearch,
+    sidebar,
+    sidebarHeading,
+    sidebarSection,
+    sidebarToggle,
+    sitemapGroup,
+    untitledSections,
+} from './support/app-navigation';
 
 // 画面は PC の幅だけを前提にする(docs の 設計/メニュー/表示.md 3.2)。768px 以上で、グローバルナビが左のサイドバーに出る
-// (docs の 設計/画面の意匠/骨格とヘッダー.md 2 節)。ナビの中は、E2E 専用のグループ(database/seeders/E2eMenuSeeder.php)が増えても
-// 通るよう、見出しでグループを絞ってから引く(docs の 設計/画面の意匠/検査と否決案.md 9 節)。
+// (設計/画面の意匠/骨格とヘッダー.md 2 節)。E2E 専用のアプリ(database/seeders/E2eMenuSeeder.php)は、サイトマップ(/menu/sitemap)を開くと
+// 今のアプリになる(設計/メニュー/初期データ.md 4 節)ので、入れ子のフォルダの検査はそこで行う。
 test.use({ viewport: { width: 1280, height: 720 } });
-
-/**
- * グローバルナビの中の、見出し(h2)が name のグループ。
- */
-function navigationGroup(page: Page, name: string) {
-    return page
-        .getByRole('navigation', { name: 'グローバルナビ' })
-        .locator('[data-sidebar="group"]')
-        .filter({
-            has: page.getByRole('heading', { level: 2, name, exact: true }),
-        });
-}
-
-/**
- * ヘッダーのサイドバーの開閉ボタン。
- */
-function sidebarToggle(page: Page) {
-    return page.getByRole('button', { name: 'メニューの開閉', exact: true });
-}
 
 test('ヘッダーに製品名が出て、ゲストのホームのあいさつ欄に見出し・日付が出て、題とパンくずが合い、主な操作は出ない', async ({
     page,
@@ -85,44 +76,28 @@ test('favicon と apple-touch-icon のリンク先が画像で返る', async ({
     }
 });
 
-test('サイドバーのグローバルナビに見出しと現在地のリンクが出て、サイトマップへ移れる', async ({
+test('全体のホームのアプリのタイルは、ランチャーと同じ並び(業務が最後)で、押すとそのアプリの先頭の画面へ移る', async ({
     page,
 }) => {
     await page.goto('/');
-    const group = navigationGroup(page, '業務');
+    const tiles = page
+        .getByRole('main')
+        .locator('section')
+        .filter({
+            has: page.getByRole('heading', {
+                level: 2,
+                name: 'アプリ',
+                exact: true,
+            }),
+        })
+        .getByRole('link');
 
-    await expect(
-        group.getByRole('heading', { level: 2, name: '業務', exact: true }),
-    ).toBeVisible();
-    await expect(
-        group.getByRole('link', { name: 'ホーム', exact: true }),
-    ).toHaveAttribute('aria-current', 'page');
+    await expect(tiles).toHaveText([/^ワークフロー/, /^E2E の入れ子/, /^業務/]);
+    await tiles.filter({ hasText: /^ワークフロー/ }).click();
 
-    await group
-        .getByRole('link', { name: 'サイトマップ', exact: true })
-        .click();
-
-    await expect(page).toHaveURL('/menu/sitemap');
-    await expect(
-        page.getByRole('heading', { level: 1, name: 'サイトマップ' }),
-    ).toBeVisible();
-});
-
-test('グローバルナビの項目に、初期データのアイコンが出る', async ({ page }) => {
-    await page.goto('/');
-    const group = navigationGroup(page, '業務');
-
-    // 初期データの icon_32 → 共有プロパティの木 → MenuIcon の許可表(lucide-react は各アイコンに lucide-<名前> の class を付ける)
-    await expect(
-        group
-            .getByRole('link', { name: 'ホーム', exact: true })
-            .locator('svg.lucide-house'),
-    ).toHaveCount(1);
-    await expect(
-        group
-            .getByRole('link', { name: 'サイトマップ', exact: true })
-            .locator('svg.lucide-map'),
-    ).toHaveCount(1);
+    // ワークフローの先頭の画面はワークフローのホーム。サイドバーの先頭がそのアプリになる
+    await expect(page).toHaveURL('/workflow');
+    await expect(sidebarHeading(page)).toHaveText('ワークフロー');
 });
 
 test('開閉ボタンでサイドバーを畳むと、再読み込みの後も畳んだまま', async ({
@@ -142,13 +117,16 @@ test('開閉ボタンでサイドバーを畳むと、再読み込みの後も�
 test('現在地を子孫に持つフォルダは開いて始まり、フォルダと子フォルダを開閉できる', async ({
     page,
 }) => {
+    // E2E のアプリはサイトマップが先頭の画面で、サイトマップを開くと今のアプリになる(サイドバーの先頭が E2E のアプリ)
     await page.goto('/menu/sitemap');
-    const group = navigationGroup(page, 'E2E の入れ子');
-    const folder = group.getByRole('button', {
+    await expect(sidebarHeading(page)).toHaveText('E2E の入れ子');
+    // 直下のフォルダ「E2E 見出し」(h3)は区画の見出しで、開閉しない。その中のフォルダを開閉する
+    const section = sidebarSection(page, 'E2E 見出し');
+    const folder = section.getByRole('button', {
         name: 'E2E フォルダ',
         exact: true,
     });
-    const childFolder = group.getByRole('button', {
+    const childFolder = section.getByRole('button', {
         name: 'E2E 子フォルダ',
         exact: true,
     });
@@ -156,74 +134,69 @@ test('現在地を子孫に持つフォルダは開いて始まり、フォル�
     // /menu/sitemap の「E2E 項目」を子に持つフォルダは開き、/ の項目だけを持つ子フォルダは閉じている
     await expect(folder).toHaveAttribute('aria-expanded', 'true');
     await expect(
-        group.getByRole('link', { name: 'E2E 項目', exact: true }),
+        section.getByRole('link', { name: 'E2E 項目', exact: true }),
     ).toHaveAttribute('aria-current', 'page');
     await expect(childFolder).toHaveAttribute('aria-expanded', 'false');
     await expect(
-        group.getByRole('link', { name: 'E2E 子項目', exact: true }),
+        section.getByRole('link', { name: 'E2E 子項目', exact: true }),
     ).toBeHidden();
 
     await childFolder.click();
     await expect(childFolder).toHaveAttribute('aria-expanded', 'true');
+    // 「/」を指す項目は今のアプリも現在地も決めないので、開いても印は付かない(docs の 設計/メニュー/表示.md 3.3.2)
     await expect(
-        group.getByRole('link', { name: 'E2E 子項目', exact: true }),
+        section.getByRole('link', { name: 'E2E 子項目', exact: true }),
     ).toBeVisible();
+    await expect(
+        section.getByRole('link', { name: 'E2E 子項目', exact: true }),
+    ).not.toHaveAttribute('aria-current', 'page');
 
     await folder.click();
     await expect(folder).toHaveAttribute('aria-expanded', 'false');
     await expect(
-        group.getByRole('link', { name: 'E2E 項目', exact: true }),
+        section.getByRole('link', { name: 'E2E 項目', exact: true }),
     ).toBeHidden();
 });
 
-test('現在地が子フォルダの中にあれば、フォルダと子フォルダが開いて始まる', async ({
+test('許可表に無いアイコン名の項目は、既定のアイコンで出て、見出しの区画の後に続く直下の項目は見出しなしの区画になる', async ({
     page,
 }) => {
-    await page.goto('/');
-    const group = navigationGroup(page, 'E2E の入れ子');
+    await page.goto('/menu/sitemap');
+    const unknown = untitledSections(page).getByRole('link', {
+        name: 'E2E 不明アイコン',
+        exact: true,
+    });
 
+    await expect(unknown.locator('svg.lucide-dot')).toHaveCount(1);
+    // 区画の並び(docs の 設計/メニュー/表示.md 3.3.3)
+    await expectSidebarSectionHeadings(page, ['E2E 見出し', null]);
+    // 見出しの区画(E2E 見出し)の中には入らない
     await expect(
-        group.getByRole('button', { name: 'E2E フォルダ', exact: true }),
-    ).toHaveAttribute('aria-expanded', 'true');
+        sidebarSection(page, 'E2E 見出し').getByRole('link', {
+            name: 'E2E 不明アイコン',
+            exact: true,
+        }),
+    ).toHaveCount(0);
+    // E2E 項目のアイコン
     await expect(
-        group.getByRole('button', { name: 'E2E 子フォルダ', exact: true }),
-    ).toHaveAttribute('aria-expanded', 'true');
-    await expect(
-        group.getByRole('link', { name: 'E2E 子項目', exact: true }),
-    ).toHaveAttribute('aria-current', 'page');
-});
-
-test('許可表に無いアイコン名の項目は、既定のアイコンで出る', async ({
-    page,
-}) => {
-    await page.goto('/');
-
-    await expect(
-        navigationGroup(page, 'E2E の入れ子')
-            .getByRole('link', { name: 'E2E 不明アイコン', exact: true })
-            .locator('svg.lucide-dot'),
+        sidebarSection(page, 'E2E 見出し')
+            .getByRole('link', { name: 'E2E 項目', exact: true })
+            .locator('svg.lucide-map'),
     ).toHaveCount(1);
 });
 
 /**
- * サイドバーを畳み、帯の「E2E フォルダ」(グループ「E2E の入れ子」の直下)を返す。
+ * E2E のアプリの画面(サイトマップ)でサイドバーを畳み、帯の「E2E フォルダ」(アプリの直下のフォルダ「E2E 見出し」の中)を返す。
  */
 async function collapseAndFindRailFolder(page: Page) {
-    await page.goto('/');
+    await page.goto('/menu/sitemap');
     await sidebarToggle(page).click();
     await expect(sidebarToggle(page)).toHaveAttribute('aria-expanded', 'false');
 
-    return navigationGroup(page, 'E2E の入れ子').getByRole('button', {
+    return sidebar(page).getByRole('button', {
         name: 'E2E フォルダ',
         exact: true,
     });
-}
-
-/**
- * ヘッダーの検索欄(フォーカスが動かないことの確かめに使う。フォーカスだけでは結果の Popover は開かない)。
- */
-function searchBox(page: Page) {
-    return page.getByRole('combobox', { name: 'ユーザー・組織を検索' });
 }
 
 /**
@@ -260,15 +233,15 @@ test('① 畳んだ帯でフォルダにマウスを乗せると右のパネル�
     page,
 }) => {
     const folder = await collapseAndFindRailFolder(page);
-    await searchBox(page).focus();
-    await expect(searchBox(page)).toBeFocused();
+    await headerSearch(page).focus();
+    await expect(headerSearch(page)).toBeFocused();
 
     await folder.hover();
     const panel = railPanel(page);
     await expect(panel).toBeVisible();
     const item = panel.getByRole('link', { name: 'E2E 項目', exact: true });
     await expect(item).toBeVisible();
-    await expect(searchBox(page)).toBeFocused();
+    await expect(headerSearch(page)).toBeFocused();
     // パネルは補助で、押す操作の一覧は開かない
     await expect(folder).toHaveAttribute('aria-expanded', 'false');
     await expect(railMenu(page)).toHaveCount(0);
@@ -277,12 +250,12 @@ test('① 畳んだ帯でフォルダにマウスを乗せると右のパネル�
     await item.hover();
     await page.waitForTimeout(500);
     await expect(panel).toBeVisible();
-    await expect(searchBox(page)).toBeFocused();
+    await expect(headerSearch(page)).toBeFocused();
 
     // 行とパネルの両方から外れると閉じる
     await page.mouse.move(900, 600);
     await expect(panel).toHaveCount(0);
-    await expect(searchBox(page)).toBeFocused();
+    await expect(headerSearch(page)).toBeFocused();
 });
 
 test('② 畳んだ帯でフォルダを押すと右に一覧が開き、もう一度押すと閉じる', async ({
@@ -377,13 +350,16 @@ test('⑥ 畳んだ帯でフォルダの一覧が開いている間は、帯の�
 test('広げたサイドバーで閉じたフォルダにマウスを乗せると右のパネルに中身が出て、子のフォルダは見出しと字下げで出る。押して開いたフォルダでは出ない', async ({
     page,
 }) => {
-    // 「E2E の入れ子」に現在地を持たない画面(フォルダは閉じて始まる)。パネルは docs の 設計/画面の意匠/サイドバーとアイコン.md 4 節
-    await page.goto('/master/organization-chart');
-    const folder = navigationGroup(page, 'E2E の入れ子').getByRole('button', {
+    // 現在地を子孫に持つフォルダは開いて始まるので、押して閉じてから乗せる。パネルは docs の 設計/画面の意匠/サイドバーとアイコン.md 4 節
+    await page.goto('/menu/sitemap');
+    const folder = sidebarSection(page, 'E2E 見出し').getByRole('button', {
         name: 'E2E フォルダ',
         exact: true,
     });
+    await expect(folder).toHaveAttribute('aria-expanded', 'true');
+    await folder.click();
     await expect(folder).toHaveAttribute('aria-expanded', 'false');
+    await page.mouse.move(900, 600);
 
     await folder.hover();
     const panel = page.getByRole('dialog', { name: 'E2E フォルダ' });
@@ -410,27 +386,28 @@ test('広げたサイドバーで閉じたフォルダにマウスを乗せる�
     await expect(page.getByRole('dialog')).toHaveCount(0);
 });
 
-test('サイトマップにグループの見出しとリンクが出る', async ({ page }) => {
+test('サイトマップにアプリの見出しとリンクが出る(管理のアプリはゲストに出ない)', async ({
+    page,
+}) => {
     await page.goto('/menu/sitemap');
-    const group = page
-        .getByRole('main')
-        .locator('section')
-        .filter({
-            has: page.getByRole('heading', {
-                level: 2,
-                name: '業務',
-                exact: true,
-            }),
-        });
-
     await expect(
-        group.getByRole('link', { name: 'ホーム', exact: true }),
-    ).toHaveAttribute('href', '/');
+        sitemapGroup(page, 'ワークフロー').getByRole('link', {
+            name: 'ホーム',
+            exact: true,
+        }),
+    ).toHaveAttribute('href', '/workflow');
     await expect(
-        group.getByRole('link', { name: '組織図', exact: true }),
-    ).toHaveAttribute('href', '/master/organization-chart');
-    await expect(
-        group.getByRole('link', { name: 'サイトマップ', exact: true }),
+        sitemapGroup(page, 'E2E の入れ子').getByRole('link', {
+            name: 'E2E 項目',
+            exact: true,
+        }),
     ).toHaveAttribute('href', '/menu/sitemap');
+    await expect(
+        sitemapGroup(page, '業務').getByRole('link', {
+            name: '組織図',
+            exact: true,
+        }),
+    ).toHaveCount(0);
+    await expect(sitemapGroup(page, '管理')).toHaveCount(0);
     await expect(page).toHaveTitle('サイトマップ - イントラデリバー');
 });

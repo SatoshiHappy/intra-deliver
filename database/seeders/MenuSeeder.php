@@ -23,7 +23,7 @@ use Illuminate\Database\Seeder;
 
 /**
  * メニューの初期データ(docs の 設計/メニュー/初期データ.md 4 節。ホームの主な操作は 設計/メニュー/ホーム.md 6.5)。
- * グローバルナビ(PC)とサイトマップ(PC)に、GROUPS のグループと同じアイテムを置く。
+ * GROUPS のアプリ(ワークフロー・業務・管理)のグループを、ナビの側(ランチャーか歯車のカテゴリ)とサイトマップ(PC)のそれぞれに、同じ木で置く。
  *
  * ポリシー: 誰にでも見せるものは、認証状態がゲストユーザか認証済みユーザのどちらか一方なので両方に許す。「管理」のグループにはポリシーを置かず、
  * システム管理者がセットの先頭の許可を継承して見る。ほかのモジュールのルートのリソースと許可は、そのモジュールの seeder が作る。
@@ -43,37 +43,54 @@ class MenuSeeder extends Seeder
         'im_site_help_pc' => ['ヘルプ（PC用）', 'Help (PC)'],
         // ホームの主な操作(本家に無いカテゴリなので接頭辞 im_ を付けない = docs の 設計/メニュー/ホーム.md 6.5)
         'home_quick_actions_pc' => ['ホームの主な操作（PC用）', 'Home quick actions (PC)'],
+        // 歯車のアプリ(本家に無いカテゴリなので接頭辞 im_ を付けない = docs の 設計/メニュー/表示.md 3.3.1)
+        'admin_menu_pc' => ['管理メニュー（PC用）', 'Admin menu (PC)'],
     ];
 
     /**
-     * グループを置くカテゴリ: カテゴリ => [グループ ID の接頭辞(グループ ID は <接頭辞>-<グループの接尾辞>), 「業務」のグループ ID]。
+     * グループを置く側: グループ ID の接頭辞(グループ ID は <接頭辞>-<グループの接尾辞>) => [カテゴリ(null = グループごとのナビのカテゴリ), 「業務」のグループ ID]。
      * 「業務」のグループ ID は正本の列挙 {@see WorkMenuGroup} の case から取る(文字列を組み立てない)。
      */
     private const GROUP_CATEGORIES = [
-        'im_global_nav_pc' => ['global-nav', WorkMenuGroup::GlobalNavigation],
-        'im_sitemap_pc' => ['sitemap', WorkMenuGroup::Sitemap],
+        'global-nav' => [null, WorkMenuGroup::GlobalNavigation],
+        'sitemap' => ['im_sitemap_pc', WorkMenuGroup::Sitemap],
     ];
 
     /**
-     * グループ(どのカテゴリにも同じものを置く。「業務」main のグループ ID は {@see WorkMenuGroup} の値に限る): グループ ID の接尾辞 => [表示名(ja), 表示名(en)(ルートのメニューの表示名), 並び(ルートの sort_number),
-     * ゲストユーザと認証済みユーザに read を許すか, アイテム(並びの順に、ITEMS のルートの名前), その後に並べる申請書の業務モジュールのアイテム(コード)]
+     * アプリのグループ(どちらの側にも同じ木を置く。「業務」main のグループ ID は {@see WorkMenuGroup} の値に限る): グループ ID の接尾辞 =>
+     * [表示名(ja), 表示名(en)(ルートのメニューの表示名), 並び(ルートの sort_number), ゲストユーザと認証済みユーザに read を許すか,
+     * ナビの側のカテゴリ(ランチャーか歯車), アイコン(ルートの icon_32), 説明(ルートの notes),
+     * ルートの直下のアイテム(並びの順に ITEMS のルートの名前), その後に並べる見出しのフォルダ(語 => [アイテム(ルートの名前), 申請書の業務モジュールのアイテム(コード)])]。
+     * 並び・置き場の値は docs の 設計/メニュー/初期データ.md 4 節(組織図のルートのリソースと許可は CommonMasterRouteSeeder)。
      */
     private const GROUPS = [
-        'main' => ['業務', 'Work', 0, true, ['menu.home', 'master.organization-chart', 'menu.sitemap'], []],
+        // ルートのリソースと許可は WorkflowSeeder が作る(docs の 設計/ワークフロー/認可と一覧.md 4 節・6 節)
+        'workflow' => [
+            'ワークフロー', 'Workflow', 50, true, 'im_global_nav_pc', 'send', '申請と承認',
+            ['workflow.home'],
+            [
+                'applications' => [['workflow.flows.index', 'workflow.cases.index'], []],
+                'forms' => [[], [WorkflowApplicationModules::PLAN, WorkflowApplicationModules::ISSUE]],
+            ],
+        ],
+        // アイテムは業務モジュールを作る業務処理と分類の業務処理が足す(この seeder は入れない)
+        'main' => ['業務', 'Work', 900, true, 'im_global_nav_pc', 'briefcase', '業務のテーブル', [], []],
         // 「申請操作」「代理の管理」(ルートのリソースは WorkflowSeeder が作る = docs の 設計/ワークフロー/案件の運用/認可と一覧.md の 5 節)
         'admin' => [
-            '管理', 'Administration', 100, false,
+            '管理', 'Administration', 1000, false, 'admin_menu_pc', 'wrench', 'システムの設定',
             [
-                'authz.overview', 'records.admin.modules.index', 'records.admin.categories.index',
+                'authz.overview', 'master.organization-chart',
+                'records.admin.modules.index', 'records.admin.categories.index',
                 'workflow.admin.cases.index', 'workflow.admin.proxies.index',
             ],
             [],
         ],
-        // ワークフロー(並び 50 = 業務の後・管理の前。ルートのリソースと許可は WorkflowSeeder が作る = docs の 設計/ワークフロー/認可と一覧.md 6 節)
-        'workflow' => [
-            'ワークフロー', 'Workflow', 50, true, ['workflow.flows.index', 'workflow.cases.index'],
-            [WorkflowApplicationModules::PLAN, WorkflowApplicationModules::ISSUE],
-        ],
+    ];
+
+    /** 見出しのフォルダ: 語 => [表示名(ja), 表示名(en)](メニュー ID は <グループ ID>-folder-<語>。アイコンは folder) */
+    private const FOLDERS = [
+        'applications' => ['申請と承認', 'Applications and approvals'],
+        'forms' => ['申請書', 'Application forms'],
     ];
 
     /**
@@ -81,9 +98,8 @@ class MenuSeeder extends Seeder
      * アイコン名は lucide の名前 = docs の 設計/画面の意匠/サイドバーとアイコン.md 5.1。画面の許可表 resources/js/components/MenuIcon.tsx に載せる)
      */
     private const ITEMS = [
-        'menu.home' => ['/', 'ホーム', 'Home', 'house'],
+        'workflow.home' => ['/workflow', 'ホーム', 'Home', 'house'],
         'master.organization-chart' => ['/master/organization-chart', '組織図', 'Organization chart', 'network'],
-        'menu.sitemap' => ['/menu/sitemap', 'サイトマップ', 'Sitemap', 'map'],
         'authz.overview' => ['/authz/overview', '認可設定', 'Authorization', 'shield-check'],
         'records.admin.modules.index' => ['/records/admin/modules', '業務モジュール', 'Record modules', 'database'],
         'records.admin.categories.index' => ['/records/admin/categories', 'モジュール分類', 'Module categories', 'folder-tree'],
@@ -112,11 +128,13 @@ class MenuSeeder extends Seeder
         ['workflow.flows.index', [], '申請する', 'Apply', 'send'],
         ['workflow.cases.index', ['tab' => 'pending'], '承認する', 'Approve', 'inbox'],
         ['workflow.cases.index', ['tab' => 'processed'], '自分の申請', 'My applications', 'folder'],
-        ['master.organization-chart', [], '組織図', 'Organization chart', 'network'],
     ];
 
-    /** この seeder がリソースを作るルート(表示名はアイテムの表示名と同じ。ほかのモジュールのルートのリソースは、そのモジュールの seeder が作る) */
-    private const ROUTES = ['menu.home', 'menu.sitemap'];
+    /** この seeder がリソースを作るルート: 名前 => [表示名(ja), 表示名(en)](ほかのモジュールのルートのリソースは、そのモジュールの seeder が作る) */
+    private const ROUTES = [
+        'menu.home' => ['ホーム', 'Home'],
+        'menu.sitemap' => ['サイトマップ', 'Sitemap'],
+    ];
 
     public function __construct(
         private CreateResourceGroup $createResourceGroup,
@@ -172,8 +190,7 @@ class MenuSeeder extends Seeder
         $this->createPrefix->execute('menu', ['ja' => ['display_name' => 'メニュー'], 'en' => ['display_name' => 'Menu']]);
         $ids = [];
 
-        foreach (self::ROUTES as $name) {
-            [, $ja, $en] = self::ITEMS[$name];
+        foreach (self::ROUTES as $name => [$ja, $en]) {
             $ids[] = $this->createRouteResource->execute($name, ['ja' => ['display_name' => $ja], 'en' => ['display_name' => $en]])->authz_resource_group_id;
         }
 
@@ -201,19 +218,44 @@ class MenuSeeder extends Seeder
     }
 
     /**
-     * グループのアイテム(ITEMS のルートの並びの順に、続けて申請書の業務モジュールのアイテム)。
+     * 親(グループのルートか見出しのフォルダ)のアイテム: ITEMS のルートの並びの順に、続けて申請書の業務モジュールのアイテム(並びは 0 から)。
      *
      * @param  list<string>  $routeNames
      * @param  list<string>  $moduleCodes
+     * @return int 次の並び
      */
-    private function addItems(int $menuId, string $groupCode, array $routeNames, array $moduleCodes): void
+    private function addItems(int $parentId, string $groupCode, array $routeNames, array $moduleCodes): int
     {
-        foreach ($routeNames as $sortNumber => $name) {
+        $sortNumber = 0;
+
+        foreach ($routeNames as $name) {
             [$path, $itemJa, $itemEn, $icon] = self::ITEMS[$name];
-            $this->addMenu->execute($menuId, new MenuItemInput($groupCode.'-'.str_replace('.', '-', $name), $path, ['ja' => $itemJa, 'en' => $itemEn], sortNumber: $sortNumber, icon32: $icon));
+            $code = $groupCode.'-'.str_replace('.', '-', $name);
+            $this->addMenu->execute($parentId, new MenuItemInput($code, $path, ['ja' => $itemJa, 'en' => $itemEn], sortNumber: $sortNumber++, icon32: $icon));
         }
 
-        $this->addApplicationModuleItems($menuId, $groupCode, $moduleCodes, count($routeNames));
+        $this->addApplicationModuleItems($parentId, $groupCode, $moduleCodes, $sortNumber);
+
+        return $sortNumber + count($moduleCodes);
+    }
+
+    /**
+     * グループの木: ルートの直下のアイテムの後に、見出しのフォルダ(並びはアイテムに続ける)とその中のアイテム。
+     *
+     * @param  list<string>  $routeNames
+     * @param  array<string, array{list<string>, list<string>}>  $folders
+     */
+    private function addTree(int $rootId, string $groupCode, array $routeNames, array $folders): void
+    {
+        $sortNumber = $this->addItems($rootId, $groupCode, $routeNames, []);
+
+        foreach ($folders as $word => [$folderRouteNames, $moduleCodes]) {
+            [$ja, $en] = self::FOLDERS[$word];
+            $folderCode = "{$groupCode}-folder-{$word}";
+            $folderInput = new MenuFolderInput($folderCode, ['ja' => $ja, 'en' => $en], sortNumber: $sortNumber++, icon32: 'folder');
+            $folder = $this->addMenu->execute($rootId, $folderInput);
+            $this->addItems($folder->id, $groupCode, $folderRouteNames, $moduleCodes);
+        }
     }
 
     /**
@@ -224,7 +266,7 @@ class MenuSeeder extends Seeder
      * @param  list<string>  $moduleCodes
      */
     private function addApplicationModuleItems(
-        int $menuId,
+        int $parentId,
         string $groupCode,
         array $moduleCodes,
         int $firstSortNumber,
@@ -240,12 +282,12 @@ class MenuSeeder extends Seeder
                 $code, "/records/data/{$moduleCode}", $displayNames,
                 sortNumber: $sortNumber++, icon32: $module['icon']->value,
             );
-            $this->addMenu->execute($menuId, $item);
+            $this->addMenu->execute($parentId, $item);
         }
     }
 
     /**
-     * グローバルナビ(PC)とサイトマップ(PC)のそれぞれに、グループ「業務」「ワークフロー」「管理」とそのアイテム。
+     * ナビの側(グループごとにランチャーか歯車のカテゴリ)とサイトマップ(PC)のそれぞれに、アプリのグループ(ルートのアイコン・説明)とその木。
      *
      * @return list<int> ゲストユーザと認証済みユーザに read を許すグループのリソースグループの id
      */
@@ -253,14 +295,15 @@ class MenuSeeder extends Seeder
     {
         $ids = [];
 
-        foreach (self::GROUP_CATEGORIES as $categoryCode => [$prefix, $workGroup]) {
-            $category = MenuGroupCategory::query()->where('code', $categoryCode)->sole();
-
-            foreach (self::GROUPS as $suffix => [$ja, $en, $groupSortNumber, $isForEveryone, $routeNames, $modules]) {
+        foreach (self::GROUP_CATEGORIES as $prefix => [$sideCategory, $workGroup]) {
+            foreach (self::GROUPS as $suffix => [$ja, $en, $sort, $isForEveryone, $navCategory, $icon, $notes, $items, $folders]) {
+                $category = MenuGroupCategory::query()->where('code', $sideCategory ?? $navCategory)->sole();
                 $groupCode = $suffix === 'main' ? $workGroup->value : "{$prefix}-{$suffix}";
-                $group = $this->createGroup->execute($category->id, new MenuFolderInput($groupCode, ['ja' => $ja, 'en' => $en], sortNumber: $groupSortNumber));
+                $names = ['ja' => $ja, 'en' => $en];
+                $root = new MenuFolderInput($groupCode, $names, sortNumber: $sort, notes: $notes, icon32: $icon);
+                $group = $this->createGroup->execute($category->id, $root);
 
-                $this->addItems($group->menu_id, $groupCode, $routeNames, $modules);
+                $this->addTree($group->menu_id, $groupCode, $items, $folders);
 
                 if ($isForEveryone) {
                     $ids[] = AuthzResourceGroup::query()->where('code', MenuResourceKind::Group->resourceGroupCode($groupCode))->sole()->id;

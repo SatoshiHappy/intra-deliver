@@ -1,10 +1,17 @@
 import { expect, test } from '../support/test';
 import type { Page } from '@playwright/test';
 import { submitAndExpectUrl } from '../support/submit';
+import {
+    adminMenuButton,
+    openFromAdminMenu,
+    sidebarLink,
+    sidebarHeading,
+} from '../support/app-navigation';
+import { menuAdminRow } from './authz-editor-support';
 
 // 認可の確認(docs の 設計/共通マスタ/ロールと認可/認可の確認/README.md 4 節の E2E)のうち、デモユーザー切替でシステム管理者になって確かめるもの
 // (切替を使うので demo の持ち物。docs の 設計/デモユーザー切替/デモの取り付け.md 6.1)。画面は PC の幅だけを前提にする。
-// ナビの中は、E2E 専用のグループが同じ画面にあるので、見出しでグループを絞ってから引く。
+// 管理は歯車から開く(docs の 設計/メニュー/表示.md 3.3.5)。開いた後のサイドバーの先頭は管理のアプリ。
 test.use({ viewport: { width: 1280, height: 720 } });
 
 /**
@@ -21,18 +28,6 @@ async function choose(page: Page, label: string, item: string) {
 }
 
 /**
- * グローバルナビの中の、見出し(h2)が name のグループ。
- */
-function navigationGroup(page: Page, name: string) {
-    return page
-        .getByRole('navigation', { name: 'グローバルナビ' })
-        .locator('[data-sidebar="group"]')
-        .filter({
-            has: page.getByRole('heading', { level: 2, name, exact: true }),
-        });
-}
-
-/**
  * 認可設定の格子の、名前で引いた行(先頭の列は th scope="row" で、読み上げの名前はリソース名だけ。URI は画面に無い)。
  */
 function resourceRow(page: Page, name: string) {
@@ -41,19 +36,19 @@ function resourceRow(page: Page, name: string) {
     });
 }
 
-test('システム管理者に切り替えると「管理」の「認可設定」から開け、判定する人とリソースの種類を替えられる', async ({
+test('システム管理者に切り替えると歯車の「認可設定」から開け、判定する人とリソースの種類を替えられる', async ({
     page,
 }) => {
     await page.goto('/');
     await choose(page, 'ゲスト', 'システム管理者');
 
-    const link = navigationGroup(page, '管理').getByRole('link', {
-        name: '認可設定',
-        exact: true,
-    });
+    // 歯車の「管理」から開くと、サイドバーの先頭が管理のアプリになり、アイテム「認可設定」が現在地になる
+    await openFromAdminMenu(page, '認可設定');
+    await expect(page).toHaveURL('/authz/overview');
+    await expect(sidebarHeading(page)).toHaveText('管理');
+    const link = sidebarLink(page, '認可設定');
     await expect(link.locator('svg.lucide-shield-check')).toHaveCount(1);
-    await link.click();
-
+    await expect(link).toHaveAttribute('aria-current', 'page');
     await expect(
         page.getByRole('heading', { level: 1, name: '認可設定' }),
     ).toBeVisible();
@@ -166,14 +161,8 @@ test('システム管理者に切り替えると「管理」の「認可設定�
         'aria-selected',
         'true',
     );
-    // 「管理」は 2 つある(グローバルナビ・サイトマップ)ので、親の行「グローバルナビ（PC用）」より後で最初の行
-    const admin = page
-        .getByRole('rowheader', { name: 'グローバルナビ（PC用）', exact: true })
-        .locator('xpath=ancestor::tr[1]/following-sibling::tr')
-        .filter({
-            has: page.getByRole('rowheader', { name: '管理', exact: true }),
-        })
-        .first();
+    // 「管理」は 2 つある(歯車のアプリのカテゴリ・サイトマップ)ので、親の行「管理メニュー（PC用）」より後で最初の行
+    const admin = menuAdminRow(page);
     await expect(admin.locator('td').first()).toContainText('禁止');
 
     // 「設定」タブ: アクションが 2 つの種類は、対象者の下にアクションの段(「参照」「管理」)を出す
@@ -192,9 +181,6 @@ test('システム管理者に切り替えると「管理」の「認可設定�
 
     await choose(page, '伊藤 涼子（経営企画室）', 'ログアウト');
 
-    await expect(
-        page
-            .getByRole('navigation', { name: 'グローバルナビ' })
-            .getByRole('heading', { level: 2, name: '管理', exact: true }),
-    ).toHaveCount(0);
+    // ログアウトするとゲストに戻り、歯車が消える(管理のアプリはシステム管理者だけ)
+    await expect(adminMenuButton(page)).toHaveCount(0);
 });

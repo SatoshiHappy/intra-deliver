@@ -23,7 +23,7 @@ use Tests\Support\TransactionalTestCase;
 /**
  * モジュール分類の持ち方・並び・名前・並び替え(docs の 設計/業務データの入れ物/モジュール分類/README.md 1 節・2 節、業務処理.md 3.2・3.3・3.5・3.6、
  * 画面と検査.md 6 節の「持ち方」「並び」「名前」「権限の組み合わせ」の業務処理の分): 作ると 2 木のルートの直下に分類のフォルダができ、10 + 位置で
- * 初期のアイテム(0〜2)と直下の業務モジュール(100〜)の間に並ぶ。91 個目・名前の誤り・順列でない ids と codes は 422 で何も変わらない。
+ * 直下の業務モジュール(100〜)の前に並ぶ(0〜2 は空き = 初期データは業務のアプリにアイテムを入れない)。91 個目・名前の誤り・順列でない ids と codes は 422 で何も変わらない。
  * 無い分類の名前の変更・中の並べ替えは ModelNotFoundException で何も変わらない。初期データのプロジェクト(直下 100)・課題(直下 110)と組み込みの会議
  * (直下 120)を使う(申請書の業務モジュール 2 つは初期データで非表示 = ADR 0031)。
  */
@@ -47,14 +47,13 @@ final class ModuleCategoryTest extends TransactionalTestCase
         }
     }
 
-    public function test_the_folders_sort_between_the_initial_items_and_the_direct_modules_and_are_renumbered_on_create_delete_and_reorder(): void
+    public function test_the_folders_sort_before_the_direct_modules_and_are_renumbered_on_create_delete_and_reorder(): void
     {
         $first = $this->createCategory('営業');
         $second = $this->createCategory('総務');
 
         foreach (WorkMenuGroup::cases() as $group) {
             $this->assertSame([
-                "{$group->value}-menu-home", "{$group->value}-master-organization-chart", "{$group->value}-menu-sitemap",
                 "{$group->value}-cat-{$first}", "{$group->value}-cat-{$second}",
                 "{$group->value}-records-project", "{$group->value}-records-project_issue", "{$group->value}-records-meeting",
             ], array_keys($this->children($group->value)));
@@ -184,7 +183,7 @@ final class ModuleCategoryTest extends TransactionalTestCase
         $this->assertSame($before, $this->children("global-nav-main-cat-{$categoryId}"));
     }
 
-    public function test_reordering_the_direct_modules_keeps_the_initial_items_and_the_folders(): void
+    public function test_reordering_the_direct_modules_keeps_the_folders(): void
     {
         $categoryId = $this->createCategory('営業');
 
@@ -193,7 +192,6 @@ final class ModuleCategoryTest extends TransactionalTestCase
 
         foreach (WorkMenuGroup::cases() as $group) {
             $this->assertSame([
-                "{$group->value}-menu-home" => 0, "{$group->value}-master-organization-chart" => 1, "{$group->value}-menu-sitemap" => 2,
                 "{$group->value}-cat-{$categoryId}" => 10,
                 "{$group->value}-records-project_issue" => 100, "{$group->value}-records-meeting" => 110,
                 "{$group->value}-records-project" => 120,

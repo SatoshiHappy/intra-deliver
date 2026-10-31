@@ -21,11 +21,15 @@ use Illuminate\Support\Collection;
  * 要求ごとに判定し、結果を要求をまたいで覚えない。
  *
  * @phpstan-import-type VisibleItem from VisibleMenuTree
+ * @phpstan-import-type VisibleGroup from VisibleMenuTree
  */
 class MenuDisplayQuery
 {
     /** グローバルナビ(PC)のカテゴリ */
     public const GLOBAL_NAVIGATION_CATEGORY = 'im_global_nav_pc';
+
+    /** 管理メニュー(PC)のカテゴリ(歯車のアプリ = docs の 設計/メニュー/表示.md 3.3.1) */
+    public const ADMIN_MENU_CATEGORY = 'admin_menu_pc';
 
     /** サイトマップ(PC)のカテゴリ */
     public const SITEMAP_CATEGORY = 'im_sitemap_pc';
@@ -42,7 +46,7 @@ class MenuDisplayQuery
     /**
      * カテゴリの表示するグループ(並びの順)。返す形は {@see VisibleMenuTree}。
      *
-     * @return list<array{code: string, name: string|null, children: list<array<string, mixed>>}>
+     * @return list<VisibleGroup>
      */
     public function visibleGroups(string $categoryCode, Requester $requester, DateTimeInterface $date, string $localeCode): array
     {
@@ -72,6 +76,40 @@ class MenuDisplayQuery
     }
 
     /**
+     * カテゴリのすべてのグループ(引数のカテゴリの順、カテゴリの中は並びの順)と、その木のアプリの中のパスのアイテムの URL(順は決めない)。
+     * 今のアプリを決める入力(docs の 設計/メニュー/表示.md 3.3.2)で、表示判定(グループの read・ルートの照合と execute・追加の判定)をしない。
+     * 形の分け方(3.1 の 2)だけを使い、外部サイトの URL と、どちらの形でもない URL のアイテムは除く。外部メニューリンクは除く。
+     *
+     * @param  list<string>  $categoryCodes
+     * @return list<array{code: string, urls: list<string>}>
+     */
+    public function appItemUrls(array $categoryCodes): array
+    {
+        $roots = collect($categoryCodes)->flatMap(fn (string $code) => $this->rootsOf($code)->all())->values();
+        $urlsByRootId = [];
+        $rootIdByMenuId = [];
+
+        foreach ($roots as $root) {
+            $rootIdByMenuId[$root->id] = $root->id;
+        }
+
+        // 子孫は浅い順に並ぶので、親の属するルートはいつも先に決まっている
+        foreach ($this->descendants($roots) as $menu) {
+            $rootId = $rootIdByMenuId[(int) $menu->parent_id];
+            $rootIdByMenuId[$menu->id] = $rootId;
+            $url = (string) $menu->url;
+
+            if ($menu->type === MenuType::Item && $this->routeResources->isAppPath($url)) {
+                $urlsByRootId[$rootId][] = $url;
+            }
+        }
+
+        $apps = $roots->map(fn (Menu $root) => ['code' => $root->code, 'urls' => $urlsByRootId[$root->id] ?? []]);
+
+        return array_values($apps->all());
+    }
+
+    /**
      * 許されたグループのルートの子孫を読み、表示名・表示するアイテム・その引数を 1 回ずつ引いて木を作る。
      *
      * @param  Collection<int, Menu>  $roots
@@ -92,14 +130,24 @@ class MenuDisplayQuery
      */
     private function permittedRoots(string $categoryCode, Requester $requester, DateTimeInterface $date): Collection
     {
+        return $this->rootsOf($categoryCode)
+            ->filter(fn (Menu $root) => $this->authorization->allowsUri($requester, MenuResourceKind::Group->uri($root->code), MenuGroupAction::Read->value, $date))
+            ->values();
+    }
+
+    /**
+     * カテゴリに所属するグループのルート(種別 folder。sort_number・code の順)。
+     *
+     * @return Collection<int, Menu>
+     */
+    private function rootsOf(string $categoryCode): Collection
+    {
         return Menu::query()
             ->where('type', MenuType::Folder->value)
             ->whereHas('menuGroup.menuGroupCategoryInclusions.menuGroupCategory', fn ($query) => $query->where('code', $categoryCode))
             ->orderBy('sort_number')
             ->orderBy('code')
-            ->get()
-            ->filter(fn (Menu $root) => $this->authorization->allowsUri($requester, MenuResourceKind::Group->uri($root->code), MenuGroupAction::Read->value, $date))
-            ->values();
+            ->get();
     }
 
     /**

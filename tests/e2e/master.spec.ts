@@ -1,22 +1,16 @@
 import { expect, test } from './support/test';
 import type { Page, Route } from '@playwright/test';
+import {
+    breadcrumbs,
+    adminMenuButton,
+    headerSearch,
+    sidebarLink,
+    sidebarHeading,
+} from './support/app-navigation';
 
 // 共通マスタの組織図とヘッダーの検索(docs の 設計/共通マスタ/検索と組織図.md 5 節)。ゲストだけで成り立つので main の E2E に置く(利用者の切替のオン・オフに依らない)。
-// 画面は PC の幅だけを前提にする。ナビの中は、E2E 専用のグループが同じ画面にあるので、見出しでグループを絞ってから引く
-// (docs の 設計/画面の意匠/検査と否決案.md 9 節)。
+// 画面は PC の幅だけを前提にする。組織図は管理のアプリの画面なので、ゲストのサイドバーには出ない(歯車から開く筋はシステム管理者の E2E が確かめる)。
 test.use({ viewport: { width: 1280, height: 720 } });
-
-/**
- * グローバルナビの中の、見出し(h2)が name のグループ。
- */
-function navigationGroup(page: Page, name: string) {
-    return page
-        .getByRole('navigation', { name: 'グローバルナビ' })
-        .locator('[data-sidebar="group"]')
-        .filter({
-            has: page.getByRole('heading', { level: 2, name, exact: true }),
-        });
-}
 
 /**
  * 組織図の左の面(組織の木)の、名称が name の組織のリンク。
@@ -28,18 +22,11 @@ function departmentLink(page: Page, name: string) {
 }
 
 /**
- * ヘッダーの検索欄。
- */
-function searchBox(page: Page) {
-    return page.getByRole('combobox', { name: 'ユーザー・組織を検索' });
-}
-
-/**
  * 検索の欄を開いて語を打つまで(容器に依る手順はここだけ。容器を Dialog に替えるときはこの関数を直す = 設計 3.4)。
  */
 async function searchFor(page: Page, text: string) {
-    await searchBox(page).click();
-    await searchBox(page).fill(text);
+    await headerSearch(page).click();
+    await headerSearch(page).fill(text);
 }
 
 /**
@@ -49,19 +36,19 @@ function resultGroup(page: Page, name: string) {
     return page.getByRole('listbox').getByRole('group', { name });
 }
 
-test('サイドバーの「業務」の「組織図」から開け、頂点の組織が選ばれている', async ({
+test('ゲストのサイドバーには組織図が出ず(アプリの一覧)、URL では開け、頂点の組織が選ばれている', async ({
     page,
 }) => {
-    await page.goto('/');
-    const link = navigationGroup(page, '業務').getByRole('link', {
-        name: '組織図',
-        exact: true,
-    });
+    await page.goto('/master/organization-chart');
 
-    await expect(link.locator('svg.lucide-network')).toHaveCount(1);
-    await link.click();
+    // 管理のアプリはゲストに表示されないので、今のアプリは無く、サイドバーはランチャーのアプリの一覧・パンくずにアプリの段が無い・歯車が無い
+    await expect(sidebarHeading(page)).toHaveText('アプリ');
+    await expect(sidebarLink(page, '組織図')).toHaveCount(0);
+    await expect(adminMenuButton(page)).toHaveCount(0);
+    await expect(breadcrumbs(page).getByRole('listitem')).toHaveText([
+        '組織図',
+    ]);
 
-    await expect(page).toHaveURL('/master/organization-chart');
     await expect(
         page.getByRole('heading', { level: 1, name: '組織図' }),
     ).toBeVisible();
@@ -121,8 +108,8 @@ test('検索の欄で「人事」と打ち、↓と Enter で組織「人事部�
         }),
     ).toBeVisible();
 
-    await searchBox(page).press('ArrowDown');
-    await searchBox(page).press('Enter');
+    await headerSearch(page).press('ArrowDown');
+    await headerSearch(page).press('Enter');
 
     await expect(page).toHaveURL(
         /\/master\/organization-chart\?department=\d+$/,
@@ -137,7 +124,7 @@ test('検索の欄で「人事」と打ち、↓と Enter で組織「人事部�
             .getByRole('row', { name: /吉田 達也/ }),
     ).toContainText('兼務');
     // 選ぶと欄は空になって閉じる
-    await expect(searchBox(page)).toHaveValue('');
+    await expect(headerSearch(page)).toHaveValue('');
     await expect(page.getByRole('listbox')).toHaveCount(0);
 });
 
@@ -175,9 +162,9 @@ test('該当しない語では「該当するユーザー・組織はありま�
         page.getByText('該当するユーザー・組織はありません', { exact: true }),
     ).toBeVisible();
 
-    await searchBox(page).press('Escape');
+    await headerSearch(page).press('Escape');
     await expect(page.getByRole('listbox')).toHaveCount(0);
-    await expect(searchBox(page)).toBeFocused();
+    await expect(headerSearch(page)).toBeFocused();
 });
 
 test('表示の名称に打った語を含まない項目(コードだけで一致)も出て、選べる', async ({
@@ -217,15 +204,15 @@ test('同じ表示の 2 項目を、キー操作でそれぞれ選べる', async
     await page.goto('/');
     await searchFor(page, '同じ');
     await expect(options).toHaveCount(2);
-    await searchBox(page).press('Enter');
+    await headerSearch(page).press('Enter');
     await expect(page).toHaveURL(
         '/master/organization-chart?department=900001',
     );
 
     await searchFor(page, '同じ');
     await expect(options).toHaveCount(2);
-    await searchBox(page).press('ArrowDown');
-    await searchBox(page).press('Enter');
+    await headerSearch(page).press('ArrowDown');
+    await headerSearch(page).press('Enter');
     await expect(page).toHaveURL(
         '/master/organization-chart?department=900002',
     );
@@ -243,12 +230,10 @@ test('結果を出したまま、サイドバーのリンクでほかのペー�
         }),
     ).toBeVisible();
 
-    await navigationGroup(page, '業務')
-        .getByRole('link', { name: 'サイトマップ', exact: true })
-        .click();
+    await sidebarLink(page, 'ワークフロー').click();
 
-    await expect(page).toHaveURL('/menu/sitemap');
-    await expect(searchBox(page)).toHaveValue('');
+    await expect(page).toHaveURL('/workflow');
+    await expect(headerSearch(page)).toHaveValue('');
     await expect(page.getByRole('listbox')).toHaveCount(0);
 });
 
@@ -261,14 +246,14 @@ test('Esc で閉じた後、欄を押すか↓で開き直す', async ({ page })
     });
     await expect(option).toBeVisible();
 
-    await searchBox(page).press('Escape');
+    await headerSearch(page).press('Escape');
     await expect(page.getByRole('listbox')).toHaveCount(0);
-    await searchBox(page).click();
+    await headerSearch(page).click();
     await expect(option).toBeVisible();
 
-    await searchBox(page).press('Escape');
+    await headerSearch(page).press('Escape');
     await expect(page.getByRole('listbox')).toHaveCount(0);
-    await searchBox(page).press('ArrowDown');
+    await headerSearch(page).press('ArrowDown');
     await expect(option).toBeVisible();
 });
 
@@ -284,9 +269,9 @@ test('遅れて届いた古い応答は捨て、最後に打った語の結果�
         resultGroup(page, '組織').getByRole('option', { name, exact: true });
 
     await page.goto('/');
-    await searchBox(page).click();
+    await headerSearch(page).click();
     for (const text of ['一', '二', '三']) {
-        await searchBox(page).fill(text);
+        await headerSearch(page).fill(text);
         // 遅延(200ms)より長く待ち、打ち替えごとに要求を送らせる
         await page.waitForTimeout(300);
     }

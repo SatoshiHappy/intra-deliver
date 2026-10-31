@@ -90,12 +90,12 @@ export function resourceRow(page: Page, name: string) {
 }
 
 /**
- * 格子の、メニューグループの種類の「管理」の行。「管理」は 2 つある(グローバルナビ・サイトマップ)ので、
- * 親の行「グローバルナビ（PC用）」より後で最初の行。
+ * 格子の、メニューグループの種類の「管理」の行。「管理」は 2 つある(歯車のアプリのカテゴリ・サイトマップ)ので、
+ * 親の行「管理メニュー（PC用）」より後で最初の行(歯車のアプリ = 管理のアプリ。docs の 設計/メニュー/表示.md 3.3.1)。
  */
 export function menuAdminRow(page: Page) {
     return page
-        .getByRole('rowheader', { name: 'グローバルナビ（PC用）', exact: true })
+        .getByRole('rowheader', { name: '管理メニュー（PC用）', exact: true })
         .locator('xpath=ancestor::tr[1]/following-sibling::tr')
         .filter({
             has: page.getByRole('rowheader', { name: '管理', exact: true }),

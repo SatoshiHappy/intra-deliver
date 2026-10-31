@@ -32,6 +32,7 @@ final class WorkflowSeederRouteResourcesTest extends TransactionalTestCase
         ['http-services.workflow.admin', 'http-services.workflow', 'ワークフローの管理', 'Workflow administration'],
         [self::ADMIN_CASES, 'http-services.workflow.admin', '申請操作', 'Application operations'],
         [self::ADMIN_PROXIES, 'http-services.workflow.admin', '代理の管理', 'Proxy administration'],
+        ['http-services.workflow.home', 'http-services.workflow', 'ワークフローのホーム', 'Workflow home'],
         ['http-services.workflow.flows.index', 'http-services.workflow.flows', '申請できるフローの一覧', 'Applicable flow list'],
         [
             'http-services.workflow.applications.create', 'http-services.workflow.applications', '申請の画面',
@@ -84,12 +85,12 @@ final class WorkflowSeederRouteResourcesTest extends TransactionalTestCase
     ];
 
     /**
-     * 設計/ワークフロー/ルートの深さ/初期データ.md 5 節: 接頭辞のリソースグループ 10 とルートのリソース 40(ルート 18 本 =
+     * 設計/ワークフロー/ルートの深さ/初期データ.md 5 節: 接頭辞のリソースグループ 10 とルートのリソース 41(ワークフローのホーム = 設計/メニュー/ホーム.md 6.7、ルート 18 本 =
      * 設計/ワークフロー/認可と一覧.md 4 節と、処理対象者の候補と、一括承認・一括確認・利用者の候補・保留・保留解除・振替・確認・参照項目の候補・
      * 代理の設定と申請操作と代理の管理の 12 本 = 設計/ワークフロー/案件の運用/認可と一覧.md の 4 節と、写しの値の入口 =
      * 設計/ワークフロー/申請の周辺/初期データ.md の 3 節。申請操作・代理の管理の親 http-services.workflow.admin の表示名 =
      * 設計/ワークフロー/ルートの深さ/認可と一覧.md の 4.2 節。ID・親は名前から決まる。表示名 ja・en = それぞれの節)。
-     * ポリシー 62 は WorkflowRouteAuthorizationTest・AuthorizationSeedersTest が確かめる(申請操作はポリシーなし)。
+     * ポリシー 64 は WorkflowRouteAuthorizationTest・AuthorizationSeedersTest が確かめる(申請操作はポリシーなし)。
      * 定義の管理を足すときは、そのリソースグループ・ルートとメニュー「フロー定義」をここで確かめる。
      */
     public function test_seeds_the_route_resources_of_the_design(): void
@@ -108,6 +109,6 @@ final class WorkflowSeederRouteResourcesTest extends TransactionalTestCase
             ->all();
 
         $this->assertSame(self::ROUTE_RESOURCE_GROUPS, $groups);
-        $this->assertSame(40, AuthzResource::query()->where('uri', 'like', 'service://workflow/%')->count());
+        $this->assertSame(41, AuthzResource::query()->where('uri', 'like', 'service://workflow/%')->count());
     }
 }

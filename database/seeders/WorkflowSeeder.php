@@ -54,10 +54,10 @@ use Illuminate\Database\Seeder;
  * 申請の案件名は空で渡して既定にする(docs の 設計/ワークフロー/初期データ.md 4 節)。定義の前に申請書の業務モジュール 2 つを作る({@see WorkflowApplicationModules})。
  * 見本の申請は申請対象のレコードをデータハブ(プロジェクト・課題)に作り、それを申請対象にした申請書で申請する({@see BuildsWorkflowSampleRecords})。
  *
- * 先頭に、接頭辞のリソースグループ 9・ルートのリソース 34 と、ROUTES の 31 本のゲストユーザ・認証済みユーザへの execute の許可
- * (62 = 設計/ワークフロー/ルートの深さ/初期データ.md 5 節の 38 と、案件の運用・申請の周辺で足したルートの分 =
- * 設計/ワークフロー/案件の運用/認可と一覧.md の 4 節)を入れる(設計/ワークフロー/ルートの深さ/初期データ.md 1 節。
- * 接頭辞のリソースグループと、システム管理者だけの ADMIN_ROUTES の 3 本には許可を置かない)。メニューのグループ「ワークフロー」は MenuSeeder が入れる。
+ * 先頭に、接頭辞のリソースグループ 10・ルートのリソース 41 と、ROUTES の 32 本のゲストユーザ・認証済みユーザへの execute の許可
+ * (64 = 設計/ワークフロー/ルートの深さ/初期データ.md 5 節の 38 と、案件の運用・申請の周辺で足したルートの分 =
+ * 設計/ワークフロー/案件の運用/認可と一覧.md の 4 節と、ワークフローのホームの 2 = 設計/ワークフロー/認可と一覧.md 4 節)を入れる(設計/ワークフロー/ルートの深さ/初期データ.md 1 節。
+ * 接頭辞のリソースグループと、システム管理者だけの ADMIN_ROUTES の 9 本には許可を置かない)。メニューのグループ「ワークフロー」は MenuSeeder が入れる。
  * 定義の前に workflow-flow のセットとシステム管理者の許可 2 を入れ、フローを作るたびにフローのリソースを足す({@see WorkflowFlowResources}。
  * 設計/ワークフロー/案件の運用/認可と一覧.md の 3 節)。
  *
@@ -102,6 +102,8 @@ class WorkflowSeeder extends Seeder
 
     /** ルート: 名前 => [表示名(ja), 表示名(en)](どれもゲストユーザと認証済みユーザに execute を許す) */
     private const ROUTES = [
+        // ワークフローのホーム(docs の 設計/ワークフロー/認可と一覧.md 4 節、設計/メニュー/ホーム.md 6.7)
+        'workflow.home' => ['ワークフローのホーム', 'Workflow home'],
         'workflow.flows.index' => ['申請できるフローの一覧', 'Applicable flow list'],
         'workflow.applications.create' => ['申請の画面', 'New application form'],
         'workflow.applications.store' => ['申請', 'Apply'],

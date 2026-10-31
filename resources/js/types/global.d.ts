@@ -1,5 +1,5 @@
 import type { CurrentAccount, UserMenuSection } from './account';
-import type { MenuGroup } from './menu';
+import type { AppNavigation } from './menu';
 import type { NoticeSummary } from './notice';
 
 // Extend ImportMeta interface for Vite...
@@ -20,7 +20,7 @@ declare module '@inertiajs/core' {
         sharedPageProps: {
             name: string;
             sidebarOpen: boolean;
-            globalNavigation: MenuGroup[];
+            appNavigation: AppNavigation;
             account: CurrentAccount;
             userMenuSections: UserMenuSection[];
             noticeSummary: NoticeSummary | null;

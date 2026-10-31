@@ -97,13 +97,22 @@ final class DemoEnabledTest extends TransactionalTestCase
     }
 
     /**
-     * ホームの節(6.3): タグの最後に、あいさつ欄の一文・役割カードの順で並ぶ。
+     * 全体のホームの節(6.3): 全体のホームのタグには、あいさつ欄の一文・役割カードの 2 つだけがこの順で並ぶ(docs の 設計/メニュー/ホーム.md 6.2)。
      */
-    public function test_tags_its_home_sections_after_the_main_sections(): void
+    public function test_tags_its_home_sections_as_the_only_sections_of_the_global_home(): void
     {
         $registered = array_map(fn (object $section) => $section::class, iterator_to_array($this->app->tagged(HomeSections::TAG), false));
 
-        $this->assertSame([LeadHomeSection::class, PeopleHomeSection::class], array_slice($registered, -2));
+        $this->assertSame([LeadHomeSection::class, PeopleHomeSection::class], $registered);
+    }
+
+    /**
+     * ゲストのワークフローのホームにはデモの節が無い(案内の一文だけ = 設計/メニュー/ホーム.md 6.6)。
+     */
+    public function test_a_guest_workflow_home_has_no_demo_sections(): void
+    {
+        $this->get('/workflow')->assertInertia(fn (Assert $page) => $page
+            ->where('sections', fn (Collection $sections) => $sections->pluck('code')->all() === ['workflow-lead']));
     }
 
     /**
@@ -188,7 +197,7 @@ final class DemoEnabledTest extends TransactionalTestCase
     public function test_shares_the_section_also_on_a_partial_reload_of_other_props(): void
     {
         $this->get('/')->assertInertia(fn (Assert $page) => $page
-            ->reloadOnly('globalNavigation', fn (Assert $reload) => $reload
+            ->reloadOnly('appNavigation', fn (Assert $reload) => $reload
                 ->where('userMenuSections.1.heading', self::HEADING)
                 ->count('userMenuSections.1.items', 6)
             )

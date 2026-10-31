@@ -21,3 +21,10 @@ export const sidebarIconClass =
  * 畳んだ帯の飛び出し(DropdownMenuContent)と、その中のサブメニュー(DropdownMenuSubContent)の幅と余白。
  */
 export const flyoutContentClass = 'w-60 p-1.5';
+
+/**
+ * ヘッダーのランチャーと歯車のボタン(開閉ボタンと同じ寸法と描き方。開いている間は地を --accent、アイコンを text-foreground にする。
+ * docs の 設計/画面の意匠/骨格とヘッダー.md 3 節の 7・8)。
+ */
+export const headerPopupButtonClass =
+    'size-11 text-muted-foreground data-[state=open]:bg-accent data-[state=open]:text-foreground';

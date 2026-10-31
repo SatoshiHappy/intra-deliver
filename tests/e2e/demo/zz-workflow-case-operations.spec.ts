@@ -2,6 +2,7 @@ import { expect, test } from '../support/test';
 import type { Locator, Page } from '@playwright/test';
 import { openAsAdministrator } from '../support/records-headings';
 import { submitAndExpectUrl } from '../support/submit';
+import { openAdminMenu, sidebarHeading } from '../support/app-navigation';
 import {
     fillPlanApplication,
     openAs,
@@ -78,27 +79,20 @@ test('用意: 申請者が申請し、課長のステップの到達を 10 日�
     ]);
 });
 
-test('システム管理者: サイドバーの「管理」の最後に「申請操作」「代理の管理」が並び、「申請操作」で一覧が開く', async ({
+test('システム管理者: 歯車の「管理」の最後に「申請操作」「代理の管理」が並び、「申請操作」で一覧が開く', async ({
     page,
 }) => {
     await openAsAdministrator(page, '/');
-    const group = page
-        .getByRole('navigation', { name: 'グローバルナビ' })
-        .locator('[data-sidebar="group"]')
-        .filter({
-            has: page.getByRole('heading', {
-                level: 2,
-                name: '管理',
-                exact: true,
-            }),
-        });
-    const links = (await group.getByRole('link').allTextContents()).map(
+    const menu = await openAdminMenu(page);
+    const links = (await menu.getByRole('menuitem').allTextContents()).map(
         (text) => text.trim(),
     );
     expect(links.slice(-2)).toEqual(['申請操作', '代理の管理']);
 
-    await group.getByRole('link', { name: '申請操作', exact: true }).click();
+    await menu.getByRole('menuitem', { name: '申請操作', exact: true }).click();
     await expect(page).toHaveURL(/\/workflow\/admin\/cases$/);
+    // /workflow/admin/cases は管理のアイテムの一致が最長(ワークフローのアイテムは /workflow/cases で 1 区分)なので、今のアプリは管理
+    await expect(sidebarHeading(page)).toHaveText('管理');
     await expect(
         page.getByRole('heading', { level: 1, name: '申請操作' }),
     ).toBeVisible();

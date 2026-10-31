@@ -58,7 +58,7 @@ final class ShareNoticesTest extends TransactionalTestCase
         $this->actingAs($user)->get('/')->assertInertia(function (Assert $page) use ($user): void {
             $page->where('noticeSummary', ['unreadCount' => 1]);
             Notice::factory()->createOne(['user_id' => $user->id]);
-            $page->reloadOnly('globalNavigation', fn (Assert $reload) => $reload
+            $page->reloadOnly('appNavigation', fn (Assert $reload) => $reload
                 ->where('noticeSummary', ['unreadCount' => 2])
             );
         });

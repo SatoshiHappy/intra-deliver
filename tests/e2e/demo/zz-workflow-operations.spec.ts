@@ -32,10 +32,10 @@ async function expectPendingStep(
     await expect(cells.nth(4)).toHaveText(principal);
 }
 
-test('u0009 のホーム: 未処理の申請の表に期限の列と保留中・期限超過のセル、件数カードの内訳に保留中と期限超過', async ({
+test('u0009 のワークフローのホーム: 未処理の申請の表に期限の列と保留中・期限超過のセル、件数カードの内訳に保留中と期限超過', async ({
     page,
 }) => {
-    await openAs(page, 'concurrent', '/');
+    await openAs(page, 'concurrent', '/workflow');
 
     // 保留中 = WF-000013 だけ。期限超過 = WF-000013(D − 4)だけ(WF-000003 は workflow.spec.ts の引戻しで課長へ戻る)
     await expect(

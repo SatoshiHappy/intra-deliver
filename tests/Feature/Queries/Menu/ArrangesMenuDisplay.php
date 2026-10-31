@@ -20,6 +20,7 @@ use App\Models\Menu\Menu;
 use App\Models\Menu\MenuGroupCategory;
 use App\Queries\Authz\Api\Requester;
 use App\Queries\Menu\MenuDisplayQuery;
+use App\Queries\Menu\VisibleMenuTree;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Route;
 
@@ -96,7 +97,12 @@ trait ArrangesMenuDisplay
     }
 
     /**
-     * @return list<array{code: string, name: string|null, children: list<array<string, mixed>>}>
+     * 返す形は {@see VisibleMenuTree} のグループ(VisibleGroup と同じ形)。
+     *
+     * @return list<array{
+     *     code: string, name: string|null, icon: string|null, description: string|null,
+     *     entry: array{href: string, isExternal: bool}, children: list<array<string, mixed>>,
+     * }>
      */
     private function visibleGroups(string $categoryCode = self::GLOBAL_NAVIGATION): array
     {
