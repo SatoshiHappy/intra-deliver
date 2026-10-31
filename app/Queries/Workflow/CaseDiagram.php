@@ -42,7 +42,7 @@ class CaseDiagram
     /**
      * @param  Collection<int, WorkflowCaseNode>  $nodes  写した並びのノード(展開の行は親を読み込んである)
      * @param  Collection<int, WorkflowCaseHistory>  $histories  id をキーにした履歴の行
-     * @param  array<int, Person>  $people  処理対象者と処理者の表示
+     * @param  array<int, Person>  $people  処理対象者・処理者と今の指定の人の表示
      * @param  array<int, list<int>>  $assignments  今の指定({@see CurrentAssignments::of()}。処理の時に指定するノードが無ければ空でよい)
      * @param  array<int, Council>  $councils  縦配置の進み具合({@see CaseCouncils})
      * @param  int|null  $requesterUserId  判定を求める者のユーザー
@@ -54,9 +54,13 @@ class CaseDiagram
         $isActive = $case->state !== WorkflowCaseState::Completed;
         $awaiting = fn (WorkflowCaseNode $node) => $isActive && $node->designator_workflow_case_node_id !== null && $node->state === WorkflowNodeState::Unreached && ! array_key_exists($node->id, $assignments);
         $moduleId = self::moduleIdOf($case);
+        // 展開の行の今の指定の同じ番号の人(親の指定の sequence 番目。指定が無いか番号が指定の数を超えれば null)
+        $plannedOf = fn (WorkflowCaseNode $node): ?int => $node->parent_workflow_case_node_id === null
+            ? null
+            : $assignments[(int) $node->parent_workflow_case_node_id][(int) $node->sequence - 1] ?? null;
 
         return [
-            'nodes' => array_values($nodes->map(fn (WorkflowCaseNode $node) => $this->nodeOf($node, $histories, $situation, $people, $names, $councils[$node->id] ?? null, $requesterUserId, $awaiting($node)))->all()),
+            'nodes' => array_values($nodes->map(fn (WorkflowCaseNode $node) => $this->nodeOf($node, $histories, $situation, $people, $names, $councils[$node->id] ?? null, $requesterUserId, $awaiting($node), $plannedOf($node)))->all()),
             'edges' => array_values(WorkflowCaseEdge::query()->where('workflow_case_id', $case->id)->orderBy('id')->get()->map(fn (WorkflowCaseEdge $edge) => [
                 'from' => (int) $edge->from_workflow_case_node_id,
                 'to' => (int) $edge->to_workflow_case_node_id,
@@ -86,7 +90,7 @@ class CaseDiagram
      * @param  Council|null  $council
      * @return DiagramNode
      */
-    private function nodeOf(WorkflowCaseNode $node, Collection $histories, CaseSituation $situation, array $people, array $names, ?array $council, ?int $requesterUserId, bool $awaitingDesignation): array
+    private function nodeOf(WorkflowCaseNode $node, Collection $histories, CaseSituation $situation, array $people, array $names, ?array $council, ?int $requesterUserId, bool $awaitingDesignation, ?int $plannedUserId): array
     {
         $history = $node->state === WorkflowNodeState::Done ? $histories->get($node->workflow_case_history_id) : null;
         $designatorId = $node->designator_workflow_case_node_id;
@@ -101,7 +105,7 @@ class CaseDiagram
             'sequence' => $node->sequence,
             'subtitle' => StepDescriptions::designatorSubtitle($node->kind, $designatorId === null ? null : ($names[(int) $designatorId] ?? null)),
             'state' => $node->state->value,
-            'people' => $this->peopleOf($node, $history, $situation, $people, $requesterUserId),
+            'people' => $this->peopleOf($node, $history, $situation, $people, $requesterUserId, $plannedUserId),
             'targets' => $this->targetsOf($node, $situation, $people, $requesterUserId),
             'placeholders' => [],
             'consensus' => $node->kind === WorkflowNodeKind::Parallel ? ['text' => $this->consensusOf($node, $council)] : null,
@@ -112,12 +116,13 @@ class CaseDiagram
     }
 
     /**
-     * 人 = 現在のノードは処理対象者(isMe = 判定を求める者がそのノードの処理対象者に当たり、その人)、処理済みのノードは処理者(isMe = 判定を求める者)、ほかは無し。
+     * 人 = 現在のノードは処理対象者(isMe = 判定を求める者がそのノードの処理対象者に当たり、その人)、処理済みのノードは処理者(isMe = 判定を求める者)、
+     * どちらでもない展開の行(省略・到達していない)は今の指定の同じ番号の人 plannedUserId(isMe はいつも偽 = 合議の進み具合の行と同じ規則 {@see CaseCouncils})、ほかは無し。
      *
      * @param  array<int, Person>  $people
      * @return list<array{id: int, code: string, name: string|null, isMe: bool}>
      */
-    private function peopleOf(WorkflowCaseNode $node, ?WorkflowCaseHistory $history, CaseSituation $situation, array $people, ?int $requesterUserId): array
+    private function peopleOf(WorkflowCaseNode $node, ?WorkflowCaseHistory $history, CaseSituation $situation, array $people, ?int $requesterUserId, ?int $plannedUserId): array
     {
         if ($history !== null) {
             return [[...$people[(int) $history->user_id], 'isMe' => (int) $history->user_id === $requesterUserId]];
@@ -126,7 +131,7 @@ class CaseDiagram
         $current = $situation->currentNode($node->id);
 
         if ($current === null) {
-            return [];
+            return $plannedUserId === null ? [] : [[...$people[$plannedUserId], 'isMe' => false]];
         }
 
         $me = $situation->isTargetOf($current) ? $requesterUserId : null;

@@ -85,11 +85,12 @@ class CaseDetailQuery
         $histories = WorkflowCaseHistory::query()->where('workflow_case_id', $case->id)->orderBy('id')->get();
         $situation = $this->decider->situationsOf($requester, $context->date, [$case])[$case->id];
         $targets = array_merge([], ...array_map(fn (CurrentNode $node) => $node->targetUserIds, $situation->currentNodes));
-        $peopleIds = [$case->user_id, ...$targets, ...self::actorIdsOf($histories)];
+        $assignments = $nodes->contains(fn (WorkflowCaseNode $node) => $node->designator_workflow_case_node_id !== null) ? $this->assignments->of($case->id) : [];
+        // 図の展開の行の人(省略・到達していないは今の指定の同じ番号の人 = CaseDiagram)も引くので、今の指定の人を含める
+        $peopleIds = [$case->user_id, ...$targets, ...self::actorIdsOf($histories), ...array_merge([], ...array_values($assignments))];
         $people = $this->people->users($peopleIds, $context->date, $context->localeCode);
         $content = $this->display->show($requester, $recordId, $context->date, $context->localeCode);
         $historiesById = $histories->keyBy('id');
-        $assignments = $nodes->contains(fn (WorkflowCaseNode $node) => $node->designator_workflow_case_node_id !== null) ? $this->assignments->of($case->id) : [];
         $councils = $this->councils->of($case, $nodes, $historiesById, $assignments, $situation, $requester->userId, $context->date, $context->localeCode);
         $diagram = $this->diagram->of($case, $nodes, $historiesById, $assignments, $situation, $people, $councils, $requester->userId);
         $updatedAfter = $this->updatedAfterSubmission($content['record']['updatedAt'], $histories);

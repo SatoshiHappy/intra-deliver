@@ -80,9 +80,13 @@ test('システム管理者: 図で「部長」を押すと右の欄が「部長
     await page
         .getByRole('button', { name: '基準にする人の説明', exact: true })
         .focus();
-    await expect(page.getByRole('tooltip')).toContainText(
-        '前の承認者は、直前のステップを処理した人です。前処理者とも呼びます。',
-    );
+    // 前の「?」の Tooltip が閉じる途中で残ることがあるので、出す文で選ぶ
+    await expect(
+        page.getByRole('tooltip').filter({
+            hasText:
+                '前の承認者は、直前のステップを処理した人です。前処理者とも呼びます。',
+        }),
+    ).toBeVisible();
 });
 
 test('システム管理者: 部長の組織を替えて保存するとトーストが出て要約と図が描き直され、元に戻して保存できる', async ({
