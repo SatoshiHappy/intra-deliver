@@ -6,7 +6,6 @@ use App\Actions\Records\Api\CreateRecord;
 use App\Actions\Records\Api\RecordInput;
 use App\Enums\Records\RecordFieldType;
 use App\Enums\Records\RecordModuleAction;
-use App\Enums\Records\RowAccessScope;
 use App\Models\Master\DepartmentSet;
 use App\Models\Master\User;
 use App\Queries\Authz\Api\Requester;
@@ -16,6 +15,7 @@ use Carbon\CarbonImmutable;
 use PHPUnit\Framework\Attributes\TestWith;
 use Tests\Support\BuildsCommonMaster;
 use Tests\Support\BuildsRecordModules;
+use Tests\Support\RowAccessRestriction;
 use Tests\Support\TransactionalTestCase;
 
 /**
@@ -69,13 +69,13 @@ final class UserOrDepartmentRowAccessTest extends TransactionalTestCase
     }
 
     /**
-     * 業務モジュール meetings(見える範囲は関係する人だけ)と、型「ユーザーと組織」の項目。read を許すかで、ゲストと認証済みの全員に許すアクションを変える。
+     * 業務モジュール meetings(レコードは参照制限あり)と、型「ユーザーと組織」の項目。read を許すかで、ゲストと認証済みの全員に許すアクションを変える。
      */
     private function setUpTheModule(bool $canRead, bool $isMultiple, bool $flagged = true): void
     {
         $permitted = $canRead ? null : [RecordModuleAction::Create];
         $module = $this->recordModule('meetings', $permitted);
-        $module->update(['row_access_scope' => RowAccessScope::Related]);
+        RowAccessRestriction::restrict([$module->id]);
         $this->field($module, 'title', RecordFieldType::String, ['is_title' => true]);
         $attributes = ['is_multiple' => $isMultiple, 'grants_row_access' => $flagged];
 

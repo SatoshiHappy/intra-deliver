@@ -35,7 +35,7 @@ final class RecordModuleEditControllerTest extends TransactionalTestCase
 
         $this->get('/records/admin/modules/project/edit')->assertOk()->assertInertia(fn (Assert $page) => $page
             ->component('Records/Admin/ModuleEdit')
-            ->where('module', ['code' => 'project', 'name' => 'プロジェクト', 'description' => $this->module('project')->description, 'icon' => 'folder-kanban', 'isVisible' => true, 'isDetails' => false, 'categoryIds' => [], 'isAttachmentEnabled' => true, 'rowAccessScope' => 'all'])
+            ->where('module', ['code' => 'project', 'name' => 'プロジェクト', 'description' => $this->module('project')->description, 'icon' => 'folder-kanban', 'isVisible' => true, 'isDetails' => false, 'categoryIds' => [], 'isAttachmentEnabled' => true, 'rowAccessRestrictedByDefault' => false])
             ->has('icons', 25)
             ->where('icons.0', ['value' => 'table', 'label' => '表'])
             ->where('categories', [])

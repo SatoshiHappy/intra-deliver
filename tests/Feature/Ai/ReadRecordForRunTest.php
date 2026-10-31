@@ -5,7 +5,6 @@ namespace Tests\Feature\Ai;
 use App\Actions\Ai\Api\ReadRecordForRun;
 use App\Actions\Ai\CompletingRun;
 use App\Enums\Records\RecordModuleAction;
-use App\Enums\Records\RowAccessScope;
 use App\Models\Ai\AiRun;
 use App\Models\Records\Record;
 use App\Models\Records\RecordModule;
@@ -17,6 +16,7 @@ use LogicException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Support\BuildsCommonMaster;
 use Tests\Support\BuildsRecordModules;
+use Tests\Support\RowAccessRestriction;
 use Tests\Support\TransactionalTestCase;
 
 /**
@@ -39,8 +39,7 @@ final class ReadRecordForRunTest extends TransactionalTestCase
         $record = $this->noteRecord($case === 'no-read' ? [RecordModuleAction::Create] : null);
 
         if ($case === 'hidden-row') {
-            RecordModule::query()->whereKey($record->record_module_id)
-                ->update(['row_access_scope' => RowAccessScope::Related]);
+            RowAccessRestriction::restrict([$record->record_module_id]);
         }
 
         $requester = $case === 'inactive' ? $this->user([['2020-01-01', '2021-01-01']]) : $this->user();
@@ -61,7 +60,7 @@ final class ReadRecordForRunTest extends TransactionalTestCase
     {
         return [
             '業務モジュールの read を持たない' => ['no-read'],
-            '行の判定で見えない(関係する人だけの業務モジュールで関係しない)' => ['hidden-row'],
+            '行の判定で見えない(参照制限のあるレコードで関係者でない)' => ['hidden-row'],
             '読む時の当日に有効でない' => ['inactive'],
         ];
     }

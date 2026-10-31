@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test';
 import type { RecordRevisionField } from '@/types';
-import { detailRowCells } from './recordRevisions';
+import { detailRowCells, rowAccessLines } from './recordRevisions';
 
 const field = (
     code: string,
@@ -54,5 +54,48 @@ describe('detailRowCells', () => {
 
     it('行が無ければ空', () => {
         expect(detailRowCells(fields, null)).toEqual([]);
+    });
+});
+
+describe('rowAccessLines', () => {
+    const viewer = (type: 'user' | 'department', id: number) => ({
+        type,
+        id,
+        code: null,
+        label: `相手${id}`,
+        affiliation: null,
+    });
+
+    it('変化が無ければ行も無い', () => {
+        expect(rowAccessLines(null)).toEqual([]);
+        expect(rowAccessLines({ restricted: null, viewers: null })).toEqual([]);
+    });
+
+    it('チェックの変化は「参照制限」の行で、値は「制限しない」「制限する」', () => {
+        const [line] = rowAccessLines({
+            restricted: { before: false, after: true },
+            viewers: null,
+        });
+
+        expect([line?.field.name, line?.before, line?.after]).toEqual([
+            '参照制限',
+            '制限しない',
+            '制限する',
+        ]);
+    });
+
+    it('外して参照者が消えた保存は「参照制限」→「参照者」の順の 2 行で、参照者は「ユーザーと組織」の値として描く', () => {
+        const lines = rowAccessLines({
+            restricted: { before: true, after: false },
+            viewers: { before: [viewer('department', 2)], after: [] },
+        });
+
+        expect(
+            lines.map((line) => [line.field.name, line.field.type, line.after]),
+        ).toEqual([
+            ['参照制限', 'string', '制限しない'],
+            ['参照者', 'user_or_department', []],
+        ]);
+        expect(lines[1]?.before).toEqual([viewer('department', 2)]);
     });
 });

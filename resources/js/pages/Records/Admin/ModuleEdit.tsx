@@ -39,7 +39,7 @@ const MODULE_KEYS = [
     'is_visible',
     'categories',
     'is_attachment_enabled',
-    'row_access_scope',
+    'row_access_restricted_by_default',
 ];
 
 /**

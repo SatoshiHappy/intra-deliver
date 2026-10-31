@@ -6,6 +6,7 @@ use App\Enums\Menu\WorkMenuGroup;
 use App\Enums\Records\RecordModuleAction;
 use App\Models\Master\User;
 use App\Models\Menu\Menu;
+use App\Models\Records\Record;
 use App\Models\Records\RecordModule;
 use App\Models\Workflow\WorkflowContent;
 use App\Queries\Authz\Api\Requester;
@@ -124,6 +125,30 @@ final class WorkflowSeederApplicationModulesTest extends TransactionalTestCase
     /**
      * 予算は必須(分岐の条件が読む)。課題の対応の申請の「プロジェクト」は、課題の「プロジェクト」と同じコード・同じ型・同じ参照先。
      */
+    /**
+     * 見え方(初期データ.md の 3 節): 申請書の業務モジュールは参照制限の既定が「する」で関係者の印の項目を持たず、見本の申請書のレコードは
+     * どれも参照制限ありで参照者が無い(業務の画面で見られるのは作成者 = 申請者と全件の参照の人)。プロジェクト・課題は既定「しない」。
+     */
+    public function test_the_application_modules_restrict_their_records_and_the_application_targets_do_not(): void
+    {
+        $modules = RecordModule::query()->with('recordFields')
+            ->whereIn('code', [...array_keys(self::APPLICATION_MODULES), 'project', 'project_issue'])
+            ->get()->keyBy('code')->all();
+
+        foreach (array_keys(self::APPLICATION_MODULES) as $code) {
+            $module = $modules[$code];
+            $this->assertTrue($module->row_access_restricted_by_default, $code);
+            $this->assertFalse($module->recordFields->contains('grants_row_access', true), $code);
+            $records = Record::query()->where('record_module_id', $module->id)->whereNull('parent_record_id');
+            $this->assertGreaterThan(0, $records->count(), $code);
+            $this->assertSame(0, (clone $records)->where('row_access_restricted', false)->count(), $code);
+            $this->assertSame(0, (clone $records)->whereHas('rowAccessViewers')->count(), $code);
+        }
+
+        $this->assertFalse($modules['project']->row_access_restricted_by_default);
+        $this->assertFalse($modules['project_issue']->row_access_restricted_by_default);
+    }
+
     public function test_the_budget_is_required_and_the_issue_application_has_the_project_of_the_issue(): void
     {
         $budget = $this->declarations($this->definition('project_plan_application'))['budget'];

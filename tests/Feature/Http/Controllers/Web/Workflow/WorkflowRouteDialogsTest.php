@@ -15,7 +15,7 @@ use Tests\Support\BuildsRouteVersions;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * 案件の詳細のステップごとの操作と処理のダイアログの値(docs の 設計/ワークフロー/ルートの深さ/画面.md 6・7 節の nodeActions): 指定するステップ(種類の語・人数・
+ * 案件の詳細のステップごとの操作と処理のダイアログの値(docs の 設計/ワークフロー/ルートの深さ/画面/案件の側の画面.md の 6 節・7 節の nodeActions): 指定するステップ(種類の語・人数・
  * 可決の条件・今の指定の初期値)、差戻しの候補と制限の 1 行、縦配置の子の否認の文、並列の 2 つのノードでの差戻しの可否、
  * 申請者承認防止(処理対象者が複数で申請者がその 1 人 = モック 6a の blockedReason と 422、申請者だけになる申請の 422)、履歴の指定。
  * 初期データの版 3 と、テストのフローに足した版を使う。ルートの認可を外さない。
@@ -192,7 +192,7 @@ final class WorkflowRouteDialogsTest extends TransactionalTestCase
     }
 
     /**
-     * 処理対象者が申請者本人だけになる申請(u0002 が版 3 で申請 = 課長が u0002 だけ): 申請の画面の next の課長に blockedReason が出て(画面.md 5 節)、
+     * 処理対象者が申請者本人だけになる申請(u0002 が版 3 で申請 = 課長が u0002 だけ): 申請の画面の next の課長に blockedReason が出て(画面/案件の側の画面.md 5 節)、
      * 送っても HTTP で 422 case、案件はできない。
      */
     public function test_an_application_whose_first_step_is_only_the_applicant_is_rejected(): void

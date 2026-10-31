@@ -79,8 +79,14 @@ export type RecordFieldDefinition = {
     grantsRowAccess: boolean; // ユーザー・組織・ユーザーと組織だけ。関係者の印(認可とメニュー/行の権限.md 2.4)
 };
 
-/** 業務モジュールの見える範囲(全員・関係する人だけ = 認可とメニュー/行の権限.md 2.4) */
-export type RowAccessScope = 'all' | 'related';
+/**
+ * レコードの参照制限(チェック「参照を制限する」と参照者 = 設計/業務データの入れ物/認可とメニュー/行の権限.md の 2.4・設計/業務データの入れ物/画面/業務の画面.md の 2.2)。
+ * 参照者は相手の種類と参照の値(並びの順)。チェックが外れなら参照者は空
+ */
+export type RowAccessInput = {
+    restricted: boolean;
+    viewers: RecordPartyValue[];
+};
 
 export type RecordModuleDefinition = {
     code: string;
@@ -151,11 +157,15 @@ export type RecordDetail = {
     updatedBy: RecordReferenceValue | null;
 };
 
+/** 業務の画面の詳細 Records/Show の record(参照制限の今の値を足したもの = 設計/業務データの入れ物/画面/業務の画面.md の 2.3) */
+export type RecordShowDetail = RecordDetail & { rowAccess: RowAccessInput };
+
 /** 複製の登録の画面の初期値(Records/Create の copySource。明細の行は id を持たない = レコードの共通機能/複製.md の 1 節) */
 export type RecordCopySource = {
     id: number;
     values: Record<string, RecordFieldValue>;
     details: Record<string, { values: Record<string, RecordFieldValue> }[]>;
+    rowAccess: RowAccessInput; // 元のレコードの値(業務モジュールの既定を使わない = 設計/業務データの入れ物/レコードの共通機能/複製.md の 2 節)
 };
 
 /** レコードの持ち主(詳細・編集のページの hold。理由だけを出し、案件の番号や名前は出さない = 画面/業務の画面.md 2.2・2.3) */
@@ -167,6 +177,7 @@ export type RecordEditable = {
     values: Record<string, RecordFieldValue>;
     details: Record<string, RecordDetailRow[]>;
     version: string; // 開いたときの版(更新で送り返す)
+    rowAccess: RowAccessInput; // 今の値(設計/業務データの入れ物/画面/業務の画面.md の 2.2)
 };
 
 /** 他モジュール参照の候補の口 records.data.candidates の応答(画面/README.md 4 節) */
@@ -193,8 +204,8 @@ export type RecordAdminModuleForm = {
     categoryIds: string[] | null;
     /** 添付ファイルの追加・削除を許可するか(明細のモジュールは null = レコードの共通機能/業務モジュールの管理.md 2 節) */
     isAttachmentEnabled: boolean | null;
-    /** 見える範囲(明細のモジュールは null = レコードの共通機能/業務モジュールの管理.md 2 節) */
-    rowAccessScope: RowAccessScope | null;
+    /** 参照制限の既定(明細のモジュールは null = 設計/業務データの入れ物/レコードの共通機能/業務モジュールの管理.md の 2 節) */
+    rowAccessRestrictedByDefault: boolean | null;
 };
 
 /**
@@ -259,8 +270,8 @@ export type RecordAdminModule = Omit<RecordModuleDefinition, 'fields'> & {
     parent: RecordModuleSummary | null;
     /** サイドバーに出ているか(明細のモジュールは null) */
     isVisible: boolean | null;
-    /** 見える範囲(明細のモジュールは null) */
-    rowAccessScope: RowAccessScope | null;
+    /** 参照制限の既定(明細のモジュールは null) */
+    rowAccessRestrictedByDefault: boolean | null;
 };
 
 /** 管理の項目の編集の項目(画面/管理の画面.md 3.4)。maxLengthAttribute = 保存された最大の文字数の属性(null = 型の上限)。並び順は項目の表で変えるので持たない */

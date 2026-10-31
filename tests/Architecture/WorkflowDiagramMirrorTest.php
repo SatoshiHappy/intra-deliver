@@ -8,7 +8,7 @@ use PHPUnit\Framework\TestCase;
 use RuntimeException;
 
 /**
- * 図の写しの整合(docs の 設計/ワークフロー/ルートの深さ/画面.md の図の節)。図の配置(resources/js/lib/Workflow/diagramLayout.ts)と枠の見出し
+ * 図の写しの整合(docs の 設計/ワークフロー/ルートの深さ/画面/README.md の図の節)。図の配置(resources/js/lib/Workflow/diagramLayout.ts)と枠の見出し
  * (resources/js/components/Workflow/WorkflowDiagram.tsx)は、サーバーの値の写しを TS に持つ(二重の定義を受け入れ、このテストで結ぶ。片方だけ変わると失敗)。
  * - `ROUTING_KINDS`(分岐・同期の箱の種類)= {@see WorkflowNodeKind::routing()}
  * - `FRAME_KINDS`(子を持つ枠の種類)= {@see WorkflowNodeKind::expanding()}

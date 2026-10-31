@@ -39,7 +39,7 @@ class ApplicableFlows
     ) {}
 
     /**
-     * フローの一覧(設計/ワークフロー/ルートの深さ/画面.md 2 節の flows。並び = sort_key・code。ページングしない)。自分か、申請の代理元のだれかが申請できるフロー
+     * フローの一覧(設計/ワークフロー/ルートの深さ/画面/定義の管理の画面.md 2 節の flows。並び = sort_key・code。ページングしない)。自分か、申請の代理元のだれかが申請できるフロー
      * (設計/ワークフロー/案件の運用/案件の操作/README.md の 3.1 節。判定は {@see self::applicableIdsByAny()})。業務モジュールの名前はモデルの name をそのまま出す。
      *
      * @return list<array{code: string, name: string, description: string|null, moduleName: string}>

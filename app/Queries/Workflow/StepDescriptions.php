@@ -5,7 +5,7 @@ namespace App\Queries\Workflow;
 use App\Enums\Workflow\WorkflowNodeKind;
 
 /**
- * ノードの設定から作る文の 1 か所(docs の 設計/ワークフロー/ルートの深さ/画面.md 9.3)。図の短い文(subtitle)を作る。値だけを扱い、DB を読まない。
+ * ノードの設定から作る文の 1 か所(docs の 設計/ワークフロー/ルートの深さ/画面/図と意匠とE2E.md 9.3)。図の短い文(subtitle)を作る。値だけを扱い、DB を読まない。
  * 区切り 4-2 では処理の時に指定するノードの文だけを作る(対象者・基準にする人の文は対象者・役職の名前の口が要り、要約の 1 文と一緒に 3a-2 で足す)。
  */
 final class StepDescriptions

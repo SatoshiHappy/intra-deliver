@@ -81,6 +81,7 @@ describe('relatedFormData', () => {
                 rules: [],
             },
             headings: [],
+            rowAccess: { restricted: false, viewers: [] },
         });
 
         expect(data.values).toEqual({
@@ -139,6 +140,7 @@ describe('relatedDialogStatus', () => {
             rules: [],
         },
         headings: [],
+        rowAccess: { restricted: false, viewers: [] },
     };
 
     it('フォームが届けばフォーム、届かずに要求が終われば読み込めなかった、終わる前は読み込み中', () => {

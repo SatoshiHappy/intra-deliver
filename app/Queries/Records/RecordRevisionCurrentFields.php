@@ -46,6 +46,7 @@ class RecordRevisionCurrentFields
             )),
             'details' => $details,
             'attachments' => $changes['attachments'],
+            'rowAccess' => $changes['rowAccess'],
         ];
     }
 

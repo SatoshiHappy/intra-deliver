@@ -100,7 +100,7 @@ async function openActionDialog(page: Page, trigger: string, title: string) {
 }
 
 /**
- * 案件の詳細のフロー情報を表に切り替えて、その表を返す(既定は図 = ルートの深さ/画面.md 7 節)。
+ * 案件の詳細のフロー情報を表に切り替えて、その表を返す(既定は図 = ルートの深さ/画面/案件の側の画面.md 7 節)。
  */
 async function flowTable(page: Page) {
     await page
@@ -748,18 +748,18 @@ test('上長・部長が承認すると完了(承認)になり、完了の後も
         '完了(承認)',
     );
 
-    // 申請した申請書のレコードは完了の後も持ち主が外れない(docs の 設計/ワークフロー/業務データとの接続/申請と書き込み.md の 4 節)
+    // 完了の後も持ち主が外れない(設計/ワークフロー/業務データとの接続/申請と書き込み.md の 4 節)。開くのは参照制限のある申請書の作成者
+    await switchUser(page, USERS.manager[1], 'applicant');
     await openProjectRecord(page);
     await expect(
         page.getByText('申請済みのため変更できません', {
             exact: true,
         }),
     ).toBeVisible();
-    await expect(
-        page.getByRole('button', { name: '編集', exact: true }),
-    ).toBeDisabled();
+    const edit = page.getByRole('button', { name: '編集', exact: true });
+    await expect(edit).toBeDisabled();
 
-    await switchUser(page, USERS.manager[1], 'accounting');
+    await switchUser(page, USERS.applicant[1], 'accounting');
     await page.goto('/workflow/cases');
     await caseTab(page, '参照').click();
     await page

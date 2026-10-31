@@ -12,21 +12,24 @@ use LogicException;
 /**
  * レコードの今の保存形の写し(更新履歴の版の snapshot。形 = docs の
  * 設計/業務データの入れ物/レコードの共通機能/データモデル/表.md の 2.1.1 節)。写しは Records の内部だけが作り、ほかのモジュールは
- * 版の id で指す(更新履歴.md の 4.2 節)。jsonb に書く形はモデルのキャストが決める。
+ * 版の id で指す(更新履歴.md の 4.2 節)。jsonb に書く形はモデルのキャストが決める。row_access は参照制限の移しより前の版の
+ * 写しには無い(設計/業務データの入れ物/レコードの共通機能/データモデル/表.md の 2.1.1。新しく作る写しはいつも持つ)。
  *
  * @phpstan-import-type ReferenceTarget from RecordValueReader
+ * @phpstan-import-type StoredRowAccess from RecordRowAccessValues
  *
  * @phpstan-type SnapshotReferences array<int, ReferenceTarget|list<ReferenceTarget>>
  * @phpstan-type SnapshotRow array{id: int, values: array<int, mixed>, references: SnapshotReferences}
  * @phpstan-type SnapshotAttachment array{id: int, upload_id: int, name: string, size: int, mime: string}
  * @phpstan-type Snapshot array{values: array<int, mixed>, references: SnapshotReferences,
- *     details: array<int, list<SnapshotRow>>, attachments: list<SnapshotAttachment>}
+ *     details: array<int, list<SnapshotRow>>, attachments: list<SnapshotAttachment>, row_access?: StoredRowAccess}
  */
 class RecordSnapshots
 {
     public function __construct(
         private RecordDefinitionQuery $definitions,
         private RecordValueReader $reader,
+        private RecordRowAccessValues $rowAccess,
     ) {}
 
     /**
@@ -57,6 +60,7 @@ class RecordSnapshots
             'references' => $this->targets($references, $record->id),
             'details' => $details,
             'attachments' => $this->attachments($record->record_module_id, $record->id),
+            'row_access' => $this->rowAccess->stored($record),
         ];
     }
 

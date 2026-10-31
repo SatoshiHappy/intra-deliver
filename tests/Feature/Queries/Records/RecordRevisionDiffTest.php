@@ -157,7 +157,7 @@ final class RecordRevisionDiffTest extends TransactionalTestCase
         $title = $this->field($module, 'title');
         $owner = $this->field($module, 'owner', RecordFieldType::User);
         $tasks = $this->detailsField($module, 'tasks');
-        $empty = ['fields' => [], 'details' => [], 'attachments' => []];
+        $empty = ['fields' => [], 'details' => [], 'attachments' => [], 'rowAccess' => null];
         $malformed = [
             'values' => 'not an object',
             'references' => [$owner->id => ['type' => 'department', 'id' => 1]],

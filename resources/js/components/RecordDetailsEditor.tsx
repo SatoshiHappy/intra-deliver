@@ -4,6 +4,7 @@ import {
     hasCharacterCount,
     RecordFieldInput,
 } from '@/components/RecordFieldInput';
+import { RecordColumnHeads } from '@/components/RecordFieldBadges';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -174,11 +175,7 @@ export function RecordDetailsEditor({
             <Table>
                 <TableHeader>
                     <TableRow>
-                        {columns.map((column) => (
-                            <TableHead key={column.code}>
-                                {column.name}
-                            </TableHead>
-                        ))}
+                        <RecordColumnHeads columns={columns} />
                         <TableHead className="w-0">
                             <span className="sr-only">操作</span>
                         </TableHead>

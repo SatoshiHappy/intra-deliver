@@ -7,7 +7,6 @@ use App\Actions\Records\Api\RecordInput;
 use App\Actions\Records\UpdateRecordField;
 use App\Actions\Records\UpdateRecordModule;
 use App\Enums\Builtin\Meeting;
-use App\Enums\Records\RowAccessScope;
 use App\Models\Master\User;
 use App\Models\Menu\Menu;
 use App\Models\Records\Record;
@@ -42,9 +41,9 @@ final class BuiltinSeederTest extends TransactionalTestCase
         $module = $this->meeting();
 
         $this->assertSame(
-            ['会議', '会議の記録と議事録', 'users', RowAccessScope::Related, true, true],
+            ['会議', '会議の記録と議事録', 'users', true, true, true],
             [
-                $module->name, $module->description, $module->icon, $module->row_access_scope,
+                $module->name, $module->description, $module->icon, $module->row_access_restricted_by_default,
                 $module->is_attachment_enabled, $module->is_builtin,
             ],
         );

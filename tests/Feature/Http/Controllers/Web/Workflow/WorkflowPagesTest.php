@@ -16,7 +16,7 @@ use Tests\Support\TransactionalTestCase;
 use Tests\Support\UsesSeededRecords;
 
 /**
- * ワークフローのページの props と見える範囲(docs の 設計/ワークフロー/画面/README.md 1.1〜2 節・画面/申請と案件.md 3〜5 節、認可と一覧.md 7 節の HTTP の Feature テスト):
+ * ワークフローのページの props と見られる範囲(docs の 設計/ワークフロー/画面/README.md 1.1〜2 節・画面/申請と案件.md 3〜5 節、認可と一覧.md 7 節の HTTP の Feature テスト):
  * フローの一覧・申請(新規・一時保存・
  * 再申請)・案件一覧・案件の詳細の props の形、u0001 が初期データの案件のうち自分の分だけを見て、ほかの案件の詳細は 404、操作の画面を開けないときの 404・403・
  * 詳細への移動(一時保存の画面 = 見えない 404 → 申請できる人でない 403 → 一時保存でなければ詳細へ、再申請の画面 = 見えない・一時保存 404 → update 403 →
@@ -79,7 +79,7 @@ final class WorkflowPagesTest extends TransactionalTestCase
 
     /**
      * 申請基準日の候補(クエリ・一時保存の値)は、日付として読めれば今日の前後 1 年の外でもそのまま baseDate と next に使う(範囲は送った後の 422 で示す)。
-     * 読めない候補は飛ばし、どれも読めなければ今日(設計/ワークフロー/ルートの深さ/画面.md 5 節)。範囲の外の日 = 今日の 1 年後の翌日(計画のフローの版 3 は終わりなし)。
+     * 読めない候補は飛ばし、どれも読めなければ今日(設計/ワークフロー/ルートの深さ/画面/案件の側の画面.md 5 節)。範囲の外の日 = 今日の 1 年後の翌日(計画のフローの版 3 は終わりなし)。
      */
     public function test_a_readable_base_date_outside_a_year_around_today_is_kept_in_the_form_and_the_next_steps(): void
     {

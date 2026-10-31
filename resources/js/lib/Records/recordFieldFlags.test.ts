@@ -6,14 +6,14 @@ const labelsOf = (type: RecordFieldType, isMultiline = false) =>
     attributeFlags({ type, isMultiline }).map((flag) => flag.label);
 
 describe('attributeFlags', () => {
-    it('ユーザー・組織は「関係する人」を最後に出し、説明を付ける', () => {
+    it('ユーザー・組織は「関係者」を最後に出し、説明を付ける', () => {
         expect(labelsOf('user')).toEqual([
             '必須',
             '一覧に表示',
             '検索条件にする',
-            '関係する人',
+            '関係者',
         ]);
-        expect(labelsOf('department')).toContain('関係する人');
+        expect(labelsOf('department')).toContain('関係者');
 
         const flag = attributeFlags({ type: 'user', isMultiline: false }).at(
             -1,
@@ -22,10 +22,10 @@ describe('attributeFlags', () => {
             key: 'grantsRowAccess',
             inputKey: 'grants_row_access',
         });
-        expect(flag?.hint).toContain('見える範囲が「関係する人だけ」');
+        expect(flag?.hint).toContain('レコードの関係者にします');
     });
 
-    it('ほかの型は「関係する人」を出さない', () => {
+    it('ほかの型は「関係者」を出さない', () => {
         const others: RecordFieldType[] = [
             'string',
             'integer',
@@ -39,7 +39,7 @@ describe('attributeFlags', () => {
         ];
 
         for (const type of others) {
-            expect(labelsOf(type)).not.toContain('関係する人');
+            expect(labelsOf(type)).not.toContain('関係者');
         }
     });
 

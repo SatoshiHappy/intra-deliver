@@ -73,6 +73,7 @@ final class RecordSnapshotsTest extends TransactionalTestCase
                 $notes->id => [],
             ],
             'attachments' => [$estimate, $minutes],
+            'row_access' => ['restricted' => false, 'viewers' => []],
         ], $this->snapshot($record));
     }
 

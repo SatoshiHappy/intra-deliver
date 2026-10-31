@@ -4,16 +4,15 @@ namespace Tests\Feature\Http\Controllers\Web\Workflow;
 
 use App\Actions\Workflow\RecordApplicationSteps;
 use App\Enums\Records\RecordModuleAction;
-use App\Enums\Records\RowAccessScope;
 use App\Enums\Workflow\WorkflowProxyKind;
 use App\Models\Records\Record;
 use App\Models\Records\RecordAttachment;
-use App\Models\Records\RecordModule;
 use App\Models\Upload\Upload;
 use Carbon\CarbonImmutable;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\Support\AppliesFromRecords;
 use Tests\Support\RegistersProxies;
+use Tests\Support\RowAccessRestriction;
 use Tests\Support\TransactionalTestCase;
 
 /**
@@ -128,7 +127,7 @@ final class RecordApplicationPageTest extends TransactionalTestCase
     public function test_a_record_outside_the_row_access_is_not_found(): void
     {
         $record = $this->projectRecord($this->seededUser('u0001'));
-        RecordModule::query()->where('code', self::PROJECT)->update(['row_access_scope' => RowAccessScope::Related]);
+        RowAccessRestriction::restrictCode(self::PROJECT);
         $this->actingAs($this->seededUser('u0003'));
 
         $this->get($this->formUrl($record->id))->assertNotFound();

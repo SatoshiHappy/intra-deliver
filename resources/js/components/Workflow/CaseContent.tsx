@@ -1,9 +1,12 @@
+import {
+    RecordColumnHeads,
+    RecordFieldName,
+} from '@/components/RecordFieldBadges';
 import { RecordValue } from '@/components/RecordValue';
 import {
     Table,
     TableBody,
     TableCell,
-    TableHead,
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
@@ -56,7 +59,7 @@ export function CaseContent({
                         )}
                     >
                         <dt className="text-xs text-muted-foreground">
-                            {field.name}
+                            <RecordFieldName field={field} />
                         </dt>
                         <dd>
                             <RecordValue
@@ -82,11 +85,7 @@ export function CaseContent({
                             <Table aria-label={field.name}>
                                 <TableHeader>
                                     <TableRow>
-                                        {columns.map((column) => (
-                                            <TableHead key={column.code}>
-                                                {column.name}
-                                            </TableHead>
-                                        ))}
+                                        <RecordColumnHeads columns={columns} />
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>

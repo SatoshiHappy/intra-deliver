@@ -22,11 +22,14 @@ trait LocksRecordModule
     private const RECORD_MODULE_LOCK_BASE = 4_200_000_000_000_000;
 
     /**
-     * レコードの書き込みの前に、業務モジュールの鍵を共有で取る。
+     * レコードの書き込みの前に、業務モジュールの鍵を共有で取り、渡された業務モジュールを読み直す。
+     * 鍵の後の業務モジュールの値(参照制限の既定・添付の許可)を使うため = docs の
+     * 設計/業務データの入れ物/項目と規則/規則と業務処理/README.md の 9.2 の 1。
      */
     private function lockRecordModuleShared(RecordModule $module): void
     {
         DB::select('SELECT pg_advisory_xact_lock_shared(?)', [$this->recordModuleLockKey($module)]);
+        $module->refresh();
     }
 
     /**

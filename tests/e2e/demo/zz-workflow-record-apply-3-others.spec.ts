@@ -26,9 +26,9 @@ test('代理: 代理元が作成者のレコードを、代理先が詳細の「
     page,
 }) => {
     const name = 'E2E の既存の計画 D';
-    // 山田 恵(経理部)が作ったレコード。山田 恵 → 吉田 達也の申請の代理(全フロー)が初期データにある(設計/ワークフロー/案件の運用/初期データ.md 4.1)
+    // 山田 恵(経理部)が参照制限を外して作ったレコード(代理先が開ける)。山田 恵 → 吉田 達也の代理が初期データにある(設計/ワークフロー/案件の運用/初期データ.md 4.1)
     await openAs(page, 'accounting', '/');
-    const recordUrl = await createRecord(page, name);
+    const recordUrl = await createRecord(page, name, true);
     await switchUser(page, ACCOUNTING, 'concurrent');
     await page.goto(recordUrl);
 

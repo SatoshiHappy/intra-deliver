@@ -6,6 +6,7 @@ import type {
     RecordCopySource,
     RecordHeadingGroup,
     RecordModuleDefinition,
+    RowAccessInput,
 } from '@/types';
 
 type Props = {
@@ -16,6 +17,8 @@ type Props = {
     can: { read: boolean };
     /** 複製の元の値(クエリ copy のときだけ。レコードの共通機能/複製.md の 1 節) */
     copySource: RecordCopySource | null;
+    /** 参照制限の初期値(業務モジュールの参照制限の既定と空の参照者 = 画面/業務の画面.md 2.2) */
+    rowAccess: RowAccessInput;
 };
 
 /**
@@ -42,11 +45,11 @@ function cancelHrefOf(props: Props) {
 }
 
 /**
- * 業務の登録(docs の 設計/業務データの入れ物/画面/業務の画面.md 2.2)。複製は元の値(項目と明細。明細の行は新しい行)を初期値にする
- * (レコードの共通機能/複製.md の 1 節)。
+ * 業務の登録(docs の 設計/業務データの入れ物/画面/業務の画面.md 2.2)。複製は元の値(項目と明細。明細の行は新しい行。参照制限も
+ * 業務モジュールの既定でなく元の値)を初期値にする(設計/業務データの入れ物/レコードの共通機能/複製.md の 1 節・2 節)。
  */
 export default function Create(props: Props) {
-    const { module, headings, copySource } = props;
+    const { module, headings, copySource, rowAccess } = props;
     const heading = headingOf(module);
 
     return (
@@ -64,6 +67,7 @@ export default function Create(props: Props) {
                             ? createFormData(module)
                             : editFormData(module, copySource)
                     }
+                    initialRowAccess={copySource?.rowAccess ?? rowAccess}
                     action={store(module.code)}
                     submitLabel="登録"
                     cancelHref={cancelHrefOf(props)}

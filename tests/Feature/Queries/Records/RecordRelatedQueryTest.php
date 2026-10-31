@@ -4,7 +4,6 @@ namespace Tests\Feature\Queries\Records;
 
 use App\Enums\Records\RecordFieldType;
 use App\Enums\Records\RecordModuleAction;
-use App\Enums\Records\RowAccessScope;
 use App\Models\Records\RecordRelatedColumn;
 use App\Queries\Authz\Api\Requester;
 use App\Queries\Records\Api\RecordRelatedEntry;
@@ -14,12 +13,14 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
 use Tests\Support\BuildsCommonMaster;
 use Tests\Support\BuildsRelatedRecords;
+use Tests\Support\RowAccessRestriction;
 use Tests\Support\TransactionalTestCase;
 
 /**
  * 関連レコードの読み取りの口(docs の 設計/業務データの入れ物/レコードの共通機能/関連レコード.md の 1〜4 節・6 節・7 節・9 節の「行の権限」「入口」「列」「新規」):
  * 入口は定義から作り(0 件も出る)、読めない業務モジュールの入口は名前も件数も出さない。件数・表は行の判定を通る参照元だけで、明細の 2 行が同じ親でも 1 件。
- * 「新規」は 4.1 節の条件の組。問い合わせの数は参照元の数に比例しない。
+ * 「新規」は 4.1 節の条件の組。問い合わせの数は参照元の数に比例しない。フォームの参照制限の初期値 rowAccess = 参照元の業務モジュールの
+ * 参照制限の既定と空の参照者(4.2 節)。
  *
  * @phpstan-import-type RelatedFixture from BuildsRelatedRecords
  */
@@ -112,7 +113,7 @@ final class RecordRelatedQueryTest extends TransactionalTestCase
     public function test_the_new_button_is_hidden_when_this_record_does_not_pass_the_row_check(): void
     {
         $f = $this->relatedFixture();
-        $f['projects']->update(['row_access_scope' => RowAccessScope::Related]);
+        RowAccessRestriction::restrict([$f['projects']->id]);
         $owner = $this->user();
         $project = $this->recordIn($f['projects'], [], ['created_by_user_id' => $owner->id]);
 
@@ -123,7 +124,7 @@ final class RecordRelatedQueryTest extends TransactionalTestCase
     public function test_unrelated_referencing_records_are_not_counted_or_listed_unless_all_may_be_read(): void
     {
         $f = $this->relatedFixture();
-        $f['estimates']->update(['row_access_scope' => RowAccessScope::Related]);
+        RowAccessRestriction::restrict([$f['estimates']->id]);
         $creator = $this->user();
         $project = $this->recordIn($f['projects']);
         $own = $this->recordIn($f['estimates'], [], ['created_by_user_id' => $creator->id]);
@@ -142,7 +143,7 @@ final class RecordRelatedQueryTest extends TransactionalTestCase
     public function test_all_referencing_records_count_with_the_read_all_permission(): void
     {
         $f = $this->relatedFixture(['estimates' => [RecordModuleAction::Read, RecordModuleAction::ReadAll]]);
-        $f['estimates']->update(['row_access_scope' => RowAccessScope::Related]);
+        RowAccessRestriction::restrict([$f['estimates']->id]);
         $project = $this->recordIn($f['projects']);
         $unrelated = $this->recordIn($f['estimates'], [], ['created_by_user_id' => $this->user()->id]);
         $this->refer($unrelated, $f['customer'], $project);
@@ -243,12 +244,13 @@ final class RecordRelatedQueryTest extends TransactionalTestCase
 
         $this->assertNotNull($form);
         $this->assertSame(['estimates.customer', 'customer'], [$form['entry'], $form['field']]);
-        $this->assertSame(
-            ['id' => $project->id, 'code' => null, 'label' => '案件 A', 'affiliation' => null],
-            $form['value'],
-        );
+        $value = ['id' => $project->id, 'code' => null, 'label' => '案件 A', 'affiliation' => null];
+        $this->assertSame($value, $form['value']);
         $this->assertSame('estimates', $form['module']['code']);
         $this->assertSame(['title', 'customer', 'billing'], $form['headings'][0]['fieldCodes']);
+        $this->assertSame(['restricted' => false, 'viewers' => []], $form['rowAccess']);
+        $f['estimates']->update(['row_access_restricted_by_default' => true]);
+        $this->assertTrue($this->formOf($project->id, 'estimates.customer')['rowAccess']['restricted'] ?? null);
         $this->assertNull($this->formOf($project->id, 'estimates.lines.product'));
         $this->assertNull($this->formOf($project->id, 'estimates.nothing'));
     }

@@ -20,7 +20,7 @@ use Tests\Support\BuildsRouteVersions;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * 申請の画面の次の処理対象者と申請基準日(docs の 設計/ワークフロー/ルートの深さ/画面.md 5 節の next・baseDateRange・baseDate、案件の操作/操作.md 10.1)。
+ * 申請の画面の次の処理対象者と申請基準日(docs の 設計/ワークフロー/ルートの深さ/画面/案件の側の画面.md 5 節の next・baseDateRange・baseDate、案件の操作/操作.md 10.1)。
  * 申請基準日の版で、申請のノードから分岐開始を評価せずに届くノード(同期開始なら複数)を展開する。初期データの計画のフロー(版 1 = 無効・版 2 = 一本道 A・版 3 = 分岐 B)
  * と、テストのフローに足した版を使う。
  */
@@ -86,7 +86,8 @@ final class ApplicationNextTest extends TransactionalTestCase
     }
 
     /**
-     * 申請者承認防止のノードの今の展開が申請者本人だけなら blockedReason に 13 節の文言(画面.md 5 節)。申請者とほかの人がいる・0 人(設計/ワークフロー/画面/申請と案件.md 3 節の文で示す)・
+     * 申請者承認防止のノードの今の展開が申請者本人だけなら blockedReason に 13 節の文言(画面/案件の側の画面.md 5 節)。
+     * 申請者とほかの人がいる・0 人(設計/ワークフロー/画面/申請と案件.md 3 節の文で示す)・
      * 防止がオフなら null。並びは位置の順(同期の枝)。
      */
     public function test_a_preventing_node_whose_only_target_is_the_applicant_has_the_blocked_reason(): void

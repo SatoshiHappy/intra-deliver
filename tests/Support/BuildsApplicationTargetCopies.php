@@ -14,7 +14,6 @@ use App\Actions\Workflow\WorkflowRouteNodeInput;
 use App\Enums\Authz\SelectionConditionKind;
 use App\Enums\Records\RecordFieldType;
 use App\Enums\Records\RecordModuleAction;
-use App\Enums\Records\RowAccessScope;
 use App\Enums\Workflow\WorkflowNodeKind;
 use App\Models\Master\User;
 use App\Models\Records\RecordFieldOption;
@@ -79,7 +78,7 @@ trait BuildsApplicationTargetCopies
     }
 
     /**
-     * 申請対象(m_hub)のレコード。参照 ref・ref_other は m_ref_a の、$referenceCreator が作ったレコード(作った後に見える範囲を変えると読めなくなる)。
+     * 申請対象(m_hub)のレコード。参照 ref・ref_other は m_ref_a の、$referenceCreator が作ったレコード(作った後に参照制限を付けると読めなくなる)。
      *
      * @return array{hub: int, ref: int} 申請対象と参照先の id
      */
@@ -157,11 +156,11 @@ trait BuildsApplicationTargetCopies
     }
 
     /**
-     * 業務モジュールの見える範囲を関係する人だけにする(作成者だけが見える)。
+     * 業務モジュールのレコードを参照制限ありにする(関係者の印の項目が無ければ作成者だけが見える = {@see RowAccessRestriction})。
      */
     protected function onlyRelated(string $moduleCode): void
     {
-        RecordModule::query()->where('code', $moduleCode)->update(['row_access_scope' => RowAccessScope::Related]);
+        RowAccessRestriction::restrictCode($moduleCode);
     }
 
     /**

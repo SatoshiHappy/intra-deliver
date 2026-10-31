@@ -208,6 +208,7 @@ final class RecordFormQueryTest extends TransactionalTestCase
                 'values' => ['title' => '計画'],
                 'details' => ['tasks' => [['id' => $row->id, 'values' => ['task_name' => '設計']]]],
                 'version' => $record->refresh()->version(),
+                'rowAccessRestricted' => false,
             ],
             app(RecordFormQuery::class)->editValues($this->requester(), 'projects', $record->id, $this->today(), 'ja'),
         );

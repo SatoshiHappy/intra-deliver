@@ -54,7 +54,8 @@ class CaseOperationDecider
     }
 
     /**
-     * 詳細の案件に 1 つの can(ルートの深さ/画面.md 7 節。ノードごとの承認・承認終了・否認・差戻しは {@see CaseNodeActions})。reapply = 表 ∧ 業務モジュールの update。
+     * 詳細の案件に 1 つの can(ルートの深さ/画面/案件の側の画面.md 7 節。ノードごとの承認・承認終了・否認・差戻しは {@see CaseNodeActions})。
+     * reapply = 表 ∧ 業務モジュールの update。
      *
      * @param  Closure(WorkflowOperation): bool  $permits  表(操作 → 許すか)
      * @return array{pullBack: bool, reapply: bool, withdraw: bool}
@@ -276,7 +277,7 @@ class CaseOperationDecider
     }
 
     /**
-     * can の表: ノードを問わない操作(ノード = null)と、現在のノードごとの表の OR(どれかのノードで許されれば真 = 画面.md 7 節)。引戻しは
+     * can の表: ノードを問わない操作(ノード = null)と、現在のノードごとの表の OR(どれかのノードで許されれば真 = 画面/案件の側の画面.md 7 節)。引戻しは
      * 引戻せるノードが 1 つ以上あれば真(認可と一覧.md 2 節)。403 の判定(canApply・canUpdateRecord)は呼び手が別に AND する。
      *
      * @return Closure(WorkflowOperation): bool

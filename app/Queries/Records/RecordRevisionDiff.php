@@ -26,6 +26,7 @@ class RecordRevisionDiff
     public function __construct(
         private RecordRevisionComparison $comparison,
         private RecordValueReader $reader,
+        private RecordRevisionRowAccess $rowAccess,
     ) {}
 
     /**
@@ -84,6 +85,7 @@ class RecordRevisionDiff
                 ], $detail['rows']),
             ], $changes['details']),
             'attachments' => array_map(fn (array $change) => $this->attachment($change), $changes['attachments']),
+            'rowAccess' => $this->rowAccess->shown($changes['rowAccess'], $targets),
         ];
     }
 
@@ -189,7 +191,7 @@ class RecordRevisionDiff
     }
 
     /**
-     * 変化に出る参照の相手(項目の両側と、明細の行の全部の参照の項目)。
+     * 変化に出る参照の相手(項目の両側と、明細の行の全部の参照の項目と、参照者の両側)。
      *
      * @param  Changes  $changes
      * @return list<ReferenceTarget>
@@ -210,7 +212,7 @@ class RecordRevisionDiff
             }
         }
 
-        return array_merge([], ...$targets);
+        return array_merge($this->rowAccess->targets($changes['rowAccess']), ...$targets);
     }
 
     /**

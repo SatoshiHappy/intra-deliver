@@ -36,7 +36,7 @@ import type {
 import { personName } from '@/lib/Workflow/workflowLabels';
 import type { WorkflowDiagramEdge, WorkflowStepState } from '@/types';
 
-/** 図の高さの上限(px。初期データの版 3 の図が 1 倍で入る高さ)。超えたら全体が入るまで縮め(0.6 倍まで)、それでも入らなければ図の中で移動して見る(設計/ワークフロー/ルートの深さ/画面.md 8 節) */
+/** 図の高さの上限(px。版 3 の図が 1 倍で入る高さ)。超えたら 0.6 倍まで縮め、なお入らなければ図の中で移動(設計/ワークフロー/ルートの深さ/画面/図と意匠とE2E.md 8 節) */
 const MAX_HEIGHT = 1120;
 
 /**
@@ -55,7 +55,7 @@ const FRAME_KIND_LABELS: Partial<Record<DiagramInputNode['kind'], string>> = {
     parallel: '縦配置',
 };
 
-/** 状態ごとの箱の縁(状態色 = 札と同じトークン。到達していないは既定の縁、省略は薄い破線の縁 = 設計/ワークフロー/ルートの深さ/画面.md 8 節) */
+/** 状態ごとの箱の縁(状態色 = 札と同じトークン。到達していないは既定の縁、省略は薄い破線の縁 = 設計/ワークフロー/ルートの深さ/画面/図と意匠とE2E.md 8 節) */
 const BORDER_CLASSES: Record<WorkflowStepState['state'], string> = {
     hold: 'border-status-returned-foreground',
     done: 'border-status-settled-foreground/70',
@@ -240,7 +240,7 @@ function FrameNode({ data }: NodeProps<Node<FrameNodeData>>) {
     );
 }
 
-/** 最後の後の「終了」の印(終了のノードは持たない = ルートの深さ/画面.md 8 節。図の上の印だけ) */
+/** 最後の後の「終了」の印(終了のノードは持たない = ルートの深さ/画面/図と意匠とE2E.md 8 節。図の上の印だけ) */
 function EndNode() {
     return (
         <div className="flex size-full items-center justify-center rounded-full border bg-card text-xs text-muted-foreground">
@@ -313,7 +313,7 @@ const NODE_TYPES = {
 const EDGE_TYPES = { route: RouteEdge };
 
 /**
- * フロー図(docs の 設計/ワークフロー/ルートの深さ/画面.md 8 節。定義の図と案件の図を同じ部品で描く): 読み取り専用(動かす・つなぐ・消す・選ぶはできない)で、
+ * フロー図(docs の 設計/ワークフロー/ルートの深さ/画面/図と意匠とE2E.md 8 節。定義の図と案件の図を同じ部品で描く): 読み取り専用(動かす・つなぐ・消す・選ぶはできない)で、
  * 拡大・縮小と移動だけを残す。色だけで伝えないよう、案件の図は状態の語を箱に出す。読み上げとキーボードは表(フロー情報の表)で同じ情報を得る。
  */
 export function WorkflowDiagram({

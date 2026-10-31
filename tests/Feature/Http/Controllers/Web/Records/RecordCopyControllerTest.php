@@ -7,7 +7,6 @@ use App\Actions\Records\Api\RecordDetailRowInput;
 use App\Actions\Records\Api\RecordInput;
 use App\Enums\Records\RecordModuleAction;
 use App\Enums\Records\RecordRevisionAction;
-use App\Enums\Records\RowAccessScope;
 use App\Models\Records\Record;
 use App\Models\Records\RecordAttachment;
 use App\Models\Records\RecordComment;
@@ -19,6 +18,7 @@ use PHPUnit\Framework\Attributes\TestWith;
 use Tests\Support\BuildsCommonMaster;
 use Tests\Support\BuildsRelatedRecords;
 use Tests\Support\RegistersRecordHolds;
+use Tests\Support\RowAccessRestriction;
 use Tests\Support\TransactionalTestCase;
 
 /**
@@ -57,6 +57,7 @@ final class RecordCopyControllerTest extends TransactionalTestCase
                         ['values' => ['product' => $project]],
                         ['values' => ['product' => null]],
                     ]],
+                    'rowAccess' => ['restricted' => false, 'viewers' => []],
                 ]));
         $this->get('/records/data/estimates/create')->assertOk()
             ->assertInertia(fn (Assert $page) => $page->where('copySource', null));
@@ -111,7 +112,7 @@ final class RecordCopyControllerTest extends TransactionalTestCase
     public function test_an_unrelated_record_is_not_found(): void
     {
         $f = $this->relatedFixture();
-        $f['estimates']->update(['row_access_scope' => RowAccessScope::Related]);
+        RowAccessRestriction::restrict([$f['estimates']->id]);
         $id = $this->recordIn($f['estimates'], ['title' => '見積'], ['created_by_user_id' => $this->user()->id])->id;
 
         $this->get("/records/data/estimates/create?copy={$id}")->assertNotFound();
@@ -122,7 +123,7 @@ final class RecordCopyControllerTest extends TransactionalTestCase
         $f = $this->relatedFixture(['estimates' => [
             RecordModuleAction::Read, RecordModuleAction::Create, RecordModuleAction::ReadAll,
         ]]);
-        $f['estimates']->update(['row_access_scope' => RowAccessScope::Related]);
+        RowAccessRestriction::restrict([$f['estimates']->id]);
         $id = $this->recordIn($f['estimates'], ['title' => '見積'], ['created_by_user_id' => $this->user()->id])->id;
 
         $this->get("/records/data/estimates/create?copy={$id}")->assertOk()

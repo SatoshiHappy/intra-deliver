@@ -3,7 +3,7 @@ import type { PickedUser } from '@/lib/Workflow/caseActionForm';
 import type { WorkflowDesignation } from '@/types';
 
 /**
- * 「選択中 {n} 人」の後ろの文(ルートの深さ/画面.md 6 節)。必要な数はサーバーの表 `decision.required` を引き、画面は式を持たない。
+ * 「選択中 {n} 人」の後ろの文(ルートの深さ/画面/案件の側の画面.md 6 節)。必要な数はサーバーの表 `decision.required` を引き、画面は式を持たない。
  */
 function statusNoteOf(
     assigneeField: WorkflowDesignation,
@@ -26,7 +26,7 @@ function statusNoteOf(
 }
 
 /**
- * 承認のダイアログの指定の欄 1 つ(指定されるステップごと。ルートの深さ/画面.md 6 節)。選ぶ部分(選んだ人の並び・候補の検索)は人を選ぶ欄
+ * 承認のダイアログの指定の欄 1 つ(指定されるステップごと。ルートの深さ/画面/案件の側の画面.md 6 節)。選ぶ部分(選んだ人の並び・候補の検索)は人を選ぶ欄
  * {@see UserPickerField}(候補 = 処理対象者の候補の口。横配置は並びが承認の順)。見出しと状態の 1 行を足す。
  * 人数の上限を超えても選べ、超える分は送った時の 422 が正本。エラー(assignments.<id>)は欄の下。
  */

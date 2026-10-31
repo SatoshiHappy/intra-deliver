@@ -22,7 +22,7 @@ use Tests\Support\TransactionalTestCase;
 final class WorkflowRouteAuthorizationTest extends TransactionalTestCase
 {
     /**
-     * ゲストと認証済みに許すワークフローのルート 31 本(設計/ワークフロー/画面/README.md 1.1 の表の順と、ルートの深さ/画面.md 1.1 の処理対象者の候補、
+     * ゲストと認証済みに許すワークフローのルート 31 本(設計/ワークフロー/画面/README.md 1.1 の表の順と、ルートの深さ/画面/README.md 1.1 の処理対象者の候補、
      * 案件の運用/画面/README.md の 1.1 節の 11 本、写しの値の入口)
      */
     private const ROUTES = [

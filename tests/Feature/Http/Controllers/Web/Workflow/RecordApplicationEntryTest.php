@@ -5,9 +5,7 @@ namespace Tests\Feature\Http\Controllers\Web\Workflow;
 use App\Actions\Records\DeleteRecord;
 use App\Actions\Workflow\RecordApplicationSteps;
 use App\Enums\Records\RecordModuleAction;
-use App\Enums\Records\RowAccessScope;
 use App\Models\Records\Record;
-use App\Models\Records\RecordModule;
 use App\Models\Workflow\WorkflowCase;
 use Carbon\CarbonImmutable;
 use Illuminate\Testing\TestResponse;
@@ -15,6 +13,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Tests\Support\AppliesFromRecords;
 use Tests\Support\BuildsUploads;
 use Tests\Support\RegistersProxies;
+use Tests\Support\RowAccessRestriction;
 use Tests\Support\TransactionalTestCase;
 
 /**
@@ -94,7 +93,7 @@ final class RecordApplicationEntryTest extends TransactionalTestCase
     public function test_a_guest_gets_403_and_a_record_outside_the_row_access_gets_404(): void
     {
         $record = $this->projectRecord($this->seededUser('u0001'));
-        RecordModule::query()->where('code', self::PROJECT)->update(['row_access_scope' => RowAccessScope::Related]);
+        RowAccessRestriction::restrictCode(self::PROJECT);
         $counts = $this->workflowCounts();
 
         $this->postJson($this->applyUrl(), $this->payload($record))->assertForbidden();

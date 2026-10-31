@@ -1,4 +1,5 @@
 import { router, usePage } from '@inertiajs/react';
+import { RecordFieldName } from '@/components/RecordFieldBadges';
 import { RecordHeadingGroups } from '@/components/RecordHeadingGroups';
 import { RecordRelatedChips } from '@/components/RecordRelatedChips';
 import {
@@ -7,6 +8,7 @@ import {
 } from '@/components/RecordRelatedTab';
 import { RecordShowTabs } from '@/components/RecordShowTabs';
 import { RecordDetailsTable } from '@/components/Records/RecordDetailsTable';
+import { RecordRowAccessSummary } from '@/components/Records/RecordRowAccessSummary';
 import { RecordValue } from '@/components/RecordValue';
 import type { useRecordRelated } from '@/hooks/use-record-related';
 import { ownValue } from '@/lib/Records/recordAddons';
@@ -26,6 +28,7 @@ import type {
     RecordFieldDefinition,
     RecordHeadingGroup,
     RecordModuleDefinition,
+    RecordShowDetail,
 } from '@/types';
 
 /** 関連レコードのタブ・チップの状態と操作(rowHref = 行の詳細の URL。ページがルートから作る) */
@@ -37,7 +40,7 @@ type RelatedTabState = ReturnType<typeof useRecordRelated> & {
 type TabProps = {
     module: RecordModuleDefinition;
     headings: RecordHeadingGroup[];
-    record: RecordDetail;
+    record: RecordShowDetail;
     notes: Record<string, string>;
     related: RelatedTabState;
 };
@@ -62,7 +65,9 @@ function FieldItem({
                 isWideField(field) && 'col-span-full',
             )}
         >
-            <dt className="text-xs text-muted-foreground">{field.name}</dt>
+            <dt className="text-xs text-muted-foreground">
+                <RecordFieldName field={field} />
+            </dt>
             {note !== undefined && (
                 <dd className="order-first text-xs text-muted-foreground">
                     {note}
@@ -81,7 +86,7 @@ function FieldItem({
 /**
  * 詳細タブ: 見出しのまとまりごとの項目の格子(列は左の面の幅の段階 = 帯だけで 3 列、パネルを開くと 2 列 =
  * 設計/業務データの入れ物/レコードの共通機能/詳細の画面/README.md の 1 節。複数行は全幅。見出しの行で畳める = 見出し.md の 2 節)と、
- * 作成・更新の日時と人。notes = 後ろのモジュールが足す、項目の欄の上の 1 行(項目のコード → 文)。
+ * 作成・更新の日時と人、区画「参照制限」(設計/業務データの入れ物/画面/業務の画面.md の 2.3)。notes = 後ろのモジュールが足す、項目の欄の上の 1 行(項目のコード → 文)。
  */
 function FieldsTab({ module, headings, record, notes, related }: TabProps) {
     return (
@@ -109,6 +114,7 @@ function FieldsTab({ module, headings, record, notes, related }: TabProps) {
                 )}
             </RecordHeadingGroups>
             <Authors record={record} />
+            <RecordRowAccessSummary rowAccess={record.rowAccess} />
         </div>
     );
 }

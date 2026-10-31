@@ -5,11 +5,9 @@ namespace Tests\Feature\Actions\Workflow;
 use App\Actions\Workflow\ApplicationBaseDate;
 use App\Actions\Workflow\RecordApplicationSteps;
 use App\Enums\Records\RecordModuleAction;
-use App\Enums\Records\RowAccessScope;
 use App\Enums\Workflow\WorkflowProxyKind;
 use App\Models\Master\User;
 use App\Models\Records\Record;
-use App\Models\Records\RecordModule;
 use App\Queries\Authz\Api\Requester;
 use App\Queries\Workflow\ApplicationFormQuery;
 use App\Queries\Workflow\CaseEntryGate;
@@ -19,6 +17,7 @@ use App\Queries\Workflow\WorkflowRecordApplyEntries;
 use Tests\Support\AppliesFromRecords;
 use Tests\Support\CatchesValidationErrors;
 use Tests\Support\RegistersProxies;
+use Tests\Support\RowAccessRestriction;
 use Tests\Support\TransactionalTestCase;
 
 /**
@@ -73,7 +72,7 @@ final class RecordApplicationCreatorTest extends TransactionalTestCase
         [$proxy, $principal] = [$this->seededUser('u0001'), $this->seededUser('u0009')];
         $this->addProxy($principal, $proxy, WorkflowProxyKind::Apply, $this->flowIdOf(self::FLOW_CODE));
         $record = $this->projectRecord($principal);
-        RecordModule::query()->where('code', self::PROJECT)->update(['row_access_scope' => RowAccessScope::Related]);
+        RowAccessRestriction::restrictCode(self::PROJECT);
 
         $this->assertSame('404', $this->outcome(fn () => $this->applyFromRecord($proxy, $record->id)));
         $this->assertSame($principal->id, $this->applyFromRecord($proxy, $record->id, principal: $principal)->user_id);
@@ -93,7 +92,7 @@ final class RecordApplicationCreatorTest extends TransactionalTestCase
         $other = Record::factory()->create(['record_module_id' => $this->moduleIdOf('project_issue')]);
         $rowId = $this->detailRowIds($records['proxy'])[0];
         $this->allowOnly(self::PROJECT, RecordModuleAction::Update, $this->seededUser('u0003'));
-        RecordModule::query()->where('code', self::PROJECT)->update(['row_access_scope' => RowAccessScope::Related]);
+        RowAccessRestriction::restrictCode(self::PROJECT);
         $missing = (int) Record::query()->max('id') + 1000;
         $recordIds = [$missing, $other->id, $rowId, $held->id, ...array_values($records)];
 

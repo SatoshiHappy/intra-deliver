@@ -64,12 +64,25 @@ export const DENY_UPDATE = [
 ].join('');
 
 /**
- * 業務データの画面で申請書のレコードを 1 件登録して詳細へ移り、詳細の URL を返す。
+ * 業務データの画面で申請書のレコードを 1 件登録して詳細へ移り、詳細の URL を返す。申請書の業務モジュールは参照制限の既定が「する」
+ * (設計/ワークフロー/初期データ.md の 3 節)。作成者でない人にも業務データの画面で見せる筋は unrestricted でチェックを外して登録する。
  */
-export async function createRecord(page: Page, name: string): Promise<string> {
+export async function createRecord(
+    page: Page,
+    name: string,
+    unrestricted = false,
+): Promise<string> {
     await page.goto(`${MODULE_PATH}/create`);
     const form = page.getByRole('form', { name: RECORD_FORM });
     await fillPlanFields(page, form, name);
+    const restricted = form.getByRole('checkbox', {
+        name: '参照を制限する',
+        exact: true,
+    });
+    await expect(restricted).toBeChecked();
+    if (unrestricted) {
+        await restricted.uncheck();
+    }
     await submitAndExpectUrl(
         page,
         form.getByRole('button', { name: '登録', exact: true }),

@@ -13,6 +13,7 @@ use App\Enums\Records\RecordRevisionAction;
 use App\Models\Records\Record;
 use App\Models\Records\RecordField;
 use App\Models\Records\RecordRevision;
+use App\Models\Records\RecordRowAccessViewer;
 use Exception;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\DeadlockException;
@@ -23,6 +24,7 @@ use LogicException;
 use Mockery\MockInterface;
 use PDOException;
 use PHPUnit\Framework\Attributes\DataProvider;
+use PHPUnit\Framework\Attributes\TestWith;
 use ReflectionProperty;
 use RuntimeException;
 use Tests\Support\BuildsRowAccessRecords;
@@ -92,13 +94,13 @@ final class UpdateRecordUncheckedTest extends TransactionalTestCase
     {
         return [
             '業務モジュールの update を持たない' => ['no-update', AuthorizationException::class],
-            '行の判定で見えない(関係する人でない)' => ['hidden-row', ModelNotFoundException::class],
+            '行の判定で見えない(関係者でない)' => ['hidden-row', ModelNotFoundException::class],
             'その日に有効でない' => ['inactive', ModelNotFoundException::class],
         ];
     }
 
     /**
-     * 関係する人の印の無いユーザーの項目は受ける(断るのは他モジュール参照と印の付いた項目だけ)。
+     * 関係者の印の無いユーザーの項目は受ける(断るのは他モジュール参照と印の付いた項目だけ)。
      */
     public function test_accepts_a_user_field_without_the_related_flag(): void
     {
@@ -197,14 +199,44 @@ final class UpdateRecordUncheckedTest extends TransactionalTestCase
     }
 
     /**
+     * 参照制限の 2 つのキーは、どちらかを渡せば作りの誤りで、何も書かない(キーごとに 1 本。公開の口.md 7 節の判定しない更新の行)。
+     *
+     * @param  list<array{type: string, id: int}>|null  $viewers
+     */
+    #[TestWith([false, null])]
+    #[TestWith([null, []])]
+    public function test_a_row_access_input_is_a_programming_error(?bool $restricted, ?array $viewers): void
+    {
+        $fixture = $this->rowAccessFixture();
+        $rows = fn (int $recordId) => RecordRowAccessViewer::query()->where('record_id', $recordId)->orderBy('id');
+        $before = $rows($fixture['recordId'])->pluck('id')->all();
+        $input = new RecordInput(['title' => '議事録'], rowAccessRestricted: $restricted, rowAccessViewers: $viewers);
+
+        $this->assertThrows(
+            fn () => app(UpdateRecordUnchecked::class)->execute(
+                $this->contextFor($fixture['people']['creator']->id),
+                'meetings',
+                $fixture['recordId'],
+                $input,
+                $this->origin(),
+            ),
+            LogicException::class,
+            '参照制限の入力(rowAccessRestricted・rowAccessViewers)を受けない',
+        );
+        $record = Record::query()->findOrFail($fixture['recordId']);
+        $this->assertSame(['定例', true], [$this->titleOf($record), $record->row_access_restricted]);
+        $this->assertSame($before, $rows($record->id)->pluck('id')->all());
+    }
+
+    /**
      * @return array<string, array{array<string, mixed>, array<string, list<RecordDetailRowInput>>, string}>
      */
     public static function unacceptedInputs(): array
     {
         return [
             '他モジュール参照の項目' => [['project' => null], [], '他モジュール参照の項目を受けない: project'],
-            '関係する人の印の付いたユーザーの項目' => [['attendee' => null], [], '関係する人の印の付いた項目を受けない: attendee'],
-            '関係する人の印の付いた組織(複数)の項目' => [['sections' => []], [], '関係する人の印の付いた項目を受けない: sections'],
+            '関係者の印の付いたユーザーの項目' => [['attendee' => null], [], '関係者の印の付いた項目を受けない: attendee'],
+            '関係者の印の付いた組織(複数)の項目' => [['sections' => []], [], '関係者の印の付いた項目を受けない: sections'],
             '明細の入力(行を消す)' => [[], ['rows' => []], '明細の入力を受けない: rows'],
             '明細の入力(行を足す)' => [
                 [],

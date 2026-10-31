@@ -14,7 +14,7 @@ use Tests\Support\TransactionalTestCase;
 
 /**
  * コメントを書く業務処理 PostRecordComment のうち、書ける人・判定の順・本文(docs の 設計/業務データの入れ物/レコードの共通機能/コメント.md の
- * 1 節・9 節の「書ける人」「本文」)。宛先と通知は PostRecordCommentMentionsTest。見える範囲が「関係する人だけ」の業務モジュール meetings で確かめる。
+ * 1 節・9 節の「書ける人」「本文」)。宛先と通知は PostRecordCommentMentionsTest。参照制限の既定が「制限する」の業務モジュール meetings で確かめる。
  */
 final class PostRecordCommentTest extends TransactionalTestCase
 {

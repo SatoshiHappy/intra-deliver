@@ -16,7 +16,7 @@ use Illuminate\Validation\ValidationException;
 use LogicException;
 
 /**
- * 処理対象者の候補(docs の 設計/ワークフロー/ルートの深さ/案件の操作/処理対象者.md 5.2 の「候補の検索」、画面.md 1.1)。
+ * 処理対象者の候補(docs の 設計/ワークフロー/ルートの深さ/案件の操作/処理対象者.md 5.2 の「候補の検索」、画面/README.md 1.1)。
  * 操作の役割の判定は 1 か所の {@see CaseOperationDecider::permitsIn()} を通す(判定する役割が増えても、この口を変えないため)。
  * 入口は処理者を受けないので、P の候補を 4.3 の画面の選択肢と同じ口で作る(設計/ワークフロー/案件の運用/案件の操作/操作.md の 8 節)。
  * 申請者として扱う人({@see ApplicantApprovalGuard::applicantUserIds()})は、その数だけ多く引いて除き上限に切る(共通マスタの口

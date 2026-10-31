@@ -11,6 +11,7 @@ use App\Queries\Records\RecordQuery;
 use App\Queries\Records\RecordRevisionComparison;
 use App\Queries\Records\RecordRevisionCurrentFields;
 use App\Queries\Records\RecordRevisionDiff;
+use App\Queries\Records\RecordRevisionRowAccess;
 use DateTimeInterface;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 
@@ -22,12 +23,14 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
  * attachments = 足した・外した添付(追加・削除の順)。値は画面の値の形(設計/業務データの入れ物/画面/README.md の 1.2 節の RecordFieldValue)。
  *
  * @phpstan-import-type RevisionCopy from RecordRevisionComparison
+ * @phpstan-import-type ShownRowAccessChange from RecordRevisionRowAccess
  *
  * @phpstan-type RowChange array{change: 'added'|'removed'|'changed', rowId: int, before: array<string, mixed>|null,
  *     after: array<string, mixed>|null, changedCodes: list<string>}
  * @phpstan-type AttachmentChange array{change: 'added'|'removed', id: int, uploadId: int|null, name: string}
  * @phpstan-type Diff array{fields: list<array{code: string, name: string, before: mixed, after: mixed}>,
- *     details: list<array{code: string, name: string, rows: list<RowChange>}>, attachments: list<AttachmentChange>}
+ *     details: list<array{code: string, name: string, rows: list<RowChange>}>, attachments: list<AttachmentChange>,
+ *     rowAccess: ShownRowAccessChange|null}
  */
 class RecordRevisionQuery
 {

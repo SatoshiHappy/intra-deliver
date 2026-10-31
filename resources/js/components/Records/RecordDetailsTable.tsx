@@ -1,9 +1,9 @@
+import { RecordColumnHeads } from '@/components/RecordFieldBadges';
 import { RecordValue } from '@/components/RecordValue';
 import {
     Table,
     TableBody,
     TableCell,
-    TableHead,
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
@@ -27,9 +27,7 @@ export function RecordDetailsTable({
         <Table>
             <TableHeader>
                 <TableRow>
-                    {columns.map((column) => (
-                        <TableHead key={column.code}>{column.name}</TableHead>
-                    ))}
+                    <RecordColumnHeads columns={columns} />
                 </TableRow>
             </TableHeader>
             <TableBody>

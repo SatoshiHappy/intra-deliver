@@ -15,11 +15,9 @@ use App\Actions\Records\Api\UpdateRecord;
 use App\Enums\Ai\AiRunErrorCode;
 use App\Enums\Ai\AiRunStatus;
 use App\Enums\Records\RecordModuleAction;
-use App\Enums\Records\RowAccessScope;
 use App\Models\Ai\AiRun;
 use App\Models\Records\Record;
 use App\Models\Records\RecordField;
-use App\Models\Records\RecordModule;
 use App\Models\Records\RecordRevision;
 use App\Queries\Records\Api\RecordDisplayQuery;
 use InvalidArgumentException;
@@ -27,6 +25,7 @@ use LogicException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Support\BuildsCommonMaster;
 use Tests\Support\BuildsRecordModules;
+use Tests\Support\RowAccessRestriction;
 use Tests\Support\TransactionalTestCase;
 
 /**
@@ -138,8 +137,7 @@ final class WriteRecordFromRunTest extends TransactionalTestCase
         $record = $this->noteRecord($case === 'no-update' ? $withoutUpdate : null);
 
         if ($case === 'hidden-row') {
-            RecordModule::query()->whereKey($record->record_module_id)
-                ->update(['row_access_scope' => RowAccessScope::Related]);
+            RowAccessRestriction::restrict([$record->record_module_id]);
         }
 
         $requester = $case === 'inactive' ? $this->user([['2020-01-01', '2021-01-01']]) : $this->user();
@@ -162,7 +160,7 @@ final class WriteRecordFromRunTest extends TransactionalTestCase
     {
         return [
             '業務モジュールの update を持たない' => ['no-update'],
-            '行の判定で見えない(関係する人だけの業務モジュールで関係しない)' => ['hidden-row'],
+            '行の判定で見えない(参照制限のあるレコードで関係者でない)' => ['hidden-row'],
             '書く時の当日に有効でない' => ['inactive'],
         ];
     }

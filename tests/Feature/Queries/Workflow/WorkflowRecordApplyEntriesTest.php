@@ -3,11 +3,9 @@
 namespace Tests\Feature\Queries\Workflow;
 
 use App\Enums\Records\RecordModuleAction;
-use App\Enums\Records\RowAccessScope;
 use App\Enums\Workflow\WorkflowProxyKind;
 use App\Models\Master\User;
 use App\Models\Records\Record;
-use App\Models\Records\RecordModule;
 use App\Queries\Authz\Api\Requester;
 use App\Queries\Records\Api\RecordApplyEntry;
 use App\Queries\Records\Api\RecordViewAccess;
@@ -17,6 +15,7 @@ use App\Queries\Workflow\WorkflowRecordApplyEntries;
 use Tests\Support\AppliesFromRecords;
 use Tests\Support\BuildsTargetFlows;
 use Tests\Support\RegistersProxies;
+use Tests\Support\RowAccessRestriction;
 use Tests\Support\TransactionalTestCase;
 
 /**
@@ -95,8 +94,7 @@ final class WorkflowRecordApplyEntriesTest extends TransactionalTestCase
     public function test_a_record_of_a_principal_in_a_row_restricted_module_has_the_entry_with_applicant(): void
     {
         [$u0001, $principal] = [$this->seededUser('u0001'), $this->seededUser('u0009')];
-        RecordModule::query()->whereKey($this->moduleIdOf(self::PROJECT))
-            ->update(['row_access_scope' => RowAccessScope::Related]);
+        RowAccessRestriction::restrict([$this->moduleIdOf(self::PROJECT)]);
         $principals = $this->projectRecord($principal);
         $this->addProxy($principal, $u0001, WorkflowProxyKind::Apply, $this->flowIdOf(self::FLOW_CODE));
         $url = url('/workflow/flows/'.self::FLOW_CODE.'/apply');
@@ -151,7 +149,7 @@ final class WorkflowRecordApplyEntriesTest extends TransactionalTestCase
         [$u0001, $principal] = [$this->seededUser('u0001'), $this->seededUser('u0009')];
         $u0003 = $this->seededUser('u0003');
         $hub = $this->recordModule('m_hub', [RecordModuleAction::Read, RecordModuleAction::Update]);
-        RecordModule::query()->whereKey($hub->id)->update(['row_access_scope' => RowAccessScope::Related]);
+        RowAccessRestriction::restrict([$hub->id]);
         $flow = $this->targetFlow('wf_target', $hub, [RecordModuleAction::Create], [$u0001, $principal]);
         $this->addProxy($principal, $u0001, WorkflowProxyKind::Apply, $flow->id);
         $record = fn (User $creator) => Record::factory()->create([

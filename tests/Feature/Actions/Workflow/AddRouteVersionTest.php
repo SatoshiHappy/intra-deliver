@@ -72,7 +72,7 @@ final class AddRouteVersionTest extends TransactionalTestCase
         $this->createFlow();
         $before = $this->rows();
 
-        foreach (['2025-04-01', '2025-03-31'] as $date) {
+        foreach (['2025-04-01', '2025-03-31', '2025-04-01 12:00'] as $date) {
             $errors = $this->validationErrors(fn () => $this->addVersion($this->r3(), $date));
             $this->assertSame(['start_date' => '開始日は版 1 の開始日 2025-04-01 より後の日付を入力してください'], $errors);
             $this->assertSame($before, $this->rows());

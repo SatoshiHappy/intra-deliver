@@ -5,12 +5,14 @@ namespace Database\Seeders;
 use App\Actions\Records\AddRecordField;
 use App\Actions\Records\AddRecordRule;
 use App\Actions\Records\CreateRecordModule;
+use App\Actions\Records\UpdateRecordModule;
 use App\Enums\Menu\MenuIcon;
 
 /**
  * ワークフローの初期データの申請書の業務モジュール 2 つ(docs の 設計/ワークフロー/初期データ.md の 3 節。ADR 0025 の決定 13)を、業務データの入れ物の業務処理で作る 1 か所。
  * 項目 = 申請対象の項目(他モジュール参照の普通の宣言)と、申請対象の業務モジュールのすべての項目(明細の行の項目を含む)を同じコード・同じ型・同じ宣言で
  * ({@see RecordsSeeder::FIELDS} から作る。写しの規則に当てるため)。規則も申請対象の業務モジュールと同じ。許可とメニューのアイテムは業務モジュールを作る業務処理のまま。
+ * 参照制限の既定は {@see self::ROW_ACCESS_RESTRICTED_BY_DEFAULT}(業務データの画面で申請書を見られるのは作成者と全件の参照の人 = 初期データ.md の 3 節の見え方)。
  */
 final class WorkflowApplicationModules
 {
@@ -19,6 +21,9 @@ final class WorkflowApplicationModules
 
     /** 課題の対応の申請 */
     public const ISSUE = 'issue_resolution_application';
+
+    /** 申請書の業務モジュールの参照制限の既定(2 つとも同じ。関係者の印の項目は持たない) */
+    public const ROW_ACCESS_RESTRICTED_BY_DEFAULT = true;
 
     /**
      * 申請書の業務モジュール(作る順): コード => 名前・説明・アイコン・申請対象の項目のコードと名前・申請対象の業務モジュールのコード。
@@ -53,6 +58,7 @@ final class WorkflowApplicationModules
 
     public function __construct(
         private CreateRecordModule $createModule,
+        private UpdateRecordModule $updateModule,
         private AddRecordField $addField,
         private AddRecordRule $addRule,
     ) {}
@@ -68,6 +74,10 @@ final class WorkflowApplicationModules
                 'code' => $code, 'name' => $definition['name'], 'description' => $definition['description'],
                 'icon' => $definition['icon']->value,
             ]);
+            $this->updateModule->execute(
+                $code,
+                ['row_access_restricted_by_default' => self::ROW_ACCESS_RESTRICTED_BY_DEFAULT],
+            );
             $applicationTargetField = [
                 'code' => $definition['applicationTargetField'], 'name' => $definition['applicationTargetFieldName'],
                 'type' => 'record',

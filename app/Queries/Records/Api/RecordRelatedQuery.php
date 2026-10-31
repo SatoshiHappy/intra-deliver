@@ -15,6 +15,7 @@ use App\Queries\Records\RecordQuery;
 use App\Queries\Records\RecordRelatedColumns;
 use App\Queries\Records\RecordRelatedEntries;
 use App\Queries\Records\RecordRowAccess;
+use App\Queries\Records\RecordRowAccessValues;
 use App\Queries\Records\RecordValueReader;
 use App\Support\PageNumbers;
 use DateTimeInterface;
@@ -39,7 +40,7 @@ use Illuminate\Database\Query\Builder as QueryBuilder;
  *     columns: list<FieldDefinition>, rows: list<array{id: int, values: array<string, mixed>, updatedAt: string|null}>,
  *     currentPage: int, lastPage: int, total: int}
  * @phpstan-type RelatedForm array{entry: string, field: string, value: ReferenceValue, module: ModuleDefinition,
- *     headings: list<HeadingGroup>}
+ *     headings: list<HeadingGroup>, rowAccess: array{restricted: bool, viewers: list<never>}}
  */
 class RecordRelatedQuery
 {
@@ -55,6 +56,7 @@ class RecordRelatedQuery
         private RecordDefinitionQuery $definitions,
         private RecordValueReader $reader,
         private RecordHeadingGroups $headings,
+        private RecordRowAccessValues $rowAccess,
     ) {}
 
     /**
@@ -182,6 +184,7 @@ class RecordRelatedQuery
                 ?? ['id' => $record->id, 'code' => null, 'label' => null, 'affiliation' => null],
             'module' => $this->definitions->definition($module),
             'headings' => $this->headings->groups($module->id),
+            'rowAccess' => $this->rowAccess->initial($module),
         ];
     }
 

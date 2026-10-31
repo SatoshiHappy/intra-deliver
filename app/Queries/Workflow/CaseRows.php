@@ -128,9 +128,9 @@ class CaseRows
     }
 
     /**
-     * 判定を求める者が引戻せるノード(ルートの深さ/画面.md 1.2 の pullBackNodes。写した並び)。
+     * 判定を求める者が引戻せるノード(ルートの深さ/画面/README.md 1.2 の pullBackNodes。写した並び)。
      * 案件が未完了でなければ空(引戻しの表 = 設計/ワークフロー/ルートの深さ/案件の操作/操作.md 8 節)。blockedReason = 申請者承認防止で引戻せないときの文言(ダイアログが「決定」を押せなくする =
-     * 画面.md 6 節)。canAttach = その行の引戻しの添付の可否({@see CaseAttachEntries}。渡さない行は偽)。
+     * 画面/案件の側の画面.md 6 節)。canAttach = その行の引戻しの添付の可否({@see CaseAttachEntries}。渡さない行は偽)。
      *
      * @param  array<int, bool>  $canAttach  ノードの id → 添付の可否
      * @return list<PullBackNode>
