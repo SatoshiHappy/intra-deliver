@@ -1,0 +1,280 @@
+#!/usr/bin/env bash
+# 写しの Actions の apt の .deb の控えを、署名された索引(apt-cache show の SHA256)と照らした .deb だけにする。
+# なぜ: apt は同名の .deb があると大きさしか見ずに使う。版の進みはふつうに起きるので、索引に記録の無い .deb は注意にしない
+# (docs の 設計/コード構成/検査/一括検査の段.md 6.5)。
+#
+#   scripts/ci/apt-archives verify <控え>                  控えの .deb のうち、索引と合わないものを消す
+#   scripts/ci/apt-archives collect <apt の置き場> <控え>   dpkg に入っている版で、索引と合うものだけを控えに写す
+#
+# 進みと件数は標準エラー。collect の鍵だけが標準出力の 1 行(控えるものが無ければ出さない)。root で走らせない。
+set -euo pipefail
+
+export LC_ALL=C
+
+readonly NAME_PATTERN='^[a-z0-9][a-z0-9+.-]+$'
+readonly VERSION_PATTERN='^[0-9A-Za-z.+~:-]+$'
+readonly ARCH_PATTERN='^[a-z0-9-]+$'
+readonly FILE_PATTERN='^([^_]+)_([^_]+)_([^_]+)\.deb$'
+
+usage() {
+    echo "使い方: scripts/ci/apt-archives verify <控え> | collect <apt の置き場> <控え>" >&2
+    exit 2
+}
+
+fail() {
+    echo "apt-archives: $*" >&2
+    exit 1
+}
+
+# GitHub Actions の中では、実行の画面の注意にも出す(門では止めない)
+annotate() {
+    if [ "${GITHUB_ACTIONS:-}" = "true" ]; then
+        echo "::warning title=apt の控え::$1" >&2
+    fi
+}
+
+# 外したものの数(reject が数える。外す所は必ず reject か drop を通る)
+rejected=0
+norecord=0
+mismatch=0
+form=0
+sha=""
+sha_result=""
+error_file=""
+
+cleanup() {
+    [ -z "${error_file}" ] || rm -f "${error_file}"
+}
+trap cleanup EXIT
+
+# 道具の失敗の確かめ(始めに 1 回)。落ちたときだけ 1
+require_apt_cache() {
+    local output
+    error_file="$(mktemp)"
+    if ! output="$(apt-cache policy 2>&1)"; then
+        fail "apt-cache policy が失敗した: ${output}"
+    fi
+}
+
+# ファイルの SHA256 を sha_result に入れる。失敗は道具の失敗(if の条件の中で呼ばれても errexit に頼らず明示に受ける)
+compute_sha() {
+    local output
+    output="$(sha256sum -- "$1")" || fail "sha256sum が失敗した: ${1##*/}"
+    sha_result="${output%% *}"
+}
+
+# apt-cache show の出力を records に入れる。0 は標準出力、100 で標準エラーが "E: No packages found" の 1 行だけなら記録なし(空)、
+# ほかは道具の失敗(apt は一般のエラーも 100 で終えるため)
+fetch_records() {
+    local status=0 message
+    records="$(apt-cache show "$1" 2>"${error_file}")" || status=$?
+    message="$(<"${error_file}")"
+
+    if [ "${status}" -eq 0 ]; then
+        return 0
+    fi
+
+    if [ "${status}" -eq 100 ] && [ "${message}" = "E: No packages found" ]; then
+        records=""
+        return 0
+    fi
+
+    fail "apt-cache show ${1} が失敗した(終了コード ${status}): ${message}"
+}
+
+# .deb のファイル名から name・version・arch を決める。通常のファイル(シンボリックリンクでない)で、名前と版が
+# Debian の規則の文字に合うものだけを通す。通らなければ reason に理由を、kind に form を入れて 1。
+parse_deb() {
+    local file="$1" base="${1##*/}"
+    reason=""
+    kind=""
+    name=""
+    version=""
+    arch=""
+
+    if [ -L "${file}" ] || [ ! -f "${file}" ]; then
+        kind="form"
+        reason="通常のファイルでない"
+        return 1
+    fi
+
+    if ! [[ "${base}" =~ ${FILE_PATTERN} ]]; then
+        kind="form"
+        reason="ファイル名が <名前>_<版>_<アーキ>.deb の形でない"
+        return 1
+    fi
+
+    name="${BASH_REMATCH[1]}"
+    version="${BASH_REMATCH[2]//\%3[a]/:}"
+    arch="${BASH_REMATCH[3]}"
+
+    if ! [[ "${name}" =~ ${NAME_PATTERN} && "${version}" =~ ${VERSION_PATTERN} && "${arch}" =~ ${ARCH_PATTERN} ]]; then
+        kind="form"
+        reason="名前・版・アーキが Debian の規則の文字に合わない"
+        return 1
+    fi
+}
+
+# 1 つの .deb が署名された索引と合うか。合えば 0(sha も残す)。合わなければ 1 で、種類を kind に、理由を reason に入れる。
+matches_index() {
+    local records
+    reason=""
+    kind=""
+    parse_deb "$1" || return 1
+
+    compute_sha "$1"
+    sha="${sha_result}"
+    fetch_records "${name}:${arch}=${version}"
+
+    if grep -Fqx "SHA256: ${sha}" <<<"${records}"; then
+        return 0
+    fi
+
+    if grep -q '^SHA256: ' <<<"${records}"; then
+        kind="mismatch"
+        reason="署名された索引の SHA256 と違う"
+    else
+        kind="norecord"
+        reason="署名された索引に記録が無い"
+    fi
+    return 1
+}
+
+# ディレクトリの直下の中身を、名前の順に entries へ入れる
+list_entries() {
+    entries=()
+    if [ -d "$1" ]; then
+        mapfile -d '' -t entries < <(find "$1" -mindepth 1 -maxdepth 1 -print0 | sort -z)
+    fi
+}
+
+# 外す(種類ごとに数える)
+reject() {
+    echo "外す: $(printf '%q' "${1##*/}")(${reason})" >&2
+    rejected=$((rejected + 1))
+    case "${kind}" in
+        norecord) norecord=$((norecord + 1)) ;;
+        mismatch) mismatch=$((mismatch + 1)) ;;
+        form) form=$((form + 1)) ;;
+        *) fail "外す種類が決まっていない: ${1##*/}" ;;
+    esac
+}
+
+drop() {
+    reject "$1"
+    rm -rf -- "$1"
+}
+
+# 想定外(SHA256 が違う・形の外れ)の注意。$1 = 残した・集めた個数の言い方
+warn_unexpected() {
+    if [ $((mismatch + form)) -gt 0 ]; then
+        annotate "索引の SHA256 と違う .deb を ${mismatch} 個・形の外れた項目を ${form} 個外した($1)"
+    fi
+}
+
+verify() {
+    local archive="$1" entry kept=0
+
+    require_apt_cache
+
+    list_entries "${archive}"
+    for entry in ${entries[@]+"${entries[@]}"}; do
+        if matches_index "${entry}"; then
+            kept=$((kept + 1))
+        else
+            drop "${entry}"
+        fi
+    done
+
+    echo "apt の控え: 残した ${kept}・外した ${rejected}(うち記録なし ${norecord})" >&2
+    warn_unexpected "残した ${kept} 個"
+}
+
+collect() {
+    local source="$1" archive="$2" status entry base copied=0 absent=0 key
+    local -A installed=()
+    local -a keys=()
+
+    require_apt_cache
+
+    [ -d "${source}" ] || fail "apt の置き場が無い: ${source}"
+
+    # 全件を 1 回で読み、ii(入っている)の行だけを「入っている版」とする(rc などは入れない)
+    local format='${Package}:${Architecture}\t${Version}\t${db:Status-Abbrev}\n'
+    if ! status="$(dpkg-query -W -f="${format}" 2>&1)" || [ -z "${status}" ]; then
+        fail "dpkg-query の全件を読めない: ${status}"
+    fi
+
+    local package package_version abbreviation
+    while IFS=$'\t' read -r package package_version abbreviation; do
+        if [[ "${abbreviation}" == ii* ]]; then
+            installed["${package} ${package_version}"]=1
+        fi
+    done <<<"${status}"
+
+    mkdir -p -- "${archive}"
+    find "${archive}" -mindepth 1 -delete
+
+    list_entries "${source}"
+    for entry in ${entries[@]+"${entries[@]}"}; do
+        [[ "${entry}" == *.deb ]] || continue
+        base="${entry##*/}"
+
+        # 置き場の .deb は消さない(apt の持ち物)。控えに写さないだけ
+        if ! parse_deb "${entry}"; then
+            reject "${entry}"
+            continue
+        fi
+
+        # 入っていない版は、前の控えから戻っただけで今回は使わなかった .deb。索引に問わずに写さない
+        if [ -z "${installed["${name}:${arch} ${version}"]:-}" ]; then
+            absent=$((absent + 1))
+            continue
+        fi
+
+        if ! matches_index "${entry}"; then
+            reject "${entry}"
+            continue
+        fi
+
+        cp -- "${entry}" "${archive}/" || fail "控えへ写せない: ${base}"
+
+        # 写した先が照らした中身と同じかだけを比べる(索引には問い直さない)
+        compute_sha "${archive}/${base}"
+        if [ "${sha_result}" != "${sha}" ]; then
+            kind="mismatch"
+            reason="写した後に SHA256 が変わった"
+            drop "${archive}/${base}"
+            continue
+        fi
+
+        keys+=("${name}:${arch} ${sha}")
+        copied=$((copied + 1))
+    done
+
+    echo "apt の控え: 集めた ${copied}・外した ${rejected}(うち記録なし ${norecord})・入っていない版 ${absent}" >&2
+    warn_unexpected "集めた ${copied} 個"
+
+    if [ "${copied}" -eq 0 ]; then
+        echo "apt の控え: 控えるものが無い(鍵を出さない)" >&2
+        annotate "控えるものが無い(控えが育たない)"
+        return 0
+    fi
+
+    key="$(printf '%s\n' "${keys[@]}" | sort | sha256sum)"
+    echo "${key:0:16}"
+}
+
+case "${1:-}" in
+    verify)
+        [ "$#" -eq 2 ] || usage
+        verify "$2"
+        ;;
+    collect)
+        [ "$#" -eq 3 ] || usage
+        collect "$2" "$3"
+        ;;
+    *)
+        usage
+        ;;
+esac

@@ -8,16 +8,18 @@ use Tests\Architecture\Engine\TempDirectory;
 use UnexpectedValueException;
 
 /**
- * 一括検査 scripts/ci/all と、段の scripts/ci/front --e2e・scripts/ci/static、E2E の組のサーバー scripts/ci/e2e-server を、
- * 偽の段・偽のコマンドで流すテストが使う共通の道具。DB を使わない。
+ * 一括検査 scripts/ci/all と、段の scripts/ci/front --e2e・scripts/ci/static・scripts/ci/test、E2E の組のサーバー scripts/ci/e2e-server、
+ * 写しの Actions の apt の控えの道具 scripts/ci/apt-archives を、偽の段・偽のコマンドで流すテストが使う共通の道具。DB を使わない。
  * 使うクラスは Tests\TestCase を継承する({@see RunsDeployScripts} と同じ形)。
  *
- * 一時の場所(build/fixtures の下)に、4 本のスクリプトを写した作業木(work)と、道具の置き場(tools)を作る。
+ * 一時の場所(build/fixtures の下)に、6 本のスクリプトを写した作業木(work)と、道具の置き場(tools)を作る。
  * all は自分の 2 つ上へ移って scripts/ci/<段> を相対パスで呼ぶので、写した作業木の段だけが呼ばれ、本物の段・本物の DB・本物の記録には届かない。
  * 段は偽のスクリプトに置き換える({@see installStages()})。tools の偽の date は D の鍵の日付を決める。
  * front --e2e の確かめでは、偽の php・npm も tools に置く({@see installFrontTools()})。work には artisan を置かない。
  * e2e-server の確かめでは、偽の php を tools に置く({@see installE2eServerTools()})。
- * static の確かめでは、偽の phpstan・ast-grep・record を work に置く(StaticScriptTest)。installStages() は写した static も偽の段に置き換える。
+ * static の確かめでは、偽の phpstan・ast-grep・record を work に置く(StaticScriptTest)。installStages() は写した static・test も偽の段に置き換える。
+ * test の確かめでは、偽の record を work に、偽の php を tools に置く(TestScriptTest)。
+ * apt-archives の確かめでは、偽の apt-cache・dpkg-query・sha256sum・cp を tools に置く(FakesAptTools)。
  */
 trait RunsCiScripts
 {
@@ -39,7 +41,7 @@ trait RunsCiScripts
         mkdir($this->work.'/scripts/ci', 0777, true);
         mkdir($this->tools, 0777, true);
 
-        foreach (['all', 'front', 'static', 'e2e-server'] as $script) {
+        foreach (['all', 'front', 'static', 'test', 'e2e-server', 'apt-archives'] as $script) {
             copy(base_path('scripts/ci/'.$script), $this->work.'/scripts/ci/'.$script);
             chmod($this->work.'/scripts/ci/'.$script, 0755);
         }

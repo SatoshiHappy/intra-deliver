@@ -8,6 +8,7 @@
 #   テストメソッド単位で配る(paratest の --functional。時間の偏りが大きいときの選択肢)。
 # scripts/ci/test --serial: 並列にせず、phpunit を 1 プロセスで走らせる(並列の不具合の切り分け用。DB はテスト DB の名前)。
 # どちらでも build/junit.xml に 1 ファイルで残す(並列は paratest が各プロセスの記録を併合する)。
+# 走らせた後に(T が落ちても)、時間の長いテストのクラスを出す(scripts/ci/slow-tests.php)。一覧の失敗は WARN で、T の結果を変えない。
 set -euo pipefail
 
 cd "$(dirname "$0")/../.."
@@ -23,9 +24,26 @@ fi
 # 前回の junit を消してから走らせる(M の照合が古い実行記録を読まないように)
 rm -f build/junit.xml
 
+# T の終了コードを受けてから一覧を出し、最後にその終了コードで終わる。一覧は診断なので、失敗しても T の結果は変えない
+report() {
+    local status="$1" elapsed="$2" count="$3" slow=0
+    php scripts/ci/slow-tests.php build/junit.xml || slow=$?
+    if [ "${slow}" -ne 0 ]; then
+        echo "WARN  時間の長いテストのクラスを出せなかった(終了コード ${slow})"
+        if [ "${GITHUB_ACTIONS:-}" = "true" ]; then
+            echo "::warning title=時間の長いテストのクラス::一覧を出せなかった(終了コード ${slow}。T の結果は変えない)"
+        fi
+    fi
+    # 一覧の testcase の時間の総和と比べると、止まりが testcase の外(クラスの前後の処理・migrate・待ち)にあるかが分かる
+    echo "==> T の経過 ${elapsed} 秒・${count} プロセス(終了コード ${status})"
+    exit "${status}"
+}
+
 if [ "${mode}" = "serial" ]; then
-    scripts/ci/record phpunit -- vendor/bin/phpunit
-    exit 0
+    status=0
+    SECONDS=0
+    scripts/ci/record phpunit -- vendor/bin/phpunit || status=$?
+    report "${status}" "${SECONDS}" 1
 fi
 
 processes="${CI_TEST_PROCESSES:-$(nproc)}"
@@ -44,4 +62,7 @@ if [ "${CI_TEST_FUNCTIONAL:-}" = "1" ]; then
 fi
 
 echo "==> 並列(${processes} プロセス)"
-scripts/ci/record phpunit -- php artisan test "${args[@]}"
+status=0
+SECONDS=0
+scripts/ci/record phpunit -- php artisan test "${args[@]}" || status=$?
+report "${status}" "${SECONDS}" "${processes}"
