@@ -15,7 +15,8 @@ const REFERRERS_HELP =
 /**
  * 面「参照者」(docs の 設計/ワークフロー/ルートの深さ/画面/定義の管理の画面.md の 3.4 節): 見出しと横の「?」、参照者の欄
  * (札と、1 つの候補の一覧から 4 種類を選ぶ検索の欄。幅は会議の関係者の欄と同じく 2 列のフォームの 1 列分 = max-w-120)、
- * 「キャンセル」「保存」。保存は面ごとで、参照者のすべての行を 1 回で送る(0 件 = 参照者なし)。
+ * 「キャンセル」「保存」(面ごとの保存なので、ボタンの列は欄の並びの右端に揃える = 設計/画面の意匠/README.md の方針 11)。
+ * 保存は面ごとで、参照者のすべての行を 1 回で送る(0 件 = 参照者なし)。
  */
 function ReferrersSurface({
     flowCode,
@@ -52,7 +53,7 @@ function ReferrersSurface({
                     onChange={form.change}
                 />
             </div>
-            <div className="flex justify-end gap-2">
+            <div className="flex w-full max-w-120 justify-end gap-2">
                 <Button type="button" variant="outline" onClick={form.cancel}>
                     キャンセル
                 </Button>

@@ -142,9 +142,9 @@ const STEP_TONES: Record<WorkflowStepState['state'], StatusTone | null> = {
 };
 
 /**
- * ステップの状態の札(フロー図・フロー情報の表・合議の進み具合)。語はサーバーの写しの表(stepState.label)をそのまま出す。到達していない・省略は札にせず文字だけ。
+ * ステップの状態の札(処理済みでないときの {@link CaseStepBadge} の中身)。語はサーバーの写しの表(stepState.label)をそのまま出す。到達していない・省略は札にせず文字だけ。
  */
-export function StepStateBadge({
+function StepStateBadge({
     stepState,
     className,
 }: {
