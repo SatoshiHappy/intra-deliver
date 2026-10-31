@@ -1,39 +1,37 @@
 import { Graph, layout } from '@dagrejs/dagre';
-import { MarkerType } from '@xyflow/react';
 import type { Edge, Node } from '@xyflow/react';
+import {
+    LABEL_CHAR_WIDTH,
+    dashedEdges,
+    edgeText,
+    routeEdge,
+} from '@/lib/Workflow/diagramEdges';
+import type { Box } from '@/lib/Workflow/diagramEdges';
 import type {
-    WorkflowAction,
-    WorkflowDiagramEdge,
-    WorkflowDiagramNode,
-    WorkflowStepState,
-} from '@/types';
+    DiagramInputNode,
+    FrameNodeData,
+    PlaceholderNodeData,
+    RouteEdgeData,
+    StepNodeData,
+} from '@/lib/Workflow/diagramTypes';
+import type { WorkflowDiagramEdge } from '@/types';
 
 /**
- * フロー図の配置(docs の 設計/ワークフロー/ルートの深さ/画面.md 8 節): 上から下へ、dagre の段組みで分岐・同期の枝を横に並べる。横配置・縦配置は枠(React Flow の
+ * フロー図の配置(docs の 設計/ワークフロー/ルートの深さ/画面/図と意匠とE2E.md 8 節): 上から下へ、dagre の段組みで分岐・同期の枝を横に並べる。横配置・縦配置は枠(React Flow の
  * 親ノード)の中に子を並べ(横配置は縦一列、縦配置は横一列)、dagre には枠を 1 つの箱として渡す。最後の後に「終了」の印を足す。辺は dagre の通り道を直角に折って描く。
+ * 定義の図の枠は、子の代わりに仮の札(placeholders)を同じ並べ方で置く。
  */
 
-/** 図に渡すノード(案件の図は状態の札の語・処理の種別・指定の前の枠かを持つ) */
-export type DiagramInputNode = WorkflowDiagramNode & {
-    stepState?: WorkflowStepState;
-    processed?: { action: WorkflowAction } | null;
-    awaitingDesignation?: boolean;
-};
-
-export type StepNodeData = { node: DiagramInputNode };
-export type FrameNodeData = { node: DiagramInputNode; childCount: number };
-export type RouteEdgeData = {
-    path: string;
-    labelX: number;
-    labelY: number;
-    text: string | null; // 辺の名前(通らなかった枝は語を足す)
-    dashed: boolean; // 通らなかった枝とその続き(点線)
-};
+/** 枠の中の 1 つ分の箱(案件の展開の行か、定義の仮の札) */
+type ChildSlot =
+    | { id: string; type: 'step'; data: StepNodeData }
+    | { id: string; type: 'placeholder'; data: PlaceholderNodeData };
 
 type DiagramNode =
     | Node<StepNodeData, 'step'>
     | Node<StepNodeData, 'routing'>
     | Node<FrameNodeData, 'frame'>
+    | Node<PlaceholderNodeData, 'placeholder'>
     | Node<Record<string, never>, 'end'>;
 
 /** 図の外周の余白(px)。dagre の margin と、全体が入る表示の padding(WorkflowDiagram)に同じ値を使い、面の高さ = 配置の高さで 1 倍に収める */
@@ -56,11 +54,6 @@ const FRAME = {
     emptyHeight: 32,
 };
 const END_ID = 'end';
-/** 折れ目を箱の上下から離す距離 */
-const BEND_OFFSET = 20;
-/** 辺の名前の 1 文字の幅の目安(dagre に名前の場所を空けさせる) */
-const LABEL_CHAR_WIDTH = 13;
-const UNTAKEN_TEXT = '通らなかった枝';
 
 /**
  * 図の形の種類の集まり(サーバーの列挙 App\Enums\Workflow\WorkflowNodeKind の写し)。tests/Architecture/WorkflowDiagramMirrorTest.php がサーバーの値と結ぶ
@@ -111,84 +104,6 @@ function sizeOf(node: DiagramInputNode, childCount: number) {
     return { ...(ROUTING_KINDS.has(node.kind) ? ROUTING_SIZE : STEP_SIZE) };
 }
 
-function edgeText(edge: WorkflowDiagramEdge): string | null {
-    if (edge.taken === false) {
-        return edge.label === null
-            ? UNTAKEN_TEXT
-            : `${edge.label}(${UNTAKEN_TEXT})`;
-    }
-
-    return edge.label;
-}
-
-/**
- * 点線の辺(画面.md 8 節の通らなかった枝): taken が偽の辺と、元のノードが省略で元に入る辺がすべて点線の辺。元から先へ、変わらなくなるまで伝える
- * (辺の並びに頼らない。分岐終了は通過なので、その先は実線に戻る)。
- */
-function dashedEdges(
-    nodes: DiagramInputNode[],
-    edges: WorkflowDiagramEdge[],
-): Set<WorkflowDiagramEdge> {
-    const skipped = new Set(
-        nodes.filter((node) => node.state === 'skipped').map((node) => node.id),
-    );
-    const dashed = new Set(edges.filter((edge) => edge.taken === false));
-    let changed = true;
-
-    while (changed) {
-        changed = false;
-
-        for (const edge of edges) {
-            const incoming = edges.filter((other) => other.to === edge.from);
-
-            if (
-                !dashed.has(edge) &&
-                skipped.has(edge.from) &&
-                incoming.length > 0 &&
-                incoming.every((other) => dashed.has(other))
-            ) {
-                dashed.add(edge);
-                changed = true;
-            }
-        }
-    }
-
-    return dashed;
-}
-
-type Box = { x: number; y: number; width: number; height: number };
-
-/**
- * 出る箱の下辺の中央から入る箱の上辺の中央へ、直角に折れる道(途中の dagre の点があれば、その x を通る)。
- */
-function routeOf(
-    source: Box,
-    target: Box,
-    middleX: number | null,
-): Pick<RouteEdgeData, 'path' | 'labelX' | 'labelY'> {
-    const sy = source.y + source.height / 2;
-    const ty = target.y - target.height / 2;
-
-    if (middleX === null) {
-        const bend = (sy + ty) / 2;
-
-        return {
-            path: `M ${source.x} ${sy} V ${bend} H ${target.x} V ${ty}`,
-            labelX: (source.x + target.x) / 2,
-            labelY: bend,
-        };
-    }
-
-    const top = sy + BEND_OFFSET;
-    const bottom = ty - BEND_OFFSET;
-
-    return {
-        path: `M ${source.x} ${sy} V ${top} H ${middleX} V ${bottom} H ${target.x} V ${ty}`,
-        labelX: middleX,
-        labelY: (top + bottom) / 2,
-    };
-}
-
 /**
  * 図のノードと辺から、React Flow のノード(親が子より前)と辺、図全体の大きさを作る。
  */
@@ -226,7 +141,7 @@ export function layoutDiagram(
     for (const node of roots) {
         graph.setNode(
             String(node.id),
-            sizeOf(node, children.get(node.id)?.length ?? 0),
+            sizeOf(node, slotsOf(node, children.get(node.id) ?? []).length),
         );
     }
 
@@ -310,13 +225,13 @@ function placeNodes(
         };
 
         if (isFrame(node)) {
-            const kids = children.get(node.id) ?? [];
+            const slots = slotsOf(node, children.get(node.id) ?? []);
             placed.push({
                 ...base,
                 type: 'frame',
-                data: { node, childCount: kids.length },
+                data: { node, childCount: slots.length },
             });
-            childNodes.push(...placeChildren(node, kids, box.width));
+            childNodes.push(...placeChildren(node, slots, box.width));
         } else {
             placed.push({
                 ...base,
@@ -340,23 +255,43 @@ function placeNodes(
 }
 
 /**
+ * 枠の中の箱の並び(案件の展開の行、定義の仮の札の順)。
+ */
+function slotsOf(
+    node: DiagramInputNode,
+    kids: DiagramInputNode[],
+): ChildSlot[] {
+    return [
+        ...kids.map((child): ChildSlot => ({
+            id: String(child.id),
+            type: 'step',
+            data: { node: child },
+        })),
+        ...node.placeholders.map((placeholder, index): ChildSlot => ({
+            id: `${node.id}-slot-${index}`,
+            type: 'placeholder',
+            data: placeholder,
+        })),
+    ];
+}
+
+/**
  * 枠の子(枠の左上からの相対の座標)。子の並び全体を枠の幅の中央に置く(上下の辺が子の並びの中央を通る)。
  */
 function placeChildren(
     parent: DiagramInputNode,
-    kids: DiagramInputNode[],
+    slots: ChildSlot[],
     frameWidth: number,
 ): DiagramNode[] {
     const row = parent.kind === 'parallel';
     const rowWidth = row
-        ? kids.length * CHILD_SIZE.width +
-          Math.max(kids.length - 1, 0) * FRAME.gap
+        ? slots.length * CHILD_SIZE.width +
+          Math.max(slots.length - 1, 0) * FRAME.gap
         : CHILD_SIZE.width;
     const left = (frameWidth - rowWidth) / 2;
 
-    return kids.map((child, index) => ({
-        id: String(child.id),
-        type: 'step',
+    return slots.map((slot, index) => ({
+        ...slot,
         parentId: String(parent.id),
         extent: 'parent',
         position: row
@@ -370,33 +305,5 @@ function placeChildren(
               },
         width: CHILD_SIZE.width,
         height: CHILD_SIZE.height,
-        data: { node: child },
     }));
-}
-
-function routeEdge(
-    from: string,
-    to: string,
-    text: string | null,
-    dashed: boolean,
-    graph: Graph,
-    boxOf: (id: string) => Box,
-): Edge<RouteEdgeData, 'route'> {
-    const points = graph.edge(from, to)?.points ?? [];
-    const middle = points.slice(1, -1);
-    const middleX =
-        middle.length === 0 ? null : middle[Math.floor(middle.length / 2)].x;
-
-    return {
-        id: `${from}-${to}`,
-        source: from,
-        target: to,
-        type: 'route',
-        markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16 },
-        data: {
-            ...routeOf(boxOf(from), boxOf(to), middleX),
-            text,
-            dashed,
-        },
-    };
 }

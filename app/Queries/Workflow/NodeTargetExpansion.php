@@ -32,7 +32,7 @@ class NodeTargetExpansion
     ) {}
 
     /**
-     * 前のノードからの到達で、対象者で指定・起点で指定のノードを展開する(案件のノードと、申請の画面の先読みの版のノード = 同じ列を持つ。ルートの深さ/画面.md 5 節)。
+     * 前のノードからの到達で、対象者で指定・起点で指定のノードを展開する(案件のノードと、申請の画面の先読みの版のノード = 同じ列を持つ。ルートの深さ/画面/案件の側の画面.md 5 節)。
      *
      * @param  int|null  $applicantDepartmentId  案件の担当組織(申請者が起点のときの起点の組織)
      * @param  int|null  $previousDepartmentId  前処理者の起点の組織({@see self::originDepartmentOn()}。前処理者が起点のときだけ使う)

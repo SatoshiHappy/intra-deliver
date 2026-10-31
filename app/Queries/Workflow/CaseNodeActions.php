@@ -12,7 +12,7 @@ use DateTimeInterface;
 use LogicException;
 
 /**
- * 案件の詳細のノードごとの操作の可否(docs の 設計/ワークフロー/ルートの深さ/画面.md 6・7 節の nodeActions、
+ * 案件の詳細のノードごとの操作の可否(docs の 設計/ワークフロー/ルートの深さ/画面/案件の側の画面.md の 6 節・7 節の nodeActions、
  * 設計/ワークフロー/案件の運用/画面/案件の画面.md の 4 節): 判定を求める者が処理対象者の現在のノードごとに、操作ごとの処理担当者の選択肢
  * principals(処理者 P の候補 = {@see ProcessorCandidates} のうち、P を処理者として状態 × 役割の表 {@see CaseOperationDecider::permitsIn()}
  * = 業務処理と同じ口が許すもの。案件の運用/案件の操作/README.md の 4.3 節)を引く。操作の真偽は選択肢があるか。差戻しは候補

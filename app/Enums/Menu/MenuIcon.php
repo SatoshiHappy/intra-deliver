@@ -53,6 +53,9 @@ enum MenuIcon: string
     /** ワークフローのアイテム「申請一覧」(同上) */
     case Inbox = 'inbox';
 
+    /** 「管理」のアイテム「フロー定義」(docs の 設計/ワークフロー/ルートの深さ/認可と一覧.md の 5 節。業務モジュールには選べない) */
+    case Workflow = 'workflow';
+
     /** 「管理」のアイテム「申請操作」(docs の 設計/ワークフロー/案件の運用/認可と一覧.md の 5 節。業務モジュールには選べない) */
     case ListChecks = 'list-checks';
 

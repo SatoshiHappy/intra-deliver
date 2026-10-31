@@ -131,7 +131,7 @@ export function ProcessedBadge({
     );
 }
 
-/** ステップの状態ごとの札の色(到達していない・省略は札にしない = ルートの深さ/画面.md 8 節) */
+/** ステップの状態ごとの札の色(到達していない・省略は札にしない = ルートの深さ/画面/図と意匠とE2E.md 8 節) */
 const STEP_TONES: Record<WorkflowStepState['state'], StatusTone | null> = {
     hold: 'returned',
     done: 'settled',

@@ -14,7 +14,8 @@ use Tests\Support\TransactionalTestCase;
 
 /**
  * ワークフローのルートの認可とメニュー(docs の 設計/ワークフロー/認可と一覧.md 4 節・6 節・7 節の HTTP の Feature テスト): 31 のルートのルートの認可が
- * ゲストと認証済みに execute を許す(AuthorizationQuery::allowsUri で確かめる = FormRequest の 403 と取り違えない)、申請操作の 6 本と代理の管理の 3 本は許さない、
+ * ゲストと認証済みに execute を許す(AuthorizationQuery::allowsUri で確かめる = FormRequest の 403 と取り違えない)、申請操作の 6 本と代理の管理の 3 本と
+ * 定義の管理の 8 本は許さない、
  * このモジュールのポリシーが 62 件(ルートの深さ/認可と一覧.md 4.1 = 処理対象者の候補の 2 件と、設計/ワークフロー/案件の運用/認可と一覧.md の 4 節 =
  * 一括承認・一括確認・利用者の候補・保留・保留解除・振替・確認・代理の設定の 20 件と、設計/ワークフロー/申請の周辺/初期データ.md の 3 節 = 写しの値の入口の 2 件を足した)、
  * ゲストと u0001 のサイドバーとサイトマップに「ワークフロー」の 4 アイテム(申請する・申請一覧・申請書の業務モジュール 2 つ。並びは業務の後・管理の前)。初期データを入れ、ルートの認可を外さない。
@@ -22,7 +23,7 @@ use Tests\Support\TransactionalTestCase;
 final class WorkflowRouteAuthorizationTest extends TransactionalTestCase
 {
     /**
-     * ゲストと認証済みに許すワークフローのルート 31 本(設計/ワークフロー/画面/README.md 1.1 の表の順と、ルートの深さ/画面.md 1.1 の処理対象者の候補、
+     * ゲストと認証済みに許すワークフローのルート 31 本(設計/ワークフロー/画面/README.md 1.1 の表の順と、ルートの深さ/画面/README.md 1.1 の処理対象者の候補、
      * 案件の運用/画面/README.md の 1.1 節の 11 本、写しの値の入口)
      */
     private const ROUTES = [
@@ -36,11 +37,14 @@ final class WorkflowRouteAuthorizationTest extends TransactionalTestCase
         'workflow.proxies.index', 'workflow.proxies.store', 'workflow.proxies.destroy',
     ];
 
-    /** システム管理者だけのルート(ポリシーなし = 設計/ワークフロー/案件の運用/認可と一覧.md の 4 節) */
+    /** システム管理者だけのルート(ポリシーなし = 設計/ワークフロー/案件の運用/認可と一覧.md の 4 節、定義の管理 = ルートの深さ/認可と一覧.md 4.2 節) */
     private const ADMIN_ROUTES = [
         'workflow.admin.cases.index', 'workflow.admin.cases.retarget', 'workflow.admin.cases.reexpand',
         'workflow.admin.cases.move', 'workflow.admin.cases.assign', 'workflow.admin.cases.destroy',
         'workflow.admin.proxies.index', 'workflow.admin.proxies.store', 'workflow.admin.proxies.destroy',
+        'workflow.admin.flows.index', 'workflow.admin.flows.show', 'workflow.admin.flows.referrers.update',
+        'workflow.admin.versions.store', 'workflow.admin.versions.disable', 'workflow.admin.versions.enable',
+        'workflow.admin.nodes.update', 'workflow.admin.subject-candidates',
     ];
 
     protected function setUp(): void

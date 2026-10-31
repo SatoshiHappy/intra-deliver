@@ -1,7 +1,7 @@
 import { expect } from './test';
 import type { Locator, Page } from '@playwright/test';
 
-// 承認のダイアログの指定するステップの欄の部品(workflow-route.spec.ts が使う。docs の 設計/ワークフロー/ルートの深さ/画面.md の 6 節)。
+// 承認のダイアログの指定するステップの欄の部品(workflow-route.spec.ts が使う。docs の 設計/ワークフロー/ルートの深さ/画面/案件の側の画面.md の 6 節)。
 
 /**
  * 指定するステップの欄で、検索する語を打って候補を選ぶ(候補の名前は「名前 主所属」なので先頭で引く)。

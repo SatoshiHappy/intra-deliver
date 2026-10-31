@@ -2,7 +2,7 @@ import { applicantValueOf } from '@/lib/Workflow/applyApplicant';
 import type { WorkflowApplyProps } from '@/types';
 
 /**
- * 申請の画面の部分の読み直しの要求(申請基準日・申請者を変えたとき。docs の 設計/ワークフロー/ルートの深さ/画面.md 5 節、
+ * 申請の画面の部分の読み直しの要求(申請基準日・申請者を変えたとき。docs の 設計/ワークフロー/ルートの深さ/画面/案件の側の画面.md 5 節、
  * 設計/ワークフロー/案件の運用/画面/案件の画面.md の 6.1 節)。
  */
 

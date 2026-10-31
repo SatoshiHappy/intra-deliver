@@ -61,7 +61,7 @@ final class CaseSendBackOnRoutesTest extends TransactionalTestCase
     }
 
     /**
-     * 差戻しできる先が 1 つも無いステップでは候補が無く、差戻しは 422 send_back_node_id(13 節)で何も変わらない。詳細は差戻しのボタンを出さない(画面.md 6 節)。
+     * 差戻しできる先が 1 つも無いステップでは候補が無く、差戻しは 422 send_back_node_id(13 節)で何も変わらない。詳細は差戻しのボタンを出さない(画面/案件の側の画面.md 6 節)。
      */
     public function test_a_node_without_allowed_targets_cannot_send_back(): void
     {

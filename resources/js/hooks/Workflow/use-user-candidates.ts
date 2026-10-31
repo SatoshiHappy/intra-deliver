@@ -24,7 +24,8 @@ function candidatesUrl(
 /**
  * 人の候補(docs の 設計/ワークフロー/案件の運用/画面/README.md の 1.3 節。口 = workflow.user-candidates)。caseId があれば案件の申請基準日の
  * 有効なユーザー、無ければ on(代理の登録の欄の開始日)の、それも無ければ今日の有効なユーザー。連絡する人・担当変更先・代理先と代理元・
- * 申請操作の欄が使う。nodeId(指定されるステップ。承認のダイアログの指定の欄)があれば、口は workflow.cases.assignee-candidates(設計/ワークフロー/ルートの深さ/画面.md 6 節)。
+ * 申請操作の欄が使う。nodeId(指定されるステップ。承認のダイアログの指定の欄)があれば、
+ * 口は workflow.cases.assignee-candidates(設計/ワークフロー/ルートの深さ/画面/案件の側の画面.md 6 節)。
  * 基準日・ステップが変わると取り直す(scope に含める)。
  */
 export function useUserCandidates(

@@ -85,11 +85,12 @@ class MasterSearchQuery
     }
 
     /**
-     * 語を含む d に有効な役職(組織セットで絞らない。sort_key・code の順で $limit 件まで)。役職のロケール別の行は検索用名称を持たないので、名称とコードを見る。
+     * 語を含む d に有効な役職(組織セットで絞らない。sort_key・code の順で $limit 件まで。null = 上限なし)。
+     * 役職のロケール別の行は検索用名称を持たないので、名称とコードを見る。
      *
      * @return list<array{id: int, code: string, name: string|null}>
      */
-    public function companyPosts(string $keyword, DateTimeInterface $date, string $localeCode, int $limit): array
+    public function companyPosts(string $keyword, DateTimeInterface $date, string $localeCode, ?int $limit): array
     {
         $pattern = $this->patternOf($keyword);
         $posts = CompanyPost::query()
@@ -103,7 +104,7 @@ class MasterSearchQuery
                         ->whereLike('company_post_term_translations.name', $pattern)))))
             ->orderBy('sort_key')
             ->orderBy('code')
-            ->limit($limit)
+            ->when($limit !== null, fn (Builder $query) => $query->limit((int) $limit))
             ->get();
         $names = $this->terms->companyPostTermsOn(array_values($posts->modelKeys()), $date, $localeCode)
             ->map(fn (CompanyPostTerm $term) => $term->companyPostTermTranslations->first()?->name)

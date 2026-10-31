@@ -25,7 +25,12 @@ use App\Http\Controllers\Web\Records\RecordRevisionFileController;
 use App\Http\Controllers\Web\Records\RelatedColumnController;
 use App\Http\Controllers\Web\Records\RuleController;
 use App\Http\Controllers\Web\Workflow\Admin\CaseOperationController;
+use App\Http\Controllers\Web\Workflow\Admin\FlowController as AdminFlowController;
+use App\Http\Controllers\Web\Workflow\Admin\NodeController;
 use App\Http\Controllers\Web\Workflow\Admin\ProxyController as AdminProxyController;
+use App\Http\Controllers\Web\Workflow\Admin\ReferrerController;
+use App\Http\Controllers\Web\Workflow\Admin\SubjectCandidateController;
+use App\Http\Controllers\Web\Workflow\Admin\VersionController;
 use App\Http\Controllers\Web\Workflow\ApplicationController;
 use App\Http\Controllers\Web\Workflow\AssigneeCandidateController;
 use App\Http\Controllers\Web\Workflow\BulkActionController;
@@ -225,3 +230,23 @@ Route::post('/workflow/admin/cases/{case}/assign', [CaseOperationController::cla
     ->name('workflow.admin.cases.assign')->where('case', '[0-9]{1,18}');
 Route::delete('/workflow/admin/cases/{case}', [CaseOperationController::class, 'destroy'])
     ->name('workflow.admin.cases.destroy')->where('case', '[0-9]{1,18}');
+
+// 定義の管理(docs の 設計/ワークフロー/ルートの深さ/画面/README.md 1.1 節)。{flow}・{node} = コード、{version} = 版の番号。
+// システム管理者だけ(ポリシーを置かない = 設計/ワークフロー/ルートの深さ/認可と一覧.md の 4.2 節)。入口の 404 は FormRequest の authorize が持つ。
+$definitionCode = '[a-z][a-z0-9_]{0,49}';
+Route::get('/workflow/admin/flows', [AdminFlowController::class, 'index'])->name('workflow.admin.flows.index');
+Route::get('/workflow/admin/flows/{flow}', [AdminFlowController::class, 'show'])
+    ->name('workflow.admin.flows.show')->where('flow', $definitionCode);
+Route::put('/workflow/admin/flows/{flow}/referrers', [ReferrerController::class, 'update'])
+    ->name('workflow.admin.flows.referrers.update')->where('flow', $definitionCode);
+Route::post('/workflow/admin/flows/{flow}/versions', [VersionController::class, 'store'])
+    ->name('workflow.admin.versions.store')->where('flow', $definitionCode);
+Route::post('/workflow/admin/flows/{flow}/versions/{version}/disable', [VersionController::class, 'disable'])
+    ->name('workflow.admin.versions.disable')->where(['flow' => $definitionCode, 'version' => '[0-9]{1,9}']);
+Route::post('/workflow/admin/flows/{flow}/versions/{version}/enable', [VersionController::class, 'enable'])
+    ->name('workflow.admin.versions.enable')->where(['flow' => $definitionCode, 'version' => '[0-9]{1,9}']);
+Route::put('/workflow/admin/flows/{flow}/versions/{version}/nodes/{node}', [NodeController::class, 'update'])
+    ->name('workflow.admin.nodes.update')
+    ->where(['flow' => $definitionCode, 'version' => '[0-9]{1,9}', 'node' => $definitionCode]);
+Route::get('/workflow/admin/subject-candidates', SubjectCandidateController::class)
+    ->name('workflow.admin.subject-candidates');

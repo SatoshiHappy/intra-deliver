@@ -52,6 +52,9 @@ export const demoGroups = [
         // records-headings-show は admin が作る業務モジュールを使う = 名前の順で admin が先に走る。
         // records-related-columns は初期データの「課題」の関連レコードの列を変え、筋の最後に未選択に戻す。
         // records-admin-visibility-stop は初期データの申請書の業務モジュールの編集の画面を開くだけで保存しない)。
+        // zz-workflow-admin(版・参照者)と zz-workflow-admin.steps(ステップの設定。元に戻す)はフローの定義を変えるが、
+        // この組のほかの spec は案件の申請もフローの定義も前提にしない。
+        // 名前の順でこの組の最後に流れ、別の組は別の DB なので、定義を変えても申請の筋(demo-workflow)に効かない。
         // 時間の長い demo のファイルを上の 2 つの組から分けて、組どうしの時間をそろえる
         name: 'demo-ほか',
         files: [
@@ -63,6 +66,8 @@ export const demoGroups = [
             'tests/e2e/demo/records-related-columns.spec.ts',
             'tests/e2e/demo/switch-user.spec.ts',
             'tests/e2e/demo/workflow-connected.spec.ts',
+            'tests/e2e/demo/zz-workflow-admin.spec.ts',
+            'tests/e2e/demo/zz-workflow-admin.steps.spec.ts',
         ],
     },
 ];

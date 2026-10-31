@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Queries\Master;
 
+use App\Models\Master\CompanyPost;
 use App\Models\Master\Department;
 use App\Models\Master\User;
 use App\Queries\Master\Api\MasterNames;
@@ -9,7 +10,7 @@ use Carbon\CarbonImmutable;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * ユーザー・組織の表示名の公開の口(docs の 設計/ワークフロー/業務データとの接続/公開の口.md 8.1: id → {code, name}。存在しない id は入れない。
+ * ユーザー・組織・役職の表示名の公開の口(docs の 設計/ワークフロー/業務データとの接続/公開の口.md 8.1: id → {code, name}。存在しない id は入れない。
  * d・ロケールの名前が無ければ name が null、code はアンカーの値)。初期データ(u0014 は 2025-10-01 に退職、第二営業部は 2025-04-01 から)で確かめる。
  */
 final class MasterNamesTest extends TransactionalTestCase
@@ -48,6 +49,26 @@ final class MasterNamesTest extends TransactionalTestCase
         $this->assertSame([$retired => ['code' => 'u0014', 'name' => null]], $this->names()->users([$retired], $this->day('2025-10-01'), 'ja'));
         $this->assertSame([$sales2 => ['code' => 'sales-2', 'name' => null]], $this->names()->departments([$sales2], $this->day('2025-03-31'), 'ja'));
         $this->assertSame([$sales2 => ['code' => 'sales-2', 'name' => null]], $this->names()->departments([$sales2], $this->day('2026-01-01'), 'fr'));
+    }
+
+    public function test_returns_the_code_and_the_name_of_company_posts_and_leaves_out_missing_ids(): void
+    {
+        [$manager, $chief] = [$this->companyPostId('manager'), $this->companyPostId('section-chief')];
+        $missing = (int) CompanyPost::query()->max('id') + 1;
+
+        $this->assertSame(
+            [$chief => ['code' => 'section-chief', 'name' => '課長'], $manager => ['code' => 'manager', 'name' => '部長']],
+            $this->names()->companyPosts([$chief, $missing, $manager, $chief], $this->day('2026-10-10'), 'ja'),
+        );
+        $this->assertSame(
+            [$manager => ['code' => 'manager', 'name' => null]],
+            $this->names()->companyPosts([$manager], $this->day('2026-10-10'), 'fr'),
+        );
+    }
+
+    private function companyPostId(string $code): int
+    {
+        return CompanyPost::query()->where('code', $code)->sole()->id;
     }
 
     private function names(): MasterNames

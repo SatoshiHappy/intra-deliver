@@ -77,6 +77,20 @@ final class MasterCandidatesTest extends TransactionalTestCase
         $this->assertSame([], $this->candidates()->companyPostsOn('室長', self::day('2026-01-01'), 'ja', 20));
     }
 
+    public function test_lists_every_company_post_effective_on_the_date_in_the_order_of_the_candidates(): void
+    {
+        $set = DepartmentSet::query()->where('is_default', true)->firstOrFail();
+        $ended = $this->companyPost($set, 70, [['2020-01-01', '2026-01-01']]);
+        $seeded = ['president', 'division-head', 'manager', 'assistant-manager', 'section-chief', 'chief', 'senior'];
+        $posts = $this->candidates()->effectiveCompanyPostsOn(self::day('2026-10-10'), 'ja');
+
+        $this->assertSame($seeded, $this->codes($posts));
+        $this->assertSame(['id', 'code', 'name'], array_keys($posts[0]));
+        $this->assertSame('社長', $posts[0]['name']);
+        $before = $this->candidates()->effectiveCompanyPostsOn(self::day('2025-12-31'), 'ja');
+        $this->assertContains($ended->code, $this->codes($before));
+    }
+
     #[TestWith(['%'])]
     #[TestWith(['_'])]
     #[TestWith(['\\'])]

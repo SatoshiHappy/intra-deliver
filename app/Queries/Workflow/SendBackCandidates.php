@@ -25,7 +25,7 @@ class SendBackCandidates
     }
 
     /**
-     * 候補と、差戻しできる先の制限が効いているか(A ∩ L が空でなく A より狭い = 画面の制限の 1 行 = ルートの深さ/画面.md 6 節。RB-2 で A になったときは偽)。
+     * 候補と、差戻しできる先の制限が効いているか(A ∩ L が空でなく A より狭い = 画面の制限の 1 行 = ルートの深さ/画面/案件の側の画面.md 6 節。RB-2 で A になったときは偽)。
      *
      * @param  int  $nodeId  操作するノード(同じ案件のノード。展開の行なら親で読む)
      * @return array{candidates: list<WorkflowCaseNode>, isRestricted: bool}

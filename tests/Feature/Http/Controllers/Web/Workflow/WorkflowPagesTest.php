@@ -79,7 +79,7 @@ final class WorkflowPagesTest extends TransactionalTestCase
 
     /**
      * 申請基準日の候補(クエリ・一時保存の値)は、日付として読めれば今日の前後 1 年の外でもそのまま baseDate と next に使う(範囲は送った後の 422 で示す)。
-     * 読めない候補は飛ばし、どれも読めなければ今日(設計/ワークフロー/ルートの深さ/画面.md 5 節)。範囲の外の日 = 今日の 1 年後の翌日(計画のフローの版 3 は終わりなし)。
+     * 読めない候補は飛ばし、どれも読めなければ今日(設計/ワークフロー/ルートの深さ/画面/案件の側の画面.md 5 節)。範囲の外の日 = 今日の 1 年後の翌日(計画のフローの版 3 は終わりなし)。
      */
     public function test_a_readable_base_date_outside_a_year_around_today_is_kept_in_the_form_and_the_next_steps(): void
     {

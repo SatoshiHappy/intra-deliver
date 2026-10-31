@@ -2,6 +2,8 @@
 
 namespace App\Queries\Master\Api;
 
+use App\Models\Master\CompanyPost;
+use App\Models\Master\CompanyPostTerm;
 use App\Models\Master\Department;
 use App\Models\Master\DepartmentTerm;
 use App\Models\Master\User;
@@ -11,7 +13,7 @@ use App\Queries\Master\TermQuery;
 use DateTimeInterface;
 
 /**
- * ユーザー・組織の表示名(コードと d・ロケールの名前)。判定しない(表示名を返すだけ)。鍵を取らない。
+ * ユーザー・組織・役職の表示名(コードと d・ロケールの名前)。判定しない(表示名を返すだけ)。鍵を取らない。
  * 名前の読み方は {@see TermQuery}(d に有効な期間の行のロケール別の行。docs の 設計/共通マスタ/共通の規則.md 5.4)。
  *
  * Master の公開の口(主体・認可・検証の範囲・ロック・原子性・結果・失敗の正本 = docs の 設計/ワークフロー/業務データとの接続/公開の口.md 8.1 の表)。
@@ -53,6 +55,21 @@ class MasterNames
             ->all();
 
         return $this->named($departmentIds, $codes, $names);
+    }
+
+    /**
+     * @param  list<int>  $companyPostIds
+     * @param  string  $localeCode  ロケールのコード(呼び手が渡す)
+     * @return array<int, array{code: string, name: string|null}> 役職の id → コードと名前(渡した順。重ねない)
+     */
+    public function companyPosts(array $companyPostIds, DateTimeInterface $date, string $localeCode): array
+    {
+        $codes = CompanyPost::query()->whereKey($companyPostIds)->pluck('code', 'id')->all();
+        $names = $this->terms->companyPostTermsOn(array_keys($codes), $date, $localeCode)
+            ->map(fn (CompanyPostTerm $term) => $term->companyPostTermTranslations->first()?->name)
+            ->all();
+
+        return $this->named($companyPostIds, $codes, $names);
     }
 
     /**

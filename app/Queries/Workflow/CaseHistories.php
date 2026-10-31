@@ -23,7 +23,7 @@ use LogicException;
  * @phpstan-import-type Person from WorkflowPeople
  * @phpstan-import-type RowChange from RecordRevisionQuery
  *
- * 承認の行の指定(ルートの深さ/画面.md 7 節の履歴「指定: {指定されたステップ} = {名前}」)= 承認したノードが指定するノードごと(写した並び)に、その行が書いた指定の行
+ * 承認の行の指定(ルートの深さ/画面/案件の側の画面.md 7 節の履歴「指定: {指定されたステップ} = {名前}」)= 承認したノードが指定するノードごと(写した並び)に、その行が書いた指定の行
  * (人は指定の順)。行が 0 のノードは people が空(= 0 人を指定 = 省略。データモデル/案件の表.md 3.5、通しの回の T08)。ノード名は表示名(ルートの深さ/案件の操作/README.md 1.3)。
  *
  * @phpstan-type CaseDiff array{fields: list<array{code: string, before: mixed, after: mixed}>,

@@ -12,7 +12,7 @@ import {
     expectCandidateLabel,
 } from '../support/workflow-assignees';
 
-// ワークフローのルートの深さの画面(docs の 設計/ワークフロー/ルートの深さ/画面.md 10 節の demo): 申請の画面の申請基準日、承認のダイアログの
+// ワークフローのルートの深さの画面(docs の 設計/ワークフロー/ルートの深さ/画面/図と意匠とE2E.md 10 節の demo): 申請の画面の申請基準日、承認のダイアログの
 // 指定するステップ、差戻し先の制限、古い画面、申請者承認防止(送る前に知らせる)と、詳細のフロー図(既定)・図と表の切替・合議の進み具合・通らなかった枝。
 // 通しの回の分 = 指定の状態の 1 行(省略の知らせ・完了の条件の出す条件)と 0 人の指定の履歴(初期データに無い形は詳細の応答を横取りして書き換える。書き込みはしない)。
 // 初期データの版 3(分岐 B = 初期データ.md 3.2)に筋の中で申請する。通らなかった枝(部長を通らない枝)は見本の WF-000010(予算 120)で見る(申請を足すと後の spec の件数が変わるため)。
@@ -36,7 +36,7 @@ type DemoUser = keyof typeof USERS;
 const PROJECT_NAME = 'E2E の合議の計画';
 const CASE_NAME = `プロジェクト計画の承認 ${PROJECT_NAME}`;
 
-/** 申請者承認防止で申請者本人だけのときの文言(設計/ワークフロー/ルートの深さ/案件の操作/同時実行と検査.md 13 節・画面.md 5 節。課長 = 申請者の所属組織 + 課長 = u0002 だけ) */
+/** 申請者承認防止で申請者本人だけのときの文言(設計/ワークフロー/ルートの深さ/案件の操作/同時実行と検査.md 13 節・画面/案件の側の画面.md 5 節。課長 = 申請者の所属組織 + 課長 = u0002 だけ) */
 const APPLICANT_ONLY =
     '課長の処理担当者が申請者本人だけのため、この操作はできません。このステップには、申請者承認防止が設定されています。';
 
@@ -167,7 +167,7 @@ function diagramStep(page: Page, name: string) {
 }
 
 /**
- * フロー図の点線の辺(通らなかった枝とその続き = 画面.md 8 節。辺の線に破線の書式が付く)。
+ * フロー図の点線の辺(通らなかった枝とその続き = 画面/図と意匠とE2E.md 8 節。辺の線に破線の書式が付く)。
  */
 function dashedEdges(page: Page) {
     return diagram(page).locator(
@@ -203,7 +203,7 @@ function councilProgress(page: Page) {
     return page.getByRole('region', { name: '関係部署の合議', exact: true });
 }
 
-/** 詳細の props のうち、横取りで書き換える部分(画面.md 7 節の nodeActions[].designations・pullBackNodes[].blockedReason・histories[].assignments) */
+/** 詳細の props のうち、横取りで書き換える部分(画面/案件の側の画面.md 7 節の nodeActions[].designations・pullBackNodes[].blockedReason・histories[].assignments) */
 type RewrittenDetailProps = {
     nodeActions: { designations: { kind: string; min: number }[] }[];
     pullBackNodes: { blockedReason: string | null }[];
@@ -273,7 +273,7 @@ test('申請者: 申請の画面に申請基準日(既定は今日)と担当組�
     await expect(page.getByRole('region', { name: '申請情報' })).toContainText(
         '東京営業課',
     );
-    // ラベルの横の「?」にフォーカスすると説明が出る(入力欄の説明の Tooltip = 画面.md 9.2)
+    // ラベルの横の「?」にフォーカスすると説明が出る(入力欄の説明の Tooltip = 画面/図と意匠とE2E.md 9.2)
     await page
         .getByRole('button', { name: '申請基準日の説明', exact: true })
         .focus();
@@ -337,7 +337,7 @@ test('申請者: 申請の画面に申請基準日(既定は今日)と担当組�
     await expect(basic).toContainText('版 3');
     await expect(currentSteps(page)).toHaveText('課長');
 
-    // フロー情報の既定は図: 凡例の札 4 つ、課長の箱が承認待ち、まだ到達していない責任者、最後の後に「終了」の印(画面.md 7・8 節)
+    // フロー情報の既定は図: 凡例の札 4 つ・課長が承認待ち・未到達の責任者・最後の「終了」(画面/案件の側の画面.md 7 節・画面/図と意匠とE2E.md 8 節)
     await expect(
         page.getByRole('list', { name: '凡例' }).getByRole('listitem'),
     ).toHaveText(['処理済み', '承認待ち', '保留中', '到達していない']);
@@ -350,7 +350,7 @@ test('申請者: 申請の画面に申請基準日(既定は今日)と担当組�
         diagram(page).getByText('終了', { exact: true }),
     ).toBeVisible();
     await expect(councilProgress(page)).toHaveCount(0);
-    // 課長がまだ合議の人を指定していないので、合議の枠に指定の前の文(画面.md 8 節)
+    // 課長がまだ合議の人を指定していないので、合議の枠に指定の前の文(画面/図と意匠とE2E.md 8 節)
     await expect(
         diagram(page).getByText('処理担当者はまだ指定されていません', {
             exact: true,
@@ -379,7 +379,7 @@ test('申請者: 申請の画面に申請基準日(既定は今日)と担当組�
 test('最小 0 の知らせ: 合議の最小を 0 にした詳細の応答で上長が承認のダイアログを開くと、0 人のときは「このステップは省略されます。」が出て、完了の条件は出ない', async ({
     page,
 }) => {
-    // 初期データに最小 0 のステップが無いので、詳細の応答の縦配置の指定の最小を 0 にして返す(画面.md 6 節、通しの回の T03 = S5)
+    // 初期データに最小 0 のステップが無いので、詳細の応答の縦配置の指定の最小を 0 にして返す(画面/案件の側の画面.md 6 節、通しの回の T03 = S5)
     await openAs(page, 'chief', '/workflow/cases?tab=pending');
     await rewriteDetailProps(page, caseUrl, (props) => {
         for (const action of props.nodeActions) {
@@ -419,7 +419,7 @@ test('上長: 承認のダイアログに指定するステップが 2 つ出て
     });
     await expect(council).toBeVisible();
     await expect(owner).toBeVisible();
-    // 完了の条件は 1 人以上かつ選んだ人数が必要な人数以上のときだけ(合議の最小は 2 なので 0 人でも省略の知らせは出ない = 画面.md 6 節、通しの回の T03)
+    // 完了の条件は 1 人以上かつ選んだ人数が必要な人数以上のときだけ(合議の最小は 2 なので 0 人でも省略の知らせは出ない = 画面/案件の側の画面.md 6 節、通しの回の T03)
     await expect(assigneeStatus(council)).toHaveText('選択中 0 人');
     // 欄が 2 つでも候補の一覧は欄ごとに別の名前で読み上げる
     await expectCandidateLabel(page, council, '関係部署の合議');
@@ -457,7 +457,7 @@ test('上長: 承認のダイアログに指定するステップが 2 つ出て
 test('0 人の指定の履歴: 承認の行の指定のうち人のいない指定は「指定: {ステップ} = 省略」と出る', async ({
     page,
 }) => {
-    // 初期データに 0 人の指定が無いので、詳細の応答の課長の承認の行の合議の指定を 0 人にして返す(画面.md 7 節、通しの回の T08 = S6)
+    // 初期データに 0 人の指定が無いので、詳細の応答の課長の承認の行の合議の指定を 0 人にして返す(画面/案件の側の画面.md 7 節、通しの回の T08 = S6)
     await openAs(page, 'manager', '/workflow/cases?tab=pending');
     await rewriteDetailProps(page, caseUrl, (props) => {
         for (const history of props.histories) {
@@ -479,7 +479,7 @@ test('0 人の指定の履歴: 承認の行の指定のうち人のいない指�
 test('引戻しの申請者承認防止: 引戻せるステップに防止の文言がある詳細の応答で上長が引戻しのダイアログを開くと、「引戻しできません」と文言が出て「決定」を押せない', async ({
     page,
 }) => {
-    // 初期データの版 3 では申請者が防止のステップの処理対象者にならないので、詳細の応答の引戻せるステップに文言を入れて返す(画面.md 6 節、通しの回の T02・解消確認の R09)
+    // 初期データの版 3 では申請者が防止のステップの処理対象者にならないので、詳細の応答の引戻せるステップに文言を入れて返す(画面/案件の側の画面.md 6 節、通しの回の T02・解消確認の R09)
     const reason =
         '課長の承認の処理担当者が申請者本人だけのため、この操作はできません。このステップには、申請者承認防止が設定されています。';
     await openAs(page, 'chief', '/workflow/cases?tab=processed');
@@ -593,7 +593,7 @@ test('古い画面: 合議の 2 人が同じ詳細を開き、先に 1 人が承
         .getByRole('link', { name: '再表示', exact: true })
         .click();
 
-    // 再表示した詳細の合議の進み具合: 1 人(吉田 達也)が承認・必要 2 人、自分(山田 恵)の行に「自分」の札(画面.md 10 節)
+    // 再表示した詳細の合議の進み具合: 1 人(吉田 達也)が承認・必要 2 人、自分(山田 恵)の行に「自分」の札(画面/図と意匠とE2E.md 10 節)
     const progress = councilProgress(stale);
     await expect(progress).toContainText('1 人が承認　必要 2 人');
     await expect(progress).toContainText(

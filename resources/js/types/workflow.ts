@@ -102,7 +102,7 @@ export type WorkflowDiff = {
     }[];
 };
 
-/** 図の 1 ノード(定義と案件で共通。ルートの深さ/画面.md 1.2)。並びはサーバーの写した並び(展開の行は親の直後に番号の順) */
+/** 図の 1 ノード(定義と案件で共通。ルートの深さ/画面/README.md 1.2)。並びはサーバーの写した並び(展開の行は親の直後に番号の順) */
 export type WorkflowDiagramNode = {
     id: number;
     code: string | null; // 展開の行は null
@@ -144,11 +144,11 @@ export type WorkflowCaseDiagramNode = WorkflowDiagramNode & {
     processed:
         | ({ action: WorkflowAction; at: string | null } & WorkflowActorView)
         | null; // 処理済みだけ
-    // 処理の時に指定するステップで、まだ指定が無い。枠の文 = docs の 設計/ワークフロー/ルートの深さ/画面.md の 8 節(文言の持ち主は WorkflowDiagram.tsx)
+    // 処理の時に指定するステップで、まだ指定が無い。枠の文 = docs の 設計/ワークフロー/ルートの深さ/画面/図と意匠とE2E.md の 8 節(文言の持ち主は WorkflowDiagram.tsx)
     awaitingDesignation: boolean;
 };
 
-/** 案件の詳細の合議の進み具合(縦配置が展開中か通過のとき。ルートの深さ/画面.md 7 節) */
+/** 案件の詳細の合議の進み具合(縦配置が展開中か通過のとき。ルートの深さ/画面/案件の側の画面.md 7 節) */
 export type WorkflowCouncil = {
     nodeId: number;
     name: string;
@@ -187,7 +187,7 @@ export type WorkflowAssigneeCandidate = WorkflowPerson & {
     mainDepartmentName: string | null;
 };
 
-/** 承認のダイアログの「指定するステップ」1 つ(ルートの深さ/画面.md 6 節) */
+/** 承認のダイアログの「指定するステップ」1 つ(ルートの深さ/画面/案件の側の画面.md 6 節) */
 export type WorkflowDesignation = {
     nodeId: number;
     name: string;
@@ -216,7 +216,7 @@ export type WorkflowNodeOperation =
 /** 処理担当者の選択肢 1 つ(自分か代理元。並び = 自分が先、代理元はその後) */
 export type WorkflowPrincipal = { id: number; name: string; isSelf: boolean };
 
-/** 案件の詳細のステップごとの操作の可否(ルートの深さ/画面.md 7 節、案件の運用/画面/案件の画面.md の 4 節) */
+/** 案件の詳細のステップごとの操作の可否(ルートの深さ/画面/案件の側の画面.md 7 節、案件の運用/画面/案件の画面.md の 4 節) */
 type WorkflowNodeAction = {
     nodeId: number;
     name: string;

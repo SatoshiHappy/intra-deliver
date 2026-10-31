@@ -11,7 +11,7 @@ import type { WorkflowApplyAttachment, WorkflowApplyProps } from '@/types';
 type Props = WorkflowApplyProps;
 
 /**
- * 申請の画面の文・見出し・出し分け(docs の 設計/ワークフロー/画面/申請と案件.md の 3 節、設計/ワークフロー/ルートの深さ/画面.md の 5 節)。
+ * 申請の画面の文・見出し・出し分け(docs の 設計/ワークフロー/画面/申請と案件.md の 3 節、設計/ワークフロー/ルートの深さ/画面/案件の側の画面.md の 5 節)。
  * 見出しの下の 1 行と一時保存のボタンの有無は、mode と props で分かれるこの関数群({@link headingLineOf}・{@link showsSaveDraft})が決める。
  */
 
@@ -58,7 +58,7 @@ export function unshownKeysOf(
 }
 
 /**
- * 申請すると誰の未処理に出るかの 1 文(ルートの深さ/画面.md 5 節)。出せる人がいなければ空文字(0 人・版が無いときは別の文で示す)。
+ * 申請すると誰の未処理に出るかの 1 文(ルートの深さ/画面/案件の側の画面.md 5 節)。出せる人がいなければ空文字(0 人・版が無いときは別の文で示す)。
  */
 export function nextText(next: Props['next'], operation: string): string {
     if (next.dependsOnContent) {
@@ -77,7 +77,7 @@ export function nextText(next: Props['next'], operation: string): string {
 }
 
 /**
- * 申請できない理由(ルートの深さ/画面.md 5 節。無ければ null)。業務処理が正本で、送っても 422 になる。
+ * 申請できない理由(ルートの深さ/画面/案件の側の画面.md 5 節。無ければ null)。業務処理が正本で、送っても 422 になる。
  */
 export function blockerOf(props: Props): string | null {
     if (props.mode !== 'reapply' && props.next.version === null) {

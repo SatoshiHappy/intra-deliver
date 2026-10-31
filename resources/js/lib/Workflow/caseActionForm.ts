@@ -195,7 +195,7 @@ export function showsPrincipalField(node: CaseActionNode | undefined): boolean {
     return (node?.principals.length ?? 0) >= 2;
 }
 
-/** 縦配置の子の否認のダイアログの文(docs の 設計/ワークフロー/ルートの深さ/画面.md 6 節) */
+/** 縦配置の子の否認のダイアログの文(docs の 設計/ワークフロー/ルートの深さ/画面/案件の側の画面.md 6 節) */
 const COUNCIL_REJECT_NOTE =
     '否認の票を記録します。可決できなくなった場合は、申請を否認して完了します。';
 

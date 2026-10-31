@@ -100,7 +100,7 @@ async function openActionDialog(page: Page, trigger: string, title: string) {
 }
 
 /**
- * 案件の詳細のフロー情報を表に切り替えて、その表を返す(既定は図 = ルートの深さ/画面.md 7 節)。
+ * 案件の詳細のフロー情報を表に切り替えて、その表を返す(既定は図 = ルートの深さ/画面/案件の側の画面.md 7 節)。
  */
 async function flowTable(page: Page) {
     await page

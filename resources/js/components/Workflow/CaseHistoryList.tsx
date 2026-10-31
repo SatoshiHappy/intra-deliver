@@ -58,7 +58,7 @@ function diffIdOf(history: WorkflowCaseHistory): string {
 
 /**
  * コメントと、その下に添える行(担当変更・処理担当者の変更と再展開・戻る・指定の変更の 1 行と、承認の指定。
- * 「指定: {指定されたステップ} = {名前}」、0 人の指定は「= 省略」= 設計/ワークフロー/ルートの深さ/画面.md 7 節)。
+ * 「指定: {指定されたステップ} = {名前}」、0 人の指定は「= 省略」= 設計/ワークフロー/ルートの深さ/画面/案件の側の画面.md 7 節)。
  */
 function HistoryNotes({ history }: { history: WorkflowCaseHistory }) {
     const note = historyNoteOf(history);

@@ -20,7 +20,7 @@ import type { WorkflowApplyProps } from '@/types';
 type Props = WorkflowApplyProps;
 
 /**
- * 申請・一時保存・再申請(docs の 設計/ワークフロー/画面/申請と案件.md 3 節、ルートの深さ/画面.md 5 節、案件の運用/画面/案件の画面.md の 6.1 節)。
+ * 申請・一時保存・再申請(docs の 設計/ワークフロー/画面/申請と案件.md 3 節、ルートの深さ/画面/案件の側の画面.md 5 節、案件の運用/画面/案件の画面.md の 6.1 節)。
  * 面の並び = 申請情報(申請者の欄と注意の囲みを先頭に)→ 申請内容 → コメント → 添付ファイル → 連絡。
  */
 export default function Apply(props: Props) {

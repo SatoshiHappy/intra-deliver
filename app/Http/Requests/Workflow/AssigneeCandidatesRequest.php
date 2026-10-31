@@ -8,7 +8,7 @@ use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
- * 処理対象者の候補の入力 { node, q }(docs の 設計/ワークフロー/ルートの深さ/画面.md 1.1、案件の操作/処理対象者.md 5.2)。404 → 422 case → 403 は
+ * 処理対象者の候補の入力 { node, q }(docs の 設計/ワークフロー/ルートの深さ/画面/README.md 1.1、案件の操作/処理対象者.md 5.2)。404 → 422 case → 403 は
  * {@see AssigneeCandidates::authorize()} が検証より前に確かめ、その後に q(任意の文字列で 100 文字以内。空なら候補は空)を検証する。
  */
 class AssigneeCandidatesRequest extends FormRequest

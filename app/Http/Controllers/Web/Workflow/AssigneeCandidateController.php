@@ -9,7 +9,7 @@ use App\Support\AccessContext;
 use Illuminate\Http\JsonResponse;
 
 /**
- * 処理対象者の候補の口(docs の 設計/ワークフロー/ルートの深さ/画面.md 1.1・6 節、ADR 0006): 承認のダイアログの「指定するステップ」の「ユーザーを検索して追加」が、
+ * 処理対象者の候補の口(docs の 設計/ワークフロー/ルートの深さ/画面/README.md 1.1・画面/案件の側の画面.md 6 節、ADR 0006): 承認のダイアログの「指定するステップ」の「ユーザーを検索して追加」が、
  * ページ遷移なしに候補を JSON で取る。結果は判定する人で変わるので、Cache-Control: private, no-store を付ける。
  */
 class AssigneeCandidateController extends Controller

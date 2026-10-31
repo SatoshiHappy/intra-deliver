@@ -6,6 +6,7 @@ use App\Enums\Workflow\WorkflowNodeKind;
 use App\Enums\Workflow\WorkflowRelativeBase;
 use App\Enums\Workflow\WorkflowTargetKind;
 use App\Models\Workflow\WorkflowRouteNode;
+use App\Queries\Workflow\RouteNodeCandidates;
 
 /**
  * 定義の検査のうち、前処理者の制約と指定するノード(docs の 設計/ワークフロー/ルートの深さ/定義の管理.md 3 節の G-9・G-10、処理対象者.md 4.4・5.1)。
@@ -71,17 +72,10 @@ class RouteDesignationRules
     }
 
     /**
-     * G-10: X は承認のノードで Y と違い、申請のノードから Y へのどの経路も X を通る。X が処理の時に指定なら X の最小は 1 以上。
+     * G-10 の式は定義の管理の画面の候補と同じ 1 か所({@see RouteNodeCandidates::isDesignatorOf()})。
      */
     private function isValidDesignator(RouteDefinition $route, int $nodeId, int $designatorId): bool
     {
-        $designator = $route->node($designatorId);
-        $applyId = $route->applyNodeId();
-
-        return $designatorId !== $nodeId
-            && $designator->kind->isIn(WorkflowNodeKind::designating())
-            && $applyId !== null
-            && ! in_array($nodeId, $route->graph->reachableFrom($applyId, [$designatorId]), true)
-            && ($designator->target_kind !== WorkflowTargetKind::Designated || $designator->min_assignees >= 1);
+        return (new RouteNodeCandidates($route->nodes, $route->graph))->isDesignatorOf($nodeId, $designatorId);
     }
 }

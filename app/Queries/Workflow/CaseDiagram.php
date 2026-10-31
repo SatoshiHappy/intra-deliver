@@ -3,7 +3,6 @@
 namespace App\Queries\Workflow;
 
 use App\Enums\Workflow\WorkflowCaseState;
-use App\Enums\Workflow\WorkflowDecisionRule;
 use App\Enums\Workflow\WorkflowNodeKind;
 use App\Enums\Workflow\WorkflowNodeState;
 use App\Models\Workflow\WorkflowCase;
@@ -13,10 +12,11 @@ use App\Models\Workflow\WorkflowCaseNode;
 use Illuminate\Database\Eloquent\Collection;
 
 /**
- * 案件の詳細のフロー情報(docs の 設計/ワークフロー/ルートの深さ/画面.md 1.2 の図の形・7 節・8 節)。ノードは写した並び({@see WorkflowCaseNode::compareInRoute()})で、
+ * 案件の詳細のフロー情報(docs の 設計/ワークフロー/ルートの深さ/画面/README.md 1.2 の図の形・7 節・8 節)。
+ * ノードは写した並び({@see WorkflowCaseNode::compareInRoute()})で、
  * 図と表が同じ並びと同じ状態の語({@see WorkflowHomeLabels::detailStep()} = 認可と一覧.md 2 節の写しの表。保留中は state が hold)を読む。表のための処理の種別と日時を持つ。
  * 辺は写した順(id)。名前は表示名({@see WorkflowCaseNode::displayName()} = 案件の操作/README.md 1.3)。
- * awaitingDesignation = 処理の時に指定するノードで、今の指定が無い(指定するノードがまだ指定していない。0 人を指定した = 行が 0 件は含まない) && 到達していない && 案件が未完了(枠の文 = docs の 設計/ワークフロー/ルートの深さ/画面.md の 8 節。文言の持ち主は WorkflowDiagram.tsx)。
+ * awaitingDesignation = 処理の時に指定するノードで、今の指定が無い(指定するノードがまだ指定していない。0 人を指定した = 行が 0 件は含まない) && 到達していない && 案件が未完了(枠の文 = docs の 設計/ワークフロー/ルートの深さ/画面/図と意匠とE2E.md の 8 節。文言の持ち主は WorkflowDiagram.tsx)。
  * フロー情報の表の処理担当者 targets(現在のノードの処理対象者)と処理実行者(processed の actor・executor)=
  * 設計/ワークフロー/案件の運用/画面/案件の画面.md の 4 節。
  *
@@ -80,7 +80,7 @@ class CaseDiagram
             'kind' => $node->kind->value,
             'parentId' => $node->parent_workflow_case_node_id === null ? null : (int) $node->parent_workflow_case_node_id,
             'sequence' => $node->sequence,
-            'subtitle' => StepDescriptions::subtitle($node->kind, $designatorId === null ? null : ($names[(int) $designatorId] ?? null)),
+            'subtitle' => StepDescriptions::designatorSubtitle($node->kind, $designatorId === null ? null : ($names[(int) $designatorId] ?? null)),
             'state' => $node->state->value,
             'people' => $this->peopleOf($node, $history, $situation, $people, $requesterUserId),
             'targets' => $this->targetsOf($node, $situation, $people, $requesterUserId),
@@ -155,6 +155,7 @@ class CaseDiagram
 
     /**
      * 縦配置の完了の条件の 1 行(ワークフロー/画面/README.md 1.2: 進み具合があれば「完了の条件 承認 {k} 人　現在 {a} 人」、無ければ定義の条件)。
+     * 定義の条件の文は定義の図と同じ {@see StepDescriptions::consensus()}。
      *
      * @param  Council|null  $council
      */
@@ -164,10 +165,6 @@ class CaseDiagram
             return "完了の条件 承認 {$council['required']} 人　現在 {$council['approved']} 人";
         }
 
-        return match ($node->decision_rule) {
-            WorkflowDecisionRule::Count => "完了の条件 承認 {$node->decision_value} 人",
-            WorkflowDecisionRule::Ratio => "完了の条件 承認 {$node->decision_value}% 以上",
-            default => '完了の条件 全員が承認',
-        };
+        return StepDescriptions::consensus($node->decision_rule, $node->decision_value);
     }
 }

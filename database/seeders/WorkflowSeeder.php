@@ -54,10 +54,10 @@ use Illuminate\Database\Seeder;
  * 申請の案件名は空で渡して既定にする(docs の 設計/ワークフロー/初期データ.md 4 節)。定義の前に申請書の業務モジュール 2 つを作る({@see WorkflowApplicationModules})。
  * 見本の申請は申請対象のレコードをデータハブ(プロジェクト・課題)に作り、それを申請対象にした申請書で申請する({@see BuildsWorkflowSampleRecords})。
  *
- * 先頭に、接頭辞のリソースグループ 9・ルートのリソース 34 と、ROUTES の 31 本のゲストユーザ・認証済みユーザへの execute の許可
+ * 先頭に、接頭辞のリソースグループ 14・ルートのリソース 48 と、ROUTES の 31 本のゲストユーザ・認証済みユーザへの execute の許可
  * (62 = 設計/ワークフロー/ルートの深さ/初期データ.md 5 節の 38 と、案件の運用・申請の周辺で足したルートの分 =
  * 設計/ワークフロー/案件の運用/認可と一覧.md の 4 節)を入れる(設計/ワークフロー/ルートの深さ/初期データ.md 1 節。
- * 接頭辞のリソースグループと、システム管理者だけの ADMIN_ROUTES の 3 本には許可を置かない)。メニューのグループ「ワークフロー」は MenuSeeder が入れる。
+ * 接頭辞のリソースグループと、システム管理者だけの ADMIN_ROUTES の 17 本には許可を置かない)。メニューのグループ「ワークフロー」は MenuSeeder が入れる。
  * 定義の前に workflow-flow のセットとシステム管理者の許可 2 を入れ、フローを作るたびにフローのリソースを足す({@see WorkflowFlowResources}。
  * 設計/ワークフロー/案件の運用/認可と一覧.md の 3 節)。
  *
@@ -98,6 +98,10 @@ class WorkflowSeeder extends Seeder
         'workflow.admin' => ['ワークフローの管理', 'Workflow administration'],
         'workflow.admin.cases' => ['申請操作', 'Application operations'],
         'workflow.admin.proxies' => ['代理の管理', 'Proxy administration'],
+        'workflow.admin.flows' => ['フロー定義', 'Flow definitions'],
+        'workflow.admin.flows.referrers' => ['参照者', 'Referrers'],
+        'workflow.admin.versions' => ['フロー定義の版', 'Flow definition versions'],
+        'workflow.admin.nodes' => ['ステップの設定', 'Step settings'],
     ];
 
     /** ルート: 名前 => [表示名(ja), 表示名(en)](どれもゲストユーザと認証済みユーザに execute を許す) */
@@ -137,7 +141,7 @@ class WorkflowSeeder extends Seeder
 
     /**
      * システム管理者だけのルート: 名前 => [表示名(ja), 表示名(en)](ポリシーを置かず、システム管理者がセットの先頭の許可を継承する =
-     * 設計/ワークフロー/案件の運用/認可と一覧.md の 4 節)
+     * 設計/ワークフロー/案件の運用/認可と一覧.md の 4 節。定義の管理 = 設計/ワークフロー/ルートの深さ/認可と一覧.md の 4.2 節)
      */
     private const ADMIN_ROUTES = [
         'workflow.admin.cases.index' => ['申請操作の一覧', 'Application operation list'],
@@ -149,6 +153,14 @@ class WorkflowSeeder extends Seeder
         'workflow.admin.proxies.index' => ['代理の管理', 'Proxy administration'],
         'workflow.admin.proxies.store' => ['代理の追加(管理)', 'Add proxy (admin)'],
         'workflow.admin.proxies.destroy' => ['代理の削除(管理)', 'Delete proxy (admin)'],
+        'workflow.admin.flows.index' => ['フロー定義の一覧', 'Flow definition list'],
+        'workflow.admin.flows.show' => ['フロー定義の詳細', 'Flow definition detail'],
+        'workflow.admin.flows.referrers.update' => ['参照者の保存', 'Save referrers'],
+        'workflow.admin.versions.store' => ['版の追加', 'Add version'],
+        'workflow.admin.versions.disable' => ['版の無効化', 'Disable version'],
+        'workflow.admin.versions.enable' => ['版の有効化', 'Enable version'],
+        'workflow.admin.nodes.update' => ['ステップの設定の保存', 'Save step settings'],
+        'workflow.admin.subject-candidates' => ['対象者の候補', 'Subject candidates'],
     ];
 
     /** コンテンツ: コード => [申請書の業務モジュールのコード, 名前](申請対象の項目 = 申請書の業務モジュールの申請対象の項目 = {@see WorkflowApplicationModules}) */

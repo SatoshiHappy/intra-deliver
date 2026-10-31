@@ -60,3 +60,12 @@ test('ゲストの申請操作の一覧は 403 になる', async ({ page }) => {
 
     expect(response?.status()).toBe(403);
 });
+
+// ゲストは定義の管理を開けない(管理のルートの execute を許されない)ので、一覧も詳細も 403 の画面になる
+test('ゲストのフロー定義の一覧と詳細は 403 になる', async ({ page }) => {
+    const list = await page.goto('/workflow/admin/flows');
+    expect(list?.status()).toBe(403);
+
+    const detail = await page.goto('/workflow/admin/flows/project_plan');
+    expect(detail?.status()).toBe(403);
+});

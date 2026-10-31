@@ -2,6 +2,7 @@
 
 namespace Tests\Architecture;
 
+use App\Enums\Authz\SelectionConditionKind;
 use App\Enums\Records\RecordComparisonOperator;
 use App\Enums\Records\RecordConditionOperator;
 use App\Enums\Records\RecordFieldType;
@@ -11,9 +12,13 @@ use App\Enums\Workflow\WorkflowBulkOutcome;
 use App\Enums\Workflow\WorkflowCaseState;
 use App\Enums\Workflow\WorkflowCompletionReason;
 use App\Enums\Workflow\WorkflowConfirmationProgress;
+use App\Enums\Workflow\WorkflowDecisionRule;
 use App\Enums\Workflow\WorkflowNodeKind;
 use App\Enums\Workflow\WorkflowNodeState;
 use App\Enums\Workflow\WorkflowProxyKind;
+use App\Enums\Workflow\WorkflowRelativeBase;
+use App\Enums\Workflow\WorkflowRelativeScope;
+use App\Enums\Workflow\WorkflowTargetKind;
 use BackedEnum;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
@@ -55,6 +60,11 @@ TS;
                 'WorkflowConfirmationProgress', self::WORKFLOW_VALUES, WorkflowConfirmationProgress::class,
             ],
             'WorkflowProxyKind' => ['WorkflowProxyKind', self::WORKFLOW_VALUES, WorkflowProxyKind::class],
+            'WorkflowTargetKind' => ['WorkflowTargetKind', self::WORKFLOW_VALUES, WorkflowTargetKind::class],
+            'WorkflowRelativeBase' => ['WorkflowRelativeBase', self::WORKFLOW_VALUES, WorkflowRelativeBase::class],
+            'WorkflowRelativeScope' => ['WorkflowRelativeScope', self::WORKFLOW_VALUES, WorkflowRelativeScope::class],
+            'WorkflowDecisionRule' => ['WorkflowDecisionRule', self::WORKFLOW_VALUES, WorkflowDecisionRule::class],
+            'WorkflowSubjectType' => ['WorkflowSubjectType', self::WORKFLOW_VALUES, SelectionConditionKind::class],
             'RecordFieldType' => ['RecordFieldType', 'resources/js/types/records.ts', RecordFieldType::class],
             'RecordConditionOperator' => ['RecordConditionOperator', 'resources/js/types/records.ts', RecordConditionOperator::class],
             'RecordRuleKind' => ['RecordRuleKind', 'resources/js/types/records.ts', RecordRuleKind::class],

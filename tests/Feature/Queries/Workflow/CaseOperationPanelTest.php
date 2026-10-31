@@ -17,7 +17,8 @@ use Tests\Support\TransactionalTestCase;
 
 /**
  * 詳細の申請操作の面(docs の 設計/ワークフロー/案件の運用/画面/管理と通知の画面.md の 7.2 節、認可と一覧.md の 3 節、案件の操作/案件操作.md の 15.2 節):
- * ボタン = operate ∧ ルートの execute(保留解除は operate だけ)∧ 表、can.operate = どれかのボタン、偽なら operation = null。ダイアログの中身。
+ * ボタン = operate ∧ ルートの execute(保留解除は operate だけ)∧ 表、can.operate = どれかのボタン、偽なら operation = null。ダイアログの中身
+ * (再展開の {要約} = 要約の可変部。処理の時に指定・展開の行は null = 設計/ワークフロー/ルートの深さ/画面/図と意匠とE2E.md の 9.3 節)。
  * R1 = 申請 → 課長(u0002。合議と責任者を指定する)→ 合議(縦配置)→ 責任者(動的承認)。申請者 u0001、管理者 u0004、今日 = 2026-10-13。
  * u0002 は課長として処理した人(処理済の述語で閲覧できる)で、テストの中でルートの execute・operate を足して 2 段を確かめる。
  */
@@ -154,8 +155,10 @@ final class CaseOperationPanelTest extends TransactionalTestCase
         $retarget = fn (array $node) => [$node['nodeId'], $node['single'], $node['max']];
         $retargetValues = array_map($retarget, $operation['retargetNodes']);
         $this->assertSame([[$chief, false, RetargetUserLimit::MAX_USERS]], $retargetValues);
-        $reexpand = fn (array $node) => [$node['nodeId'], $this->codes($node['targets']), $node['expanded']];
-        $this->assertSame([[$chief, ['u0002'], []]], array_map($reexpand, $operation['reexpandNodes']));
+        $reexpand = fn (array $node) => [
+            $node['nodeId'], $this->codes($node['targets']), $node['expanded'], $node['summary'],
+        ];
+        $this->assertSame([[$chief, ['u0002'], [], '申請者の所属組織の部長']], array_map($reexpand, $operation['reexpandNodes']));
         $move = $operation['moveNodes'][0];
         $moveValues = [$move['canForward'], $move['backNodes'], $move['defaultBackNodeId']];
         $this->assertSame([false, [['nodeId' => $apply, 'name' => '申請']], $apply], $moveValues);
@@ -184,6 +187,7 @@ final class CaseOperationPanelTest extends TransactionalTestCase
 
         $line = $this->idsAt($case, 'line')[0];
         $this->assertSame([[$line, '順番の承認', '横配置', 1, 3, true, ['u0009', 'u0005']]], $this->assignRows($operation));
+        $this->assertSame(['高橋 誠'], array_column($operation['reexpandNodes'], 'summary'));
     }
 
     /**

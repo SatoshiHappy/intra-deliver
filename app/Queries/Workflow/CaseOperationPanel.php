@@ -5,6 +5,7 @@ namespace App\Queries\Workflow;
 use App\Enums\Workflow\WorkflowNodeKind;
 use App\Enums\Workflow\WorkflowNodeState;
 use App\Enums\Workflow\WorkflowOperation;
+use App\Enums\Workflow\WorkflowTargetKind;
 use App\Models\Workflow\WorkflowCase;
 use App\Models\Workflow\WorkflowCaseNode;
 use App\Queries\Authz\Api\Requester;
@@ -57,6 +58,7 @@ class CaseOperationPanel
         private SendBackCandidates $sendBackCandidates,
         private CurrentAssignments $assignments,
         private WorkflowPeople $people,
+        private StepTargets $targets,
     ) {}
 
     /**
@@ -116,10 +118,12 @@ class CaseOperationPanel
         $reexpanded = array_map($reexpandOf, $choices['reexpand']);
         $assigned = $choices['assign'] === [] ? [] : $this->assignments->of($case->id);
         $people = $this->peopleOf($context, [...$choices['retarget'], ...$choices['reexpand']], $reexpanded, $assigned);
+        $summaries = $this->summariesOf($case, $choices['reexpand'], $byId, $context->localeCode);
         $reexpandNodeOf = fn (int $index) => $this->reexpandNodeOf(
             $choices['reexpand'][$index],
             $reexpanded[$index],
             $people,
+            $summaries[$choices['reexpand'][$index]->id] ?? null,
         );
 
         return [
@@ -209,7 +213,7 @@ class CaseOperationPanel
      * @param  array<int, Person>  $people
      * @return ReexpandNode
      */
-    private function reexpandNodeOf(CurrentNode $node, array $userIds, array $people): array
+    private function reexpandNodeOf(CurrentNode $node, array $userIds, array $people, ?string $summary): array
     {
         return [
             'nodeId' => $node->id,
@@ -217,8 +221,34 @@ class CaseOperationPanel
             'onHold' => $node->state === WorkflowNodeState::Hold,
             'targets' => self::peopleIn($node->targetUserIds, $people),
             'expanded' => self::peopleIn($userIds, $people),
-            'summary' => null,
+            'summary' => $summary,
         ];
+    }
+
+    /**
+     * 再展開の「?」の {要約} = 案件のノードの設定から作る要約の可変部(対象者で指定・基準にする人で指定の親のノードだけ。名前は申請基準日。
+     * 処理の時に指定するノードと展開の行は null = 設計/ワークフロー/ルートの深さ/画面/図と意匠とE2E.md の 9.3 節)。
+     *
+     * @param  list<CurrentNode>  $currentNodes
+     * @param  Collection<int, WorkflowCaseNode>  $byId  id をキーにした案件のノード
+     * @return array<int, string> ノードの id → 可変部
+     */
+    private function summariesOf(WorkflowCase $case, array $currentNodes, Collection $byId, string $localeCode): array
+    {
+        $described = array_values(array_filter(
+            array_map(fn (CurrentNode $node) => $byId->get($node->id), $currentNodes),
+            fn (?WorkflowCaseNode $node) => $node !== null && $node->parent_workflow_case_node_id === null
+                && in_array($node->target_kind, [WorkflowTargetKind::Fixed, WorkflowTargetKind::Relative], true),
+        ));
+
+        if ($described === []) {
+            return [];
+        }
+
+        $date = $case->base_date ?? throw new LogicException("未完了の案件 {$case->id} に申請基準日が無い");
+        $targets = array_filter($this->targets->of($described, [], $date, $localeCode));
+
+        return array_map(fn (StepTarget $target) => StepDescriptions::targetPhrase($target), $targets);
     }
 
     /**
