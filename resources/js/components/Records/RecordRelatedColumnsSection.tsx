@@ -1,24 +1,45 @@
 import { RecordRelatedColumnsDialog } from '@/components/Records/RecordRelatedColumnsDialog';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+    Table,
+    TableBody,
+    TableCell,
+    TableHead,
+    TableHeader,
+    TableRow,
+} from '@/components/ui/table';
 import { MAX_RELATED_COLUMNS } from '@/lib/recordRelated';
 import type { RecordRelatedColumnSetting } from '@/types';
 
-/** 行の左(項目の名前・「参照の項目」の札・表示先) */
-function SettingName({ setting }: { setting: RecordRelatedColumnSetting }) {
+/** 表示する列の欄(選んだ列の札と「<n> / 5 列」。未選択なら「未選択 一覧の列を使用します。」) */
+function ColumnsCell({ setting }: { setting: RecordRelatedColumnSetting }) {
+    const count = setting.columns.length;
+
+    if (count === 0) {
+        return (
+            <span className="text-muted-foreground">
+                未選択 一覧の列を使用します。
+            </span>
+        );
+    }
+
     return (
-        <div className="flex min-w-48 flex-col gap-1">
-            <span className="font-medium">{setting.label}</span>
-            <span className="flex items-center gap-2 text-xs text-muted-foreground">
-                <Badge variant="outline">参照の項目</Badge>
-                {setting.referencedModule.name}の詳細に表示
+        <div className="flex flex-wrap items-center gap-1.5">
+            {setting.columns.map((column) => (
+                <Badge key={column.code} variant="secondary">
+                    {column.name}
+                </Badge>
+            ))}
+            <span className="ml-2 font-num text-muted-foreground tabular-nums">
+                {count} / {MAX_RELATED_COLUMNS} 列
             </span>
         </div>
     );
 }
 
 /**
- * 参照の項目 1 つの行(項目の名前・「参照の項目」の札・表示先・選んだ列か「未選択」・「列を選択」・「<n> / 5 列」)。
+ * 参照の項目 1 つの行(参照の項目の名前・表示先・表示する列・「列を選択」)。
  */
 function SettingRow({
     moduleCode,
@@ -27,30 +48,16 @@ function SettingRow({
     moduleCode: string;
     setting: RecordRelatedColumnSetting;
 }) {
-    const count = setting.columns.length;
-
     return (
-        <li className="flex flex-wrap items-center gap-x-4 gap-y-2 py-3">
-            <SettingName setting={setting} />
-            <div className="flex flex-1 flex-wrap items-center gap-1.5">
-                {count === 0 ? (
-                    <span className="text-sm text-muted-foreground">
-                        未選択 一覧の列を使用します。
-                    </span>
-                ) : (
-                    setting.columns.map((column) => (
-                        <Badge key={column.code} variant="secondary">
-                            {column.name}
-                        </Badge>
-                    ))
-                )}
-            </div>
-            <div className="flex items-center gap-3">
-                {count > 0 && (
-                    <span className="font-num text-sm text-muted-foreground tabular-nums">
-                        {count} / {MAX_RELATED_COLUMNS} 列
-                    </span>
-                )}
+        <TableRow>
+            <TableCell>{setting.label}</TableCell>
+            <TableCell>
+                {setting.referencedModule.name}の詳細の「関連レコード」のタブ
+            </TableCell>
+            <TableCell className="whitespace-normal">
+                <ColumnsCell setting={setting} />
+            </TableCell>
+            <TableCell className="text-right">
                 <RecordRelatedColumnsDialog
                     moduleCode={moduleCode}
                     setting={setting}
@@ -64,8 +71,8 @@ function SettingRow({
                         </Button>
                     }
                 />
-            </div>
-        </li>
+            </TableCell>
+        </TableRow>
     );
 }
 
@@ -98,15 +105,27 @@ export function RecordRelatedColumnsSection({
             <p className="text-sm text-muted-foreground">
                 参照の項目ごとに、参照先のレコードの詳細の「関連レコード」のタブに表示する列を選択します。未選択の場合は、一覧の列を使用します。
             </p>
-            <ul className="divide-y">
-                {settings.map((setting) => (
-                    <SettingRow
-                        key={setting.entry}
-                        moduleCode={moduleCode}
-                        setting={setting}
-                    />
-                ))}
-            </ul>
+            <Table>
+                <TableHeader>
+                    <TableRow>
+                        <TableHead>参照の項目</TableHead>
+                        <TableHead>表示先</TableHead>
+                        <TableHead>表示する列</TableHead>
+                        <TableHead>
+                            <span className="sr-only">操作</span>
+                        </TableHead>
+                    </TableRow>
+                </TableHeader>
+                <TableBody>
+                    {settings.map((setting) => (
+                        <SettingRow
+                            key={setting.entry}
+                            moduleCode={moduleCode}
+                            setting={setting}
+                        />
+                    ))}
+                </TableBody>
+            </Table>
         </section>
     );
 }

@@ -7,6 +7,7 @@ use App\Actions\Workflow\CreateDraft;
 use App\Actions\Workflow\DraftInput;
 use App\Enums\Records\RecordModuleAction;
 use App\Models\Authz\AuthzSubjectCondition;
+use App\Models\Master\Department;
 use App\Models\Master\User;
 use App\Models\Workflow\WorkflowRouteNode;
 use App\Queries\Workflow\ApplicationFormQuery;
@@ -235,12 +236,17 @@ final class ApplicationFormQueryTest extends TransactionalTestCase
     /**
      * 画面の人の表示(初期データの名前)。
      *
-     * @return array{id: int, code: string, name: string|null}
+     * @return array{id: int, code: string, name: string|null, mainDepartmentId: int|null}
      */
     private function person(string $code): array
     {
         $user = User::query()->where('code', $code)->sole();
+        $departmentCode = ['u0002' => 'tokyo-sales'][$code] ?? null;
+        $departmentId = $departmentCode === null
+            ? null
+            : Department::query()->where('code', $departmentCode)->sole()->id;
+        $name = ['u0002' => '中村 美咲'][$code] ?? null;
 
-        return ['id' => $user->id, 'code' => $code, 'name' => ['u0002' => '中村 美咲'][$code] ?? null];
+        return ['id' => $user->id, 'code' => $code, 'name' => $name, 'mainDepartmentId' => $departmentId];
     }
 }

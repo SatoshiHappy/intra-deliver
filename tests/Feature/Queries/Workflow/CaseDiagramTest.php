@@ -126,7 +126,8 @@ final class CaseDiagramTest extends TransactionalTestCase
             array_map(fn (string $name) => [...$this->stateOf($detail, $name), $this->nodeOf($detail, $name)['processed']['action'] ?? null], ['関係部署の合議', '関係部署の合議 承認 1', '関係部署の合議 承認 2', '関係部署の合議 承認 3', '責任者']),
         );
         // 省略の子の人は今の指定の同じ番号の人(図の箱の題になる。完了の片付けで処理対象者の行が消えても出す)
-        $this->assertSame([['u0016', false]], $this->markedPeopleOf($detail, '関係部署の合議 承認 3'));
+        $people = $this->nodeOf($detail, '関係部署の合議 承認 3')['people'];
+        $this->assertSame([['u0016', false]], array_map(fn (array $one) => [$one['code'], $one['isMe']], $people));
     }
 
     /**
@@ -181,7 +182,8 @@ final class CaseDiagramTest extends TransactionalTestCase
         $this->assertSame([['関係部署の合議', 2, 2, 0, true, ['done u0004', 'done u0005', 'skipped u0010']]], $this->compactCouncils($detail));
         $this->assertSame([false, false, false], array_map(fn (array $row) => $row['person']['isMe'] ?? null, $detail['councils'][0]['rows']));
         // 図の箱の人も同じ規則(省略の子は今の指定の同じ番号の人で、その人が見ても自分にしない)
-        $this->assertSame([['u0010', false]], $this->markedPeopleOf($detail, '関係部署の合議 承認 3'));
+        $people = $this->nodeOf($detail, '関係部署の合議 承認 3')['people'];
+        $this->assertSame([['u0010', false]], array_map(fn (array $one) => [$one['code'], $one['isMe']], $people));
     }
 
     /**
@@ -244,17 +246,6 @@ final class CaseDiagramTest extends TransactionalTestCase
         $context = new AccessContext($user->id, null, null, CarbonImmutable::today(AccessContext::TIMEZONE), AccessContext::LOCALE_CODE);
 
         return app(CaseDetailQuery::class)->show($context, WorkflowCase::query()->where('case_number', $number)->sole()->id);
-    }
-
-    /**
-     * ノードの人の [コード, 自分]。
-     *
-     * @param  array<string, mixed>  $detail
-     * @return list<array{0: string, 1: bool}>
-     */
-    private function markedPeopleOf(array $detail, string $name): array
-    {
-        return array_map(fn (array $person) => [$person['code'], $person['isMe']], $this->nodeOf($detail, $name)['people']);
     }
 
     /**

@@ -202,7 +202,7 @@ final class WorkflowRouteDialogsTest extends TransactionalTestCase
         $this->actingAsUser('u0002');
         $count = WorkflowCase::query()->count();
         $this->get('/workflow/flows/project_plan/apply')->assertOk()->assertInertia(fn (Assert $page) => $page
-            ->where('next.nodes', [['name' => '課長', 'targets' => [['id' => $this->branchUserId('u0002'), 'code' => 'u0002', 'name' => '中村 美咲']], 'blockedReason' => '課長の処理担当者が申請者本人だけのため、この操作はできません。このステップには、申請者承認防止が設定されています。']])
+            ->where('next.nodes', [['name' => '課長', 'targets' => [['id' => $this->branchUserId('u0002'), 'code' => 'u0002', 'name' => '中村 美咲', 'mainDepartmentId' => $this->departmentIdOf('tokyo-sales')]], 'blockedReason' => '課長の処理担当者が申請者本人だけのため、この操作はできません。このステップには、申請者承認防止が設定されています。']])
         );
 
         $this->post('/workflow/flows/project_plan/apply', [

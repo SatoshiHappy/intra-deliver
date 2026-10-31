@@ -15,6 +15,7 @@ use App\Queries\Records\Api\RecordFormQuery;
 use App\Queries\Records\Api\RecordShowPanelQuery;
 use App\Support\AccessContext;
 use App\Support\MixedValues;
+use Closure;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use LogicException;
@@ -31,11 +32,12 @@ use LogicException;
  * @phpstan-import-type ApplicationTargetValueSet from ApplicationTargetValues
  * @phpstan-import-type Applicant from ApplicationApplicants
  * @phpstan-import-type ApplicantProps from ApplicationApplicants
+ * @phpstan-import-type Links from PersonLinks
  *
  * @phpstan-type ApplyForm array{mode: string, flow: array{code: string, name: string, description: string|null}, case: array{id: int, number: string|null, revision: int}|null, module: array<string, mixed>, headings: list<array{id: int|null, name: string|null, fieldCodes: list<string>}>, initial: array{name: string|null, comment: string|null, values: array<string, mixed>, details: array<string, list<array<string, mixed>>>}|null, titleField: string|null, recordId: int|null, baseDate: string, baseDateRange: array{min: string|null, max: string|null}, next: Next, nameMaxLength: int, commentMaxLength: int, attachment: ApplyAttachment,
  *     recordVersion: string|null, recordTitle: string|null, targetField: string|null,
  *     targetValues: ApplicationTargetValueSet|null, targetEntry: array{module: string, record: int}|null,
- *     applicants: list<Applicant>, applicant: int|null}
+ *     applicants: list<Applicant>, applicant: int|null, links: Closure(): Links}
  */
 class ApplicationFormQuery
 {
@@ -54,6 +56,7 @@ class ApplicationFormQuery
         private ApplicableFlows $applicableFlows,
         private ApplicationApplicants $applicants,
         private ReapplyPrincipals $reapplyPrincipals,
+        private PersonLinks $links,
     ) {}
 
     /**
@@ -278,6 +281,7 @@ class ApplicationFormQuery
             'targetEntry' => null,
             ...$date,
             ...$applicants,
+            'links' => $this->links->lazy($context),
         ];
     }
 

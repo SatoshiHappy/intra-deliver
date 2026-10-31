@@ -1,6 +1,7 @@
 import { ArrowDown, ArrowUp, X } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { Button } from '@/components/ui/button';
+import { PersonMenu } from '@/components/Workflow/PersonMenu';
 import type { PickedUser } from '@/lib/Workflow/caseActionForm';
 import { personName } from '@/lib/Workflow/workflowLabels';
 
@@ -77,7 +78,7 @@ function OrderButtons({
 }
 
 /**
- * 選んだ人の札 1 つ(名前・所属・上へ下へ(並びが処理の順のとき)・外す印)。
+ * 選んだ人の札 1 つ(名前・所属・「…」・上へ下へ(並びが処理の順のとき)・外す印)。
  */
 function PickedUserRow({
     person,
@@ -104,6 +105,7 @@ function PickedUserRow({
                     {person.mainDepartmentName}
                 </span>
             )}
+            <PersonMenu person={person} />
             {isOrdered === true && (
                 <OrderButtons
                     name={name}

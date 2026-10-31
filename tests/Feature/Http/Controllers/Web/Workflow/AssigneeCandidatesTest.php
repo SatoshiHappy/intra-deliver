@@ -33,7 +33,8 @@ final class AssigneeCandidatesTest extends TransactionalTestCase
         $response = $this->getJson($this->url($case, 'council', 'u000'))->assertOk()->assertHeader('Cache-Control', 'no-store, private');
 
         $this->assertSame(['u0002', 'u0003', 'u0004', 'u0005', 'u0006', 'u0007', 'u0008', 'u0009'], array_column($response->json('users'), 'code'));
-        $this->assertSame(['id', 'code', 'name', 'mainDepartmentName'], array_keys($response->json('users.0')));
+        $keys = ['id', 'code', 'name', 'mainDepartmentName', 'mainDepartmentId'];
+        $this->assertSame($keys, array_keys($response->json('users.0')));
         $this->assertSame([], $this->getJson($this->url($case, 'owner', 'u0001'))->assertOk()->json('users'));
         $this->assertSame([], $this->getJson($this->url($case, 'council', ''))->assertOk()->json('users'));
     }

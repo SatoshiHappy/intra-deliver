@@ -6,8 +6,10 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { TableCell, TableRow } from '@/components/ui/table';
 import { itemId } from '@/lib/Records/adminItems';
+import type { HeadingGrouping } from '@/lib/Records/adminItems';
 import { fieldAttributeBadges } from '@/lib/Records/fieldAttributeBadges';
 import { fieldTypeLabel } from '@/lib/Records/recordDefinitions';
+import { cn } from '@/lib/utils';
 import {
     destroy as destroyField,
     edit as editField,
@@ -51,9 +53,9 @@ function AttributeBadges({ field }: { field: RecordAdminFieldDefinition }) {
 }
 
 /**
- * 項目の表の 1 行(先頭の取っ手でつかんで動かす。取っ手だけが並び替えを始める)。
+ * 項目の行の操作(「編集」= 項目の編集の画面へ、「削除」= 確かめの Dialog)。
  */
-function FieldRow({
+function FieldActions({
     module,
     field,
     usage,
@@ -61,6 +63,48 @@ function FieldRow({
     module: RecordAdminModule;
     field: RecordAdminFieldDefinition;
     usage: number;
+}) {
+    return (
+        <div className="flex items-center justify-end gap-1">
+            <Button asChild variant="ghost" size="sm">
+                <Link
+                    href={editField({
+                        module: module.code,
+                        field: field.code,
+                    })}
+                    aria-label={`${field.name}を編集`}
+                >
+                    編集
+                </Link>
+            </Button>
+            <ConfirmDeleteDialog
+                preserveScroll
+                triggerLabel={`${field.name}を削除`}
+                title="項目の削除"
+                description={deleteDescription(field, usage)}
+                action={destroyField({
+                    module: module.code,
+                    field: field.code,
+                })}
+            />
+        </div>
+    );
+}
+
+/**
+ * 項目の表の 1 行(先頭の取っ手でつかんで動かす。取っ手だけが並び替えを始める)。inHeading = 見出しのまとまりの項目(名前を字下げする。
+ * 幅は業務モジュール一覧の明細の行と同じ)。
+ */
+function FieldRow({
+    module,
+    field,
+    usage,
+    inHeading,
+}: {
+    module: RecordAdminModule;
+    field: RecordAdminFieldDefinition;
+    usage: number;
+    inHeading: boolean;
 }) {
     const { setNodeRef, style, rowClassName, handle } = useSortableRow(
         itemId({ kind: 'field', code: field.code }),
@@ -74,7 +118,9 @@ function FieldRow({
                     label={`${field.name}の並び順を変更`}
                 />
             </TableCell>
-            <TableCell>{field.name}</TableCell>
+            <TableCell className={cn(inHeading && 'pl-8')}>
+                {field.name}
+            </TableCell>
             <TableCell className="text-muted-foreground">
                 {field.code}
             </TableCell>
@@ -94,29 +140,7 @@ function FieldRow({
                 <AttributeBadges field={field} />
             </TableCell>
             <TableCell>
-                <div className="flex items-center justify-end gap-1">
-                    <Button asChild variant="ghost" size="sm">
-                        <Link
-                            href={editField({
-                                module: module.code,
-                                field: field.code,
-                            })}
-                            aria-label={`${field.name}を編集`}
-                        >
-                            編集
-                        </Link>
-                    </Button>
-                    <ConfirmDeleteDialog
-                        preserveScroll
-                        triggerLabel={`${field.name}を削除`}
-                        title="項目の削除"
-                        description={deleteDescription(field, usage)}
-                        action={destroyField({
-                            module: module.code,
-                            field: field.code,
-                        })}
-                    />
-                </div>
+                <FieldActions module={module} field={field} usage={usage} />
             </TableCell>
         </TableRow>
     );
@@ -129,7 +153,7 @@ export function ItemRow({
     module,
     item,
     headings,
-    counts,
+    grouping,
     fieldUsage,
     nameMaxLength,
 }: {
@@ -138,8 +162,8 @@ export function ItemRow({
     fieldUsage: Record<string, number>;
     nameMaxLength: number;
     item: RecordAdminItem;
-    /** 見出しの id → 次の見出しの前までの項目の数 */
-    counts: Map<number, number>;
+    /** 見出しのまとまり(見出しごとの項目の数と、項目が入る見出し) */
+    grouping: HeadingGrouping;
 }) {
     if (item.kind === 'heading') {
         const heading = headings.find((row) => row.id === item.id);
@@ -148,7 +172,7 @@ export function ItemRow({
             <RecordHeadingRow
                 moduleCode={module.code}
                 heading={heading}
-                fieldCount={counts.get(item.id) ?? 0}
+                fieldCount={grouping.counts.get(item.id) ?? 0}
                 nameMaxLength={nameMaxLength}
             />
         );
@@ -161,6 +185,7 @@ export function ItemRow({
             module={module}
             field={field}
             usage={fieldUsage[field.code] ?? 0}
+            inHeading={grouping.headingOf.has(field.code)}
         />
     );
 }

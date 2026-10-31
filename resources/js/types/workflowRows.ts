@@ -1,5 +1,6 @@
 import type { WorkflowAttachmentLimits } from './workflowAttachments';
 import type {
+    WorkflowAction,
     WorkflowBulkOutcome,
     WorkflowCaseState,
     WorkflowCompletionReason,
@@ -12,6 +13,17 @@ import type {
 
 /** 人(名前が無ければ画面はコードを出す) */
 export type WorkflowPerson = { id: number; code: string; name: string | null };
+
+/** 名前の札に出す人(主所属の組織の id = 札の「組織図で見る」の行き先。主所属が無ければ null) */
+export type WorkflowLinkedPerson = WorkflowPerson & {
+    mainDepartmentId: number | null;
+};
+
+/** 名前の札の「…」に出すリンク(ページの要求ごとに 1 回判定した値。出し方は lib/Workflow/personLinks) */
+export type WorkflowPersonLinks = {
+    organizationChart: boolean;
+    authz: boolean;
+};
 
 /** 処理担当者の選択肢 1 つ(自分か代理元。並び = 自分が先、代理元はその後) */
 export type WorkflowPrincipal = {
@@ -112,6 +124,7 @@ export type WorkflowCaseIndexProps = {
     };
     commentMaxLength: number; // コメントの文字数の上限(行の処理のダイアログと一括承認のダイアログ)
     attachmentLimits: WorkflowAttachmentLimits | null; // どの行の入口も添付を受けなければ null
+    links: WorkflowPersonLinks; // 名前の札の「…」のリンク(行の処理のダイアログの札)
 };
 
 /** 一括承認・一括確認の結果(フラッシュ bulkResult。全部が成功したときは来ない) */
@@ -128,3 +141,15 @@ export type WorkflowBulkResult = {
         guidance: string | null;
     }[];
 };
+
+/** 処理実行者の表示(実行者が処理者と違えば「{executor}({actor}さんの代理)」= 設計/ワークフロー/案件の運用/画面/README.md の 1.2 節) */
+export type WorkflowActorView<P extends WorkflowPerson = WorkflowPerson> = {
+    actor: P;
+    executor: P | null; // 代理で処理したときだけ
+};
+
+/** フロー情報の処理済みのステップの処理(処理実行者は名前の札) */
+export type WorkflowProcessedView = {
+    action: WorkflowAction;
+    at: string | null;
+} & WorkflowActorView<WorkflowLinkedPerson>;

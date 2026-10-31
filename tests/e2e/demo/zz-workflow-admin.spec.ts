@@ -98,9 +98,9 @@ test('システム管理者: 「プロジェクト計画の承認」の詳細で
     ).toBeVisible();
 
     await page.getByRole('combobox', { name: '版', exact: true }).click();
-    // 選択肢は「版 {番号}」と全角の空白と「{開始日} から」
+    // 選択肢は「版 {番号}」と全角の空白と「{開始日} から」(読み上げの名前は空白を半角 1 つにまとめる)
     await page
-        .getByRole('option', { name: /^版 2　\d{4}\/\d{2}\/\d{2} から$/ })
+        .getByRole('option', { name: /^版 2 \d{4}\/\d{2}\/\d{2} から$/ })
         .click();
     await expect(page).toHaveURL(/version=2/);
     const older = page.getByRole('group', { name: '版 2 のフロー図' });

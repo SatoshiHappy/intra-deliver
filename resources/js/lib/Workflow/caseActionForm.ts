@@ -6,7 +6,7 @@ import type {
 import { OPERATION_TEXTS } from '@/lib/Workflow/caseActions';
 import type {
     WorkflowDesignation,
-    WorkflowPerson,
+    WorkflowLinkedPerson,
     WorkflowPrincipal,
 } from '@/types';
 
@@ -14,8 +14,8 @@ import type {
  * 処理のダイアログの入力の形と、送る内容(docs の 設計/ワークフロー/案件の運用/画面/案件の画面.md の 5 節)。
  */
 
-/** 選んだ人(初期値 = 今の指定は所属を持たない。候補から選んだ人は主所属の名前を持つ) */
-export type PickedUser = WorkflowPerson & {
+/** 選んだ人(初期値 = 今の指定は所属の名前を持たない。候補から選んだ人は主所属の名前を持つ。主所属の組織の id は札の「…」の行き先) */
+export type PickedUser = WorkflowLinkedPerson & {
     mainDepartmentName?: string | null;
 };
 

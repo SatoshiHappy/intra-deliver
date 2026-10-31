@@ -2,6 +2,7 @@ import type { InertiaFormProps } from '@inertiajs/react';
 import type { ReactNode } from 'react';
 import { CountedTextInput } from '@/components/CountedTextInput';
 import { DateInput } from '@/components/DateInput';
+import { DetailItem } from '@/components/DetailItem';
 import { FieldHelp, FormBlock, invalidProps } from '@/components/FormBlock';
 import { FormSurface } from '@/components/FormLayout';
 import { Badge } from '@/components/ui/badge';
@@ -31,37 +32,36 @@ function InfoTable({
 }) {
     return (
         <dl className="grid grid-cols-1 gap-x-6 gap-y-4 text-sm md:grid-cols-2">
-            <div className="flex flex-col gap-1">
-                <dt className="text-xs text-muted-foreground">フロー</dt>
-                <dd>{flowName}</dd>
-            </div>
+            <DetailItem name="フロー">{flowName}</DetailItem>
             {mode === 'reapply' && (
-                <div className="flex flex-col gap-1">
-                    <dt className="text-xs text-muted-foreground">申請番号</dt>
-                    <dd className="font-num tabular-nums">{caseNumber}</dd>
-                </div>
+                <DetailItem
+                    name="申請番号"
+                    valueClassName="font-num tabular-nums"
+                >
+                    {caseNumber}
+                </DetailItem>
             )}
             {mode === 'reapply' && (
-                <div className="flex flex-col gap-1">
-                    <dt className="text-xs text-muted-foreground">
-                        申請基準日
-                    </dt>
-                    <dd className="font-num tabular-nums">
-                        {baseDate.replaceAll('-', '/')}
-                    </dd>
-                </div>
+                <DetailItem
+                    name="申請基準日"
+                    valueClassName="font-num tabular-nums"
+                >
+                    {baseDate.replaceAll('-', '/')}
+                </DetailItem>
             )}
-            <div className="flex flex-col gap-1">
-                <dt className="flex items-center gap-1 text-xs text-muted-foreground">
-                    担当組織
-                    <FieldHelp id={DEPARTMENT_ID} label="担当組織">
-                        ヘッダーの組織の切替で変更できます。申請基準日にその所属が無い場合は主所属になります。
-                    </FieldHelp>
-                </dt>
-                <dd {...invalidProps(DEPARTMENT_ID, undefined, true)}>
-                    {departmentName ?? EMPTY_VALUE}
-                </dd>
-            </div>
+            <DetailItem
+                name={
+                    <>
+                        担当組織
+                        <FieldHelp id={DEPARTMENT_ID} label="担当組織">
+                            ヘッダーの組織の切替で変更できます。申請基準日にその所属が無い場合は主所属になります。
+                        </FieldHelp>
+                    </>
+                }
+                valueProps={invalidProps(DEPARTMENT_ID, undefined, true)}
+            >
+                {departmentName ?? EMPTY_VALUE}
+            </DetailItem>
         </dl>
     );
 }

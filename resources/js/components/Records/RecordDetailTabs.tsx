@@ -1,4 +1,5 @@
 import { router, usePage } from '@inertiajs/react';
+import { DetailItem } from '@/components/DetailItem';
 import { RecordFieldName } from '@/components/RecordFieldBadges';
 import { RecordHeadingGroups } from '@/components/RecordHeadingGroups';
 import { RecordRelatedChips } from '@/components/RecordRelatedChips';
@@ -36,7 +37,7 @@ type RelatedTabState = ReturnType<typeof useRecordRelated> & {
     rowHref: (moduleCode: string, recordId: number) => string;
 };
 
-/** タブの中身が受けるもの(notes = 後ろのモジュールが足す、項目の欄の上の 1 行) */
+/** タブの中身が受けるもの(notes = 後ろのモジュールが足す、項目の名前の横の注) */
 type TabProps = {
     module: RecordModuleDefinition;
     headings: RecordHeadingGroup[];
@@ -46,8 +47,7 @@ type TabProps = {
 };
 
 /**
- * 項目の欄 1 つ(名前の下に値)。note = 後ろのモジュールが足す、欄の上の 1 行(docs の 設計/業務データの入れ物/画面/業務の画面.md の 2.5)。
- * 注は欄の上に見せ、dl の並び(dt の後の dd)は崩さない。
+ * 項目の欄 1 つ(名前の下に値)。note = 後ろのモジュールが足す、名前の横の i(Tooltip)の注(docs の 設計/業務データの入れ物/画面/業務の画面.md の 2.5)。
  */
 function FieldItem({
     field,
@@ -59,34 +59,27 @@ function FieldItem({
     note: string | undefined;
 }) {
     return (
-        <div
-            className={cn(
-                'flex min-w-0 flex-col gap-1',
-                isWideField(field) && 'col-span-full',
-            )}
+        <DetailItem
+            name={<RecordFieldName field={field} />}
+            note={
+                note === undefined
+                    ? undefined
+                    : { name: field.name, text: note }
+            }
+            className={cn(isWideField(field) && 'col-span-full')}
         >
-            <dt className="text-xs text-muted-foreground">
-                <RecordFieldName field={field} />
-            </dt>
-            {note !== undefined && (
-                <dd className="order-first text-xs text-muted-foreground">
-                    {note}
-                </dd>
-            )}
-            <dd className="min-w-0">
-                <RecordValue
-                    field={field}
-                    value={record.values[field.code] ?? null}
-                />
-            </dd>
-        </div>
+            <RecordValue
+                field={field}
+                value={record.values[field.code] ?? null}
+            />
+        </DetailItem>
     );
 }
 
 /**
  * 詳細タブ: 見出しのまとまりごとの項目の格子(列は左の面の幅の段階 = 帯だけで 3 列、パネルを開くと 2 列 =
  * 設計/業務データの入れ物/レコードの共通機能/詳細の画面/README.md の 1 節。複数行は全幅。見出しの行で畳める = 見出し.md の 2 節)と、
- * 作成・更新の日時と人、区画「参照制限」(設計/業務データの入れ物/画面/業務の画面.md の 2.3)。notes = 後ろのモジュールが足す、項目の欄の上の 1 行(項目のコード → 文)。
+ * 作成・更新の日時と人、区画「参照制限」(設計/業務データの入れ物/画面/業務の画面.md の 2.3)。notes = 後ろのモジュールが足す、項目の名前の横の注(項目のコード → 文)。
  */
 function FieldsTab({ module, headings, record, notes, related }: TabProps) {
     return (

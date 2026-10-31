@@ -4,12 +4,13 @@ import {
     blockerOf,
     headingLineOf,
     isFieldKey,
-    nextText,
+    nextSegments,
     operationOf,
     showsSaveDraft,
     toastedErrorsOf,
     unshownKeysOf,
 } from './applyScreen';
+import { segmentsText } from './nameSegments';
 import type { WorkflowApplyProps } from '@/types';
 
 type Next = WorkflowApplyProps['next'];
@@ -25,7 +26,18 @@ function next(overrides: Partial<Next> = {}): Next {
     };
 }
 
-const person = { id: 3, code: 'u0003', name: '高橋 誠' };
+const person = { id: 3, code: 'u0003', name: '高橋 誠', mainDepartmentId: 21 };
+
+/** 申請すると誰の未処理に出るかの 1 文の字 */
+const nextText = (value: Next, operation: string) =>
+    segmentsText(nextSegments(value, operation));
+
+/** 画面の文と値(見出しの下の 1 行は字にして比べる) */
+const viewOf = (...args: Parameters<typeof applyViewOf>) => {
+    const view = applyViewOf(...args);
+
+    return { ...view, headingLine: segmentsText(view.headingLine) };
+};
 
 describe('申請できない理由', () => {
     it('処理担当者がいないステップの文は「処理担当者」を使う(処理対象者は画面に出さない)', () => {
@@ -77,16 +89,40 @@ describe('申請すると誰の未処理に出るかの 1 文', () => {
         );
         expect(nextText(next(), '申請')).toBe('');
     });
+
+    it('人の名前は札の区切り(3 人を超えたら先頭の人の札と「ほか N 人」)', () => {
+        const people = [1, 2, 3, 4].map((id) => ({ ...person, id }));
+        const nodes = [{ name: '課長', targets: people, blockedReason: null }];
+
+        expect(nextSegments(next({ nodes }), '申請')).toEqual([
+            '申請すると、課長の',
+            { person: people[0], text: '高橋 誠さん' },
+            'ほか 3 人',
+            'の未処理に表示されます。',
+        ]);
+        expect(
+            nextSegments(
+                next({ nodes: [{ ...nodes[0], targets: people.slice(0, 2) }] }),
+                '申請',
+            ),
+        ).toEqual([
+            '申請すると、課長の',
+            { person: people[0], text: '高橋 誠さん' },
+            '、',
+            { person: people[1], text: '高橋 誠さん' },
+            'の未処理に表示されます。',
+        ]);
+    });
 });
 
 describe('画面の出し分け', () => {
     it('見出しの下の 1 行は、申請できない理由が無いときだけ次の 1 文を添える', () => {
         expect(
-            headingLineOf('内容を入力して申請します。', '次の文。', null),
-        ).toBe('内容を入力して申請します。次の文。');
+            headingLineOf('内容を入力して申請します。', ['次の文。'], null),
+        ).toEqual(['内容を入力して申請します。', '次の文。']);
         expect(
-            headingLineOf('内容を入力して申請します。', '次の文。', '理由'),
-        ).toBe('内容を入力して申請します。');
+            headingLineOf('内容を入力して申請します。', ['次の文。'], '理由'),
+        ).toEqual(['内容を入力して申請します。']);
     });
 
     it('一時保存のボタンは新規と一時保存の画面だけ出す(再申請と既存のデータからの申請は出さない)', () => {
@@ -125,14 +161,14 @@ const recordProps = (overrides: Partial<WorkflowApplyProps> = {}) =>
 
 describe('既存のデータからの申請の見出しの 1 行', () => {
     it('「{表示の項目の値}(既存のデータ)から申請します。」に、申請できない理由が無いときだけ次の 1 文を添える', () => {
-        const view = applyViewOf(recordProps(), record, '');
+        const view = viewOf(recordProps(), record, '');
 
         expect(view.heading).toBe('プロジェクト計画の承認');
         expect(view.headingLine).toBe(
             '新製品の発売計画(既存のデータ)から申請します。申請すると、課長の高橋 誠さんの未処理に表示されます。',
         );
         expect(
-            applyViewOf(
+            viewOf(
                 recordProps({
                     next: next({
                         nodes: [
@@ -148,17 +184,16 @@ describe('既存のデータからの申請の見出しの 1 行', () => {
 
     it('表示の項目の値が無いレコードは #<id>', () => {
         expect(
-            applyViewOf(recordProps({ recordTitle: null }), record, '')
-                .headingLine,
+            viewOf(recordProps({ recordTitle: null }), record, '').headingLine,
         ).toMatch(/^#7\(既存のデータ\)から申請します。/);
     });
 
     it('ほかの画面の 1 行は変わらない', () => {
         expect(
-            applyViewOf(recordProps({ mode: 'new' }), record, '').headingLine,
+            viewOf(recordProps({ mode: 'new' }), record, '').headingLine,
         ).toMatch(/^内容を入力して申請します。/);
         expect(
-            applyViewOf(
+            viewOf(
                 recordProps({
                     mode: 'reapply',
                     initial: { name: 'N' },
@@ -185,22 +220,21 @@ describe('申請対象からの申請の見出しの 1 行(業務レコードの
 
     it('申請対象が入っていれば「{申請対象の表示の項目の値}を申請対象にして申請します。」に次の 1 文を添える', () => {
         expect(
-            applyViewOf(targetProps(), target('新製品の発売計画'), '')
-                .headingLine,
+            viewOf(targetProps(), target('新製品の発売計画'), '').headingLine,
         ).toBe(
             '新製品の発売計画を申請対象にして申請します。申請すると、課長の高橋 誠さんの未処理に表示されます。',
         );
     });
 
     it('申請対象が空になれば(申請者を変えた・空にした)新規の申請の 1 行', () => {
-        expect(
-            applyViewOf(targetProps(), target(null), '').headingLine,
-        ).toMatch(/^内容を入力して申請します。/);
+        expect(viewOf(targetProps(), target(null), '').headingLine).toMatch(
+            /^内容を入力して申請します。/,
+        );
     });
 
     it('業務レコードの詳細から開いていない画面(targetEntry が無い)は、申請対象が入っていても今の 1 行のまま', () => {
         expect(
-            applyViewOf(
+            viewOf(
                 targetProps({ targetEntry: null }),
                 target('新製品の発売計画'),
                 '',

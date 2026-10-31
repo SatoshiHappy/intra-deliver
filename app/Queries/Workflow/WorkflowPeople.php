@@ -3,6 +3,7 @@
 namespace App\Queries\Workflow;
 
 use App\Queries\Master\Api\MasterNames;
+use Carbon\CarbonImmutable;
 use DateTimeInterface;
 use LogicException;
 
@@ -11,6 +12,7 @@ use LogicException;
  * 名前は共通マスタの公開の口 {@see MasterNames} で引く。判定しない。
  *
  * @phpstan-type Person array{id: int, code: string, name: string|null}
+ * @phpstan-type LinkedPerson array{id: int, code: string, name: string|null, mainDepartmentId: int|null}
  */
 class WorkflowPeople
 {
@@ -27,6 +29,37 @@ class WorkflowPeople
     public function users(array $userIds, DateTimeInterface $date, string $localeCode): array
     {
         return $this->people($userIds, $this->names->users(array_values(array_unique($userIds)), $date, $localeCode), 'ユーザー');
+    }
+
+    /**
+     * 名前の札に出す人の表示(表示に主所属の組織の id を足す。札の「組織図で見る」の行き先 = docs の 設計/ワークフロー/申請の周辺/メニューと導線.md 2.1)。
+     *
+     * @param  array<int, Person>  $people  ユーザーの id → 表示({@see self::users()} の結果。名前の日は呼び手が決める)
+     * @return array<int, LinkedPerson>
+     */
+    public function linked(array $people, CarbonImmutable $today, string $localeCode): array
+    {
+        $departmentIds = $this->mainDepartmentIds(array_keys($people), $today, $localeCode);
+
+        return array_map(
+            fn (array $person) => [...$person, 'mainDepartmentId' => $departmentIds[$person['id']] ?? null],
+            $people,
+        );
+    }
+
+    /**
+     * 今日の主所属の組織の id(主所属の意味は共通マスタの公開の口 {@see MasterNames::mainDepartments()} のまま)。組織図は今日の木で開くので、
+     * 名前の日(申請基準日など)に依らず今日で引く(メニューと導線.md 2.1 の「移り先は今日で判定する」)。
+     *
+     * @param  list<int>  $userIds
+     * @return array<int, int|null> ユーザーの id → 主所属の組織の id(主所属が無ければ null。無いユーザーは入らない)
+     */
+    public function mainDepartmentIds(array $userIds, CarbonImmutable $today, string $localeCode): array
+    {
+        $userIds = array_values(array_unique($userIds));
+        $departments = $this->names->mainDepartments($userIds, $today, $localeCode);
+
+        return array_map(fn (?array $department) => $department['id'] ?? null, $departments);
     }
 
     /**

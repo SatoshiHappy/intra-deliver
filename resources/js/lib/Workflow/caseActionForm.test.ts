@@ -53,7 +53,12 @@ function form(overrides: Partial<ActionForm> = {}): ActionForm {
     return { ...initialFormOf(target()), ...overrides };
 }
 
-const person = { id: 20, code: 'u0020', name: '山田 恵' };
+const person = {
+    id: 20,
+    code: 'u0020',
+    name: '山田 恵',
+    mainDepartmentId: null,
+};
 
 describe('処理担当者の欄', () => {
     it('選択肢が 2 つ以上のときだけ欄を出す', () => {

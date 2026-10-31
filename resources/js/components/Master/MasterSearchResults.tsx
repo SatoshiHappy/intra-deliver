@@ -6,8 +6,8 @@ import {
     CommandList,
 } from '@/components/ui/command';
 import type { MasterSearchState } from '@/hooks/use-master-search';
+import { departmentChartUrl, userChartUrl } from '@/lib/organizationChart';
 import { nameOrCode } from '@/lib/nameOrCode';
-import { organizationChart } from '@/routes/master';
 import type { MasterSearchResult } from '@/types';
 
 type Props = {
@@ -16,22 +16,13 @@ type Props = {
     onSelected: () => void;
 };
 
-type SearchedUser = MasterSearchResult['users'][number];
+/** ユーザーを選んだときの行き先(組織図の規則の 1 か所 = {@link userChartUrl}) */
+function userHref(user: MasterSearchResult['users'][number]): string {
+    return userChartUrl(user.id, user.mainDepartment?.id ?? null);
+}
 
 /** 待ち・失敗の知らせ(CommandEmpty と同じ見た目) */
 const noticeClass = 'py-6 text-center text-sm';
-
-/**
- * ユーザーを選んだときの行き先: 主所属があればその組織を選んでその人を強調、無ければ強調だけ(頂点が選ばれる)。
- */
-function userHref(user: SearchedUser) {
-    return organizationChart.url({
-        query:
-            user.mainDepartment === null
-                ? { user: user.id }
-                : { department: user.mainDepartment.id, user: user.id },
-    });
-}
 
 /**
  * 共通マスタの検索の結果(docs の 設計/共通マスタ/検索と組織図.md 3.2・3.4)。CommandList の中に、群「ユーザー」「組織」(0 件の群は出さない)・
@@ -92,11 +83,7 @@ export function MasterSearchResults({ search, onSelected }: Props) {
                             key={department.id}
                             value={`department:${department.id}`}
                             onSelect={() =>
-                                select(
-                                    organizationChart.url({
-                                        query: { department: department.id },
-                                    }),
-                                )
+                                select(departmentChartUrl(department.id))
                             }
                         >
                             <span className="truncate">

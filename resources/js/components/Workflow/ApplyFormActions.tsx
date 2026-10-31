@@ -27,7 +27,10 @@ export function ApplyFormActions({
             isProcessing={apply.form.processing}
             backHref={backHrefOf(props)}
             operation={view.operation}
-            confirmDescription={`${view.caseName}を${view.operation}します。${view.nextLine}`}
+            confirmDescription={[
+                `${view.caseName}を${view.operation}します。`,
+                ...view.nextLine,
+            ]}
             isApplyDisabled={view.blocker !== null}
             isFetching={apply.applicationTarget.isBusy}
             onSaveDraft={() => apply.send(draftActionOf(props), 'saveDraft')}

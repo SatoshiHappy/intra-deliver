@@ -1,8 +1,11 @@
 import { BaseEdge, EdgeLabelRenderer, Handle, Position } from '@xyflow/react';
 import type { Edge, EdgeProps, Node, NodeProps } from '@xyflow/react';
+import { DiagramPeople } from '@/components/Workflow/DiagramPeople';
+import { NameSegmentsText } from '@/components/Workflow/PersonMenu';
 import { CaseStepBadge } from '@/components/Workflow/WorkflowStatusBadge';
 import { useNodeSelection } from '@/hooks/Workflow/use-diagram-selection';
 import { cn } from '@/lib/utils';
+import { markedPeopleSegments } from '@/lib/Workflow/caseDetail';
 import { councilBoxTitle } from '@/lib/Workflow/diagramFrames';
 import { stepBoxToneOf } from '@/lib/Workflow/diagramMarks';
 import type {
@@ -11,7 +14,6 @@ import type {
     RouteEdgeData,
     StepNodeData,
 } from '@/lib/Workflow/diagramTypes';
-import { personName } from '@/lib/Workflow/workflowLabels';
 import type { WorkflowStepState } from '@/types';
 
 /**
@@ -62,19 +64,32 @@ export function Handles() {
     );
 }
 
-/** 人の並び(自分には「(自分)」) */
-function PeopleText({ node }: { node: DiagramInputNode }) {
-    if (node.people.length === 0) {
-        return null;
-    }
-
-    const text = node.people
-        .map((person) => `${personName(person)}${person.isMe ? '(自分)' : ''}`)
-        .join('、');
+/**
+ * 箱の題(ステップの名前。並列承認の枠の中の箱は人の名前の札 = 図の人の並びと同じ「…」つき。人がいなければ「未選択」= councilBoxTitle)。
+ */
+function StepTitle({
+    node,
+    inCouncil,
+}: {
+    node: DiagramInputNode;
+    inCouncil: boolean;
+}) {
+    const title = inCouncil ? councilBoxTitle(node) : node.name;
+    const segments = inCouncil ? markedPeopleSegments(node.people) : null;
 
     return (
-        <span className="min-w-0 truncate" title={text}>
-            {text}
+        <span
+            className={cn(
+                'max-w-full truncate text-sm',
+                inCouncil ? 'font-semibold' : 'font-medium',
+            )}
+            title={title}
+        >
+            {segments === null ? (
+                title
+            ) : (
+                <NameSegmentsText segments={segments} />
+            )}
         </span>
     );
 }
@@ -110,7 +125,7 @@ function StateLine({
                 isChild && 'flex-col',
             )}
         >
-            {showsPeople && <PeopleText node={node} />}
+            {showsPeople && <DiagramPeople node={node} />}
             <span
                 className={cn(
                     'shrink-0',
@@ -128,14 +143,13 @@ function StateLine({
 }
 
 /**
- * 申請・承認と展開の行の箱: 題(ステップの名前。並列承認の枠の中の箱は人の名前 = councilBoxTitle)・短い文・人と状態の札。
+ * 申請・承認と展開の行の箱: 題(StepTitle)・短い文・人と状態の札。
  * 処理済み・承認待ちの箱は札を残して地を札の地で塗る(図と意匠とE2E.md 8 節)。
  */
 export function StepNode({ data, parentId }: NodeProps<Node<StepNodeData>>) {
     const { node, inCouncil = false } = data;
     const { isSelected, props } = useNodeSelection(node);
     const tone = stepBoxToneOf(node.stepState);
-    const title = inCouncil ? councilBoxTitle(node) : node.name;
 
     return (
         <div
@@ -149,15 +163,7 @@ export function StepNode({ data, parentId }: NodeProps<Node<StepNodeData>>) {
             )}
         >
             <Handles />
-            <span
-                className={cn(
-                    'max-w-full truncate text-sm',
-                    inCouncil ? 'font-semibold' : 'font-medium',
-                )}
-                title={title}
-            >
-                {title}
-            </span>
+            <StepTitle node={node} inCouncil={inCouncil} />
             {node.subtitle !== null && (
                 <span
                     className="truncate text-xs text-muted-foreground"

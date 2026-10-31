@@ -1,5 +1,11 @@
 import { formatDatetime } from '@/lib/recordValues';
-import type { WorkflowAction, WorkflowPerson } from '@/types';
+import { joinedPeople } from '@/lib/Workflow/nameSegments';
+import type { NameSegment } from '@/lib/Workflow/nameSegments';
+import type {
+    WorkflowAction,
+    WorkflowLinkedPerson,
+    WorkflowPerson,
+} from '@/types';
 
 /**
  * ワークフローの画面の語(docs の 設計/ワークフロー/画面/README.md 1.2・画面/ホームと意匠とE2E.md 8 節)。人の表示・処理の種別の名前・改訂番号の不一致の文言。
@@ -41,14 +47,23 @@ export function personName(person: WorkflowPerson): string {
 }
 
 /**
- * 処理対象者の並びの文(3 人までは「<名前>さん、<名前>さん」、3 人を超えたら先頭の人で「<名前>さんほか N 人」= 画面/申請と案件.md 3 節)。0 人なら空文字。
+ * 処理対象者の並びの文(3 人までは「<名前>さん、<名前>さん」、3 人を超えたら先頭の人で「<名前>さんほか N 人」= 画面/申請と案件.md 3 節)。
+ * 人の名前は札の区切り。0 人なら空。
  */
-export function targetsText(targets: WorkflowPerson[]): string {
+export function targetsSegments(
+    targets: WorkflowLinkedPerson[],
+): NameSegment[] {
+    const textOf = (person: WorkflowLinkedPerson) =>
+        `${personName(person)}さん`;
+
     if (targets.length > 3) {
-        return `${personName(targets[0])}さんほか ${targets.length - 1} 人`;
+        return [
+            { person: targets[0], text: textOf(targets[0]) },
+            `ほか ${targets.length - 1} 人`,
+        ];
     }
 
-    return targets.map((person) => `${personName(person)}さん`).join('、');
+    return joinedPeople(targets, textOf);
 }
 
 /**

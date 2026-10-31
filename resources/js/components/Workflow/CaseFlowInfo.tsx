@@ -3,6 +3,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { StatusBadge } from '@/components/StatusBadge';
 import { FlowInfoTable } from '@/components/Workflow/FlowInfoTable';
+import { PersonMenu } from '@/components/Workflow/PersonMenu';
 import { WorkflowDiagram } from '@/components/Workflow/WorkflowDiagram';
 import {
     CaseStepBadge,
@@ -50,8 +51,45 @@ function Legend() {
 }
 
 /**
- * 合議の進み具合(ルートの深さ/画面/案件の側の画面.md 7 節。縦配置が展開中か通過のとき): 見出し = 縦配置の名前、承認した人数と必要な人数、未処理の人数と完了の条件
- * (可決の後は完了の 1 行)、子ごとの行 = 名前(自分の札)・所属・処理日時・状態の札(処理済みは「処理済み(<種別>)」)。
+ * 合議の進み具合の子の行。処理担当者の名前は札の「…」つき、所属の組織の名前には付けない(設計/ワークフロー/申請の周辺/メニューと導線.md 2.2)。
+ */
+function CouncilRowItem({ row }: { row: WorkflowCouncil['rows'][number] }) {
+    return (
+        <li className="flex items-center gap-3 py-2 text-sm">
+            <div className="flex min-w-0 flex-1 flex-col">
+                <span className="flex items-center gap-2">
+                    <span className="truncate">
+                        {row.person === null
+                            ? EMPTY_VALUE
+                            : personName(row.person)}
+                    </span>
+                    {row.person !== null && <PersonMenu person={row.person} />}
+                    {row.person?.isMe === true && (
+                        <Badge variant="secondary">自分</Badge>
+                    )}
+                </span>
+                <span className="truncate text-xs text-muted-foreground">
+                    {row.department === null
+                        ? EMPTY_VALUE
+                        : personName(row.department)}
+                    {row.at !== null && (
+                        <span className="ml-2 font-num tabular-nums">
+                            {formatDatetime(row.at)}
+                        </span>
+                    )}
+                </span>
+            </div>
+            <CaseStepBadge
+                stepState={row.stepState}
+                action={row.action}
+                className="text-xs"
+            />
+        </li>
+    );
+}
+
+/**
+ * 合議の進み具合(縦配置が展開中か通過のときだけサーバーが渡す。中身と並び = ルートの深さ/画面/案件の側の画面.md 7 節)。行は {@link CouncilRowItem}。
  */
 function CouncilProgress({ council }: { council: WorkflowCouncil }) {
     const headingId = `council-${council.nodeId}-heading`;
@@ -85,38 +123,7 @@ function CouncilProgress({ council }: { council: WorkflowCouncil }) {
                 className="flex flex-col divide-y"
             >
                 {council.rows.map((row) => (
-                    <li
-                        key={row.nodeId}
-                        className="flex items-center gap-3 py-2 text-sm"
-                    >
-                        <div className="flex min-w-0 flex-1 flex-col">
-                            <span className="flex items-center gap-2">
-                                <span className="truncate">
-                                    {row.person === null
-                                        ? EMPTY_VALUE
-                                        : personName(row.person)}
-                                </span>
-                                {row.person?.isMe === true && (
-                                    <Badge variant="secondary">自分</Badge>
-                                )}
-                            </span>
-                            <span className="truncate text-xs text-muted-foreground">
-                                {row.department === null
-                                    ? EMPTY_VALUE
-                                    : personName(row.department)}
-                                {row.at !== null && (
-                                    <span className="ml-2 font-num tabular-nums">
-                                        {formatDatetime(row.at)}
-                                    </span>
-                                )}
-                            </span>
-                        </div>
-                        <CaseStepBadge
-                            stepState={row.stepState}
-                            action={row.action}
-                            className="text-xs"
-                        />
-                    </li>
+                    <CouncilRowItem key={row.nodeId} row={row} />
                 ))}
             </ul>
         </section>

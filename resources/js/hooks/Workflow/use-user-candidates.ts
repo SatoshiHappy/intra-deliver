@@ -4,8 +4,11 @@ import { userCandidatesUrl } from '@/lib/Workflow/userCandidates';
 import { assigneeCandidates } from '@/routes/workflow/cases';
 import type { WorkflowAssigneeCandidate, WorkflowPerson } from '@/types';
 
-/** 人の候補の口の応答の 1 人(department = 主所属の名前) */
-type UserCandidate = WorkflowPerson & { department: string | null };
+/** 人の候補の口の応答の 1 人(department = 主所属の名前、departmentId = その組織の id) */
+type UserCandidate = WorkflowPerson & {
+    department: string | null;
+    departmentId: number | null;
+};
 
 /** 候補の要求の URL(指定されるステップがあれば処理対象者の候補の口、無ければ人の候補の口) */
 function candidatesUrl(
@@ -38,15 +41,17 @@ export function useUserCandidates(
         `${caseId}|${on ?? ''}|${nodeId ?? ''}`,
         (keyword) => candidatesUrl(keyword, caseId, on, nodeId),
         (result: { users: (UserCandidate | WorkflowAssigneeCandidate)[] }) =>
-            result.users.map((user) => ({
-                id: user.id,
-                code: user.code,
-                name: user.name,
-                mainDepartmentName:
-                    'mainDepartmentName' in user
-                        ? user.mainDepartmentName
-                        : user.department,
-            })),
+            result.users.map((user) =>
+                'mainDepartmentName' in user
+                    ? user
+                    : {
+                          id: user.id,
+                          code: user.code,
+                          name: user.name,
+                          mainDepartmentName: user.department,
+                          mainDepartmentId: user.departmentId,
+                      },
+            ),
         query,
     );
 }

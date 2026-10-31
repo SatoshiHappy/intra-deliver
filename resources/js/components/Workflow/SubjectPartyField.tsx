@@ -76,7 +76,8 @@ function SubjectChip({
 }
 
 /**
- * 「{名前}を追加」のボタン(Popover の開閉の引き金。asChild で渡されるので ref と属性を受ける)。
+ * 「{名前}を追加」のボタン(Popover の開閉の引き金。asChild で渡されるので ref と属性を受ける)。combobox は中の文を名前にしないので、
+ * 同じ文を読み上げの名前にも付ける(会議の関係者の欄 RecordMultipleReferencePicker と同じ)。
  */
 function SearchButton({
     label,
@@ -95,6 +96,7 @@ function SearchButton({
             variant="outline"
             role="combobox"
             aria-expanded={isOpen}
+            aria-label={`${label}を追加`}
             aria-invalid={invalid || undefined}
             className="w-full justify-between font-normal"
         >

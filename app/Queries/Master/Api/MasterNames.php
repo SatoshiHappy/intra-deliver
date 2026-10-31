@@ -24,7 +24,7 @@ class MasterNames
 {
     public function __construct(
         private TermQuery $terms,
-        private MainDepartmentQuery $mainDepartments,
+        private MainDepartmentQuery $mainDepartmentQuery,
     ) {}
 
     /**
@@ -79,17 +79,33 @@ class MasterNames
      */
     public function mainDepartmentNames(array $userIds, DateTimeInterface $date, string $localeCode): array
     {
+        return array_map(
+            fn (?array $department) => $department['name'] ?? null,
+            $this->mainDepartments($userIds, $date, $localeCode),
+        );
+    }
+
+    /**
+     * ユーザーの id → 主所属の組織(主所属が無ければ null。名前が無ければ name だけ null。渡した順。重ねない)。
+     *
+     * @param  list<int>  $userIds
+     * @param  string  $localeCode  ロケールのコード(呼び手が渡す)
+     * @return array<int, array{id: int, name: string|null}|null>
+     */
+    public function mainDepartments(array $userIds, DateTimeInterface $date, string $localeCode): array
+    {
         $existing = User::query()->whereKey($userIds)->pluck('id', 'id')->all();
-        $mainDepartments = $this->mainDepartments->mainDepartmentsOn(array_keys($existing), $date, $localeCode);
-        $names = [];
+        $mainDepartments = $this->mainDepartmentQuery->mainDepartmentsOn(array_keys($existing), $date, $localeCode);
+        $departments = [];
 
         foreach ($userIds as $id) {
             if (isset($existing[$id])) {
-                $names[$id] = $mainDepartments[$id]['name'] ?? null;
+                $main = $mainDepartments[$id] ?? null;
+                $departments[$id] = $main === null ? null : ['id' => $main['id'], 'name' => $main['name']];
             }
         }
 
-        return $names;
+        return $departments;
     }
 
     /**

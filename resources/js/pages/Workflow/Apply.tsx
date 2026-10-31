@@ -12,6 +12,7 @@ import { ApplicationTargetConfirmDialog } from '@/components/Workflow/Applicatio
 import { ApplyUnshownErrors } from '@/components/Workflow/ApplyUnshownErrors';
 import { useApplyCandidateSource } from '@/hooks/Workflow/use-apply-candidate-source';
 import { useApplyForm } from '@/hooks/Workflow/use-apply-form';
+import { PersonLinksContext } from '@/hooks/Workflow/use-person-links';
 import { useFocusFirstInvalid } from '@/hooks/use-focus-first-invalid';
 import { breadcrumbsOf } from '@/lib/Workflow/applyRoutes';
 import { applyViewOf } from '@/lib/Workflow/applyScreen';
@@ -33,7 +34,7 @@ export default function Apply(props: Props) {
     useFocusFirstInvalid(formRef, apply.focusRequest);
 
     return (
-        <>
+        <PersonLinksContext value={props.links}>
             <Head title={view.heading} />
 
             <div className="flex h-full flex-1 flex-col gap-6 p-4">
@@ -79,7 +80,7 @@ export default function Apply(props: Props) {
                 onCancel={apply.applicationTarget.cancel}
                 onReflect={apply.applicationTarget.reflect}
             />
-        </>
+        </PersonLinksContext>
     );
 }
 

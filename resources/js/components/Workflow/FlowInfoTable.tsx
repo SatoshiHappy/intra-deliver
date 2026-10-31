@@ -6,11 +6,39 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { NameSegmentsText } from '@/components/Workflow/PersonMenu';
 import { CaseStepBadge } from '@/components/Workflow/WorkflowStatusBadge';
 import { EMPTY_VALUE, formatDatetime } from '@/lib/recordValues';
 import { cn } from '@/lib/utils';
-import { actorViewText, targetsCellText } from '@/lib/Workflow/caseDetail';
+import {
+    markedPeopleSegments,
+    processorViewSegments,
+} from '@/lib/Workflow/caseDetail';
 import type { WorkflowCaseDiagramNode } from '@/types';
+
+/**
+ * 処理担当者の列(現在のステップだけ。名前は札の「…」つき。いなければ「—」)。
+ */
+function TargetsCell({ node }: { node: WorkflowCaseDiagramNode }) {
+    const segments = markedPeopleSegments(node.targets);
+
+    return segments === null ? (
+        EMPTY_VALUE
+    ) : (
+        <NameSegmentsText segments={segments} />
+    );
+}
+
+/**
+ * 処理実行者の列(処理済みだけ。名前は札の「…」つき。ほかは「—」)。
+ */
+function ProcessorCell({ node }: { node: WorkflowCaseDiagramNode }) {
+    return node.processed === null ? (
+        EMPTY_VALUE
+    ) : (
+        <NameSegmentsText segments={processorViewSegments(node.processed)} />
+    );
+}
 
 /**
  * フロー情報の表(docs の 設計/ワークフロー/案件の運用/画面/案件の画面.md の 4 節。図の文字の代わり): ステップ名(表示名。展開の行は親の下に字下げ)・
@@ -44,14 +72,10 @@ export function FlowInfoTable({ nodes }: { nodes: WorkflowCaseDiagramNode[] }) {
                             />
                         </TableCell>
                         <TableCell className="whitespace-normal">
-                            {(node.processed === null
-                                ? targetsCellText(node.targets)
-                                : null) ?? EMPTY_VALUE}
+                            <TargetsCell node={node} />
                         </TableCell>
                         <TableCell className="whitespace-normal">
-                            {node.processed === null
-                                ? EMPTY_VALUE
-                                : actorViewText(node.processed)}
+                            <ProcessorCell node={node} />
                         </TableCell>
                         <TableCell className="font-num tabular-nums">
                             {node.processed === null ||

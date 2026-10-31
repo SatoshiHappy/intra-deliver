@@ -36,7 +36,12 @@ function data(overrides: Partial<ApplyForm> = {}): ApplyForm {
     };
 }
 
-const person = { id: 3, code: 'u0003', name: '高橋 誠' };
+const person = {
+    id: 3,
+    code: 'u0003',
+    name: '高橋 誠',
+    mainDepartmentId: null,
+};
 const reapply = props({
     mode: 'reapply',
     case: { id: 5, number: 'WF-000005', revision: 3 },

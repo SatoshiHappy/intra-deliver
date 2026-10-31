@@ -3,6 +3,7 @@ import { Pagination } from '@/components/Pagination';
 import { ProxyAddDialog } from '@/components/Workflow/ProxyAddDialog';
 import { ProxyAdminFilter } from '@/components/Workflow/ProxyAdminFilter';
 import { ProxyTable } from '@/components/Workflow/ProxyTable';
+import { PersonLinksContext } from '@/hooks/Workflow/use-person-links';
 import { adminEmptyTextOf, adminTableRow } from '@/lib/Workflow/proxyList';
 import { visitProxyList } from '@/lib/Workflow/proxyListVisit';
 import { destroy, index } from '@/routes/workflow/admin/proxies';
@@ -16,10 +17,11 @@ export default function Proxies({
     query,
     flows,
     today,
+    links,
     proxies,
 }: WorkflowAdminProxiesProps) {
     return (
-        <>
+        <PersonLinksContext value={links}>
             <Head title="代理の管理" />
 
             <div className="flex h-full flex-1 flex-col gap-6 p-4">
@@ -51,7 +53,7 @@ export default function Proxies({
                     />
                 </section>
             </div>
-        </>
+        </PersonLinksContext>
     );
 }
 

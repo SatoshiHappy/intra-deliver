@@ -3,6 +3,7 @@ import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog';
 import { FormActions } from '@/components/FormLayout';
 import { Button } from '@/components/ui/button';
 import { ApplyConfirmDialog } from '@/components/Workflow/ApplyConfirmDialog';
+import type { NameSegment } from '@/lib/Workflow/nameSegments';
 import { showsSaveDraft } from '@/lib/Workflow/applyScreen';
 import { cn } from '@/lib/utils';
 import { destroy as draftDestroy } from '@/routes/workflow/drafts';
@@ -48,7 +49,7 @@ export function ApplyActions({
     isProcessing: boolean;
     backHref: RouteDefinition<'get'>;
     operation: string;
-    confirmDescription: string;
+    confirmDescription: NameSegment[];
     isApplyDisabled: boolean;
     isFetching: boolean;
     onSaveDraft: () => void;

@@ -25,6 +25,7 @@ class UserCandidates
         private CaseVisibility $visibility,
         private SubjectGroupMembership $membership,
         private MasterCandidates $candidates,
+        private WorkflowPeople $people,
     ) {}
 
     /**
@@ -46,7 +47,7 @@ class UserCandidates
      *
      * @param  mixed  $caseId  クエリの case
      * @param  mixed  $on  クエリの on
-     * @return list<array{id: int, code: string, name: string|null, department: string|null}>
+     * @return list<array{id: int, code: string, name: string|null, department: string|null, departmentId: int|null}>
      */
     public function of(AccessContext $context, mixed $caseId, mixed $on, string $keyword): array
     {
@@ -58,12 +59,16 @@ class UserCandidates
             ? self::dateOf($context->date, $on)
             : $this->baseDateOf($this->caseOf($context, $caseId));
         $users = $this->candidates->usersOn($keyword, $date, $context->localeCode, self::LIMIT);
+        $departmentIds = $this->people->mainDepartmentIds(
+            array_column($users, 'id'), $context->date, $context->localeCode,
+        );
 
         return array_map(fn (array $user) => [
             'id' => $user['id'],
             'code' => $user['code'],
             'name' => $user['name'],
             'department' => $user['mainDepartmentName'],
+            'departmentId' => $departmentIds[$user['id']] ?? null,
         ], $users);
     }
 

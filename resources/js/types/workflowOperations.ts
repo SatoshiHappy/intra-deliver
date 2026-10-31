@@ -1,4 +1,4 @@
-import type { WorkflowCaseRow, WorkflowPerson } from './workflowRows';
+import type { WorkflowCaseRow, WorkflowLinkedPerson } from './workflowRows';
 
 /**
  * 申請操作の画面の型(docs の 設計/ワークフロー/案件の運用/画面/管理と通知の画面.md の 7.1 節・7.2 節。App\Queries\Workflow の
@@ -31,7 +31,7 @@ export type WorkflowCaseRetargetNode = {
     single: boolean;
     max: number;
     onHold: boolean;
-    targets: WorkflowPerson[];
+    targets: WorkflowLinkedPerson[];
 };
 
 /** 再展開の対象のステップ(expanded = 申請基準日で展開した人。0 人なら空 = 「決定」を押せない) */
@@ -39,8 +39,8 @@ export type WorkflowCaseReexpandNode = {
     nodeId: number;
     name: string;
     onHold: boolean;
-    targets: WorkflowPerson[];
-    expanded: WorkflowPerson[];
+    targets: WorkflowLinkedPerson[];
+    expanded: WorkflowLinkedPerson[];
     summary: string | null; // 「?」の {要約}。null なら「?」を出さない
 };
 
@@ -62,7 +62,7 @@ export type WorkflowCaseAssignNode = {
     min: number;
     max: number;
     ordered: boolean;
-    assigned: WorkflowPerson[];
+    assigned: WorkflowLinkedPerson[];
 };
 
 /** 詳細の props operation(申請操作の面。ボタンがどれも偽なら null) */

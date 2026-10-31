@@ -3,6 +3,7 @@
 namespace Tests\Feature\Http\Controllers\Web\Workflow;
 
 use App\Enums\Workflow\WorkflowProxyKind;
+use App\Models\Master\Department;
 use App\Models\Master\User;
 use App\Models\Workflow\WorkflowProxy;
 use Carbon\CarbonImmutable;
@@ -142,8 +143,9 @@ final class ProxyPagesTest extends TransactionalTestCase
         $this->assertSame([$applying->id], $ids('?proxy='.$this->u('u0009')->id));
         $this->assertSame([$applying->id], $ids('?kind=apply'));
         $this->assertSame([$planned->id, $applying->id], $ids('?active=1'));
+        $principal = $this->linkedPerson('u0016', 'sales-2');
         $this->assertSame(
-            ['principal' => $this->plainPerson('u0016'), 'proxy' => null, 'kind' => 'approve', 'active' => true],
+            ['principal' => $principal, 'proxy' => null, 'kind' => 'approve', 'active' => true],
             $this->adminProps("?principal={$u0016->id}&kind=approve&active=1")['query'],
         );
         $this->assertSame(
@@ -252,6 +254,18 @@ final class ProxyPagesTest extends TransactionalTestCase
     private function person(string $code, ?string $department): array
     {
         return [...$this->plainPerson($code), 'department' => $department];
+    }
+
+    /**
+     * 名前の札に出す人(絞り込みの欄の札。主所属の組織の id = 札の「組織図で見る」の行き先)。
+     *
+     * @return array{id: int, code: string, name: string|null, mainDepartmentId: int}
+     */
+    private function linkedPerson(string $code, string $departmentCode): array
+    {
+        $departmentId = Department::query()->where('code', $departmentCode)->sole()->id;
+
+        return [...$this->plainPerson($code), 'mainDepartmentId' => $departmentId];
     }
 
     /**

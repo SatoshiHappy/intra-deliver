@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { DetailItem } from '@/components/DetailItem';
 import { DueCell, ElapsedCell } from '@/components/Workflow/CaseListCells';
 import {
     CaseStateBadge,
@@ -17,10 +18,9 @@ type CaseData = WorkflowCaseShowProps['case'];
  */
 function Item({ label, children }: { label: string; children: ReactNode }) {
     return (
-        <div className="flex min-w-0 flex-col gap-1">
-            <dt className="text-xs text-muted-foreground">{label}</dt>
-            <dd className="wrap-anywhere">{children}</dd>
-        </div>
+        <DetailItem name={label} valueClassName="wrap-anywhere">
+            {children}
+        </DetailItem>
     );
 }
 

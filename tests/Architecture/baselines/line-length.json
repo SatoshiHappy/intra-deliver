@@ -190,7 +190,7 @@
     "app/Queries/Workflow/ApplicationFormQuery.php": 15,
     "app/Queries/Workflow/ApplicationNext.php": 19,
     "app/Queries/Workflow/AssigneeCandidates.php": 3,
-    "app/Queries/Workflow/CaseCouncils.php": 22,
+    "app/Queries/Workflow/CaseCouncils.php": 21,
     "app/Queries/Workflow/CaseDesignations.php": 7,
     "app/Queries/Workflow/CaseDetailQuery.php": 10,
     "app/Queries/Workflow/CaseDiagram.php": 10,

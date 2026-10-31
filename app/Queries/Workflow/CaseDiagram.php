@@ -23,11 +23,11 @@ use LogicException;
  * フロー情報の表の処理担当者 targets(現在のノードの処理対象者)と処理実行者(processed の actor・executor)=
  * 設計/ワークフロー/案件の運用/画面/案件の画面.md の 4 節。
  *
- * @phpstan-import-type Person from WorkflowPeople
+ * @phpstan-import-type LinkedPerson from WorkflowPeople
  * @phpstan-import-type Council from CaseCouncils
  *
- * @phpstan-type MarkedPerson array{id: int, code: string, name: string|null, isMe: bool}
- * @phpstan-type Processed array{action: string, at: string|null, actor: Person, executor: Person|null}
+ * @phpstan-type MarkedPerson array{id: int, code: string, name: string|null, mainDepartmentId: int|null, isMe: bool}
+ * @phpstan-type Processed array{action: string, at: string|null, actor: LinkedPerson, executor: LinkedPerson|null}
  * @phpstan-type DiagramNode array{id: int, code: string|null, name: string, kind: string, parentId: int|null,
  *     sequence: int|null, subtitle: string|null, state: string, people: list<MarkedPerson>,
  *     targets: list<MarkedPerson>, placeholders: list<array{label: string, optional: bool}>,
@@ -42,7 +42,7 @@ class CaseDiagram
     /**
      * @param  Collection<int, WorkflowCaseNode>  $nodes  写した並びのノード(展開の行は親を読み込んである)
      * @param  Collection<int, WorkflowCaseHistory>  $histories  id をキーにした履歴の行
-     * @param  array<int, Person>  $people  処理対象者・処理者と今の指定の人の表示
+     * @param  array<int, LinkedPerson>  $people  処理対象者・処理者と今の指定の人の表示(名前の札に出すので主所属の組織の id を持つ)
      * @param  array<int, list<int>>  $assignments  今の指定({@see CurrentAssignments::of()}。処理の時に指定するノードが無ければ空でよい)
      * @param  array<int, Council>  $councils  縦配置の進み具合({@see CaseCouncils})
      * @param  int|null  $requesterUserId  判定を求める者のユーザー
@@ -85,7 +85,7 @@ class CaseDiagram
 
     /**
      * @param  Collection<int, WorkflowCaseHistory>  $histories
-     * @param  array<int, Person>  $people
+     * @param  array<int, LinkedPerson>  $people
      * @param  array<int, string>  $names  ノードの id → 表示名
      * @param  Council|null  $council
      * @return DiagramNode
@@ -119,8 +119,8 @@ class CaseDiagram
      * 人 = 現在のノードは処理対象者(isMe = 判定を求める者がそのノードの処理対象者に当たり、その人)、処理済みのノードは処理者(isMe = 判定を求める者)、
      * どちらでもない展開の行(省略・到達していない)は今の指定の同じ番号の人 plannedUserId(isMe はいつも偽 = 合議の進み具合の行と同じ規則 {@see CaseCouncils})、ほかは無し。
      *
-     * @param  array<int, Person>  $people
-     * @return list<array{id: int, code: string, name: string|null, isMe: bool}>
+     * @param  array<int, LinkedPerson>  $people
+     * @return list<MarkedPerson>
      */
     private function peopleOf(WorkflowCaseNode $node, ?WorkflowCaseHistory $history, CaseSituation $situation, array $people, ?int $requesterUserId, ?int $plannedUserId): array
     {
@@ -142,7 +142,7 @@ class CaseDiagram
     /**
      * 処理担当者 = 現在のノードの処理対象者の行の人(isMe = 判定を求める者その人)。現在のノードでなければ空。
      *
-     * @param  array<int, Person>  $people
+     * @param  array<int, LinkedPerson>  $people
      * @return list<MarkedPerson>
      */
     private function targetsOf(
@@ -162,7 +162,7 @@ class CaseDiagram
     /**
      * 処理済みにした履歴の行の種別・日時と処理実行者の表示(実行者は代理で処理したときだけ = 設計/ワークフロー/案件の運用/画面/README.md の 8.2 節)。
      *
-     * @param  array<int, Person>  $people  処理者と実行者を含む
+     * @param  array<int, LinkedPerson>  $people  処理者と実行者を含む
      * @return Processed
      */
     private static function processedOf(WorkflowCaseHistory $history, array $people): array

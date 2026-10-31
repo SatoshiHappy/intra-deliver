@@ -5,14 +5,35 @@ import {
     assignmentNoteOf,
     confirmationNoteOf,
     historyNoteOf,
+    markedPeopleSegments,
+    processorViewSegments,
     progressItemKeysOf,
     reachedDateOf,
-    targetsCellText,
 } from './caseDetail';
+import { segmentsText } from './nameSegments';
 
 const yoshida = { id: 9, code: 'u0009', name: '吉田 達也' };
 const takahashi = { id: 3, code: 'u0003', name: '高橋 誠' };
 const noName = { id: 5, code: 'u0005', name: null };
+
+describe('processorViewSegments: 処理実行者の名前の札(フロー情報の表)', () => {
+    it('代理なら実行者と処理者の両方が札、字は履歴の行と同じ', () => {
+        const actor = { ...takahashi, mainDepartmentId: 21 };
+        const executor = { ...yoshida, mainDepartmentId: null };
+        const segments = processorViewSegments({ actor, executor });
+
+        expect(segments).toEqual([
+            { person: executor, text: '吉田 達也' },
+            '(',
+            { person: actor, text: '高橋 誠さん' },
+            'の代理)',
+        ]);
+        expect(segmentsText(segments)).toBe(actorViewText({ actor, executor }));
+        expect(processorViewSegments({ actor, executor: null })).toEqual([
+            { person: actor, text: '高橋 誠' },
+        ]);
+    });
+});
 
 describe('actorViewText: 処理実行者の表示', () => {
     it('実行者が処理者と違えば「{実行者}({処理者}さんの代理)」', () => {
@@ -141,14 +162,18 @@ describe('基本情報とフロー情報の値', () => {
         expect(reachedDateOf(null)).toBeNull();
     });
 
-    it('処理担当者の列は「、」で並べ、自分に「(自分)」。いなければ null', () => {
-        expect(
-            targetsCellText([
-                { ...yoshida, isMe: true },
-                { ...takahashi, isMe: false },
-            ]),
-        ).toBe('吉田 達也(自分)、高橋 誠');
-        expect(targetsCellText([])).toBeNull();
+    it('処理担当者の列は「、」で並べ、自分に「(自分)」。名前は札の区切り。いなければ null', () => {
+        const me = { ...yoshida, mainDepartmentId: 21, isMe: true };
+        const other = { ...takahashi, mainDepartmentId: null, isMe: false };
+        const segments = markedPeopleSegments([me, other]);
+
+        expect(segments).toEqual([
+            { person: me, text: '吉田 達也(自分)' },
+            '、',
+            { person: other, text: '高橋 誠' },
+        ]);
+        expect(segmentsText(segments ?? [])).toBe('吉田 達也(自分)、高橋 誠');
+        expect(markedPeopleSegments([])).toBeNull();
     });
 });
 

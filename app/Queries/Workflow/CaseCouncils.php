@@ -9,6 +9,7 @@ use App\Models\Workflow\WorkflowCase;
 use App\Models\Workflow\WorkflowCaseHistory;
 use App\Models\Workflow\WorkflowCaseNode;
 use App\Queries\Master\Api\CurrentDepartment;
+use App\Support\AccessContext;
 use DateTimeInterface;
 use Illuminate\Database\Eloquent\Collection;
 use LogicException;
@@ -20,7 +21,7 @@ use LogicException;
  *
  * @phpstan-import-type Person from WorkflowPeople
  *
- * @phpstan-type CouncilRow array{nodeId: int, name: string, action: string|null, person: array{id: int, code: string, name: string|null, isMe: bool}|null, department: Person|null, at: string|null, stepState: array{state: string, label: string}}
+ * @phpstan-type CouncilRow array{nodeId: int, name: string, action: string|null, person: array{id: int, code: string, name: string|null, mainDepartmentId: int|null, isMe: bool}|null, department: Person|null, at: string|null, stepState: array{state: string, label: string}}
  * @phpstan-type Council array{nodeId: int, name: string, approved: int, required: int, pending: int, passed: bool, rows: list<CouncilRow>}
  */
 class CaseCouncils
@@ -37,7 +38,7 @@ class CaseCouncils
      * @param  int|null  $requesterUserId  自分の札を付ける人(判定を求める者のユーザー)
      * @return array<int, Council> 縦配置のノードの id → 進み具合(写した並び)
      */
-    public function of(WorkflowCase $case, Collection $nodes, Collection $histories, array $assignments, CaseSituation $situation, ?int $requesterUserId, DateTimeInterface $date, string $localeCode): array
+    public function of(WorkflowCase $case, Collection $nodes, Collection $histories, array $assignments, CaseSituation $situation, ?int $requesterUserId, AccessContext $context): array
     {
         $parents = $nodes->filter(fn (WorkflowCaseNode $node) => $node->kind === WorkflowNodeKind::Parallel && in_array($node->state, WorkflowNodeState::expanded(), true));
 
@@ -54,7 +55,7 @@ class CaseCouncils
             $councils[$parent->id] = $this->councilOf($parent, $children, $assigned, $histories, $situation, $requesterUserId);
         }
 
-        return $this->withNames($councils, $baseDate, $date, $localeCode);
+        return $this->withNames($councils, $baseDate, $context);
     }
 
     /**
@@ -109,12 +110,13 @@ class CaseCouncils
      * @param  array<int, array{nodeId: int, name: string, approved: int, required: int, pending: int, passed: bool, rows: list<array{nodeId: int, name: string, action: string|null, userId: int|null, isMe: bool, at: string|null, stepState: array{state: string, label: string}}>}>  $councils
      * @return array<int, Council>
      */
-    private function withNames(array $councils, DateTimeInterface $baseDate, DateTimeInterface $date, string $localeCode): array
+    private function withNames(array $councils, DateTimeInterface $baseDate, AccessContext $context): array
     {
         $userIds = array_values(array_unique(array_filter(array_merge([], ...array_map(fn (array $council) => array_column($council['rows'], 'userId'), array_values($councils))), fn (mixed $id) => is_int($id))));
-        $people = $this->people->users($userIds, $date, $localeCode);
+        $people = $this->people->users($userIds, $context->date, $context->localeCode);
+        $people = $this->people->linked($people, $context->date, $context->localeCode);
         $departmentIds = array_filter(array_combine($userIds, array_map(fn (int $userId) => $this->currentDepartment->departmentIdOn($userId, null, $baseDate), $userIds)), fn (?int $id) => $id !== null);
-        $departments = $this->people->departments(array_values(array_unique($departmentIds)), $date, $localeCode);
+        $departments = $this->people->departments(array_values($departmentIds), $context->date, $context->localeCode);
 
         return array_map(fn (array $council) => [...$council, 'rows' => array_map(fn (array $row) => [
             'nodeId' => $row['nodeId'],

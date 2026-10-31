@@ -59,6 +59,7 @@ describe('councilBoxTitle(並列承認の枠の中の箱の題)', () => {
         id: 1,
         code: 'u0001',
         name,
+        mainDepartmentId: null,
         isMe,
     });
 

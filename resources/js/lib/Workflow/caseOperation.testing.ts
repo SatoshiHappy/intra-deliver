@@ -14,8 +14,18 @@ import type {
 
 type NodeAction = WorkflowCaseShowProps['nodeActions'][number];
 
-export const takahashi = { id: 3, code: 'u0003', name: '高橋 誠' };
-export const kobayashi = { id: 5, code: 'u0005', name: '小林 直樹' };
+export const takahashi = {
+    id: 3,
+    code: 'u0003',
+    name: '高橋 誠',
+    mainDepartmentId: null,
+};
+export const kobayashi = {
+    id: 5,
+    code: 'u0005',
+    name: '小林 直樹',
+    mainDepartmentId: null,
+};
 
 export function retargetNode(
     overrides: Partial<WorkflowCaseRetargetNode> = {},
