@@ -1,0 +1,42 @@
+import { FlowDiagramTab } from '@/components/Workflow/FlowDiagramTab';
+import { FlowSettingsTab } from '@/components/Workflow/FlowSettingsTab';
+import { FlowVersionsTab } from '@/components/Workflow/FlowVersionsTab';
+import type { WorkflowAdminFlowShowProps } from '@/types';
+
+/**
+ * 詳細のタブごとの面(フロー図・版・設定。今のタブの面だけを出す)。
+ */
+export function FlowTabPanel(props: WorkflowAdminFlowShowProps) {
+    const { flow, versions, tab } = props;
+
+    if (tab === 'versions') {
+        return (
+            <FlowVersionsTab
+                flowCode={flow.code}
+                flowName={flow.name}
+                versions={versions}
+                today={props.today}
+            />
+        );
+    }
+
+    if (tab === 'settings') {
+        return (
+            <FlowSettingsTab
+                flowCode={flow.code}
+                referrers={props.referrers.rows}
+            />
+        );
+    }
+
+    return (
+        <FlowDiagramTab
+            flowCode={flow.code}
+            versions={versions}
+            selectedVersion={props.selectedVersion}
+            diagram={props.diagram}
+            selectedNode={props.selectedNode}
+            options={props.options}
+        />
+    );
+}

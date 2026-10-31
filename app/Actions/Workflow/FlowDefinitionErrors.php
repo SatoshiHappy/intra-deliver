@@ -31,7 +31,7 @@ final class FlowDefinitionErrors
 
     public const COMPANY_POST_MISSING = '役職を選択してください';
 
-    public const DESIGNATOR_INVALID = '処理対象者を指定するステップには、このステップより前の、必ず通り省略されない承認のステップを選択してください';
+    public const DESIGNATOR_INVALID = '選択する人には、このステップより前の、必ず通り省略されない承認のステップを選択してください';
 
     public const ASSIGNEES_RANGE = '人数の最小は 0 から 20、最大は 1 から 20 の範囲で、最小は最大以下にしてください';
 
@@ -44,9 +44,9 @@ final class FlowDefinitionErrors
 
     public const DECISION_RATIO_RANGE = '必要な割合は 1 から 100 の範囲で入力してください';
 
-    public const SEND_BACK_INVALID = '差戻しできる先には、このステップに至る経路上の、申請または承認のステップ(横配置・縦配置を含む)を選択してください';
+    public const SEND_BACK_INVALID = '差戻しできる先には、このステップに至る経路上の、申請または承認のステップ(順次承認・並列承認を含む)を選択してください';
 
-    public const DESIGNATING_MIN_ZERO = 'このステップはほかのステップの処理対象者を指定するため、人数の最小は 1 以上にしてください';
+    public const DESIGNATING_MIN_ZERO = 'このステップはほかのステップの承認者を選択するため、人数の最小は 1 以上にしてください';
 
     public const PREVIOUS_BASE_BLOCKED = 'このステップの直前は合流か合議のため、前の承認者を基準にできません';
 

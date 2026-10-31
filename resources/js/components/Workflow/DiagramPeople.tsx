@@ -1,6 +1,6 @@
 import { NameSegmentsText } from '@/components/Workflow/PersonMenu';
 import { markedPeopleSegments } from '@/lib/Workflow/caseDetail';
-import type { DiagramInputNode } from '@/lib/Workflow/diagramLayout';
+import type { DiagramInputNode } from '@/lib/Workflow/diagramTypes';
 import { segmentsText } from '@/lib/Workflow/nameSegments';
 
 /**

@@ -41,7 +41,7 @@ final class WorkflowDiagramMirrorTest extends TestCase
 
     public function test_detects_a_label_that_differs(): void
     {
-        $diagram = str_replace("'横配置'", "'直列'", self::source('/resources/js/components/Workflow/WorkflowDiagram.tsx'));
+        $diagram = str_replace("'順次承認'", "'直列'", self::source('/resources/js/components/Workflow/WorkflowDiagram.tsx'));
 
         $this->assertSame(['FRAME_KIND_LABELS の serial の語がサーバーの KIND_LABELS と違う'], self::problems(self::source('/resources/js/lib/Workflow/diagramLayout.ts'), $diagram));
     }

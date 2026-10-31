@@ -75,13 +75,13 @@ class MenuSeeder extends Seeder
         ],
         // アイテムは業務モジュールを作る業務処理と分類の業務処理が足す(この seeder は入れない)
         'main' => ['業務', 'Work', 900, true, 'im_global_nav_pc', 'briefcase', '業務のテーブル', [], []],
-        // 「申請操作」「代理の管理」(ルートのリソースは WorkflowSeeder が作る = docs の 設計/ワークフロー/案件の運用/認可と一覧.md の 5 節)
+        // 「フロー定義」「申請操作」「代理の管理」(ルートのリソースは WorkflowSeeder が作る = docs の 設計/ワークフロー/案件の運用/認可と一覧.md の 5 節)
         'admin' => [
             '管理', 'Administration', 1000, false, 'admin_menu_pc', 'wrench', 'システムの設定',
             [
                 'authz.overview', 'master.organization-chart',
                 'records.admin.modules.index', 'records.admin.categories.index',
-                'workflow.admin.cases.index', 'workflow.admin.proxies.index',
+                'workflow.admin.flows.index', 'workflow.admin.cases.index', 'workflow.admin.proxies.index',
             ],
             [],
         ],
@@ -105,6 +105,7 @@ class MenuSeeder extends Seeder
         'records.admin.categories.index' => ['/records/admin/categories', 'モジュール分類', 'Module categories', 'folder-tree'],
         'workflow.flows.index' => ['/workflow/flows', '申請する', 'Apply', 'send'],
         'workflow.cases.index' => ['/workflow/cases', '申請一覧', 'Application list', 'inbox'],
+        'workflow.admin.flows.index' => ['/workflow/admin/flows', 'フロー定義', 'Flow definitions', 'workflow'],
         'workflow.admin.cases.index' => ['/workflow/admin/cases', '申請操作', 'Application operations', 'list-checks'],
         'workflow.admin.proxies.index' => ['/workflow/admin/proxies', '代理の管理', 'Proxy administration', 'user-cog'],
     ];

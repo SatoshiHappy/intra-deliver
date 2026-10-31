@@ -224,7 +224,10 @@ function conditionValueText(
 }
 
 /**
- * 条件の式 1 つの文(例「状態 が 完了」)。
+ * 条件の式 1 つの文(例「状態 が 完了」)。サーバーも同じ文を作る(ワークフローの図の枝の札)ので、同じ入力の組を両方のテストに置く。
+ *
+ * @see app/Queries/Records/RecordConditionText.php
+ * @see ./recordDefinitions.test.ts の CONDITION_TEXTS
  */
 function expressionText(
     module: RecordModuleDefinition,

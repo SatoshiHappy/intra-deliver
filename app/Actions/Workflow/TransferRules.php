@@ -29,7 +29,8 @@ class TransferRules
 
     public const OTHER_CHILD = 'このステップのほかの承認者と同じユーザーは指定できません';
 
-    public const APPLICANT = '申請者本人は、このステップの処理担当者に指定できません';
+    /** 申請者本人(指定と同じ文。承認のステップだけに出るので「承認者」= 画面の意匠/文言.md 11.2) */
+    public const APPLICANT = CaseOperationErrors::ASSIGNMENTS_APPLICANT;
 
     /** 今日の申請者の代理先(指定と同じ文) */
     public const APPLICANT_PROXY = CaseOperationErrors::ASSIGNMENTS_APPLICANT_PROXY;

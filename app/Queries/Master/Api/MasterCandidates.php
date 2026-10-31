@@ -58,6 +58,16 @@ class MasterCandidates
     }
 
     /**
+     * d に有効な役職の全部(語で絞らない。並びは {@see self::companyPostsOn()} と同じ。ワークフローの定義の管理の役職の選択の欄が使う)。
+     *
+     * @return list<array{id: int, code: string, name: string|null}>
+     */
+    public function effectiveCompanyPostsOn(DateTimeInterface $d, string $localeCode): array
+    {
+        return $this->search->companyPosts('', $d, $localeCode, null);
+    }
+
+    /**
      * 件数は 1 以上(負の数を渡すと問い合わせが上限なしになり、「$limit 件まで」の保証が破れる)。
      *
      * @throws LogicException 1 未満のとき(呼び手の誤り)

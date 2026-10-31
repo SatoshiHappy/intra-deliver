@@ -5,14 +5,14 @@ import type { WorkflowAssigneeCandidate } from '@/types';
 /** 最後の入力から要求を送るまでの待ち(参照の候補・共通マスタの検索と同じ) */
 const DEBOUNCE_MS = 200;
 
-/** 候補の状態(形と意味は use-record-candidates と同じ) */
-export type CandidateSearchState = {
-    users: WorkflowAssigneeCandidate[] | null;
+/** 候補の状態(形と意味は use-record-candidates と同じ。users = 候補の並び。人の候補が既定で、定義の管理の対象者の候補は種類つきの候補) */
+export type CandidateSearchState<Item = WorkflowAssigneeCandidate> = {
+    users: Item[] | null;
     isWaiting: boolean;
     hasFailed: boolean;
 };
 
-const INITIAL_STATE: CandidateSearchState = {
+const INITIAL_STATE = {
     users: null,
     isWaiting: false,
     hasFailed: false,
@@ -23,13 +23,15 @@ type Http<Result> = ReturnType<typeof useHttp<Record<string, never>, Result>>;
 /**
  * 候補を取る要求を送り、最新の要求の応答だけを状態にする(失敗は状態にする)。
  */
-function requestCandidates<Result>(
+function requestCandidates<Result, Item>(
     http: Http<Result>,
     url: string,
-    usersOf: (result: Result) => WorkflowAssigneeCandidate[],
+    usersOf: (result: Result) => Item[],
     isLatest: () => boolean,
     setState: (
-        update: (current: CandidateSearchState) => CandidateSearchState,
+        update: (
+            current: CandidateSearchState<Item>,
+        ) => CandidateSearchState<Item>,
     ) => void,
 ): void {
     const fail = () => {
@@ -65,15 +67,16 @@ function requestCandidates<Result>(
  * urlOf = 語から要求の URL、usersOf = 応答から候補を取り出す。最後の入力から 200ms 後に useHttp で送り、語が空なら送らない(口も空を返す)。
  * 古い応答の捨て方・失敗の扱いは use-record-candidates と同じ規則。
  */
-export function useCandidateSearch<Result>(
+export function useCandidateSearch<Result, Item = WorkflowAssigneeCandidate>(
     scope: string,
     urlOf: (keyword: string) => string,
-    usersOf: (result: Result) => WorkflowAssigneeCandidate[],
+    usersOf: (result: Result) => Item[],
     query: string,
-): CandidateSearchState {
+): CandidateSearchState<Item> {
     const http = useHttp<Record<string, never>, Result>({});
     const latestRequest = useRef(0);
-    const [state, setState] = useState<CandidateSearchState>(INITIAL_STATE);
+    const [state, setState] =
+        useState<CandidateSearchState<Item>>(INITIAL_STATE);
     const keyword = query.trim();
 
     const discard = useEffectEvent(() => {

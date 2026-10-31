@@ -57,3 +57,12 @@ export type WorkflowBulkOutcome =
     | 'processed'
     | 'pending';
 export type WorkflowProxyKind = 'apply' | 'approve';
+export type WorkflowTargetKind = 'fixed' | 'relative' | 'designated';
+export type WorkflowRelativeBase = 'applicant' | 'previous';
+export type WorkflowRelativeScope = 'own' | 'parent' | 'ancestors';
+export type WorkflowDecisionRule = 'all' | 'count' | 'ratio';
+export type WorkflowSubjectType =
+    | 'user'
+    | 'department'
+    | 'company_post'
+    | 'role';

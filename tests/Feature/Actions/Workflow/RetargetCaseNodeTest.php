@@ -95,8 +95,8 @@ final class RetargetCaseNodeTest extends TransactionalTestCase
             ['user_ids' => '申請基準日に有効でないユーザーは指定できません'],
             ['user_ids' => '同じユーザーを重複して指定できません'],
             ['user_ids' => '自分自身は処理担当者に指定できません'],
-            ['user_ids' => '申請者本人は、このステップの処理担当者に指定できません'],
-            ['user_ids' => '申請者の代理先は、このステップの処理担当者に指定できません'],
+            ['user_ids' => '申請者本人は、このステップの承認者に選択できません'],
+            ['user_ids' => '申請者の代理先は、このステップの承認者に選択できません'],
         ], [
             $this->attemptRetarget($case, 'guarded', []),
             $this->attemptRetarget($case, 'guarded', $twentyOne),

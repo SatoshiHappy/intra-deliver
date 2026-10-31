@@ -3,20 +3,22 @@
 namespace App\Queries\Workflow;
 
 use App\Enums\Workflow\WorkflowCaseState;
-use App\Enums\Workflow\WorkflowDecisionRule;
 use App\Enums\Workflow\WorkflowNodeKind;
 use App\Enums\Workflow\WorkflowNodeState;
 use App\Models\Workflow\WorkflowCase;
 use App\Models\Workflow\WorkflowCaseEdge;
 use App\Models\Workflow\WorkflowCaseHistory;
 use App\Models\Workflow\WorkflowCaseNode;
+use App\Queries\Records\Api\RecordConditions;
 use Illuminate\Database\Eloquent\Collection;
+use LogicException;
 
 /**
  * 案件の詳細のフロー情報(docs の 設計/ワークフロー/ルートの深さ/画面/README.md 1.2 の図の形・7 節・8 節)。
  * ノードは写した並び({@see WorkflowCaseNode::compareInRoute()})で、
  * 図と表が同じ並びと同じ状態の語({@see WorkflowHomeLabels::detailStep()} = 認可と一覧.md 2 節の写しの表。保留中は state が hold)を読む。表のための処理の種別と日時を持つ。
- * 辺は写した順(id)。名前は表示名({@see WorkflowCaseNode::displayName()} = 案件の操作/README.md 1.3)。
+ * 辺は写した順(id)。名前は表示名({@see WorkflowCaseNode::displayName()} = 案件の操作/README.md 1.3)。辺の条件の文は、写した条件を
+ * コンテンツの業務モジュールの今の定義で作る({@see RecordConditions::describe()}。定義の図と同じ)。
  * awaitingDesignation = 処理の時に指定するノードで、今の指定が無い(指定するノードがまだ指定していない。0 人を指定した = 行が 0 件は含まない) && 到達していない && 案件が未完了(枠の文 = docs の 設計/ワークフロー/ルートの深さ/画面/図と意匠とE2E.md の 8 節。文言の持ち主は WorkflowDiagram.tsx)。
  * フロー情報の表の処理担当者 targets(現在のノードの処理対象者)と処理実行者(processed の actor・executor)=
  * 設計/ワークフロー/案件の運用/画面/案件の画面.md の 4 節。
@@ -31,14 +33,16 @@ use Illuminate\Database\Eloquent\Collection;
  *     targets: list<MarkedPerson>, placeholders: list<array{label: string, optional: bool}>,
  *     consensus: array{text: string}|null,
  *     stepState: array{state: string, label: string}, processed: Processed|null, awaitingDesignation: bool}
- * @phpstan-type DiagramEdge array{from: int, to: int, label: string|null, taken: bool|null}
+ * @phpstan-type DiagramEdge array{from: int, to: int, label: string|null, conditionText: string|null, taken: bool|null}
  */
 class CaseDiagram
 {
+    public function __construct(private RecordConditions $conditions) {}
+
     /**
      * @param  Collection<int, WorkflowCaseNode>  $nodes  写した並びのノード(展開の行は親を読み込んである)
      * @param  Collection<int, WorkflowCaseHistory>  $histories  id をキーにした履歴の行
-     * @param  array<int, LinkedPerson>  $people  処理対象者と処理者の表示(名前の札に出すので主所属の組織の id を持つ)
+     * @param  array<int, LinkedPerson>  $people  処理対象者・処理者と今の指定の人の表示(名前の札に出すので主所属の組織の id を持つ)
      * @param  array<int, list<int>>  $assignments  今の指定({@see CurrentAssignments::of()}。処理の時に指定するノードが無ければ空でよい)
      * @param  array<int, Council>  $councils  縦配置の進み具合({@see CaseCouncils})
      * @param  int|null  $requesterUserId  判定を求める者のユーザー
@@ -49,16 +53,34 @@ class CaseDiagram
         $names = $nodes->mapWithKeys(fn (WorkflowCaseNode $node) => [$node->id => $node->displayName()])->all();
         $isActive = $case->state !== WorkflowCaseState::Completed;
         $awaiting = fn (WorkflowCaseNode $node) => $isActive && $node->designator_workflow_case_node_id !== null && $node->state === WorkflowNodeState::Unreached && ! array_key_exists($node->id, $assignments);
+        $moduleId = self::moduleIdOf($case);
+        // 展開の行の今の指定の同じ番号の人(親の指定の sequence 番目。指定が無いか番号が指定の数を超えれば null)
+        $plannedOf = fn (WorkflowCaseNode $node): ?int => $node->parent_workflow_case_node_id === null
+            ? null
+            : $assignments[(int) $node->parent_workflow_case_node_id][(int) $node->sequence - 1] ?? null;
 
         return [
-            'nodes' => array_values($nodes->map(fn (WorkflowCaseNode $node) => $this->nodeOf($node, $histories, $situation, $people, $names, $councils[$node->id] ?? null, $requesterUserId, $awaiting($node)))->all()),
+            'nodes' => array_values($nodes->map(fn (WorkflowCaseNode $node) => $this->nodeOf($node, $histories, $situation, $people, $names, $councils[$node->id] ?? null, $requesterUserId, $awaiting($node), $plannedOf($node)))->all()),
             'edges' => array_values(WorkflowCaseEdge::query()->where('workflow_case_id', $case->id)->orderBy('id')->get()->map(fn (WorkflowCaseEdge $edge) => [
                 'from' => (int) $edge->from_workflow_case_node_id,
                 'to' => (int) $edge->to_workflow_case_node_id,
                 'label' => $edge->label,
+                'conditionText' => $edge->condition === null
+                    ? null : $this->conditions->describe($moduleId, $edge->condition),
                 'taken' => $edge->taken,
             ])->all()),
         ];
+    }
+
+    /**
+     * 案件のフローのコンテンツの業務モジュール(フローとコンテンツを読み込んだ案件。読み込んでいなければ呼び手の誤り)。
+     */
+    private static function moduleIdOf(WorkflowCase $case): int
+    {
+        $content = CaseRows::flowOf($case)->workflowContent
+            ?? throw new LogicException("案件 {$case->id} のフローのコンテンツを読み込んでいない");
+
+        return $content->record_module_id;
     }
 
     /**
@@ -68,7 +90,7 @@ class CaseDiagram
      * @param  Council|null  $council
      * @return DiagramNode
      */
-    private function nodeOf(WorkflowCaseNode $node, Collection $histories, CaseSituation $situation, array $people, array $names, ?array $council, ?int $requesterUserId, bool $awaitingDesignation): array
+    private function nodeOf(WorkflowCaseNode $node, Collection $histories, CaseSituation $situation, array $people, array $names, ?array $council, ?int $requesterUserId, bool $awaitingDesignation, ?int $plannedUserId): array
     {
         $history = $node->state === WorkflowNodeState::Done ? $histories->get($node->workflow_case_history_id) : null;
         $designatorId = $node->designator_workflow_case_node_id;
@@ -81,9 +103,9 @@ class CaseDiagram
             'kind' => $node->kind->value,
             'parentId' => $node->parent_workflow_case_node_id === null ? null : (int) $node->parent_workflow_case_node_id,
             'sequence' => $node->sequence,
-            'subtitle' => StepDescriptions::subtitle($node->kind, $designatorId === null ? null : ($names[(int) $designatorId] ?? null)),
+            'subtitle' => StepDescriptions::designatorSubtitle($node->kind, $designatorId === null ? null : ($names[(int) $designatorId] ?? null)),
             'state' => $node->state->value,
-            'people' => $this->peopleOf($node, $history, $situation, $people, $requesterUserId),
+            'people' => $this->peopleOf($node, $history, $situation, $people, $requesterUserId, $plannedUserId),
             'targets' => $this->targetsOf($node, $situation, $people, $requesterUserId),
             'placeholders' => [],
             'consensus' => $node->kind === WorkflowNodeKind::Parallel ? ['text' => $this->consensusOf($node, $council)] : null,
@@ -94,12 +116,13 @@ class CaseDiagram
     }
 
     /**
-     * 人 = 現在のノードは処理対象者(isMe = 判定を求める者がそのノードの処理対象者に当たり、その人)、処理済みのノードは処理者(isMe = 判定を求める者)、ほかは無し。
+     * 人 = 現在のノードは処理対象者(isMe = 判定を求める者がそのノードの処理対象者に当たり、その人)、処理済みのノードは処理者(isMe = 判定を求める者)、
+     * どちらでもない展開の行(省略・到達していない)は今の指定の同じ番号の人 plannedUserId(isMe はいつも偽 = 合議の進み具合の行と同じ規則 {@see CaseCouncils})、ほかは無し。
      *
      * @param  array<int, LinkedPerson>  $people
      * @return list<MarkedPerson>
      */
-    private function peopleOf(WorkflowCaseNode $node, ?WorkflowCaseHistory $history, CaseSituation $situation, array $people, ?int $requesterUserId): array
+    private function peopleOf(WorkflowCaseNode $node, ?WorkflowCaseHistory $history, CaseSituation $situation, array $people, ?int $requesterUserId, ?int $plannedUserId): array
     {
         if ($history !== null) {
             return [[...$people[(int) $history->user_id], 'isMe' => (int) $history->user_id === $requesterUserId]];
@@ -108,7 +131,7 @@ class CaseDiagram
         $current = $situation->currentNode($node->id);
 
         if ($current === null) {
-            return [];
+            return $plannedUserId === null ? [] : [[...$people[$plannedUserId], 'isMe' => false]];
         }
 
         $me = $situation->isTargetOf($current) ? $requesterUserId : null;
@@ -155,20 +178,17 @@ class CaseDiagram
     }
 
     /**
-     * 縦配置の完了の条件の 1 行(ワークフロー/画面/README.md 1.2: 進み具合があれば「完了の条件 承認 {k} 人　現在 {a} 人」、無ければ定義の条件)。
+     * 縦配置の完了の条件の札(図と意匠とE2E.md 8 節: 進み具合があれば「承認 {a} / {k} 人」= 可決の条件によらず同じ形。k は条件から決めた必要な人数。
+     * 進み具合が無い(到達していない・省略)なら定義の条件。定義の条件の文は定義の図と同じ {@see StepDescriptions::consensus()})。
      *
      * @param  Council|null  $council
      */
     private function consensusOf(WorkflowCaseNode $node, ?array $council): string
     {
         if ($council !== null) {
-            return "完了の条件 承認 {$council['required']} 人　現在 {$council['approved']} 人";
+            return "承認 {$council['approved']} / {$council['required']} 人";
         }
 
-        return match ($node->decision_rule) {
-            WorkflowDecisionRule::Count => "完了の条件 承認 {$node->decision_value} 人",
-            WorkflowDecisionRule::Ratio => "完了の条件 承認 {$node->decision_value}% 以上",
-            default => '完了の条件 全員が承認',
-        };
+        return StepDescriptions::consensus($node->decision_rule, $node->decision_value);
     }
 }

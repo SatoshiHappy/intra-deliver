@@ -16,8 +16,9 @@ use Tests\Support\TransactionalTestCase;
 /**
  * メニューの初期データ(docs の 設計/メニュー/初期データ.md 4 節): カテゴリ・アプリのグループ・アプリの木と、アイテムの指す先と数。
  * ポリシーの件数と付け忘れの検査は {@see AuthorizationSeedersTest}。
- * アイテム = ワークフロー 5 × 2(ホーム・申請する・申請一覧・申請書 2 = 設計/ワークフロー/認可と一覧.md の 6 節)、管理 6 × 2(認可設定・組織図・
- * 業務モジュール・モジュール分類・申請操作・代理の管理 = 設計/ワークフロー/案件の運用/認可と一覧.md の 5 節)、業務 3 × 2(業務モジュールを作る
+ * アイテム = ワークフロー 5 × 2(ホーム・申請する・申請一覧・申請書 2 = 設計/ワークフロー/認可と一覧.md の 6 節)、管理 7 × 2(認可設定・組織図・
+ * 業務モジュール・モジュール分類・フロー定義・申請操作・代理の管理 = 設計/ワークフロー/ルートの深さ/認可と一覧.md の 5 節・
+ * 設計/ワークフロー/案件の運用/認可と一覧.md の 5 節)、業務 3 × 2(業務モジュールを作る
  * 業務処理が足すプロジェクト・課題・会議。申請書の業務モジュール 2 つのアイテムはコンテンツを作る業務処理が消す = ADR 0031)、主な操作 3。
  */
 final class MenuSeederTest extends TransactionalTestCase
@@ -38,7 +39,7 @@ final class MenuSeederTest extends TransactionalTestCase
         });
 
         $this->assertSame([], $invalid->pluck('code')->all());
-        $this->assertSame(5 * 2 + 6 * 2 + 3 * 2 + 3, Menu::query()->where('type', MenuType::Item)->count());
+        $this->assertSame(5 * 2 + 7 * 2 + 3 * 2 + 3, Menu::query()->where('type', MenuType::Item)->count());
     }
 
     public function test_seeds_the_display_names_and_the_selectability_of_the_categories_of_the_design(): void
@@ -114,7 +115,7 @@ final class MenuSeederTest extends TransactionalTestCase
             $this->assertSame(array_map(fn (string $suffix) => "{$prefix}-admin-{$suffix}", [
                 'authz-overview', 'master-organization-chart',
                 'records-admin-modules-index', 'records-admin-categories-index',
-                'workflow-admin-cases-index', 'workflow-admin-proxies-index',
+                'workflow-admin-flows-index', 'workflow-admin-cases-index', 'workflow-admin-proxies-index',
             ]), $this->treeOf("{$prefix}-admin"));
             $this->assertSame(array_map(fn (string $suffix) => "{$prefix}-main-records-{$suffix}", [
                 'project', 'project_issue', 'meeting',

@@ -42,6 +42,16 @@ class WorkflowContent extends Model
     }
 
     /**
+     * 申請対象の業務モジュール(申請対象の項目の参照先。申請対象なしは null)。
+     *
+     * @return BelongsTo<RecordModule, $this>
+     */
+    public function targetRecordModule(): BelongsTo
+    {
+        return $this->belongsTo(RecordModule::class, 'target_record_module_id');
+    }
+
+    /**
      * @return HasMany<WorkflowFlow, $this>
      */
     public function workflowFlows(): HasMany

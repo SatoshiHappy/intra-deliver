@@ -21,7 +21,7 @@ use LogicException;
 class CaseDesignations
 {
     /** 指定されるノードの種類の語(画面の見出し「指定するステップ　{種類の語} {名前}」)。画面の図の枠の語 `FRAME_KIND_LABELS`(WorkflowDiagram.tsx)はこの語の写しで、tests/Architecture の写しを結ぶテストが共通のキーの一致を見る */
-    public const KIND_LABELS = ['approve' => '承認', 'serial' => '横配置', 'parallel' => '縦配置'];
+    public const KIND_LABELS = ['approve' => '承認', 'serial' => '順次承認', 'parallel' => '並列承認'];
 
     public function __construct(
         private CurrentAssignments $assignments,

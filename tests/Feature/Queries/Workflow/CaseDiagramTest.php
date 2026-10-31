@@ -49,11 +49,11 @@ final class CaseDiagramTest extends TransactionalTestCase
             ['予算', 'branch_start', null, null, 'passed', [], null, null, null],
             ['部長', 'approve', null, null, 'done', ['u0003 0'], 'approve', null, null],
             ['分岐終了', 'branch_end', null, null, 'passed', [], null, null, null],
-            ['関係部署の合議', 'parallel', null, null, 'running', [], null, '処理担当者は課長が指定', '完了の条件 承認 2 人　現在 1 人'],
+            ['関係部署の合議', 'parallel', null, null, 'running', [], null, '承認者は課長が選択', '承認 1 / 2 人'],
             ['関係部署の合議 承認 1', 'approve', '関係部署の合議', 1, 'done', ['u0009 0'], 'approve', null, null],
             ['関係部署の合議 承認 2', 'approve', '関係部署の合議', 2, 'waiting', ['u0010 1'], null, null, null],
             ['関係部署の合議 承認 3', 'approve', '関係部署の合議', 3, 'waiting', ['u0016 0'], null, null, null],
-            ['責任者', 'approve', null, null, 'unreached', [], null, '課長が指定', null],
+            ['責任者', 'approve', null, null, 'unreached', [], null, '課長が選択', null],
         ], $this->compactNodes($detail['nodes']));
         $this->assertSame(['apply', 'section_chief', 'budget', 'manager', 'budget_end', 'council', null, null, null, 'owner'], array_column($detail['nodes'], 'code'));
         $this->assertSame([[]], array_values(array_unique(array_column($detail['nodes'], 'placeholders'), SORT_REGULAR)));
@@ -62,16 +62,18 @@ final class CaseDiagramTest extends TransactionalTestCase
     }
 
     /**
-     * 辺は写した辺(並び順)で、分岐開始から出る辺だけが到達の時の評価を持つ: 予算 350 = 部長の枝が真・「何もしない」の枝が偽(通らなかった枝)。WF-000010(予算 120)は逆。
+     * 辺は写した辺(並び順)で、分岐開始から出る辺だけが到達の時の評価と条件の文(コンテンツの業務モジュールの今の項目の名前)を持つ:
+     * 予算 350 = 部長の枝が真・「予算 300 万円未満」の枝が偽(通らなかった枝)。WF-000010(予算 120)は逆。
      */
     public function test_the_edges_carry_the_branch_evaluation(): void
     {
         $this->assertSame([
-            ['申請', '課長', null, null], ['課長', '予算', null, null], ['予算', '部長', '予算 300 万円以上', true], ['予算', '分岐終了', '何もしない', false],
-            ['部長', '分岐終了', null, null], ['分岐終了', '関係部署の合議', null, null], ['関係部署の合議', '責任者', null, null],
+            ['申請', '課長', null, null, null], ['課長', '予算', null, null, null],
+            ['予算', '部長', '予算 300 万円以上', '予算(万円) ≧ 300', true], ['予算', '分岐終了', '予算 300 万円未満', '予算(万円) < 300', false],
+            ['部長', '分岐終了', null, null, null], ['分岐終了', '関係部署の合議', null, null, null], ['関係部署の合議', '責任者', null, null, null],
         ], $this->compactEdges($this->detailOf(9, 'u0010')));
         $this->assertSame([[true, false], [false, true], [true, false], [false, true]], array_map(
-            fn (int $number) => array_column(array_filter($this->compactEdges($this->detailOf($number, 'u0001')), fn (array $edge) => $edge[0] === '予算'), 3),
+            fn (int $number) => array_column(array_filter($this->compactEdges($this->detailOf($number, 'u0001')), fn (array $edge) => $edge[0] === '予算'), 4),
             [9, 10, 11, 12],
         ));
     }
@@ -105,7 +107,7 @@ final class CaseDiagramTest extends TransactionalTestCase
             array_map(fn (string $name) => $this->stateOf($twelfth, $name), ['部長', '関係部署の合議', '責任者']),
         );
         $this->assertSame([['関係部署の合議', 2, 2, 0, true, ['done u0009', 'done u0010']]], $this->compactCouncils($twelfth));
-        $this->assertSame('完了の条件 承認 2 人　現在 2 人', $this->nodeOf($twelfth, '関係部署の合議')['consensus']['text'] ?? null);
+        $this->assertSame('承認 2 / 2 人', $this->nodeOf($twelfth, '関係部署の合議')['consensus']['text'] ?? null);
         $this->assertSame([['skipped', ['skipped', '省略']], ['running', ['current', '承認待ち']]], array_map(fn (string $name) => $this->stateOf($tenth, $name), ['部長', '関係部署の合議']));
         $this->assertSame([['関係部署の合議', 0, 2, 2, false, ['current u0009', 'current u0010']]], $this->compactCouncils($tenth));
     }
@@ -123,6 +125,9 @@ final class CaseDiagramTest extends TransactionalTestCase
             [['skipped', ['skipped', '省略'], null], ['done', ['done', '処理済み'], 'reject'], ['done', ['done', '処理済み'], 'reject'], ['skipped', ['skipped', '省略'], null], ['unreached', ['upcoming', '到達していない'], null]],
             array_map(fn (string $name) => [...$this->stateOf($detail, $name), $this->nodeOf($detail, $name)['processed']['action'] ?? null], ['関係部署の合議', '関係部署の合議 承認 1', '関係部署の合議 承認 2', '関係部署の合議 承認 3', '責任者']),
         );
+        // 省略の子の人は今の指定の同じ番号の人(図の箱の題になる。完了の片付けで処理対象者の行が消えても出す)
+        $people = $this->nodeOf($detail, '関係部署の合議 承認 3')['people'];
+        $this->assertSame([['u0016', false]], array_map(fn (array $one) => [$one['code'], $one['isMe']], $people));
     }
 
     /**
@@ -176,6 +181,9 @@ final class CaseDiagramTest extends TransactionalTestCase
 
         $this->assertSame([['関係部署の合議', 2, 2, 0, true, ['done u0004', 'done u0005', 'skipped u0010']]], $this->compactCouncils($detail));
         $this->assertSame([false, false, false], array_map(fn (array $row) => $row['person']['isMe'] ?? null, $detail['councils'][0]['rows']));
+        // 図の箱の人も同じ規則(省略の子は今の指定の同じ番号の人で、その人が見ても自分にしない)
+        $people = $this->nodeOf($detail, '関係部署の合議 承認 3')['people'];
+        $this->assertSame([['u0010', false]], array_map(fn (array $one) => [$one['code'], $one['isMe']], $people));
     }
 
     /**
@@ -266,7 +274,7 @@ final class CaseDiagramTest extends TransactionalTestCase
     {
         $names = array_column($detail['nodes'], 'name', 'id');
 
-        return array_values(array_map(fn (array $edge) => [$names[$edge['from']], $names[$edge['to']], $edge['label'], $edge['taken']], $detail['edges']));
+        return array_values(array_map(fn (array $edge) => [$names[$edge['from']], $names[$edge['to']], $edge['label'], $edge['conditionText'], $edge['taken']], $detail['edges']));
     }
 
     /**

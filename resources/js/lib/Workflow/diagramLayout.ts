@@ -1,39 +1,41 @@
 import { Graph, layout } from '@dagrejs/dagre';
-import { MarkerType } from '@xyflow/react';
 import type { Edge, Node } from '@xyflow/react';
+import { labelSize, routeEdges } from '@/lib/Workflow/diagramEdges';
+import type { Box, Shape } from '@/lib/Workflow/diagramEdges';
+import { dashedEdges } from '@/lib/Workflow/diagramEdges';
+import { addDiagramMarks, plainEdge } from '@/lib/Workflow/diagramMarks';
+import type { AddedNode } from '@/lib/Workflow/diagramMarks';
+import {
+    frameHeaderWidth,
+    frameSize,
+    placeChildren,
+    slotsOf,
+} from '@/lib/Workflow/diagramFrames';
+import type { ChildNode } from '@/lib/Workflow/diagramFrames';
 import type {
-    WorkflowAction,
-    WorkflowDiagramEdge,
-    WorkflowDiagramNode,
-    WorkflowStepState,
-} from '@/types';
+    DiagramInputNode,
+    FrameNodeData,
+    JointNodeData,
+    LayoutEdge,
+    NoopNodeData,
+    RouteEdgeData,
+    StepNodeData,
+} from '@/lib/Workflow/diagramTypes';
+import type { WorkflowDiagramEdge } from '@/types';
 
 /**
  * フロー図の配置(docs の 設計/ワークフロー/ルートの深さ/画面/図と意匠とE2E.md 8 節): 上から下へ、dagre の段組みで分岐・同期の枝を横に並べる。横配置・縦配置は枠(React Flow の
  * 親ノード)の中に子を並べ(横配置は縦一列、縦配置は横一列)、dagre には枠を 1 つの箱として渡す。最後の後に「終了」の印を足す。辺は dagre の通り道を直角に折って描く。
+ * 定義の図の枠は、子の代わりに仮の札(placeholders)を同じ並べ方で置く。図の側で足す箱と札(「何もしない」「同期終了」)は diagramMarks.ts。
  */
-
-/** 図に渡すノード(案件の図は状態の札の語・処理の種別・指定の前の枠かを持つ) */
-export type DiagramInputNode = WorkflowDiagramNode & {
-    stepState?: WorkflowStepState;
-    processed?: { action: WorkflowAction } | null;
-    awaitingDesignation?: boolean;
-};
-
-export type StepNodeData = { node: DiagramInputNode };
-export type FrameNodeData = { node: DiagramInputNode; childCount: number };
-export type RouteEdgeData = {
-    path: string;
-    labelX: number;
-    labelY: number;
-    text: string | null; // 辺の名前(通らなかった枝は語を足す)
-    dashed: boolean; // 通らなかった枝とその続き(点線)
-};
 
 type DiagramNode =
     | Node<StepNodeData, 'step'>
     | Node<StepNodeData, 'routing'>
     | Node<FrameNodeData, 'frame'>
+    | ChildNode
+    | Node<NoopNodeData, 'noop'>
+    | Node<JointNodeData, 'joint'>
     | Node<Record<string, never>, 'end'>;
 
 /** 図の外周の余白(px)。dagre の margin と、全体が入る表示の padding(WorkflowDiagram)に同じ値を使い、面の高さ = 配置の高さで 1 倍に収める */
@@ -41,26 +43,11 @@ export const DIAGRAM_MARGIN = 16;
 
 /** 箱の大きさ(px)。文字の行数が決まっているので固定にする */
 const STEP_SIZE = { width: 208, height: 84 };
-// 子の箱は札を人の行の下に置くので、上の段の箱より 1 行分高い
-const CHILD_SIZE = { width: 176, height: 96 };
-const ROUTING_SIZE = { width: 168, height: 52 };
+/** 分岐(横長のひし形)と同期(長円の札。図の側で足す「同期終了」も) */
+const DIAMOND_SIZE = { width: 168, height: 56 };
+const PILL_SIZE = { width: 120, height: 32 };
 const END_SIZE = { width: 80, height: 30 };
-/** 枠の見出しの高さ(px。種類と名前・状態の札の行と、短い文の行の 2 行) */
-export const FRAME_HEADER_HEIGHT = 60;
-const FRAME = {
-    padding: 16,
-    header: FRAME_HEADER_HEIGHT,
-    gap: 16,
-    consensus: 44,
-    minWidth: 288,
-    emptyHeight: 32,
-};
 const END_ID = 'end';
-/** 折れ目を箱の上下から離す距離 */
-const BEND_OFFSET = 20;
-/** 辺の名前の 1 文字の幅の目安(dagre に名前の場所を空けさせる) */
-const LABEL_CHAR_WIDTH = 13;
-const UNTAKEN_TEXT = '通らなかった枝';
 
 /**
  * 図の形の種類の集まり(サーバーの列挙 App\Enums\Workflow\WorkflowNodeKind の写し)。tests/Architecture/WorkflowDiagramMirrorTest.php がサーバーの値と結ぶ
@@ -78,115 +65,32 @@ function isFrame(node: DiagramInputNode): boolean {
     return FRAME_KINDS.has(node.kind);
 }
 
-/** 枠の大きさ(子の数と並べ方で決まる) */
-function frameSize(node: DiagramInputNode, childCount: number) {
-    const row = node.kind === 'parallel';
-    const childrenWidth = row
-        ? childCount * CHILD_SIZE.width +
-          Math.max(childCount - 1, 0) * FRAME.gap
-        : CHILD_SIZE.width;
-    const childrenHeight =
-        childCount === 0
-            ? FRAME.emptyHeight
-            : row
-              ? CHILD_SIZE.height
-              : childCount * CHILD_SIZE.height + (childCount - 1) * FRAME.gap;
-
-    return {
-        width: Math.max(childrenWidth + FRAME.padding * 2, FRAME.minWidth),
-        height:
-            FRAME.header +
-            childrenHeight +
-            (node.consensus === null ? 0 : FRAME.consensus) +
-            FRAME.padding,
-    };
+/** 分岐開始・分岐終了 = ひし形(辺が左右の角から出入りする) */
+function isDiamond(node: DiagramInputNode): boolean {
+    return node.kind === 'branch_start' || node.kind === 'branch_end';
 }
 
 /** 箱の大きさ(dagre は渡した値の入れ物に座標を書き込むので、いつも新しい入れ物で返す) */
 function sizeOf(node: DiagramInputNode, childCount: number) {
     if (isFrame(node)) {
-        return frameSize(node, childCount);
+        return frameSize(
+            node.kind === 'parallel',
+            node.consensus !== null,
+            childCount,
+            frameHeaderWidth(node),
+        );
     }
 
-    return { ...(ROUTING_KINDS.has(node.kind) ? ROUTING_SIZE : STEP_SIZE) };
+    if (ROUTING_KINDS.has(node.kind)) {
+        return { ...(isDiamond(node) ? DIAMOND_SIZE : PILL_SIZE) };
+    }
+
+    return { ...STEP_SIZE };
 }
 
-function edgeText(edge: WorkflowDiagramEdge): string | null {
-    if (edge.taken === false) {
-        return edge.label === null
-            ? UNTAKEN_TEXT
-            : `${edge.label}(${UNTAKEN_TEXT})`;
-    }
-
-    return edge.label;
-}
-
-/**
- * 点線の辺(画面/図と意匠とE2E.md 8 節の通らなかった枝): taken が偽の辺と、元のノードが省略で元に入る辺がすべて点線の辺。元から先へ、変わらなくなるまで伝える
- * (辺の並びに頼らない。分岐終了は通過なので、その先は実線に戻る)。
- */
-function dashedEdges(
-    nodes: DiagramInputNode[],
-    edges: WorkflowDiagramEdge[],
-): Set<WorkflowDiagramEdge> {
-    const skipped = new Set(
-        nodes.filter((node) => node.state === 'skipped').map((node) => node.id),
-    );
-    const dashed = new Set(edges.filter((edge) => edge.taken === false));
-    let changed = true;
-
-    while (changed) {
-        changed = false;
-
-        for (const edge of edges) {
-            const incoming = edges.filter((other) => other.to === edge.from);
-
-            if (
-                !dashed.has(edge) &&
-                skipped.has(edge.from) &&
-                incoming.length > 0 &&
-                incoming.every((other) => dashed.has(other))
-            ) {
-                dashed.add(edge);
-                changed = true;
-            }
-        }
-    }
-
-    return dashed;
-}
-
-type Box = { x: number; y: number; width: number; height: number };
-
-/**
- * 出る箱の下辺の中央から入る箱の上辺の中央へ、直角に折れる道(途中の dagre の点があれば、その x を通る)。
- */
-function routeOf(
-    source: Box,
-    target: Box,
-    middleX: number | null,
-): Pick<RouteEdgeData, 'path' | 'labelX' | 'labelY'> {
-    const sy = source.y + source.height / 2;
-    const ty = target.y - target.height / 2;
-
-    if (middleX === null) {
-        const bend = (sy + ty) / 2;
-
-        return {
-            path: `M ${source.x} ${sy} V ${bend} H ${target.x} V ${ty}`,
-            labelX: (source.x + target.x) / 2,
-            labelY: bend,
-        };
-    }
-
-    const top = sy + BEND_OFFSET;
-    const bottom = ty - BEND_OFFSET;
-
-    return {
-        path: `M ${source.x} ${sy} V ${top} H ${middleX} V ${bottom} H ${target.x} V ${ty}`,
-        labelX: middleX,
-        labelY: (top + bottom) / 2,
-    };
+/** 図の側で足す箱(「何もしない」は同じ段のステップの箱と同じ大きさ)と札の大きさ */
+function addedSizeOf(node: AddedNode) {
+    return { ...(node.type === 'noop' ? STEP_SIZE : PILL_SIZE) };
 }
 
 /**
@@ -201,18 +105,75 @@ export function layoutDiagram(
     width: number;
     height: number;
 } {
+    const children = childrenOf(nodes);
+    const roots = nodes.filter((node) => node.parentId === null);
+    const marks = addDiagramMarks(roots, edges, dashedEdges(nodes, edges));
+    const sizes = new Map([
+        ...roots.map(
+            (node) => [String(node.id), rootSize(node, children)] as const,
+        ),
+        ...marks.added.map((node) => [node.id, addedSizeOf(node)] as const),
+    ]);
+    const outgoing = new Set(marks.edges.map((edge) => edge.from));
+    const routed = [
+        ...marks.edges,
+        ...[...sizes.keys()]
+            .filter((id) => !outgoing.has(id))
+            .map((id) => plainEdge(id, END_ID)),
+    ];
+    const graph = layoutGraph(sizes, routed);
+    const boxOf = (id: string): Box => {
+        const { x, y, width, height } = graph.node(id);
+
+        return { x: x ?? 0, y: y ?? 0, width, height };
+    };
+    const diamonds = new Set(roots.filter(isDiamond).map((n) => String(n.id)));
+    const shapeOf = (id: string): Shape =>
+        diamonds.has(id) ? 'diamond' : 'box';
+    const added = marks.added.map((node) => ({
+        ...node,
+        ...placedBox(boxOf(node.id)),
+    }));
+
+    return {
+        nodes: [...placeNodes(roots, children, boxOf), ...added],
+        edges: routeEdges(routed, graph, boxOf, shapeOf),
+        width: graph.graph().width ?? 0,
+        height: graph.graph().height ?? 0,
+    };
+}
+
+/** 枠の id → 子(展開の行) */
+function childrenOf(
+    nodes: DiagramInputNode[],
+): Map<number, DiagramInputNode[]> {
     const children = new Map<number, DiagramInputNode[]>();
 
     for (const node of nodes) {
         if (node.parentId !== null) {
-            children.set(node.parentId, [
-                ...(children.get(node.parentId) ?? []),
-                node,
-            ]);
+            const siblings = children.get(node.parentId) ?? [];
+            children.set(node.parentId, [...siblings, node]);
         }
     }
 
-    const roots = nodes.filter((node) => node.parentId === null);
+    return children;
+}
+
+/** 上の段の箱の大きさ(枠は子と仮の札の数で決まる) */
+function rootSize(
+    node: DiagramInputNode,
+    children: Map<number, DiagramInputNode[]>,
+) {
+    return sizeOf(node, slotsOf(node, children.get(node.id) ?? []).length);
+}
+
+/**
+ * dagre の段組み(箱と終了の印、札の場所を空けた辺)。
+ */
+function layoutGraph(
+    sizes: Map<string, { width: number; height: number }>,
+    edges: LayoutEdge[],
+): Graph {
     const graph = new Graph();
     graph.setGraph({
         rankdir: 'TB',
@@ -223,65 +184,44 @@ export function layoutDiagram(
     });
     graph.setDefaultEdgeLabel(() => ({}));
 
-    for (const node of roots) {
-        graph.setNode(
-            String(node.id),
-            sizeOf(node, children.get(node.id)?.length ?? 0),
-        );
+    for (const [id, size] of sizes) {
+        graph.setNode(id, size);
     }
 
     graph.setNode(END_ID, { ...END_SIZE });
 
     for (const edge of edges) {
-        const text = edgeText(edge);
-        graph.setEdge(String(edge.from), String(edge.to), {
-            width: text === null ? 0 : text.length * LABEL_CHAR_WIDTH + 16,
-            height: text === null ? 0 : 24,
+        graph.setEdge(edge.from, edge.to, {
+            ...labelSize(edge),
             labelpos: 'c',
         });
     }
 
-    const outgoing = new Set(edges.map((edge) => edge.from));
-    const lasts = roots.filter((node) => !outgoing.has(node.id));
+    // 同じ箱から出る枝は、辺の並び(分岐の並び順)のとおり左から右へ置く
+    layout(graph, { constraints: orderConstraints(edges) });
 
-    for (const node of lasts) {
-        graph.setEdge(String(node.id), END_ID);
-    }
+    return graph;
+}
 
-    layout(graph);
+/** 同じ箱から出る辺の行き先の左右(隣り合う 2 つずつ。dagre の並べ替えの制約) */
+function orderConstraints(
+    edges: LayoutEdge[],
+): { left: string; right: string }[] {
+    return edges.flatMap((edge, index) => {
+        const next = edges
+            .slice(index + 1)
+            .find((other) => other.from === edge.from);
 
-    const boxOf = (id: string): Box => {
-        const placed = graph.node(id);
+        return next === undefined ? [] : [{ left: edge.to, right: next.to }];
+    });
+}
 
-        return {
-            x: placed.x ?? 0,
-            y: placed.y ?? 0,
-            width: placed.width,
-            height: placed.height,
-        };
-    };
-
-    const dashed = dashedEdges(nodes, edges);
-
+/** 中心の座標の箱から、React Flow の左上の座標と大きさ */
+function placedBox(box: Box) {
     return {
-        nodes: placeNodes(roots, children, boxOf),
-        edges: [
-            ...edges.map((edge) =>
-                routeEdge(
-                    String(edge.from),
-                    String(edge.to),
-                    edgeText(edge),
-                    dashed.has(edge),
-                    graph,
-                    boxOf,
-                ),
-            ),
-            ...lasts.map((node) =>
-                routeEdge(String(node.id), END_ID, null, false, graph, boxOf),
-            ),
-        ],
-        width: graph.graph().width ?? 0,
-        height: graph.graph().height ?? 0,
+        position: { x: box.x - box.width / 2, y: box.y - box.height / 2 },
+        width: box.width,
+        height: box.height,
     };
 }
 
@@ -298,105 +238,21 @@ function placeNodes(
 
     for (const node of roots) {
         const box = boxOf(String(node.id));
-        const position = {
-            x: box.x - box.width / 2,
-            y: box.y - box.height / 2,
-        };
-        const base = {
-            id: String(node.id),
-            position,
-            width: box.width,
-            height: box.height,
-        };
+        const base = { id: String(node.id), ...placedBox(box) };
 
         if (isFrame(node)) {
-            const kids = children.get(node.id) ?? [];
-            placed.push({
-                ...base,
-                type: 'frame',
-                data: { node, childCount: kids.length },
-            });
-            childNodes.push(...placeChildren(node, kids, box.width));
+            const slots = slotsOf(node, children.get(node.id) ?? []);
+            const data = { node, childCount: slots.length };
+            placed.push({ ...base, type: 'frame', data });
+            childNodes.push(...placeChildren(node, slots, box.width));
         } else {
-            placed.push({
-                ...base,
-                type: ROUTING_KINDS.has(node.kind) ? 'routing' : 'step',
-                data: { node },
-            });
+            const type = ROUTING_KINDS.has(node.kind) ? 'routing' : 'step';
+            placed.push({ ...base, type, data: { node } });
         }
     }
 
-    const end = boxOf(END_ID);
-    placed.push({
-        id: END_ID,
-        type: 'end',
-        position: { x: end.x - end.width / 2, y: end.y - end.height / 2 },
-        width: end.width,
-        height: end.height,
-        data: {},
-    });
+    const end = { id: END_ID, ...placedBox(boxOf(END_ID)) };
+    placed.push({ ...end, type: 'end', data: {} });
 
     return [...placed, ...childNodes];
-}
-
-/**
- * 枠の子(枠の左上からの相対の座標)。子の並び全体を枠の幅の中央に置く(上下の辺が子の並びの中央を通る)。
- */
-function placeChildren(
-    parent: DiagramInputNode,
-    kids: DiagramInputNode[],
-    frameWidth: number,
-): DiagramNode[] {
-    const row = parent.kind === 'parallel';
-    const rowWidth = row
-        ? kids.length * CHILD_SIZE.width +
-          Math.max(kids.length - 1, 0) * FRAME.gap
-        : CHILD_SIZE.width;
-    const left = (frameWidth - rowWidth) / 2;
-
-    return kids.map((child, index) => ({
-        id: String(child.id),
-        type: 'step',
-        parentId: String(parent.id),
-        extent: 'parent',
-        position: row
-            ? {
-                  x: left + index * (CHILD_SIZE.width + FRAME.gap),
-                  y: FRAME.header,
-              }
-            : {
-                  x: left,
-                  y: FRAME.header + index * (CHILD_SIZE.height + FRAME.gap),
-              },
-        width: CHILD_SIZE.width,
-        height: CHILD_SIZE.height,
-        data: { node: child },
-    }));
-}
-
-function routeEdge(
-    from: string,
-    to: string,
-    text: string | null,
-    dashed: boolean,
-    graph: Graph,
-    boxOf: (id: string) => Box,
-): Edge<RouteEdgeData, 'route'> {
-    const points = graph.edge(from, to)?.points ?? [];
-    const middle = points.slice(1, -1);
-    const middleX =
-        middle.length === 0 ? null : middle[Math.floor(middle.length / 2)].x;
-
-    return {
-        id: `${from}-${to}`,
-        source: from,
-        target: to,
-        type: 'route',
-        markerEnd: { type: MarkerType.ArrowClosed, width: 16, height: 16 },
-        data: {
-            ...routeOf(boxOf(from), boxOf(to), middleX),
-            text,
-            dashed,
-        },
-    };
 }

@@ -35,6 +35,7 @@ import {
     Truck,
     UserCog,
     Users,
+    Workflow,
     Wrench,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
@@ -83,6 +84,7 @@ const ICONS: Record<string, LucideIcon> = {
     inbox: Inbox,
     'list-checks': ListChecks,
     'user-cog': UserCog,
+    workflow: Workflow,
 };
 
 /**

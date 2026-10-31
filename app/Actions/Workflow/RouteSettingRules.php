@@ -9,6 +9,7 @@ use App\Enums\Workflow\WorkflowTargetKind;
 use App\Models\Workflow\WorkflowRouteEdge;
 use App\Queries\Authz\Api\SelectionSubjects;
 use App\Queries\Records\Api\RecordConditions;
+use App\Queries\Workflow\RouteNodeCandidates;
 use App\Support\AccessContext;
 use Carbon\CarbonImmutable;
 
@@ -80,20 +81,20 @@ class RouteSettingRules
     }
 
     /**
-     * G-11: 差戻し元は承認・横配置・縦配置、先は差戻し元の祖先の申請・承認・横配置・縦配置。
+     * G-11: 差戻し元は承認・横配置・縦配置、先は差戻し元の祖先の申請・承認・横配置・縦配置(式は定義の管理の画面の候補と同じ
+     * {@see RouteNodeCandidates::sendBackTargetsOf()})。
      *
      * @return list<RouteViolation>
      */
     private function sendBacks(RouteDefinition $route): array
     {
         $violations = [];
+        $candidates = new RouteNodeCandidates($route->nodes, $route->graph);
 
         foreach ($route->sendBacks as $sendBack) {
             $source = $sendBack->workflow_route_node_id;
             $target = $sendBack->target_workflow_route_node_id;
-            $valid = $route->node($source)->kind->isIn(WorkflowNodeKind::approving())
-                && $route->node($target)->kind->isIn(WorkflowNodeKind::targeted())
-                && in_array($target, $route->graph->ancestorsOf($source), true);
+            $valid = in_array($target, $candidates->sendBackTargetsOf($source), true);
 
             if (! $valid) {
                 $violations[] = new RouteViolation('G-11', $route->codes([$source, $target]));

@@ -79,6 +79,7 @@ final class ShareAppNavigationTest extends TransactionalTestCase
                     ['master-organization-chart', '組織図', 'network', '/master/organization-chart'],
                     ['records-admin-modules-index', '業務モジュール', 'database', '/records/admin/modules'],
                     ['records-admin-categories-index', 'モジュール分類', 'folder-tree', '/records/admin/categories'],
+                    ['workflow-admin-flows-index', 'フロー定義', 'workflow', '/workflow/admin/flows'],
                     ['workflow-admin-cases-index', '申請操作', 'list-checks', '/workflow/admin/cases'],
                     ['workflow-admin-proxies-index', '代理の管理', 'user-cog', '/workflow/admin/proxies'],
                 ]),

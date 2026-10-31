@@ -20,6 +20,11 @@ final class WorkflowSeederRouteResourcesTest extends TransactionalTestCase
     /** 代理の管理の接頭辞のリソースグループ */
     private const ADMIN_PROXIES = 'http-services.workflow.admin.proxies';
 
+    /** 定義の管理の接頭辞のリソースグループ */
+    private const ADMIN_FLOWS = 'http-services.workflow.admin.flows';
+
+    private const ADMIN_VERSIONS = 'http-services.workflow.admin.versions';
+
     /** ワークフローの接頭辞のリソースグループとルートのリソース(作った順。出典は下のテストの注): [ID, 親の ID, 表示名 ja, en] */
     private const ROUTE_RESOURCE_GROUPS = [
         ['http-services.workflow', 'http-services', 'ワークフロー', 'Workflow'],
@@ -32,6 +37,10 @@ final class WorkflowSeederRouteResourcesTest extends TransactionalTestCase
         ['http-services.workflow.admin', 'http-services.workflow', 'ワークフローの管理', 'Workflow administration'],
         [self::ADMIN_CASES, 'http-services.workflow.admin', '申請操作', 'Application operations'],
         [self::ADMIN_PROXIES, 'http-services.workflow.admin', '代理の管理', 'Proxy administration'],
+        [self::ADMIN_FLOWS, 'http-services.workflow.admin', 'フロー定義', 'Flow definitions'],
+        ['http-services.workflow.admin.flows.referrers', self::ADMIN_FLOWS, '参照者', 'Referrers'],
+        [self::ADMIN_VERSIONS, 'http-services.workflow.admin', 'フロー定義の版', 'Flow definition versions'],
+        ['http-services.workflow.admin.nodes', 'http-services.workflow.admin', 'ステップの設定', 'Step settings'],
         ['http-services.workflow.home', 'http-services.workflow', 'ワークフローのホーム', 'Workflow home'],
         ['http-services.workflow.flows.index', 'http-services.workflow.flows', '申請できるフローの一覧', 'Applicable flow list'],
         [
@@ -82,16 +91,32 @@ final class WorkflowSeederRouteResourcesTest extends TransactionalTestCase
         ['http-services.workflow.admin.proxies.index', self::ADMIN_PROXIES, '代理の管理', 'Proxy administration'],
         ['http-services.workflow.admin.proxies.store', self::ADMIN_PROXIES, '代理の追加(管理)', 'Add proxy (admin)'],
         ['http-services.workflow.admin.proxies.destroy', self::ADMIN_PROXIES, '代理の削除(管理)', 'Delete proxy (admin)'],
+        ['http-services.workflow.admin.flows.index', self::ADMIN_FLOWS, 'フロー定義の一覧', 'Flow definition list'],
+        ['http-services.workflow.admin.flows.show', self::ADMIN_FLOWS, 'フロー定義の詳細', 'Flow definition detail'],
+        [
+            'http-services.workflow.admin.flows.referrers.update', 'http-services.workflow.admin.flows.referrers',
+            '参照者の保存', 'Save referrers',
+        ],
+        ['http-services.workflow.admin.versions.store', self::ADMIN_VERSIONS, '版の追加', 'Add version'],
+        ['http-services.workflow.admin.versions.disable', self::ADMIN_VERSIONS, '版の無効化', 'Disable version'],
+        ['http-services.workflow.admin.versions.enable', self::ADMIN_VERSIONS, '版の有効化', 'Enable version'],
+        [
+            'http-services.workflow.admin.nodes.update', 'http-services.workflow.admin.nodes', 'ステップの設定の保存',
+            'Save step settings',
+        ],
+        [
+            'http-services.workflow.admin.subject-candidates', 'http-services.workflow.admin', '対象者の候補',
+            'Subject candidates',
+        ],
     ];
 
     /**
-     * 設計/ワークフロー/ルートの深さ/初期データ.md 5 節: 接頭辞のリソースグループ 10 とルートのリソース 41(ワークフローのホーム = 設計/メニュー/ホーム.md 6.7、ルート 18 本 =
+     * 設計/ワークフロー/ルートの深さ/初期データ.md 5 節: 接頭辞のリソースグループ 14 とルートのリソース 49(ワークフローのホーム = 設計/メニュー/ホーム.md 6.7、ルート 18 本 =
      * 設計/ワークフロー/認可と一覧.md 4 節と、処理対象者の候補と、一括承認・一括確認・利用者の候補・保留・保留解除・振替・確認・参照項目の候補・
      * 代理の設定と申請操作と代理の管理の 12 本 = 設計/ワークフロー/案件の運用/認可と一覧.md の 4 節と、写しの値の入口 =
      * 設計/ワークフロー/申請の周辺/初期データ.md の 3 節。申請操作・代理の管理の親 http-services.workflow.admin の表示名 =
-     * 設計/ワークフロー/ルートの深さ/認可と一覧.md の 4.2 節。ID・親は名前から決まる。表示名 ja・en = それぞれの節)。
-     * ポリシー 64 は WorkflowRouteAuthorizationTest・AuthorizationSeedersTest が確かめる(申請操作はポリシーなし)。
-     * 定義の管理を足すときは、そのリソースグループ・ルートとメニュー「フロー定義」をここで確かめる。
+     * 設計/ワークフロー/ルートの深さ/認可と一覧.md の 4.2 節。定義の管理の接頭辞 4 とルート 8 = 同じ 4.2 節。ID・親は名前から決まる。表示名 ja・en = それぞれの節)。
+     * ポリシー 64 は WorkflowRouteAuthorizationTest・AuthorizationSeedersTest が確かめる(申請操作・定義の管理はポリシーなし)。
      */
     public function test_seeds_the_route_resources_of_the_design(): void
     {
@@ -109,6 +134,6 @@ final class WorkflowSeederRouteResourcesTest extends TransactionalTestCase
             ->all();
 
         $this->assertSame(self::ROUTE_RESOURCE_GROUPS, $groups);
-        $this->assertSame(41, AuthzResource::query()->where('uri', 'like', 'service://workflow/%')->count());
+        $this->assertSame(49, AuthzResource::query()->where('uri', 'like', 'service://workflow/%')->count());
     }
 }

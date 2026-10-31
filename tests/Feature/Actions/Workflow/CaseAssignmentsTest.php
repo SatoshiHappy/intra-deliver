@@ -53,7 +53,7 @@ final class CaseAssignmentsTest extends TransactionalTestCase
         $this->assertRejected($case, ['council' => ['u0004', 'u0004'], 'owner' => ['u0010']], [$council => '同じユーザーを重複して指定できません']);
         $this->assertRejected($case, ['council' => ['u0004', 'u0014'], 'owner' => ['u0015']], [$council => '申請基準日に有効でないユーザーは指定できません', $owner => '申請基準日に有効でないユーザーは指定できません']);
         $this->assertRejectedById($case, [$ids['council'] => [...$this->userIds('u0004'), $missing], $ids['owner'] => $this->userIds('u0010')], [$council => '申請基準日に有効でないユーザーは指定できません']);
-        $this->assertRejected($case, ['council' => ['u0004', 'u0001'], 'owner' => ['u0001']], [$council => '申請者本人は、このステップの処理担当者に指定できません', $owner => '申請者本人は、このステップの処理担当者に指定できません']);
+        $this->assertRejected($case, ['council' => ['u0004', 'u0001'], 'owner' => ['u0001']], [$council => '申請者本人は、このステップの承認者に選択できません', $owner => '申請者本人は、このステップの承認者に選択できません']);
     }
 
     /**
