@@ -184,3 +184,46 @@ test('システム管理者に切り替えると歯車の「認可設定」か�
     // ログアウトするとゲストに戻り、歯車が消える(管理のアプリはシステム管理者だけ)
     await expect(adminMenuButton(page)).toHaveCount(0);
 });
+
+test('格子の枠は、ページを最後まで送るとヘッダーの下の画面いっぱいに収まり、枠の中で送っても見出しの行が止まる', async ({
+    page,
+}) => {
+    await page.goto('/');
+    await choose(page, 'ゲスト', 'システム管理者');
+    await page.goto('/authz/overview');
+    const header = await page.locator('header').first().boundingBox();
+    const viewport = page.viewportSize();
+    expect(header).not.toBeNull();
+    expect(viewport).not.toBeNull();
+    const headerBottom = header!.y + header!.height;
+
+    // 枠 = 表の親の、縦横にスクロールする入れ物(docs の 設計/共通マスタ/ロールと認可/認可の確認/認可設定の画面.md 2.3)
+    for (const tab of ['設定', '判定']) {
+        await page.getByRole('tab', { name: tab }).click();
+        const frame = page.getByRole('tabpanel').locator('table').locator('..');
+        await expect(frame).toHaveCSS('overflow-y', 'auto');
+        await frame.evaluate((element) => {
+            element.scrollTop = 0;
+            window.scrollTo(0, document.documentElement.scrollHeight);
+        });
+
+        // 最後まで送ると枠の下端は余白の分だけ画面の下端に寄るので、上端の位置で枠の高さが決まる。
+        // 「画面・処理」の行は画面に収まらないので、上端はヘッダーのすぐ下(隙間 1rem 以内)に来る
+        const box = await frame.boundingBox();
+        expect(box).not.toBeNull();
+        expect(box!.y).toBeGreaterThanOrEqual(headerBottom);
+        expect(box!.y).toBeLessThanOrEqual(headerBottom + 16);
+        expect(box!.y + box!.height).toBeLessThanOrEqual(viewport!.height);
+
+        // 枠の中で縦に送っても、見出しの行は枠の上端に止まる
+        const scrolled = await frame.evaluate((element) => {
+            element.scrollTop = 600;
+
+            return element.scrollTop;
+        });
+        expect(scrolled).toBe(600);
+        const head = await frame.locator('thead').boundingBox();
+        expect(head).not.toBeNull();
+        expect(Math.abs(head!.y - box!.y)).toBeLessThanOrEqual(1);
+    }
+});
