@@ -9,7 +9,7 @@ use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
 
 /**
- * 参照者の保存(docs の 設計/ワークフロー/ルートの深さ/画面/README.md 1.1 節、定義の管理.md 5.2 節)。成功は詳細のタブ「設定」(面「参照者」がある)へ移りトースト。
+ * 参照者の保存(docs の 設計/ワークフロー/ルートの深さ/画面/README.md 1.1 節、設計/ワークフロー/ルートの深さ/定義の管理.md 5.2 節)。成功は詳細のタブ「設定」(面「参照者」がある)へ移りトースト。
  * 業務処理の 422 は元の画面へ戻りキーにエラーが付く。
  */
 class ReferrerController extends Controller

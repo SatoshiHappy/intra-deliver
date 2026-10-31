@@ -158,7 +158,7 @@ final class FlowDefinitionPagesTest extends TransactionalTestCase
             $applyNode['summary'], $applyNode['preventsApplicantApproval'], $applyNode['sendBack'],
         ]);
         $this->assertSame([], $apply['options']['designators']);
-        $this->assertSame(['分岐「予算」の条件に合う先へ、すべて進みます。', null, null, null, null], [
+        $this->assertSame(['分岐「予算」の条件に該当する先へ、すべて進みます。', null, null, null, null], [
             $budget['summary'], $budget['target'], $budget['preventsApplicantApproval'], $budget['sendBack'],
             $budget['decision'],
         ]);

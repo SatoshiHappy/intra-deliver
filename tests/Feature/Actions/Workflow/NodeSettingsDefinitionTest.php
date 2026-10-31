@@ -24,7 +24,7 @@ final class NodeSettingsDefinitionTest extends TransactionalTestCase
     use CatchesValidationErrors;
     use SavesNodeSettings;
 
-    private const DESIGNATOR = '処理対象者を指定するステップには、このステップより前の、必ず通り省略されない承認のステップを選択してください';
+    private const DESIGNATOR = '選択する人には、このステップより前の、必ず通り省略されない承認のステップを選択してください';
 
     private const SEND_BACK = '差戻しできる先には、このステップに至る経路上の、申請または承認のステップ(順次承認・並列承認を含む)を選択してください';
 
@@ -63,7 +63,7 @@ final class NodeSettingsDefinitionTest extends TransactionalTestCase
 
         $this->saveSettings($designated, 'x', ['minAssignees' => 1]);
         $this->saveSettings($designated, 'y', $byX);
-        $this->assertErrors(['min_assignees' => 'このステップはほかのステップの処理対象者を指定するため、人数の最小は 1 以上にしてください'], $designated, 'x', [
+        $this->assertErrors(['min_assignees' => 'このステップはほかのステップの承認者を選択するため、人数の最小は 1 以上にしてください'], $designated, 'x', [
             'minAssignees' => 0,
         ]);
     }

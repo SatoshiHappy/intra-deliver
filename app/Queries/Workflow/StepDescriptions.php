@@ -38,7 +38,7 @@ final class StepDescriptions
             WorkflowNodeKind::Approve => $phrase().'が承認します。',
             WorkflowNodeKind::Serial => $phrase().'が、順に承認します。',
             WorkflowNodeKind::Parallel => $phrase().'のうち、'.self::decisionPhrase($rule, $value).'が承認すると次へ進みます。',
-            WorkflowNodeKind::BranchStart => "分岐「{$name}」の条件に合う先へ、すべて進みます。",
+            WorkflowNodeKind::BranchStart => "分岐「{$name}」の条件に該当する先へ、すべて進みます。",
             WorkflowNodeKind::BranchEnd => '分岐の枝がここで合流します。',
             WorkflowNodeKind::SyncStart => '後ろのステップへ並行して進みます。',
             WorkflowNodeKind::SyncEnd => '並行したステップがすべて終わると次へ進みます。',

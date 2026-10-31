@@ -12,7 +12,7 @@ use Inertia\Response;
 
 /**
  * フロー定義の一覧と詳細(docs の 設計/ワークフロー/ルートの深さ/画面/README.md 1.1 節、定義の管理の画面.md 2 節・3 節)。
- * システム管理者だけが通るのはルートの認可(ポリシーを置かない = 認可と一覧.md 4.2 節)。詳細のクエリの読み方は {@see FlowDefinitionDetail}。
+ * システム管理者だけが通るのはルートの認可(ポリシーを置かない = 設計/ワークフロー/ルートの深さ/認可と一覧.md 4.2 節)。詳細のクエリの読み方は {@see FlowDefinitionDetail}。
  */
 class FlowController extends Controller
 {

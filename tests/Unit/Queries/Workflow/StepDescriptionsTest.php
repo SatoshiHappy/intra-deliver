@@ -65,7 +65,7 @@ final class StepDescriptionsTest extends TestCase
                 WorkflowNodeKind::Parallel, $chief(3, 3), WorkflowDecisionRule::All, null,
                 '課長が選択した 3 人のうち、全員が承認すると次へ進みます。', '承認者は課長が選択',
             ],
-            '分岐開始' => [WorkflowNodeKind::BranchStart, null, null, null, '分岐「予算」の条件に合う先へ、すべて進みます。', null],
+            '分岐開始' => [WorkflowNodeKind::BranchStart, null, null, null, '分岐「予算」の条件に該当する先へ、すべて進みます。', null],
             '分岐終了' => [WorkflowNodeKind::BranchEnd, null, null, null, '分岐の枝がここで合流します。', null],
             '同期開始' => [WorkflowNodeKind::SyncStart, null, null, null, '後ろのステップへ並行して進みます。', null],
             '同期終了' => [WorkflowNodeKind::SyncEnd, null, null, null, '並行したステップがすべて終わると次へ進みます。', null],

@@ -34,7 +34,7 @@ describe('toggleFullscreen(広げて表示の切り替え)', () => {
         expect(exitFullscreen).not.toHaveBeenCalled();
     });
 
-    it('図が全画面なら、元の大きさに戻す', async () => {
+    it('図が全画面なら、元の大きさで表示する', async () => {
         const { element, requestFullscreen } = fakeElement();
         const { doc, exitFullscreen } = fakeDocument(element);
 

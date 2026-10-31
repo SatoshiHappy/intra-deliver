@@ -11,7 +11,7 @@ use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
 
 /**
- * 版の追加・無効・有効(docs の 設計/ワークフロー/ルートの深さ/画面/README.md 1.1 節、定義の管理.md 1 節・4 節)。成功は詳細の版のタブ
+ * 版の追加・無効・有効(docs の 設計/ワークフロー/ルートの深さ/画面/README.md 1.1 節、設計/ワークフロー/ルートの深さ/定義の管理.md 1 節・4 節)。成功は詳細の版のタブ
  * (追加は足した版、無効・有効はその版を選んだ状態)へ移りトースト。業務処理の 422 は元の画面へ戻りキーにエラーが付く。
  */
 class VersionController extends Controller

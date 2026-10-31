@@ -37,7 +37,7 @@ final class NodeSettingsValuesTest extends TransactionalTestCase
      */
     public function test_a_company_post_a_designator_and_send_backs_must_exist(): void
     {
-        $designator = '処理対象者を指定するステップには、このステップより前の、必ず通り省略されない承認のステップを選択してください';
+        $designator = '選択する人には、このステップより前の、必ず通り省略されない承認のステップを選択してください';
 
         $this->assertErrors(['company_post_id' => '役職を選択してください'], 'section_chief', ['companyPostId' => 999_999_999]);
         $this->assertErrors(['designator_node_code' => $designator], 'owner', ['designatorNodeCode' => 'nobody']);
