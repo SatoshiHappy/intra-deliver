@@ -18,7 +18,7 @@ use Tests\Support\TransactionalTestCase;
  * 申請対象からの申請.md 11 節の「10.1 の入口の参照制限のキー」のうち送る値の表に依らない組): 申請対象からの申請(登録の経路)は参照制限の既定が
  * 「する」の申請書の業務モジュールで、そのものを申請する(更新の経路)はチェックの付いた申請書のレコードで、row_access_restricted: false を送っても
  * チェックが付いたまま、空でない row_access_viewers を送っても参照者は変わらない(登録は空、更新は今のまま)。形の誤った値でも 422 にならない。
- * 制限した申請対象の組は 10.1 の送る値の表(01 の 3-4c)。
+ * 制限した申請対象の組は {@see ApplicationTargetRowAccessKeysTest}(10.1 の送る値の表)。
  */
 final class RecordApplicationRowAccessKeysTest extends TransactionalTestCase
 {
