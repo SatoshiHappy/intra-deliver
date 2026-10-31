@@ -79,7 +79,7 @@ class CaseDetailQuery
     public function show(AccessContext $context, int $caseId): array
     {
         $requester = Requester::fromAccessContext($context);
-        $case = $this->visibleCase($requester, $context, $caseId)->load('workflowFlow');
+        $case = $this->visibleCase($requester, $context, $caseId)->load('workflowFlow.workflowContent');
         $recordId = $case->record_id ?? throw new LogicException("申請した案件 {$case->id} がレコードを指していない");
         $nodes = WorkflowCaseNode::query()->with('parent')->where('workflow_case_id', $case->id)->get()->sort(WorkflowCaseNode::compareInRoute(...))->values();
         $histories = WorkflowCaseHistory::query()->where('workflow_case_id', $case->id)->orderBy('id')->get();

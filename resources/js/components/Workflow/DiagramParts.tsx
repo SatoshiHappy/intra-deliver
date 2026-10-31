@@ -13,7 +13,7 @@ import { personName } from '@/lib/Workflow/workflowLabels';
 import type { WorkflowStepState } from '@/types';
 
 /**
- * フロー図の箱と辺の部品(申請・承認・分岐・同期・終了・仮の札・辺。枠は WorkflowDiagram.tsx)。
+ * フロー図の箱と辺の部品(申請・承認・終了・仮の札・辺。分岐・同期と図の側で足す箱と札は DiagramMarks.tsx、枠は WorkflowDiagram.tsx)。
  * docs の 設計/ワークフロー/ルートの深さ/画面/図と意匠とE2E.md 8 節。
  */
 
@@ -88,8 +88,8 @@ export function StepNode({ data, parentId }: NodeProps<Node<StepNodeData>>) {
         <div
             {...props}
             className={cn(
-                'flex size-full flex-col justify-center gap-1 rounded-lg',
-                'border-2 bg-card px-3 py-2 text-card-foreground',
+                'flex size-full flex-col items-center justify-center gap-1 rounded-lg',
+                'border-2 bg-card px-3 py-2 text-center text-card-foreground',
                 borderOf(node, isSelected),
                 props.className,
             )}
@@ -109,12 +109,12 @@ export function StepNode({ data, parentId }: NodeProps<Node<StepNodeData>>) {
             {node.stepState !== undefined && (
                 <span
                     className={cn(
-                        'flex min-w-0 gap-x-2 gap-y-1 text-xs',
-                        isChild ? 'flex-col items-start' : 'items-center',
+                        'flex max-w-full min-w-0 items-center gap-x-2 gap-y-1 text-xs',
+                        isChild && 'flex-col',
                     )}
                 >
                     <PeopleText node={node} />
-                    <span className={cn('shrink-0', !isChild && 'ml-auto')}>
+                    <span className="shrink-0">
                         <CaseStepBadge
                             stepState={node.stepState}
                             action={node.processed?.action ?? null}
@@ -127,39 +127,9 @@ export function StepNode({ data, parentId }: NodeProps<Node<StepNodeData>>) {
     );
 }
 
-/** 分岐・同期の小さな箱(分岐開始は「分岐「{名前}」」) */
-export function RoutingNode({ data }: NodeProps<Node<StepNodeData>>) {
-    const { node } = data;
-    const { isSelected, props } = useNodeSelection(node);
-
-    return (
-        <div
-            {...props}
-            className={cn(
-                'flex size-full flex-col items-center justify-center',
-                'rounded-md border-2 bg-card px-2 text-center text-card-foreground',
-                borderOf(node, isSelected),
-                props.className,
-            )}
-        >
-            <Handles />
-            <span className="max-w-full truncate text-xs font-medium">
-                {node.kind === 'branch_start'
-                    ? `分岐「${node.name}」`
-                    : node.name}
-            </span>
-            {node.stepState !== undefined && (
-                <span className="text-[11px] text-muted-foreground">
-                    {node.stepState.label}
-                </span>
-            )}
-        </div>
-    );
-}
-
 /**
  * 定義の図の枠の中の仮の札(「承認 1」と「実行時に指定」、残りをまとめた札は「承認 3 から 5」と「任意」。
- * 設計/ワークフロー/ルートの深さ/画面/図と意匠とE2E.md 8 節)。実行時に決まる席なので破線の縁。
+ * 設計/ワークフロー/ルートの深さ/画面/図と意匠とE2E.md 8 節)。必ず要る席は実線、任意の席は破線の縁。
  */
 export function PlaceholderNode({
     data,
@@ -167,13 +137,17 @@ export function PlaceholderNode({
     return (
         <div
             className={cn(
-                'flex size-full flex-col justify-center gap-1',
-                'rounded-lg border-2 border-dashed bg-card px-3 py-2',
+                'flex size-full flex-col items-center justify-center gap-1',
+                'rounded-lg border-2 bg-card px-3 py-2 text-center',
                 'text-card-foreground',
+                data.optional && 'border-dashed',
             )}
         >
             <Handles />
-            <span className="truncate text-sm font-medium" title={data.label}>
+            <span
+                className="max-w-full truncate text-sm font-medium"
+                title={data.label}
+            >
                 {data.label}
             </span>
             <span className="text-xs text-muted-foreground">
@@ -203,7 +177,10 @@ export function EndNode() {
     );
 }
 
-/** 辺(配置の計算が作った直角の道。通らなかった枝とその続きは点線、通らなかった枝の最初の辺は語も) */
+/**
+ * 辺(配置の計算が作った直角の道。通らなかった枝とその続きは点線)と枝の札(行き先の箱のすぐ上。上の行 = 辺の名前、下の行 = 条件の文。
+ * 通らなかった枝の札は点線の縁)。
+ */
 export function RouteEdge({ data, markerEnd }: EdgeProps<Edge<RouteEdgeData>>) {
     if (data === undefined) {
         return null;
@@ -220,8 +197,8 @@ export function RouteEdge({ data, markerEnd }: EdgeProps<Edge<RouteEdgeData>>) {
                 <EdgeLabelRenderer>
                     <span
                         className={cn(
-                            'absolute rounded-full border bg-card px-2 py-0.5',
-                            'text-xs whitespace-nowrap',
+                            'absolute flex flex-col items-center rounded-xl border bg-card px-2.5 py-0.5',
+                            'leading-tight whitespace-nowrap',
                             data.dashed &&
                                 'border-dashed text-muted-foreground',
                         )}
@@ -229,7 +206,12 @@ export function RouteEdge({ data, markerEnd }: EdgeProps<Edge<RouteEdgeData>>) {
                             transform: `translate(-50%, -50%) translate(${data.labelX}px, ${data.labelY}px)`,
                         }}
                     >
-                        {data.text}
+                        <span className="text-xs font-medium">{data.text}</span>
+                        {data.conditionText !== null && (
+                            <span className="text-[11px] text-muted-foreground">
+                                {data.conditionText}
+                            </span>
+                        )}
                     </span>
                 </EdgeLabelRenderer>
             )}

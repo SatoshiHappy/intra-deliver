@@ -523,10 +523,11 @@ test('部長: 承認すると合議の 3 人が承認待ちになり、現在の
         '関係部署の合議(承認 1、承認 2、承認 3)',
     );
 
-    // 図: 予算 350 なので「何もしない」の枝が通らなかった枝(点線と語)、部長は処理済み、縦配置の枠に完了の条件。合議の進み具合は 0 人が承認・必要 2 人
-    await expect(
-        diagram(page).getByText('何もしない(通らなかった枝)', { exact: true }),
-    ).toBeVisible();
+    // 図: 予算 350 なので「予算 300 万円未満」の枝(点線の札)と「何もしない」の箱が通らなかった枝、部長は処理済み、縦配置の枠に完了の条件。合議は 0 人が承認・必要 2 人
+    await expect(diagram(page)).toContainText('予算(万円) < 300');
+    await expect(diagramStep(page, '何もしない')).toContainText(
+        '通らなかった枝',
+    );
     await expect(diagramStep(page, '部長')).toContainText('処理済み(承認)');
     await expect(diagram(page)).toContainText('縦配置「関係部署の合議」');
     await expect(diagram(page)).toContainText(
@@ -641,7 +642,7 @@ test('申請者承認防止: 上長が版 3 の申請の画面を開くと、課
     ).toBeDisabled();
 });
 
-test('通らなかった枝: 予算 120 の見本 WF-000010 の詳細の図で、部長は省略、分岐の「何もしない」の枝を通り、課長の承認の後の合議が承認待ち', async ({
+test('通らなかった枝: 予算 120 の見本 WF-000010 の詳細の図で、部長は省略、分岐の「予算 300 万円未満」の枝(「何もしない」の箱)を通り、課長の承認の後の合議が承認待ち', async ({
     page,
 }) => {
     await openAs(page, 'concurrent', '/workflow/cases?tab=pending');
@@ -655,14 +656,10 @@ test('通らなかった枝: 予算 120 の見本 WF-000010 の詳細の図で�
 
     await expect(diagramStep(page, '課長')).toContainText('処理済み(承認)');
     await expect(diagramStep(page, '部長')).toContainText('省略');
-    await expect(
-        diagram(page).getByText('予算 300 万円以上(通らなかった枝)', {
-            exact: true,
-        }),
-    ).toBeVisible();
-    await expect(
-        diagram(page).getByText('何もしない', { exact: true }),
-    ).toBeVisible();
+    await expect(diagram(page)).toContainText('予算(万円) ≧ 300');
+    await expect(diagramStep(page, '何もしない')).toContainText(
+        'そのまま次へ進んだ',
+    );
     // 点線 = 通らなかった枝(予算 → 部長)と、省略の部長から続く辺(部長 → 分岐終了)の 2 本。分岐終了から先は実線
     await expect(dashedEdges(page)).toHaveCount(2);
     await expect(diagramStep(page, '関係部署の合議 承認 1')).toContainText(
@@ -674,7 +671,7 @@ test('通らなかった枝: 予算 120 の見本 WF-000010 の詳細の図で�
     await expect(councilProgress(page)).toContainText('0 人が承認　必要 2 人');
 });
 
-test('否認の票と通らなかった枝: 見本 WF-000011(合議が可決できずに否認で完了)の図で、否認した子は「処理済み(否認)」、残りの子と合議は省略、点線は「何もしない」の枝の 1 本だけ', async ({
+test('否認の票と通らなかった枝: 見本 WF-000011(合議が可決できずに否認で完了)の図で、否認した子は「処理済み(否認)」、残りの子と合議は省略、点線は「何もしない」の箱を通る枝の 2 本だけ', async ({
     page,
 }) => {
     await openAs(
@@ -701,11 +698,11 @@ test('否認の票と通らなかった枝: 見本 WF-000011(合議が可決で�
     );
     await expect(diagram(page)).toContainText('縦配置「関係部署の合議」');
     await expect(diagramStep(page, '責任者')).toContainText('到達していない');
-    // 完了の時の片付けで省いた合議の前後の辺は実線のまま(点線は分岐の「何もしない」の 1 本)
-    await expect(
-        diagram(page).getByText('何もしない(通らなかった枝)', { exact: true }),
-    ).toBeVisible();
-    await expect(dashedEdges(page)).toHaveCount(1);
+    // 完了の時の片付けで省いた合議の前後の辺は実線のまま(点線は分岐から「何もしない」の箱へ、箱から分岐終了への 2 本)
+    await expect(diagramStep(page, '何もしない')).toContainText(
+        '通らなかった枝',
+    );
+    await expect(dashedEdges(page)).toHaveCount(2);
     // 省略の合議には進み具合の面を出さず、指定の前の文も出さない
     await expect(councilProgress(page)).toHaveCount(0);
     await expect(

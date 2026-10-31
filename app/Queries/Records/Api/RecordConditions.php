@@ -6,15 +6,17 @@ use App\Models\Records\Record;
 use App\Models\Records\RecordModule;
 use App\Queries\Records\FieldValueParser;
 use App\Queries\Records\RecordConditionEvaluator;
+use App\Queries\Records\RecordConditionText;
 use App\Queries\Records\RecordConditionValidator;
 use App\Queries\Records\RecordDefinitionQuery;
 use App\Queries\Records\RecordQuery;
 use App\Support\InputText;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Validation\ValidationException;
+use LogicException;
 
 /**
- * 規則の条件の JSON(docs の 設計/業務データの入れ物/項目と規則/規則と業務処理/README.md 8.2)を、ほかのモジュール(ワークフローの分岐の条件)が書いて評価する口。
+ * 規則の条件の JSON(docs の 設計/業務データの入れ物/項目と規則/規則と業務処理/README.md 8.2)を、ほかのモジュール(ワークフローの分岐の条件)が書いて評価し、文にする口。
  * 主体・認可・検証の範囲・ロック・原子性・結果・失敗の正本 = docs の 設計/ワークフロー/ルートの深さ/段2の設計への反映.md 3 節の表。
  * 検証は {@see RecordConditionValidator}、評価は {@see RecordConditionEvaluator} で、どちらも規則の保存と条件つき必須が使うものと同じ 1 か所。
  * 判定しない。鍵を取らない。
@@ -27,6 +29,7 @@ class RecordConditions
         private RecordConditionValidator $validator,
         private RecordConditionEvaluator $evaluator,
         private FieldValueParser $parser,
+        private RecordConditionText $text,
     ) {}
 
     /**
@@ -53,6 +56,23 @@ class RecordConditions
     public function isWellFormed(mixed $condition): bool
     {
         return $this->validator->isWellFormed($condition);
+    }
+
+    /**
+     * 条件の人が読める文(規則の画面の要約と同じ文 = {@see RecordConditionText}。例「予算(万円) < 300」、式どうしは「、」)。
+     * 項目は今の定義の名前(無い項目はコード)、値を名前に引き直すのは選択肢だけ。主体の判定・鍵はない。
+     *
+     * @param  array<array-key, mixed>  $condition  形の合う条件({@see self::isWellFormed()} が真)
+     *
+     * @throws ModelNotFoundException<RecordModule> 業務モジュールが無い・明細の業務モジュールのとき(呼び手の誤り)
+     * @throws LogicException 形の合わない条件(呼び手の誤り)
+     */
+    public function describe(int $moduleId, array $condition): string
+    {
+        $module = RecordModule::query()->whereNull('parent_record_module_id')
+            ->with('recordFields.recordFieldOptions')->findOrFail($moduleId);
+
+        return $this->text->of($module, $condition);
     }
 
     /**

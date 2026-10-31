@@ -37,11 +37,11 @@ final class WorkflowSeederRouteResourcesTest extends TransactionalTestCase
         ['http-services.workflow.admin', 'http-services.workflow', 'ワークフローの管理', 'Workflow administration'],
         [self::ADMIN_CASES, 'http-services.workflow.admin', '申請操作', 'Application operations'],
         [self::ADMIN_PROXIES, 'http-services.workflow.admin', '代理の管理', 'Proxy administration'],
-        ['http-services.workflow.home', 'http-services.workflow', 'ワークフローのホーム', 'Workflow home'],
         [self::ADMIN_FLOWS, 'http-services.workflow.admin', 'フロー定義', 'Flow definitions'],
         ['http-services.workflow.admin.flows.referrers', self::ADMIN_FLOWS, '参照者', 'Referrers'],
         [self::ADMIN_VERSIONS, 'http-services.workflow.admin', 'フロー定義の版', 'Flow definition versions'],
         ['http-services.workflow.admin.nodes', 'http-services.workflow.admin', 'ステップの設定', 'Step settings'],
+        ['http-services.workflow.home', 'http-services.workflow', 'ワークフローのホーム', 'Workflow home'],
         ['http-services.workflow.flows.index', 'http-services.workflow.flows', '申請できるフローの一覧', 'Applicable flow list'],
         [
             'http-services.workflow.applications.create', 'http-services.workflow.applications', '申請の画面',

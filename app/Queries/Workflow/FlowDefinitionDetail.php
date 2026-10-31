@@ -90,7 +90,8 @@ class FlowDefinitionDetail
             'selectedVersion' => $selected->number,
             'tab' => is_string($tab) && in_array($tab, self::TABS, true) ? $tab : self::TABS[0],
             'today' => $today->format('Y-m-d'),
-            'diagram' => fn () => $this->diagram->of($routeOf(), $today, $localeCode),
+            'diagram' => fn () => $this->diagram
+                ->of($routeOf(), $flow->workflowContent->record_module_id, $today, $localeCode),
             'selectedNode' => fn () => $this->settings->of($routeOf(), $nodeOf(), $today, $localeCode),
             'referrers' => fn () => ['rows' => $this->referrerRows($flow, $today, $localeCode)],
             'options' => fn () => [

@@ -123,6 +123,7 @@ export type WorkflowDiagramEdge = {
     from: number;
     to: number;
     label: string | null;
+    conditionText: string | null; // 条件の文(名前を持つ辺だけ。サーバーが条件から作る。例「予算(万円) < 300」)
     taken: boolean | null;
 };
 

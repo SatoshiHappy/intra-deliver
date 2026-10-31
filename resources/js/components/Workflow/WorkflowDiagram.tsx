@@ -3,11 +3,15 @@ import type { FitViewOptions, Node, NodeProps } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { useEffect, useMemo } from 'react';
 import {
+    JointNode,
+    NoopNode,
+    RoutingNode,
+} from '@/components/Workflow/DiagramMarks';
+import {
     EndNode,
     Handles,
     PlaceholderNode,
     RouteEdge,
-    RoutingNode,
     StepNode,
     borderOf,
 } from '@/components/Workflow/DiagramParts';
@@ -19,11 +23,8 @@ import {
 import type { DiagramSelection } from '@/hooks/Workflow/use-diagram-selection';
 import { StepStateBadge } from '@/components/Workflow/WorkflowStatusBadge';
 import { cn } from '@/lib/utils';
-import {
-    DIAGRAM_MARGIN,
-    FRAME_HEADER_HEIGHT,
-    layoutDiagram,
-} from '@/lib/Workflow/diagramLayout';
+import { FRAME_HEADER_HEIGHT } from '@/lib/Workflow/diagramFrames';
+import { DIAGRAM_MARGIN, layoutDiagram } from '@/lib/Workflow/diagramLayout';
 import type {
     DiagramInputNode,
     FrameNodeData,
@@ -57,14 +58,14 @@ const ARIA_LABELS = {
     'controls.fitView.ariaLabel': '全体を表示',
 };
 
-/** 枠の見出し(種類と名前・状態の札 / 短い文の 2 行。子が 2 つの狭い枠でも切れない) */
+/** 枠の見出し(左に種類と名前・状態の札、右に短い文の 1 行。狭い枠では短い文から切る) */
 function FrameHeader({ node }: { node: DiagramInputNode }) {
     return (
         <div
-            className="flex flex-col justify-center gap-1 px-4"
+            className="flex items-center justify-between gap-3 px-4"
             style={{ height: FRAME_HEADER_HEIGHT }}
         >
-            <span className="flex min-w-0 items-center gap-2">
+            <span className="flex min-w-0 shrink-0 items-center gap-2">
                 <span className="truncate text-sm font-medium">
                     {`${FRAME_KIND_LABELS[node.kind] ?? ''}「${node.name}」`}
                 </span>
@@ -76,7 +77,10 @@ function FrameHeader({ node }: { node: DiagramInputNode }) {
                 )}
             </span>
             {node.subtitle !== null && (
-                <span className="truncate text-xs text-muted-foreground">
+                <span
+                    className="min-w-0 truncate text-xs text-muted-foreground"
+                    title={node.subtitle}
+                >
                     {node.subtitle}
                 </span>
             )}
@@ -84,7 +88,9 @@ function FrameHeader({ node }: { node: DiagramInputNode }) {
     );
 }
 
-/** 横配置・縦配置の枠: 見出し、子は React Flow の子ノード、縦配置は完了の条件と下辺の合流の印 */
+/**
+ * 横配置・縦配置の枠(破線): 見出し、子は React Flow の子ノード、縦配置は完了の条件の札(合流は枠の下の「同期終了」の札 = DiagramMarks.tsx)
+ */
 function FrameNode({ data }: NodeProps<Node<FrameNodeData>>) {
     const { node, childCount } = data;
     const { isSelected, props } = useNodeSelection(node);
@@ -93,7 +99,7 @@ function FrameNode({ data }: NodeProps<Node<FrameNodeData>>) {
         <div
             {...props}
             className={cn(
-                'relative size-full rounded-xl border-2 bg-muted/40',
+                'relative size-full rounded-xl border-2 border-dashed bg-muted/40',
                 'text-card-foreground',
                 borderOf(node, isSelected),
                 props.className,
@@ -107,15 +113,15 @@ function FrameNode({ data }: NodeProps<Node<FrameNodeData>>) {
                 </p>
             )}
             {node.consensus !== null && (
-                <div className="absolute inset-x-4 bottom-4 flex h-7 items-center justify-center rounded-full border bg-card text-xs">
+                <div
+                    className={cn(
+                        'absolute inset-x-4 bottom-4 flex h-7 items-center justify-center rounded-full border',
+                        'border-status-pending-foreground/40 bg-status-pending text-xs font-medium',
+                        'text-status-pending-foreground',
+                    )}
+                >
                     {node.consensus.text}
                 </div>
-            )}
-            {node.kind === 'parallel' && (
-                <span
-                    aria-hidden="true"
-                    className="absolute -bottom-1.5 left-1/2 size-3 -translate-x-1/2 rounded-full border-2 border-current bg-card"
-                />
             )}
         </div>
     );
@@ -142,6 +148,8 @@ const NODE_TYPES = {
     routing: RoutingNode,
     frame: FrameNode,
     placeholder: PlaceholderNode,
+    noop: NoopNode,
+    joint: JointNode,
     end: EndNode,
 };
 const EDGE_TYPES = { route: RouteEdge };

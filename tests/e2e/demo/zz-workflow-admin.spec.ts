@@ -81,6 +81,12 @@ test('システム管理者: 「プロジェクト計画の承認」の詳細で
     await expect(diagram).toContainText('縦配置「関係部署の合議」');
     await expect(diagram).toContainText('承認 3 から 5');
     await expect(diagram).toContainText('任意');
+    // 枝の札(辺の名前と条件の文)、ステップの無い枝の「何もしない」の箱、縦配置の下の「同期終了」の札
+    await expect(diagram).toContainText('予算 300 万円未満');
+    await expect(diagram).toContainText('予算(万円) < 300');
+    await expect(diagram).toContainText('何もしない');
+    await expect(diagram).toContainText('そのまま次へ進む');
+    await expect(diagram).toContainText('同期終了');
     // 右の欄は、選んでいないときは申請のステップの要約の 1 文
     await expect(
         page.getByRole('heading', { level: 2, name: '申請 申請' }),

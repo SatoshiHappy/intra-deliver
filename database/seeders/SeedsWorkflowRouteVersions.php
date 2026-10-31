@@ -54,7 +54,7 @@ trait SeedsWorkflowRouteVersions
     }
 
     /**
-     * 分岐 B(設計/ワークフロー/ルートの深さ/初期データ.md 3.2: 申請 → 課長 → 分岐「予算」(部長 / 何もしない)→ 関係部署の合議(縦配置)→ 責任者)。
+     * 分岐 B(設計/ワークフロー/ルートの深さ/初期データ.md 3.2: 申請 → 課長 → 分岐「予算」(部長を通る枝 / 通らない枝)→ 関係部署の合議(縦配置)→ 責任者)。
      * 承認・合議のノードに期限の日数、課長と部長に確認する人(設計/ワークフロー/案件の運用/初期データ.md 3 節)。
      *
      * @param  int  $confirmer  確認する人の対象者の id
@@ -84,7 +84,7 @@ trait SeedsWorkflowRouteVersions
             new RouteEdgeInput('apply', 'section_chief'),
             new RouteEdgeInput('section_chief', 'budget'),
             new RouteEdgeInput('budget', 'manager', 1, '予算 300 万円以上', ['all' => [['field' => 'budget', 'op' => 'ge', 'value' => 300]]]),
-            new RouteEdgeInput('budget', 'budget_end', 2, '何もしない', ['all' => [['field' => 'budget', 'op' => 'lt', 'value' => 300]]]),
+            new RouteEdgeInput('budget', 'budget_end', 2, '予算 300 万円未満', ['all' => [['field' => 'budget', 'op' => 'lt', 'value' => 300]]]),
             new RouteEdgeInput('manager', 'budget_end'),
             new RouteEdgeInput('budget_end', 'council'),
             new RouteEdgeInput('council', 'owner'),

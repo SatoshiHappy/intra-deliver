@@ -1,33 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test';
 import { layoutDiagram } from './diagramLayout';
-import type { DiagramInputNode } from './diagramTypes';
-
-function node(
-    id: number,
-    kind: DiagramInputNode['kind'],
-    overrides: Partial<DiagramInputNode> = {},
-): DiagramInputNode {
-    return {
-        id,
-        code: `n${id}`,
-        name: `ノード${id}`,
-        kind,
-        parentId: null,
-        sequence: null,
-        subtitle: null,
-        state: null,
-        people: [],
-        placeholders: [],
-        consensus: null,
-        ...overrides,
-    };
-}
-
-const PLACEHOLDERS = [
-    { label: '承認 1', optional: false },
-    { label: '承認 2', optional: false },
-    { label: '承認 3 から 5', optional: true },
-];
+import { PLACEHOLDERS, edge, node } from './diagramLayout.testing';
 
 describe('layoutDiagram: 定義の図の縦配置の枠', () => {
     it('定義の図の枠は、仮の札を枠の子として並べ、枠の大きさに数える', () => {
@@ -35,9 +8,7 @@ describe('layoutDiagram: 定義の図の縦配置の枠', () => {
             node(1, 'apply'),
             node(2, 'parallel', { placeholders: PLACEHOLDERS }),
         ];
-        const layout = layoutDiagram(nodes, [
-            { from: 1, to: 2, label: null, taken: null },
-        ]);
+        const layout = layoutDiagram(nodes, [edge(1, 2)]);
         const frame = layout.nodes.find((one) => one.id === '2');
         const slots = layout.nodes.filter((one) => one.type === 'placeholder');
 

@@ -9,13 +9,16 @@ use App\Models\Workflow\WorkflowCase;
 use App\Models\Workflow\WorkflowCaseEdge;
 use App\Models\Workflow\WorkflowCaseHistory;
 use App\Models\Workflow\WorkflowCaseNode;
+use App\Queries\Records\Api\RecordConditions;
 use Illuminate\Database\Eloquent\Collection;
+use LogicException;
 
 /**
  * 案件の詳細のフロー情報(docs の 設計/ワークフロー/ルートの深さ/画面/README.md 1.2 の図の形・7 節・8 節)。
  * ノードは写した並び({@see WorkflowCaseNode::compareInRoute()})で、
  * 図と表が同じ並びと同じ状態の語({@see WorkflowHomeLabels::detailStep()} = 認可と一覧.md 2 節の写しの表。保留中は state が hold)を読む。表のための処理の種別と日時を持つ。
- * 辺は写した順(id)。名前は表示名({@see WorkflowCaseNode::displayName()} = 案件の操作/README.md 1.3)。
+ * 辺は写した順(id)。名前は表示名({@see WorkflowCaseNode::displayName()} = 案件の操作/README.md 1.3)。辺の条件の文は、写した条件を
+ * コンテンツの業務モジュールの今の定義で作る({@see RecordConditions::describe()}。定義の図と同じ)。
  * awaitingDesignation = 処理の時に指定するノードで、今の指定が無い(指定するノードがまだ指定していない。0 人を指定した = 行が 0 件は含まない) && 到達していない && 案件が未完了(枠の文 = docs の 設計/ワークフロー/ルートの深さ/画面/図と意匠とE2E.md の 8 節。文言の持ち主は WorkflowDiagram.tsx)。
  * フロー情報の表の処理担当者 targets(現在のノードの処理対象者)と処理実行者(processed の actor・executor)=
  * 設計/ワークフロー/案件の運用/画面/案件の画面.md の 4 節。
@@ -30,10 +33,12 @@ use Illuminate\Database\Eloquent\Collection;
  *     targets: list<MarkedPerson>, placeholders: list<array{label: string, optional: bool}>,
  *     consensus: array{text: string}|null,
  *     stepState: array{state: string, label: string}, processed: Processed|null, awaitingDesignation: bool}
- * @phpstan-type DiagramEdge array{from: int, to: int, label: string|null, taken: bool|null}
+ * @phpstan-type DiagramEdge array{from: int, to: int, label: string|null, conditionText: string|null, taken: bool|null}
  */
 class CaseDiagram
 {
+    public function __construct(private RecordConditions $conditions) {}
+
     /**
      * @param  Collection<int, WorkflowCaseNode>  $nodes  写した並びのノード(展開の行は親を読み込んである)
      * @param  Collection<int, WorkflowCaseHistory>  $histories  id をキーにした履歴の行
@@ -48,6 +53,7 @@ class CaseDiagram
         $names = $nodes->mapWithKeys(fn (WorkflowCaseNode $node) => [$node->id => $node->displayName()])->all();
         $isActive = $case->state !== WorkflowCaseState::Completed;
         $awaiting = fn (WorkflowCaseNode $node) => $isActive && $node->designator_workflow_case_node_id !== null && $node->state === WorkflowNodeState::Unreached && ! array_key_exists($node->id, $assignments);
+        $moduleId = self::moduleIdOf($case);
 
         return [
             'nodes' => array_values($nodes->map(fn (WorkflowCaseNode $node) => $this->nodeOf($node, $histories, $situation, $people, $names, $councils[$node->id] ?? null, $requesterUserId, $awaiting($node)))->all()),
@@ -55,9 +61,22 @@ class CaseDiagram
                 'from' => (int) $edge->from_workflow_case_node_id,
                 'to' => (int) $edge->to_workflow_case_node_id,
                 'label' => $edge->label,
+                'conditionText' => $edge->condition === null
+                    ? null : $this->conditions->describe($moduleId, $edge->condition),
                 'taken' => $edge->taken,
             ])->all()),
         ];
+    }
+
+    /**
+     * 案件のフローのコンテンツの業務モジュール(フローとコンテンツを読み込んだ案件。読み込んでいなければ呼び手の誤り)。
+     */
+    private static function moduleIdOf(WorkflowCase $case): int
+    {
+        $content = CaseRows::flowOf($case)->workflowContent
+            ?? throw new LogicException("案件 {$case->id} のフローのコンテンツを読み込んでいない");
+
+        return $content->record_module_id;
     }
 
     /**

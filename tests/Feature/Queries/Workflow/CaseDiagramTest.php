@@ -62,16 +62,18 @@ final class CaseDiagramTest extends TransactionalTestCase
     }
 
     /**
-     * 辺は写した辺(並び順)で、分岐開始から出る辺だけが到達の時の評価を持つ: 予算 350 = 部長の枝が真・「何もしない」の枝が偽(通らなかった枝)。WF-000010(予算 120)は逆。
+     * 辺は写した辺(並び順)で、分岐開始から出る辺だけが到達の時の評価と条件の文(コンテンツの業務モジュールの今の項目の名前)を持つ:
+     * 予算 350 = 部長の枝が真・「予算 300 万円未満」の枝が偽(通らなかった枝)。WF-000010(予算 120)は逆。
      */
     public function test_the_edges_carry_the_branch_evaluation(): void
     {
         $this->assertSame([
-            ['申請', '課長', null, null], ['課長', '予算', null, null], ['予算', '部長', '予算 300 万円以上', true], ['予算', '分岐終了', '何もしない', false],
-            ['部長', '分岐終了', null, null], ['分岐終了', '関係部署の合議', null, null], ['関係部署の合議', '責任者', null, null],
+            ['申請', '課長', null, null, null], ['課長', '予算', null, null, null],
+            ['予算', '部長', '予算 300 万円以上', '予算(万円) ≧ 300', true], ['予算', '分岐終了', '予算 300 万円未満', '予算(万円) < 300', false],
+            ['部長', '分岐終了', null, null, null], ['分岐終了', '関係部署の合議', null, null, null], ['関係部署の合議', '責任者', null, null, null],
         ], $this->compactEdges($this->detailOf(9, 'u0010')));
         $this->assertSame([[true, false], [false, true], [true, false], [false, true]], array_map(
-            fn (int $number) => array_column(array_filter($this->compactEdges($this->detailOf($number, 'u0001')), fn (array $edge) => $edge[0] === '予算'), 3),
+            fn (int $number) => array_column(array_filter($this->compactEdges($this->detailOf($number, 'u0001')), fn (array $edge) => $edge[0] === '予算'), 4),
             [9, 10, 11, 12],
         ));
     }
@@ -266,7 +268,7 @@ final class CaseDiagramTest extends TransactionalTestCase
     {
         $names = array_column($detail['nodes'], 'name', 'id');
 
-        return array_values(array_map(fn (array $edge) => [$names[$edge['from']], $names[$edge['to']], $edge['label'], $edge['taken']], $detail['edges']));
+        return array_values(array_map(fn (array $edge) => [$names[$edge['from']], $names[$edge['to']], $edge['label'], $edge['conditionText'], $edge['taken']], $detail['edges']));
     }
 
     /**

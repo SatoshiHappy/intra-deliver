@@ -21,7 +21,7 @@ use Tests\Support\TransactionalTestCase;
 
 /**
  * 定義の図(docs の 設計/ワークフロー/ルートの深さ/画面/README.md 1.2 節の図の形、図と意匠とE2E.md 8 節・9.3 節): 初期データの版 3(分岐 B =
- * 初期データ.md 3.2 節)の短い文・配置の仮の札・縦配置の完了の条件と人数・分岐の辺の名前。要約と短い文は同じ設定から同じ名前を使う。
+ * 初期データ.md 3.2 節)の短い文・配置の仮の札・縦配置の完了の条件と人数・分岐の辺の名前と条件の文。要約と短い文は同じ設定から同じ名前を使う。
  * 名前の無い対象者は「#{id}」。
  *
  * @phpstan-import-type DefinitionNode from FlowDefinitionDiagram
@@ -56,8 +56,13 @@ final class FlowDefinitionDiagramTest extends TransactionalTestCase
         $this->assertSame(array_fill(0, 7, [null, null, null, []]), array_map($caseOnly, $diagram['nodes']));
         $this->assertSame(array_fill(0, 7, null), array_column($diagram['edges'], 'taken'));
         $this->assertSame(
-            [null, null, '予算 300 万円以上', '何もしない', null, null, null],
+            [null, null, '予算 300 万円以上', '予算 300 万円未満', null, null, null],
             array_column($diagram['edges'], 'label'),
+        );
+        // 条件の文は、コンテンツの業務モジュールの今の項目の名前で作る(名前を持つ辺だけ)
+        $this->assertSame(
+            [null, null, '予算(万円) ≧ 300', '予算(万円) < 300', null, null, null],
+            array_column($diagram['edges'], 'conditionText'),
         );
     }
 
