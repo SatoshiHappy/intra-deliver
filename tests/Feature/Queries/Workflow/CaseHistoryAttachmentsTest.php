@@ -13,7 +13,7 @@ use App\Models\Workflow\WorkflowFlow;
 use App\Models\Workflow\WorkflowFlowVersion;
 use App\Models\Workflow\WorkflowRouteNode;
 use App\Queries\Authz\Api\Requester;
-use App\Queries\Records\Api\RecordRevisionQuery;
+use App\Queries\Records\RecordRevisionDiff;
 use App\Queries\Workflow\CaseDetailQuery;
 use App\Support\AccessContext;
 use Carbon\CarbonImmutable;
@@ -22,15 +22,15 @@ use Tests\Support\BuildsWorkflowCases;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * 処理履歴の再申請の差分に、添付の変化を描かない(処理履歴の差分は項目と明細だけ = docs の
- * 設計/業務データの入れ物/レコードの共通機能/更新履歴.md の 4.2 節。添付の変化は更新履歴の版の差分に出る)。
+ * 処理履歴の行は値の差分を持たず、申請の間に足した添付の変化は更新履歴の版の差分に出る(docs の
+ * 設計/業務データの入れ物/レコードの共通機能/詳細の画面/申請の詳細.md の 3 節、更新履歴.md の 4.2 節)。
  */
 final class CaseHistoryAttachmentsTest extends TransactionalTestCase
 {
     use BuildsRecordModules;
     use BuildsWorkflowCases;
 
-    public function test_a_reapply_diff_does_not_show_an_attachment_added_between_the_submissions(): void
+    public function test_an_attachment_added_between_the_submissions_is_in_the_revision_diff_not_in_the_history(): void
     {
         $this->travelTo(CarbonImmutable::parse('2026-10-13 09:00:00'));
         [$applicant] = $this->seededUsers('u0001');
@@ -58,7 +58,7 @@ final class CaseHistoryAttachmentsTest extends TransactionalTestCase
         $reapplied = $this->process($apply, $applicant, WorkflowAction::Reapply);
         $this->pointAtSubmittedRevision($reapplied, $record, [$title->id => '件名'], []);
 
-        $revisionDiff = app(RecordRevisionQuery::class)->diffBetween(
+        $revisionDiff = app(RecordRevisionDiff::class)->between(
             new Requester($applicant->id, null),
             (int) $applied->refresh()->record_revision_id,
             (int) $reapplied->refresh()->record_revision_id,
@@ -69,7 +69,7 @@ final class CaseHistoryAttachmentsTest extends TransactionalTestCase
         $histories = app(CaseDetailQuery::class)->show($context, $case->id)['histories'];
 
         $this->assertSame(['追加.pdf'], array_column($revisionDiff['attachments'], 'name'));
-        $this->assertSame(['fields' => [], 'details' => []], $histories[1]['diff']);
+        $this->assertSame([], array_intersect_key($histories[1], ['diff' => 0, 'diffBaseAt' => 0]));
     }
 
     /**

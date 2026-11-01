@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vite-plus/test';
 import {
     APPLICATION_TARGET_FIELD,
     planModule,
+    planModuleWithDefaults,
     reference,
     snapshotOf,
 } from './applicationTarget.testing';
@@ -195,5 +196,47 @@ describe('開いた時の申請対象の写し(10.2 の「開いた時: 案件�
         expect(
             openedFormOf(same, 'k', () => undefined).opening.confirm,
         ).toBeNull();
+    });
+});
+
+describe('開いた時の申請対象の写しで確かめない行(入力済みに数えない欄だけが違う)', () => {
+    it('元の申請の値が写す時の確かめで空になった項目だけが違えば、確かめずに写す', () => {
+        const emptied = props({
+            initial: {
+                name: '出張申請',
+                comment: null,
+                values: {
+                    project: reference(5, 'P5'),
+                    name: null,
+                    budget: 100,
+                },
+                details: {},
+            },
+            copy: { ...copy, clearedFields: ['name'] },
+            targetValues: snapshotOf(
+                { project: reference(5, 'P5'), name: '今の名前' },
+                {},
+                [],
+            ),
+        });
+        const opened = openedFormOf(emptied, 'k', () => undefined);
+
+        expect(opened.opening.confirm).toBeNull();
+        expect(opened.data.record.values.name).toBe('今の名前');
+    });
+
+    it('元の値が既定値と同じ欄だけが違えば、確かめずに写す', () => {
+        const atDefault = props({
+            module: planModuleWithDefaults({ budget: 100 }),
+            targetValues: snapshotOf(
+                { project: reference(5, 'P5'), name: '元の名前', budget: 200 },
+                {},
+                [],
+            ),
+        });
+        const opened = openedFormOf(atDefault, 'k', () => undefined);
+
+        expect(opened.opening.confirm).toBeNull();
+        expect(opened.data.record.values.budget).toBe('200');
     });
 });

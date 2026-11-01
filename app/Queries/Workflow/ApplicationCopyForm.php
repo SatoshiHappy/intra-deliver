@@ -16,9 +16,8 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use LogicException;
 
 /**
- * 案件からの複製の画面(docs の 設計/ワークフロー/申請の周辺/既存のデータからの申請/案件からの複製/README.md の 12.3 節、写す値.md の 13 節):
- * 新規の申請の画面に、元の申請の最後の申請・再申請の版から写した初期値と props copy を足す。403 はフローの単位で元の申請の有無を漏らさず、
- * 404 の段は元の申請のレコードの値を読む前に置く。主体の判定をしない「版から」は写す人の閲覧の判定の後にだけ呼び、組み立ての最後に閲覧をもう 1 回見る。
+ * 案件からの複製の画面(docs の 設計/ワークフロー/申請の周辺/既存のデータからの申請/案件からの複製/README.md の 12.3 節、写す値.md の 13 節)。
+ * 「版から」は主体の判定をしない口なので、写す人の閲覧の判定の後にだけ呼ぶ。
  *
  * @phpstan-import-type ApplyForm from ApplicationFormQuery
  * @phpstan-import-type ApplicationTargetValueSet from ApplicationTargetValues
@@ -86,7 +85,7 @@ class ApplicationCopyForm
     }
 
     /**
-     * 写す人(今の利用者)が閲覧できる、このフローの一時保存でない案件(404 の行はどれも同じ形 = 12.3 節の判定の順の表)。
+     * 写す人(今の利用者)が閲覧できる、このフローの一時保存でない案件。理由によらず同じ 404 にし、有無を漏らさない(12.3 節)。
      *
      * @throws ModelNotFoundException<WorkflowCase> 無い・一時保存・ほかのフロー・閲覧できないとき
      */
@@ -101,8 +100,8 @@ class ApplicationCopyForm
     }
 
     /**
-     * 写す元 = 最後の申請・再申請の履歴の行が指す版(写す値.md の 13.1 節。要求から受けず履歴の行から作る)。判定の後に申請の削除で
-     * 履歴が消えたときは 404(12.3 節の判定の後の表の 1 行目)。
+     * 写す元の版(写す値.md の 13.1 節)。要求から受けないのは、ほかの案件の版を写させないため。判定の後に申請が消えても 500 にしない
+     * (12.3 節)。
      *
      * @throws ModelNotFoundException<RecordRevision> 写す元を引けないとき
      */
@@ -115,7 +114,7 @@ class ApplicationCopyForm
     }
 
     /**
-     * 写した申請対象が残っていれば、既定の申請者が閲覧できるときだけ写す値(写す値.md の 13.4 節。閲覧できなければ null で 403 にしない)。
+     * 申請対象の写しの値(写す値.md の 13.4 節)。既定の申請者が閲覧できなくても画面は開くので、403 にせず null。
      *
      * @param  array<string, mixed>  $module  申請書の業務モジュールの定義
      * @param  array<string, mixed>  $values  写した値(画面の初期値の形)

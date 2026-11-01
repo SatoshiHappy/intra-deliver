@@ -46,10 +46,10 @@ test('申請の代理: u0009 が「申請者」で u0010 を選ぶと注意の�
     await submitApplication(page, form);
 
     await expect(page.getByText('申請しました', { exact: true })).toBeVisible();
-    await expect(basicItem(page, '申請者')).toHaveText('山田 恵');
+    await expect(await basicItem(page, '申請者')).toHaveText('山田 恵');
     await expect(
         page
-            .getByRole('region', { name: '履歴' })
+            .getByRole('region', { name: '処理履歴' })
             .getByText('吉田 達也(山田 恵さんの代理)', { exact: true })
             .first(),
     ).toBeVisible();

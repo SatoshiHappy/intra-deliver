@@ -14,9 +14,8 @@ use App\Models\Records\RecordModule;
 use App\Models\Records\RecordReference;
 use App\Models\Workflow\WorkflowCase;
 use App\Models\Workflow\WorkflowFlow;
-use App\Queries\Authz\Api\Requester;
-use App\Queries\Records\Api\RecordDisplayQuery;
-use App\Queries\Workflow\RelatedCases;
+use App\Queries\Workflow\CaseShowProps;
+use App\Queries\Workflow\CaseShowSelection;
 
 /**
  * つながる申請と、業務レコードの詳細の節「このレコードを申請対象にする申請」のテストのデータ(docs の
@@ -101,17 +100,15 @@ trait BuildsRelatedCases
     }
 
     /**
-     * 見る人が案件の詳細で見るつながる申請の群(申請の詳細が使う表示の口の結果を渡す)。
+     * 見る人が案件の詳細で見るつながる申請の群(申請の詳細の props の related)。
      *
      * @return list<array{heading: string, cases: list<array<string, mixed>>}>
      */
     protected function relatedGroupsOf(User $viewer, WorkflowCase $case): array
     {
-        $context = $this->contextFor($viewer->id);
-        $requester = Requester::fromAccessContext($context);
-        $case = WorkflowCase::query()->with('workflowFlow')->findOrFail($case->id);
-        $content = app(RecordDisplayQuery::class)->show($requester, (int) $case->record_id, $context->date, 'ja');
+        $selection = new CaseShowSelection(true, ['related']);
+        $props = app(CaseShowProps::class)->of($this->contextFor($viewer->id), $case->id, $selection);
 
-        return app(RelatedCases::class)->of($requester, $context->date, 'ja', $case, $content);
+        return $props['related'];
     }
 }

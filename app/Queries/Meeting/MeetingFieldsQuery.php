@@ -30,7 +30,7 @@ class MeetingFieldsQuery
         DateTimeInterface $date,
         string $localeCode,
     ): MeetingFields {
-        if (! $this->access->canView($requester, Meeting::CODE, $recordId, $date)) {
+        if (! $this->access->canViewInModule($requester, Meeting::CODE, $recordId, $date)) {
             throw new ModelNotFoundException("会議 {$recordId} が無いか、依頼者が閲覧できない");
         }
 

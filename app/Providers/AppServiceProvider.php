@@ -21,6 +21,7 @@ use App\Queries\Menu\Api\MenuItemVisibility;
 use App\Queries\Menu\MenuResourceTypes;
 use App\Queries\Menu\QuickActionsHomeSection;
 use App\Queries\Notice\Api\NoticeTargets;
+use App\Queries\Records\Api\RecordAccessGrants;
 use App\Queries\Records\Api\RecordApplyEntries;
 use App\Queries\Records\Api\RecordHolds;
 use App\Queries\Records\Api\RecordModuleVisibilityStops;
@@ -31,6 +32,7 @@ use App\Queries\Records\RecordModuleResourceTypes;
 use App\Queries\Records\RecordNoticeTargets;
 use App\Queries\Reset\ResetSettings;
 use App\Queries\Workflow\ActiveApplicationsHomeSection;
+use App\Queries\Workflow\CaseRecordAccessGrants;
 use App\Queries\Workflow\CaseTargetTerm;
 use App\Queries\Workflow\OwnCaseTargetTerm;
 use App\Queries\Workflow\PendingCasesHomeSection;
@@ -108,7 +110,7 @@ class AppServiceProvider extends ServiceProvider
     }
 
     /**
-     * 業務データの入れ物の書き込みを守る依存の逆転の口(レコードの持ち主・業務モジュールの表示の止め)を、ワークフローの実装で登録する。
+     * 業務データの入れ物の書き込みと閲覧を守る依存の逆転の口(レコードの持ち主・業務モジュールの表示の止め・申請の経路の閲覧)を、ワークフローの実装で登録する。
      */
     private function tagRecordWriteGuards(): void
     {
@@ -118,6 +120,10 @@ class AppServiceProvider extends ServiceProvider
         // 依存の逆転: 業務モジュールを変える業務処理と管理の編集の画面が、コンテンツが指す業務モジュールの表示の止めを聞く(ADR 0031。
         // docs の 設計/ワークフロー/業務データとの接続/公開の口.md 7 節)
         $this->app->tag([WorkflowRecordModuleVisibilityStops::class], RecordModuleVisibilityStops::TAG);
+
+        // 依存の逆転: レコードの閲覧の判定が、未完了の申請の関係者の経路を聞く(docs の
+        // 設計/業務データの入れ物/レコードの共通機能/認可と初期データ.md の 1.2 節)
+        $this->app->tag([CaseRecordAccessGrants::class], RecordAccessGrants::TAG);
     }
 
     /**

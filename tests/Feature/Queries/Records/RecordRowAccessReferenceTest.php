@@ -11,7 +11,7 @@ use App\Models\Records\RecordRevision;
 use App\Queries\Authz\Api\Requester;
 use App\Queries\Records\Api\RecordDisplayQuery;
 use App\Queries\Records\Api\RecordFormQuery;
-use App\Queries\Records\Api\RecordRevisionQuery;
+use App\Queries\Records\RecordRevisionDiff;
 use Carbon\CarbonImmutable;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\Support\BuildsRowAccessRecords;
@@ -97,8 +97,8 @@ final class RecordRowAccessReferenceTest extends TransactionalTestCase
         app(UpdateRecord::class)->execute($this->contextFor($this->attendee->id), 'notes', $noteId, $input, $version);
         $revisions = RecordRevision::query()->where('record_id', $noteId)->orderBy('revision')->pluck('id')->all();
         $today = CarbonImmutable::parse(self::TODAY);
-        $diff = fn (User $user) => app(RecordRevisionQuery::class)
-            ->diffBetween($this->requester($user), $revisions[0], $revisions[1], $today, 'ja');
+        $diff = fn (User $user) => app(RecordRevisionDiff::class)
+            ->between($this->requester($user), $revisions[0], $revisions[1], $today, 'ja');
 
         $this->assertSame(
             [['code' => 'meeting', 'name' => 'meeting', 'before' => null, 'after' => $this->hidden()]],

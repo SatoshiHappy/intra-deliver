@@ -89,7 +89,7 @@ function CouncilRowItem({ row }: { row: WorkflowCouncil['rows'][number] }) {
 }
 
 /**
- * 合議の進み具合(縦配置が展開中か通過のときだけサーバーが渡す。中身と並び = ルートの深さ/画面/案件の側の画面.md 7 節)。行は {@link CouncilRowItem}。
+ * 合議の進み具合(縦配置が展開中か通過のときだけサーバーが渡す)。中身と並びの正本 = 設計/ワークフロー/ルートの深さ/画面/案件の側の画面.md の 7 節。行は {@link CouncilRowItem}。
  */
 function CouncilProgress({ council }: { council: WorkflowCouncil }) {
     const headingId = `council-${council.nodeId}-heading`;
@@ -162,8 +162,9 @@ function ViewSwitch({
 }
 
 /**
- * フロー情報の面(ルートの深さ/画面/案件の側の画面.md 7 節): 見出しの右に凡例(図のとき)と「図」「表」の切替(既定は図。表は図の文字の代わりで、読み上げとキーボードで
- * 同じ情報を得る)。合議の進み具合は図・表の右に並べる(モック 5)。
+ * フロー情報の面。表は図の文字の代わりで、読み上げとキーボードでも同じ情報を得られるよう、図と表を切り替える。合議の進み具合は、本文の幅が
+ * 足りるときだけ図・表の右に並べる(写しの形とサイドパネルを開いた形で図が縮まないように、画面でなく本文の幅で決める)。
+ * 正本 = 設計/ワークフロー/ルートの深さ/画面/案件の側の画面.md の 7 節。
  */
 export function CaseFlowInfo({
     nodes,
@@ -179,7 +180,7 @@ export function CaseFlowInfo({
     return (
         <section
             aria-labelledby="case-flow-heading"
-            className="flex flex-col gap-4 rounded-xl border bg-card p-5 text-card-foreground"
+            className="flex flex-col gap-4"
         >
             <div className="flex flex-wrap items-center justify-between gap-4">
                 <h2
@@ -197,7 +198,7 @@ export function CaseFlowInfo({
                 className={
                     councils.length === 0
                         ? 'min-w-0'
-                        : 'grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_320px]'
+                        : 'grid min-w-0 gap-4 @4xl:grid-cols-[minmax(0,1fr)_320px]'
                 }
             >
                 <div className="min-w-0">

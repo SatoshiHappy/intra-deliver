@@ -7,6 +7,7 @@ use App\Models\Workflow\WorkflowCaseNode;
 use Carbon\CarbonImmutable;
 use Database\Seeders\SeedingDates;
 use Illuminate\Support\Collection;
+use Inertia\Support\Header;
 use Inertia\Testing\AssertableInertia as Assert;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Support\TransactionalTestCase;
@@ -199,7 +200,10 @@ final class WorkflowWriteDestinationTest extends TransactionalTestCase
         );
     }
 
-    public function test_the_reapplication_records_the_changed_values_in_the_history_diff(): void
+    /**
+     * 再申請で変えた値は、申請の詳細のサイドパネルの更新履歴の再申請の行の変化に出る(処理履歴は差分を持たない)。
+     */
+    public function test_the_reapplication_records_the_changed_values_in_a_revision(): void
     {
         $this->actingAsUser('u0001');
         $case = $this->caseNumbered(4);
@@ -209,8 +213,15 @@ final class WorkflowWriteDestinationTest extends TransactionalTestCase
 
         $this->get("/workflow/cases/{$case}")->assertOk()->assertInertia(fn (Assert $page) => $page
             ->where('content.record.values.budget', 120)
-            ->where('histories', fn (Collection $histories) => $histories->last()['diff']['fields'] !== [])
+            ->missing('histories.0.diff')
         );
+        $rows = $this->get("/workflow/cases/{$case}?panel=revisions", [
+            Header::PARTIAL_COMPONENT => 'Workflow/CaseShow',
+            Header::PARTIAL_ONLY => 'panelContent',
+        ])->assertOk()->viewData('page')['props']['panelContent']['rows'];
+
+        $this->assertSame('再申請', $rows[0]['origin']['operation'] ?? null);
+        $this->assertContains('budget', array_column($rows[0]['changes']['fields'] ?? [], 'code'));
     }
 
     private function nodeIdOf(int $caseId, int $position): int

@@ -5,7 +5,6 @@ namespace App\Queries\Records;
 use App\Enums\Records\RecordRevisionAction;
 use App\Models\Records\RecordRevision;
 use App\Queries\Authz\Api\Requester;
-use App\Queries\Records\Api\RecordRevisionQuery;
 use App\Queries\Upload\Api\UploadFile;
 use App\Queries\Upload\Api\UploadQuery;
 use App\Queries\Upload\Api\UploadResponses;
@@ -18,15 +17,14 @@ use Illuminate\Support\Collection;
  * 差分の項目・明細の項目には、値を描くための後の版の定義の写し(型・複数行・参照先)を添える。
  *
  * @phpstan-import-type ReferenceValue from RecordValueReader
- * @phpstan-import-type FieldEntry from RecordRevisionLabels
- * @phpstan-import-type RowChange from RecordRevisionQuery
- * @phpstan-import-type Diff from RecordRevisionQuery
+ * @phpstan-import-type RowChange from RecordRevisionDiff
+ * @phpstan-import-type Diff from RecordRevisionDiff
  * @phpstan-import-type ShownRowAccessChange from RecordRevisionRowAccess
+ * @phpstan-import-type RevisionField from RecordRevisionLabels
  *
- * @phpstan-type RevisionField array{code: string, name: string, type: string, isMultiline: bool,
- *     referencedModule: array{code: string}|null}
  * @phpstan-type RevisionAttachmentChange array{change: 'added'|'removed', id: int, name: string, uploadId: int|null,
- *     mime: string|null, previewable: bool, purgeDueOn: string|null}
+ *     mime: string|null, previewable: bool, purgeDueOn: string|null,
+ *     downloadUrl?: string|null, previewUrl?: string|null}
  * @phpstan-type RevisionChanges array{
  *     fields: list<array{code: string, name: string, field: RevisionField, before: mixed, after: mixed}>,
  *     details: list<array{code: string, name: string, fields: list<RevisionField>, rows: list<RowChange>}>,
@@ -87,8 +85,9 @@ class RecordRevisionRows
         string $localeCode,
     ): array {
         $isUpdate = $revision->action === RecordRevisionAction::Update;
+        $after = RecordRevisionDiff::snapshotOf($revision);
         $diff = $isUpdate && $previous !== null
-            ? $this->differ->diff($this->copy($previous), $this->copy($revision), $requester, $date, $localeCode)
+            ? $this->differ->diff(RecordRevisionDiff::snapshotOf($previous), $after, $requester, $date, $localeCode)
             : null;
 
         return [
@@ -120,13 +119,13 @@ class RecordRevisionRows
 
         return [
             'fields' => array_map(fn (array $change) => [
-                ...$change, 'field' => $this->field($entries[$change['code']]),
+                ...$change, 'field' => RecordRevisionLabels::fieldOf($entries[$change['code']]),
             ], $diff['fields']),
             'details' => array_map(fn (array $detail) => [
                 'code' => $detail['code'],
                 'name' => $detail['name'],
                 'fields' => array_map(
-                    fn (array $entry) => $this->field($entry),
+                    RecordRevisionLabels::fieldOf(...),
                     $this->labels->entries($entries[$detail['code']]['children']),
                 ),
                 'rows' => $detail['rows'],
@@ -198,35 +197,12 @@ class RecordRevisionRows
     }
 
     /**
-     * @param  FieldEntry  $entry
-     * @return RevisionField
-     */
-    private function field(array $entry): array
-    {
-        return [
-            'code' => $entry['code'],
-            'name' => $entry['name'],
-            'type' => $entry['type']->value,
-            'isMultiline' => $entry['multiline'],
-            'referencedModule' => $entry['referencedModule'] === null ? null : ['code' => $entry['referencedModule']],
-        ];
-    }
-
-    /**
      * @param  Diff  $diff
      */
     private function isEmpty(array $diff): bool
     {
         return $diff['fields'] === [] && $diff['details'] === [] && $diff['attachments'] === []
             && $diff['rowAccess'] === null;
-    }
-
-    /**
-     * @return array{snapshot: array<array-key, mixed>, labels: array<array-key, mixed>}
-     */
-    private function copy(RecordRevision $revision): array
-    {
-        return ['snapshot' => $revision->snapshot ?? [], 'labels' => $revision->labels ?? []];
     }
 
     /**

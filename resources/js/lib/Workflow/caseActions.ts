@@ -238,7 +238,8 @@ export function caseActionTargetOf(
 export type HeaderButton =
     | { kind: 'dialog'; operation: CaseOperation }
     | { kind: 'reapply' }
-    | { kind: 'confirm' };
+    | { kind: 'confirm' }
+    | { kind: 'copy' };
 
 /** ステップごとに許される操作の並び(見出しの右のボタンの並びの前半。並び = docs の 設計/ワークフロー/案件の運用/画面/案件の画面.md の 4 節) */
 const NODE_OPERATIONS: WorkflowNodeOperation[] = [
@@ -271,5 +272,18 @@ export function headerButtonsOf(
         ...(show.can.reapply ? [{ kind: 'reapply' } as const] : []),
         ...(show.can.withdraw ? [dialog('withdraw')] : []),
         ...(show.can.confirm ? [{ kind: 'confirm' } as const] : []),
+    ];
+}
+
+/**
+ * 見出しの右のボタンの並びの全体。「複製して申請」はこの申請を処理せず元を変えないので、処理のボタンの後ろに分けて置く
+ * (docs の 設計/ワークフロー/案件の運用/画面/案件の画面.md の 4 節)。
+ */
+export function headerBarOf(
+    show: Pick<WorkflowCaseShowProps, 'nodeActions' | 'can' | 'canCopy'>,
+): HeaderButton[] {
+    return [
+        ...headerButtonsOf(show),
+        ...(show.canCopy ? [{ kind: 'copy' } as const] : []),
     ];
 }

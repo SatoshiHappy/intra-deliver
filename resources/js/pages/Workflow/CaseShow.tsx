@@ -1,69 +1,65 @@
-import { Head } from '@inertiajs/react';
-import { CaseActionBar } from '@/components/Workflow/CaseActionBar';
+import { Head, router } from '@inertiajs/react';
+import { useEffect, useRef } from 'react';
 import {
     CaseActionDialog,
     useCaseActionDialog,
 } from '@/components/Workflow/CaseActionDialog';
-import { CaseBasicInfo } from '@/components/Workflow/CaseBasicInfo';
-import { CaseConfirmations } from '@/components/Workflow/CaseConfirmations';
-import { CaseContent } from '@/components/Workflow/CaseContent';
-import { CaseFlowInfo } from '@/components/Workflow/CaseFlowInfo';
-import { CaseHistoryList } from '@/components/Workflow/CaseHistoryList';
-import { CaseOperationArea } from '@/components/Workflow/CaseOperationArea';
-import { RelatedCases } from '@/components/Workflow/RelatedCases';
+import { CaseHeading } from '@/components/Workflow/CaseHeading';
+import { CaseRecordFrame } from '@/components/Workflow/CaseRecordFrame';
+import { useRecordSidePanel } from '@/hooks/use-record-side-panel';
 import { PersonLinksContext } from '@/hooks/Workflow/use-person-links';
 import { showAttachOf } from '@/lib/Workflow/caseActionAttach';
+import { caseRecordModeOf, reloadStepOf } from '@/lib/Workflow/caseRecordMode';
 import { index, show } from '@/routes/workflow/cases';
 import type { WorkflowCaseShowProps } from '@/types';
 
 type Props = WorkflowCaseShowProps;
 
 /**
- * 申請の詳細(docs の 設計/ワークフロー/案件の運用/画面/案件の画面.md の 4 節): 見出し = 申請名、右に操作のボタン({@see CaseActionBar})、
- * 見出しの下に代理の 1 行(proxyNote)。面 = 申請情報・申請内容・フロー情報(図と表の切替・合議の進み具合)・確認・履歴・関連する申請。
- * 処理のダイアログは描き分けの外に 1 つ(誤りの後に can が偽になっても閉じない = CaseActionDialog)。最後に申請操作の面({@see CaseOperationArea}。
- * operation があるときだけ)。名前の札の「…」のリンクは props の links をページ全体(ダイアログを含む)へ渡す。
+ * 判定と中身がそろわない形({@link caseRecordModeOf} の reload)になったら全体を読み直す。歩の決め方は {@link reloadStepOf}。
+ * 正本 = 設計/業務データの入れ物/レコードの共通機能/詳細の画面/申請の詳細.md の 6 節。
+ */
+function useReloadWhenStale(stale: boolean) {
+    const reloaded = useRef(false);
+
+    useEffect(() => {
+        const step = reloadStepOf(stale, reloaded.current);
+
+        reloaded.current = step.reloaded;
+        if (step.reload) {
+            router.reload();
+        }
+    }, [stale]);
+}
+
+/**
+ * 申請の詳細(設計/業務データの入れ物/レコードの共通機能/詳細の画面/申請の詳細.md)。見出しの下の左のタブとサイドパネルは
+ * {@link CaseRecordFrame}。処理のダイアログは描き分けの外に 1 つ(誤りの後に can が偽になっても閉じない = CaseActionDialog)。
+ * 名前の札の「…」のリンクは props の links をページ全体(ダイアログを含む)へ渡す。
  */
 export default function CaseShow(props: Props) {
     const { openAction, dialogProps } = useCaseActionDialog();
-    const { case: workflowCase, content } = props;
+    const mode = caseRecordModeOf(props);
+    const panel = useRecordSidePanel(
+        mode.kind === 'live' ? (props.panel?.items ?? []) : [],
+        props.panelContent,
+    );
+    useReloadWhenStale(mode.kind === 'reload');
 
     return (
         <PersonLinksContext value={props.links}>
-            <Head title={workflowCase.name} />
+            <Head title={props.case.name} />
 
             <div className="flex h-full flex-1 flex-col gap-6 p-4">
-                <div className="flex flex-col gap-2">
-                    <div className="flex flex-wrap items-center justify-between gap-4">
-                        <h1 className="text-2xl font-semibold wrap-anywhere">
-                            {workflowCase.name}
-                        </h1>
-                        <CaseActionBar {...props} onOpen={openAction} />
-                    </div>
-                    {props.proxyNote !== null && (
-                        <p className="text-sm text-muted-foreground">
-                            {props.proxyNote}
-                        </p>
-                    )}
-                </div>
-                <CaseBasicInfo data={workflowCase} />
-                <CaseContent content={content} />
-                <CaseFlowInfo
-                    nodes={props.nodes}
-                    edges={props.edges}
-                    councils={props.councils}
-                />
-                <CaseConfirmations
-                    caseId={workflowCase.id}
-                    confirmations={props.confirmations}
-                    canConfirm={props.can.confirm}
-                />
-                <CaseHistoryList
-                    histories={props.histories}
-                    module={content.module}
-                />
-                <RelatedCases related={props.related} />
-                <CaseOperationArea {...props} onOpenAction={openAction} />
+                <CaseHeading {...props} onOpen={openAction} />
+                {mode.kind !== 'reload' && (
+                    <CaseRecordFrame
+                        show={props}
+                        mode={mode}
+                        panel={panel}
+                        onOpenAction={openAction}
+                    />
+                )}
             </div>
             <CaseActionDialog {...dialogProps} attach={showAttachOf(props)} />
         </PersonLinksContext>

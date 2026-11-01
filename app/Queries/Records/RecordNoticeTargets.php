@@ -11,6 +11,7 @@ use App\Queries\Notice\Api\NoticeTargetLink;
 use App\Queries\Notice\Api\NoticeTargets;
 use App\Support\AccessContext;
 use DateTimeInterface;
+use Illuminate\Database\Eloquent\Collection;
 use InvalidArgumentException;
 
 /**
@@ -18,7 +19,9 @@ use InvalidArgumentException;
  * 移り先の種類を対象の種類で決める 1 規則: record = レコードの詳細(欄は開かない。会議の完了・失敗の通知などが使う)、
  * record-comment = レコードの詳細のコメントの欄を開いた形(コメントの通知が使う)。
  * 判定を求める者(今の利用者)が見られるレコードだけを移し、表示名「<業務モジュール> / <表示の項目の値か #id>」を表示の時の今の名前で付ける。
- * 見られない・無いレコードは入れない(文の下には unavailableText だけが出る。2 種類で同じ)。起動がタグ {@see NoticeTargets::TAG} で登録する。
+ * 申請の経路だけで見る人には、申請の経路({@see RecordAccessGrantCatalog})が返す画面へ移す(開けないレコードの詳細へ移さないため)。
+ * 見られない・無いレコードは入れない(文の下には unavailableText だけが出る。2 種類で同じ)。
+ * 起動がタグ {@see NoticeTargets::TAG} で登録する。
  */
 class RecordNoticeTargets implements NoticeTargets
 {
@@ -41,6 +44,7 @@ class RecordNoticeTargets implements NoticeTargets
         private RecordModuleGate $gate,
         private RecordRowAccess $rows,
         private RecordValueReader $reader,
+        private RecordAccessGrantCatalog $grants,
     ) {}
 
     public function targetTypes(): array
@@ -54,28 +58,26 @@ class RecordNoticeTargets implements NoticeTargets
         $requester = Requester::fromAccessContext($context);
         $records = Record::query()->whereNull('parent_record_id')->whereIn('id', $targetIds)->get();
         $modules = RecordModule::query()->whereNull('parent_record_module_id')
-            ->whereIn('id', $records->pluck('record_module_id')->unique()->all())->get();
-        $links = [];
+            ->whereIn('id', $records->pluck('record_module_id')->unique()->all())->get()->keyBy('id');
+        $urls = [];
 
         foreach ($modules as $module) {
-            $inModule = $records->where('record_module_id', $module->id);
-            $ids = array_values($inModule->pluck('id')->all());
-            $viewable = array_flip($this->viewableIds($requester, $module, $ids, $context->date));
-            $titleField = RecordField::query()
-                ->where('record_module_id', $module->id)->where('is_title', true)->first();
+            $ids = array_values($records->where('record_module_id', $module->id)->pluck('id')->all());
 
-            foreach ($inModule as $record) {
-                if (isset($viewable[$record->id])) {
-                    $title = $this->reader->title($record, $titleField) ?? "#{$record->id}";
-                    $url = route('records.data.show', [
-                        'module' => $module->code, 'record' => $record->id, ...self::QUERIES[$targetType],
-                    ]);
-                    $links[$record->id] = new NoticeTargetLink($url, "{$module->name} / {$title}");
-                }
+            foreach ($this->viewableIds($requester, $module, $ids, $context->date) as $id) {
+                $parameters = ['module' => $module->code, 'record' => $id, ...self::QUERIES[$targetType]];
+                $urls[$id] = route('records.data.show', $parameters);
             }
         }
 
-        return $links;
+        $inModules = $records->whereIn('record_module_id', $modules->keys()->all())->modelKeys();
+        $rest = array_values(array_diff($inModules, array_keys($urls)));
+
+        foreach ($this->grants->grantedViews($requester, $rest, $context->date) as $id => $url) {
+            $urls[$id] = self::withQuery($url, self::QUERIES[$targetType]);
+        }
+
+        return $this->links($records, $modules, $urls);
     }
 
     public function unavailableText(string $targetType): string
@@ -86,8 +88,7 @@ class RecordNoticeTargets implements NoticeTargets
     }
 
     /**
-     * 見られるレコード(この規則の 1 か所。業務モジュールの read と行の判定 = {@see Api\RecordViewAccess::canView()} と同じ。
-     * 申請の経路を足すときはここに足す)。
+     * 業務モジュールの read と行の判定で見られるレコード(多数のレコードを 1 回で絞るため。1 件の判定 {@see Api\RecordViewAccess::canViewInModule()} と同じ規則)。
      *
      * @param  list<int>  $recordIds  この業務モジュールの親の無いレコード
      * @return list<int>
@@ -107,6 +108,43 @@ class RecordNoticeTargets implements NoticeTargets
         $visible = $this->rows->constrain($records, $requester, $module, $date)->pluck('id')->all();
 
         return array_values(array_map('intval', $visible));
+    }
+
+    /**
+     * 移り先のあるレコードに、表示名を表示の時の今の名前で付ける。
+     *
+     * @param  Collection<int, Record>  $records
+     * @param  Collection<int, RecordModule>  $modules  業務モジュールの id → 業務モジュール
+     * @param  array<int, string>  $urls  レコードの id → 移り先
+     * @return array<int, NoticeTargetLink>
+     */
+    private function links(Collection $records, Collection $modules, array $urls): array
+    {
+        $links = [];
+
+        foreach ($modules as $module) {
+            $titleField = RecordField::query()
+                ->where('record_module_id', $module->id)->where('is_title', true)->first();
+
+            foreach ($records->where('record_module_id', $module->id) as $record) {
+                if (isset($urls[$record->id])) {
+                    $title = $this->reader->title($record, $titleField) ?? "#{$record->id}";
+                    $links[$record->id] = new NoticeTargetLink($urls[$record->id], "{$module->name} / {$title}");
+                }
+            }
+        }
+
+        return $links;
+    }
+
+    /**
+     * 申請の経路の画面に、開く欄のクエリを足す(クエリが無ければそのまま)。
+     *
+     * @param  array<string, string>  $query
+     */
+    private static function withQuery(string $url, array $query): string
+    {
+        return $query === [] ? $url : $url.(str_contains($url, '?') ? '&' : '?').http_build_query($query);
     }
 
     /**

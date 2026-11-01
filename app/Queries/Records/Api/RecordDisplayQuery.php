@@ -8,6 +8,7 @@ use App\Models\Records\RecordModule;
 use App\Queries\Authz\Api\Requester;
 use App\Queries\Records\RecordDefinitionQuery;
 use App\Queries\Records\RecordQuery;
+use App\Queries\Records\RecordRowAccessValues;
 use App\Queries\Records\RecordValueReader;
 use DateTimeInterface;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -19,6 +20,7 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
  * @phpstan-import-type ModuleDefinition from RecordDefinitionQuery
  * @phpstan-import-type ReferenceValue from RecordValueReader
  * @phpstan-import-type DetailRow from RecordQuery
+ * @phpstan-import-type ShownRowAccess from RecordRowAccessValues
  */
 class RecordDisplayQuery
 {
@@ -41,12 +43,33 @@ class RecordDisplayQuery
      */
     public function show(Requester $requester, int $recordId, DateTimeInterface $date, string $localeCode): array
     {
-        $record = $this->records->topLevel($recordId);
-        $module = $this->definitions->load(RecordModule::query()->findOrFail($record->record_module_id));
+        [$topLevelId, $module, $definition] = $this->opened($recordId);
 
         return [
-            'module' => $this->definitions->definition($module),
-            'record' => $this->records->show($requester, $module, $record->id, $date, $localeCode),
+            'module' => $definition,
+            'record' => $this->records->show($requester, $module, $topLevelId, $date, $localeCode),
+        ];
+    }
+
+    /**
+     * 主体の判定をしない。呼び手が閲覧の判定を済ませてから呼ぶ。
+     *
+     * {@see self::show()} の record に参照制限の今の値 rowAccess を足したもの({@see RecordQuery::detail()} と同じ形。申請の詳細の詳細タブの
+     * 区画「参照制限」= docs の 設計/業務データの入れ物/レコードの共通機能/詳細の画面/申請の詳細.md の 8 節)。
+     *
+     * @return array{module: ModuleDefinition, record: array{id: int, values: array<string, mixed>,
+     *     details: array<string, list<DetailRow>>, createdAt: string|null, updatedAt: string|null,
+     *     createdBy: ReferenceValue|null, updatedBy: ReferenceValue|null, rowAccess: ShownRowAccess}}
+     *
+     * @throws ModelNotFoundException<Record|RecordModule> レコードが無い・明細の行のとき
+     */
+    public function detail(Requester $requester, int $recordId, DateTimeInterface $date, string $localeCode): array
+    {
+        [$topLevelId, $module, $definition] = $this->opened($recordId);
+
+        return [
+            'module' => $definition,
+            'record' => $this->records->detail($requester, $module, $topLevelId, $date, $localeCode),
         ];
     }
 
@@ -88,5 +111,20 @@ class RecordDisplayQuery
             ->value('top_level_id');
 
         return $id === null ? null : (int) $id;
+    }
+
+    /**
+     * レコード(親の無いもの)の id と、定義を読み込んだその業務モジュールと、その定義。
+     *
+     * @return array{int, RecordModule, ModuleDefinition}
+     *
+     * @throws ModelNotFoundException<Record|RecordModule> レコードが無い・明細の行のとき
+     */
+    private function opened(int $recordId): array
+    {
+        $record = $this->records->topLevel($recordId);
+        $module = $this->definitions->load(RecordModule::query()->findOrFail($record->record_module_id));
+
+        return [$record->id, $module, $this->definitions->definition($module)];
     }
 }

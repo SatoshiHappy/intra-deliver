@@ -2,12 +2,16 @@
 
 namespace Tests\Support;
 
+use App\Actions\Authz\Api\CreateSelectionSubjectGroup;
+use App\Actions\Authz\Api\SelectionCondition;
+use App\Enums\Authz\SelectionConditionKind;
 use App\Enums\Workflow\WorkflowAction;
 use App\Models\Master\User;
 use App\Models\Records\Record;
 use App\Models\Records\RecordRowAccessViewer;
 use App\Models\Workflow\WorkflowCase;
 use App\Models\Workflow\WorkflowCaseHistory;
+use App\Models\Workflow\WorkflowFlow;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Testing\TestResponse;
 use Symfony\Component\HttpFoundation\Response;
@@ -222,5 +226,16 @@ trait CopiesCases
         $viewers = $record->rowAccessViewers()->orderBy('sort_key')->get()->map($party);
 
         return [$record->row_access_restricted, array_values($viewers->all())];
+    }
+
+    /**
+     * 写しのフローの参照者の対象者を渡した人 1 人にする(null = 参照者なし。参照の述語で閲覧させる・失わせる)。
+     */
+    protected function referTo(?User $user): void
+    {
+        $condition = $user === null ? null : new SelectionCondition(SelectionConditionKind::User, $user->id);
+        $group = $condition === null ? null
+            : app(CreateSelectionSubjectGroup::class)->execute([$condition], ['ja' => '参照者']);
+        WorkflowFlow::query()->where('code', self::COPY_FLOW)->update(['authz_subject_group_id' => $group]);
     }
 }

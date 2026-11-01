@@ -72,6 +72,12 @@ describe('開いた時の props を保つ', () => {
         expect(withOpened(draft, opened).targetEntry).toBeNull();
         expect(rememberKeyOf(draft)).not.toBe(rememberKeyOf(props({})));
     });
+
+    it('copy の無い前の形の覚えた値から戻ると、copy は null', () => {
+        const { copy: _absent, ...older } = openedOf(props({}));
+
+        expect(withOpened(props({}), older).copy).toBeNull();
+    });
 });
 
 describe('戻る・進むで来た時(申請対象からの申請.md の 10.2 の「戻る・進むで来た時」の行)', () => {

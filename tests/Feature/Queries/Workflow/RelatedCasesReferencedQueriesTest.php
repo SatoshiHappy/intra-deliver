@@ -7,7 +7,8 @@ use App\Models\Master\User;
 use App\Models\Records\Record;
 use App\Models\Records\RecordModule;
 use App\Models\Workflow\WorkflowCase;
-use App\Queries\Workflow\CaseDetailQuery;
+use App\Queries\Workflow\CaseShowProps;
+use App\Queries\Workflow\CaseShowSelection;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Facades\DB;
 use Tests\Support\BuildsRelatedCases;
@@ -111,7 +112,8 @@ final class RelatedCasesReferencedQueriesTest extends TransactionalTestCase
         DB::listen(function (QueryExecuted $query) use (&$log) {
             $log[] = $query;
         });
-        app(CaseDetailQuery::class)->show($this->contextFor($this->applicant->id), $this->viewed->id);
+        app(CaseShowProps::class)
+            ->of($this->contextFor($this->applicant->id), $this->viewed->id, new CaseShowSelection(true, ['related']));
         $queries = $log;
         $log = [];
 

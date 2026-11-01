@@ -10,6 +10,8 @@ use Tests\Support\TransactionalTestCase;
  * 詳細の principals の canAttach を求める問い合わせは、選択肢の数(操作 × 処理者)に依らない(docs の
  * 設計/ワークフロー/申請の周辺/添付/README.md の 5 節。業務モジュールの値はページで 1 回だけ読む)。ステップ c1 の処理担当者 = u0005・u0006・u0007。
  * 全体の問い合わせの数は代理元の数に比例する(引戻せるノードを処理者ごとに読む = CaseProcessorChoices)ので、業務モジュールの値の読みで比べる。
+ *
+ * @phpstan-import-type Detail from CaseDetailQuery
  */
 final class CaseAttachPrincipalsQueriesTest extends TransactionalTestCase
 {
@@ -91,6 +93,7 @@ final class CaseAttachPrincipalsQueriesTest extends TransactionalTestCase
         ]);
 
         foreach (['u0005', 'u0011'] as $code) {
+            /** @var Detail $detail */
             [$detail, $reads] = $show($code);
 
             $this->assertSame([[$p1, true]], array_map(

@@ -19,6 +19,8 @@ use Illuminate\Support\Collection;
  * @phpstan-type FieldEntry array{id: int, code: string, name: string, type: RecordFieldType, multiple: bool,
  *     multiline: bool, referencedModule: string|null, children: mixed}
  * @phpstan-type Labels array{fields: array<int, FieldLabel>, options: array<int, array<string, string>>}
+ * @phpstan-type RevisionField array{code: string, name: string, type: string, isMultiline: bool,
+ *     referencedModule: array{code: string}|null}
  */
 class RecordRevisionLabels
 {
@@ -60,6 +62,23 @@ class RecordRevisionLabels
         usort($entries, fn (array $a, array $b) => [$a[0], $a[1]] <=> [$b[0], $b[1]]);
 
         return array_column($entries, 2);
+    }
+
+    /**
+     * 版の項目の写しを、値の部品で描くための定義(型・複数行・参照先)にする(更新履歴の欄と版の写しの詳細で同じ形)。
+     *
+     * @param  FieldEntry  $entry
+     * @return RevisionField
+     */
+    public static function fieldOf(array $entry): array
+    {
+        return [
+            'code' => $entry['code'],
+            'name' => $entry['name'],
+            'type' => $entry['type']->value,
+            'isMultiline' => $entry['multiline'],
+            'referencedModule' => $entry['referencedModule'] === null ? null : ['code' => $entry['referencedModule']],
+        ];
     }
 
     /**

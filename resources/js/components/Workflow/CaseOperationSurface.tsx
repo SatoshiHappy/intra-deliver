@@ -132,7 +132,7 @@ export function CaseOperationSurface(props: Props) {
     return (
         <section
             aria-labelledby="case-operation-heading"
-            className="flex flex-col gap-3 rounded-xl border bg-card p-5 text-card-foreground"
+            className="flex flex-col gap-3"
         >
             <div className="flex items-center gap-1.5">
                 <h2

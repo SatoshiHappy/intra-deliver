@@ -56,7 +56,7 @@ test('プロジェクトの詳細の「申請する」→ 申請の画面に値�
     ).toBeVisible();
     await submitApplication(page, form);
     await expect(page.getByText('申請しました', { exact: true })).toBeVisible();
-    await expect(basicItem(page, '申請者')).toHaveText('佐々木 陽太');
+    await expect(await basicItem(page, '申請者')).toHaveText('佐々木 陽太');
 
     // 申請対象のプロジェクトは書き換わらず、押せない形も無い(持ち主は申請書のレコードだけ)
     await openProject(page, SOURCE);

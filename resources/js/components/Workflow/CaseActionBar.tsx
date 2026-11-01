@@ -3,11 +3,9 @@ import { Button } from '@/components/ui/button';
 import { CaseActionButton } from '@/components/Workflow/CaseActionDialog';
 import type { OpenCaseAction } from '@/components/Workflow/CaseActionDialog';
 import { CaseConfirmButton } from '@/components/Workflow/CaseConfirmButton';
-import {
-    caseActionTargetOf,
-    headerButtonsOf,
-} from '@/lib/Workflow/caseActions';
+import { caseActionTargetOf, headerBarOf } from '@/lib/Workflow/caseActions';
 import type { HeaderButton } from '@/lib/Workflow/caseActions';
+import { copyHrefOf } from '@/lib/Workflow/applyRoutes';
 import { create as reapply } from '@/routes/workflow/reapplications';
 import type { WorkflowCaseShowProps } from '@/types';
 
@@ -19,6 +17,7 @@ type Props = Pick<
     | 'pullBackNodes'
     | 'casePrincipal'
     | 'commentMaxLength'
+    | 'canCopy'
 > & { onOpen: OpenCaseAction };
 
 /**
@@ -57,22 +56,28 @@ function BarButton({
             return (
                 <CaseConfirmButton caseId={show.case.id} variant="outline" />
             );
+        case 'copy':
+            return (
+                <Button variant="outline" asChild>
+                    <Link href={copyHrefOf(show.case)}>複製して申請</Link>
+                </Button>
+            );
     }
 }
 
 /**
  * 見出しの右のボタンの並び(どれかのステップで許される操作だけ。並び = docs の 設計/ワークフロー/案件の運用/画面/案件の画面.md の 4 節。
- * 持ち主は {@link headerButtonsOf})。押すと処理のダイアログ、再申請は再申請の画面、確認は押すと送る。
+ * 持ち主は {@link headerBarOf})。押すと処理のダイアログ、再申請・複製して申請は申請の画面、確認は押すと送る。折り返しても右に寄るよう、根が ml-auto を持つ。
  */
 export function CaseActionBar({ onOpen, ...show }: Props) {
-    const buttons = headerButtonsOf(show);
+    const buttons = headerBarOf(show);
 
     if (buttons.length === 0) {
         return null;
     }
 
     return (
-        <div className="flex flex-wrap items-center gap-2">
+        <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
             {buttons.map((button) => (
                 <BarButton
                     key={

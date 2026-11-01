@@ -122,8 +122,7 @@ function ConfirmationTable({
 }
 
 /**
- * 確認の面(確認する人を持つステップがあるときだけ。docs の 設計/ワークフロー/案件の運用/画面/案件の画面.md の 4 節): 見出しの横の「?」の説明・表・
- * 確認できるとき(canConfirm)は面の下に主ボタン「確認」。確認が開く前のステップの人は、展開した人を表示だけに出す(サーバーが渡す)。
+ * 確認の面(確認する人を持つステップがあるときだけ出す。正本 = 設計/ワークフロー/案件の運用/画面/案件の画面.md の 4 節)。
  */
 export function CaseConfirmations({
     caseId,
@@ -145,7 +144,7 @@ export function CaseConfirmations({
     return (
         <section
             aria-labelledby="case-confirmations-heading"
-            className="flex flex-col gap-3 rounded-xl border bg-card p-5 text-card-foreground"
+            className="flex flex-col gap-3"
         >
             <div className="flex items-center gap-1.5">
                 <h2

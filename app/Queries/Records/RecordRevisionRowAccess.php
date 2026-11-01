@@ -79,6 +79,31 @@ class RecordRevisionRowAccess
     }
 
     /**
+     * 版 1 つの参照者の相手(表示名をまとめて引くため。記録の無い版は空)。
+     *
+     * @return list<ReferenceTarget>
+     */
+    public function referenceTargetsOf(mixed $snapshot): array
+    {
+        return $this->read($snapshot)['viewers'] ?? [];
+    }
+
+    /**
+     * 版 1 つの参照制限の画面の値(写しの時点のチェックと参照者。記録の無い版は null = 区画を出さない)。
+     *
+     * @param  array<string, ReferenceValue>  $labels  {@see RecordValueReader::targetValues()} の結果
+     * @return array{restricted: bool, viewers: list<PartyValue>}|null
+     */
+    public function shownOf(mixed $snapshot, array $labels): ?array
+    {
+        $read = $this->read($snapshot);
+
+        return $read === null
+            ? null
+            : ['restricted' => $read['restricted'], 'viewers' => $this->parties($read['viewers'], $labels)];
+    }
+
+    /**
      * @param  list<ReferenceTarget>  $targets
      * @param  array<string, ReferenceValue>  $labels
      * @return list<PartyValue>

@@ -15,7 +15,7 @@ use App\Models\Records\RecordModule;
 use App\Models\Records\RecordRevision;
 use App\Models\Upload\Upload;
 use App\Queries\Authz\Api\Requester;
-use App\Queries\Records\Api\RecordRevisionQuery;
+use App\Queries\Records\RecordRevisionDiff;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Http\UploadedFile;
@@ -102,8 +102,8 @@ final class RecordAttachmentWritesTest extends TransactionalTestCase
         $this->detach($recordId, $attachment->id);
         $revisions = RecordRevision::query()->where('record_id', $recordId)->orderBy('revision');
         [$first, $added, $removed] = $revisions->pluck('id')->all();
-        $diff = fn (int $before, int $after) => app(RecordRevisionQuery::class)
-            ->diffBetween(new Requester(null, null), $before, $after, now(), 'ja')['attachments'];
+        $diff = fn (int $before, int $after) => app(RecordRevisionDiff::class)
+            ->between(new Requester(null, null), $before, $after, now(), 'ja')['attachments'];
 
         $this->assertSame(
             [['change' => 'added', 'id' => $attachment->id, 'uploadId' => $attachment->upload_id, 'name' => 'a.pdf']],

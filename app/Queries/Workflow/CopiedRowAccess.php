@@ -9,8 +9,8 @@ use JsonException;
 /**
  * 案件からの複製で引き継ぐ参照制限(元の印と参照者)の読み書きの 1 か所(docs の
  * 設計/ワークフロー/申請の周辺/既存のデータからの申請/案件からの複製/写す値.md の 13.2 節)。
- * 開いた時の値は暗号化した値で画面に渡し、一時保存では draft_input のサーバーだけが書くキーに持つ。解けない値・形の合わない値は
- * 止めずに強める向き(付き・参照者 = 空)にだけ倒す。中身は JSON の文字列で暗号化し、解くときに PHP の unserialize を通さない。
+ * 画面を経る値なので、合わない値は制限を弱めない向きにだけ倒す。作り手の分からない値をオブジェクトにしないよう、解くときに
+ * PHP の unserialize を通さない。
  *
  * @phpstan-type CopiedParty array{type: 'user'|'department', id: int}
  * @phpstan-type CopiedRestriction array{restricted: bool, viewers: list<CopiedParty>}
@@ -47,7 +47,7 @@ class CopiedRowAccess
     }
 
     /**
-     * 新規の申請・一時保存の新規の POST が送り返した暗号化した値の元の印と参照者(読み方の表 = 13.2 節の POST での読み方)。
+     * 新規の申請・一時保存の新規の POST が送り返した暗号化した値の元の印と参照者(13.2 節の POST での読み方)。
      *
      * @param  mixed  $sealed  入口が受けた値のまま
      * @param  int|null  $userId  今の利用者(写す人と比べる。ゲストは null で、どの値とも合わない)

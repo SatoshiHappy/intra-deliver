@@ -159,10 +159,10 @@ export function openingOf(
     record: RecordFormData,
 ): ApplicationTargetOpening {
     const { module, targetField, targetValues, targetEntry, mode } = props;
-    const copiesOnOpen =
+    const snapshotsOnOpen =
         targetEntry !== null || mode === 'record' || props.copy !== null;
 
-    if (targetValues === null || !copiesOnOpen) {
+    if (targetValues === null || !snapshotsOnOpen) {
         return { record, confirm: null, cleared: [] };
     }
 

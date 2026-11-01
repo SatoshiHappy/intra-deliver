@@ -15,7 +15,7 @@ use App\Models\Records\RecordFieldOption;
 use App\Models\Records\RecordModule;
 use App\Models\Records\RecordRevision;
 use App\Queries\Authz\Api\Requester;
-use App\Queries\Records\Api\RecordRevisionQuery;
+use App\Queries\Records\RecordRevisionDiff;
 use Carbon\CarbonImmutable;
 use Tests\Support\BuildsCommonMaster;
 use Tests\Support\BuildsRecordModules;
@@ -210,7 +210,7 @@ final class RecordRevisionDefinitionTest extends TransactionalTestCase
         [$after, $before] = $revisions->pluck('id')->all();
         $date = CarbonImmutable::parse(self::TODAY);
 
-        return app(RecordRevisionQuery::class)->diffBetween(new Requester(null, null), $before, $after, $date, 'ja');
+        return app(RecordRevisionDiff::class)->between(new Requester(null, null), $before, $after, $date, 'ja');
     }
 
     /**

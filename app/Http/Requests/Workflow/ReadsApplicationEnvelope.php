@@ -13,8 +13,8 @@ use App\Http\Requests\Records\ReadsRecordEnvelope;
  * name・comment が文字列か null、values・details は業務データの入れ物の入口と同じ 1 か所({@see ReadsRecordEnvelope})の規則・文言・変換。
  * 入口が見るのは封筒の形だけで、案件名・コメントの長さと使えない文字・一時保存の大きさは業務処理が 422 にする(案件の操作/同時実行と検査.md 6 節)。
  * 添付とその multipart の送り方は {@see ReadsAttachmentEnvelope}。
- * 案件からの複製の暗号化した値(copy_row_access)は形を問わずに受けたまま業務処理へ渡し(読み方 = 設計/ワークフロー/申請の周辺/
- * 既存のデータからの申請/案件からの複製/写す値.md の 13.2 節)、受けない入口は捨てる(422 にしない)。
+ * 案件からの複製の暗号化した値(copy_row_access)は、読み方を業務処理の 1 か所に置くため形を問わずに受ける(設計/ワークフロー/申請の周辺/
+ * 既存のデータからの申請/案件からの複製/写す値.md の 13.2 節)。
  */
 trait ReadsApplicationEnvelope
 {

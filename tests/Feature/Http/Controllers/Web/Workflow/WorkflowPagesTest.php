@@ -278,7 +278,7 @@ final class WorkflowPagesTest extends TransactionalTestCase
             ->where('nodes.0.processed.action', 'reapply')
             ->has('histories', 3)
             ->where('histories.2.action', 'reapply')
-            ->has('histories.2.diff.fields', 2)
+            ->missing('histories.2.diff')
             ->where('can', [
                 'pullBack' => false, 'reapply' => false, 'withdraw' => false, 'confirm' => false, 'operate' => false,
             ])

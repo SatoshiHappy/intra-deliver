@@ -6,6 +6,7 @@ use App\Actions\Workflow\RouteNodeInput;
 use App\Enums\Workflow\WorkflowNodeKind;
 use App\Enums\Workflow\WorkflowTargetKind;
 use App\Models\Workflow\WorkflowCase;
+use App\Queries\Workflow\CaseCopyability;
 use App\Queries\Workflow\CaseDetailQuery;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Facades\DB;
@@ -104,13 +105,18 @@ final class CaseDetailHistoryLinesTest extends TransactionalTestCase
     }
 
     /**
-     * 見本の詳細の問い合わせの数(代理元の分も読む)が上限の中。
+     * 見本の詳細の問い合わせの数(代理元の分も読む)が、全体の応答で足すボタン「複製して申請」の判定(自分と代理元の人数分 =
+     * 設計/ワークフロー/申請の周辺/既存のデータからの申請/案件からの複製/README.md の 12.2 節)を含めて上限の中。
      */
     public function test_the_seeded_detail_stays_within_the_query_limit(): void
     {
         $case = WorkflowCase::query()->where('case_number', 3)->sole();
+        $context = $this->contextOf($this->seededUser('u0009'));
 
-        $count = $this->queryCountOf(fn () => $this->show('u0009', $case));
+        $count = $this->queryCountOf(function () use ($case, $context) {
+            $this->show('u0009', $case);
+            app(CaseCopyability::class)->canCopy($context, $case->workflow_flow_id);
+        });
 
         $this->assertLessThanOrEqual(self::SEEDED_DETAIL_QUERY_LIMIT, $count);
     }

@@ -129,14 +129,15 @@ final class ApplyAttachmentsTest extends TransactionalTestCase
     }
 
     /**
-     * 行の権限でレコードを見られない申請者には、付いている添付を出さない(件数も 0。サイドパネルと同じ見る人)。
+     * 付いている添付の見る人はサイドパネルと同じ(レコードの閲覧の判定)。再申請する申請者は、行の権限でレコードを見られなくても
+     * 未完了の申請の経路で閲覧できるので、付いている添付が出る。
      */
-    public function test_an_applicant_who_cannot_view_the_record_gets_no_attached_files(): void
+    public function test_an_applicant_outside_the_row_access_sees_the_attached_files_through_the_application(): void
     {
         $case = $this->returnedCase();
         $record = Record::query()->findOrFail($case->record_id);
         RecordAttachment::factory()->create([
-            'record_module_id' => $record->record_module_id, 'record_id' => $record->id, 'name' => '見えない.pdf',
+            'record_module_id' => $record->record_module_id, 'record_id' => $record->id, 'name' => '行の外.pdf',
         ]);
         $this->assertSame(1, $this->reapplyAttachment($case)['attachedCount']);
 
@@ -144,7 +145,8 @@ final class ApplyAttachmentsTest extends TransactionalTestCase
         $record->update(['created_by_user_id' => $this->seededUser('u0003')->id]);
 
         $attachment = $this->reapplyAttachment($case);
-        $this->assertSame([[], 0], [$attachment['attached'], $attachment['attachedCount']]);
+        $names = array_column($attachment['attached'], 'name');
+        $this->assertSame([['行の外.pdf'], 1], [$names, $attachment['attachedCount']]);
     }
 
     /**

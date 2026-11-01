@@ -16,8 +16,10 @@ use App\Models\Workflow\WorkflowCaseHistory;
 use App\Queries\Authz\Api\Requester;
 use App\Queries\Records\Api\RecordFormQuery;
 use App\Queries\Workflow\ApplicationTargetValueQuery;
-use App\Queries\Workflow\CaseDetailQuery;
 use App\Queries\Workflow\CaseNumbers;
+use App\Queries\Workflow\CaseShowProps;
+use App\Queries\Workflow\CaseShowSelection;
+use App\Queries\Workflow\RelatedCases;
 use App\Queries\Workflow\WorkflowRecordHolds;
 use App\Support\AccessContext;
 use Carbon\CarbonImmutable;
@@ -27,6 +29,8 @@ use Tests\Support\TransactionalTestCase;
 /**
  * 申請対象からの申請の見本(docs の 設計/ワークフロー/申請の周辺/初期データ.md の 2 節の検査。時刻は {@see WorkflowSeederSampleTimesTest})。
  * 初期データは DatabaseSeeder が 1 回入れたもの(流し直さない)。
+ *
+ * @phpstan-import-type RelatedGroup from RelatedCases
  */
 final class WorkflowSeederApplicationTargetCasesTest extends TransactionalTestCase
 {
@@ -174,11 +178,14 @@ final class WorkflowSeederApplicationTargetCasesTest extends TransactionalTestCa
      */
     private function relatedOf(string $number): array
     {
-        $detail = app(CaseDetailQuery::class)->show($this->contextOf('u0001'), $this->caseOf($number)->id);
+        $selection = new CaseShowSelection(true, ['related']);
+        $props = app(CaseShowProps::class)->of($this->contextOf('u0001'), $this->caseOf($number)->id, $selection);
+        /** @var list<RelatedGroup> $related */
+        $related = $props['related'];
 
         return array_map(
             fn (array $group) => [$group['heading'], array_column($group['cases'], 'number')],
-            $detail['related'],
+            $related,
         );
     }
 

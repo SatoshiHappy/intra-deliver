@@ -8,14 +8,12 @@ use App\Enums\Records\RecordModuleAction;
 use App\Models\Master\User;
 use App\Models\Records\Record;
 use App\Models\Records\RecordModule;
-use App\Models\Records\RecordRevision;
 use App\Models\Workflow\WorkflowCase;
-use App\Queries\Authz\Api\Requester;
-use App\Queries\Records\Api\RecordRevisionQuery;
 use App\Queries\Workflow\WorkflowRecordHolds;
 use App\Support\AccessContext;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Inertia\Support\Header;
 use Inertia\Testing\AssertableInertia as Assert;
 use InvalidArgumentException;
 use Tests\Feature\Http\Controllers\Web\Workflow\UsesSeededCases;
@@ -105,11 +103,12 @@ final class RecordRowAccessApplicationTest extends TransactionalTestCase
     }
 
     /**
-     * 業務モジュールの read を見ない差分の口(申請の経路が使う {@see RecordRevisionQuery::diffOnCurrentDefinition()})も、参照者の行を返す
+     * 申請の経路だけで見る人(read も行の判定も通らない申請の関係者)にも、申請の詳細のサイドパネルの更新履歴に参照者の行が出る
      * (更新履歴.md の 5.2 節)。見本の申請書は参照制限の既定が「する」なので、チェックは付いたまま参照者だけが変わる。
      */
-    public function test_the_diff_for_the_application_route_carries_the_viewers_line(): void
+    public function test_the_revisions_pane_of_the_application_route_carries_the_viewers_line(): void
     {
+        $this->withoutVite();
         $case = WorkflowCase::query()->findOrFail($this->caseNumbered(5));
         $u0002 = User::query()->where('code', 'u0002')->sole();
         $u0003 = User::query()->where('code', 'u0003')->sole();
@@ -121,17 +120,18 @@ final class RecordRowAccessApplicationTest extends TransactionalTestCase
         $holder = WorkflowRecordHolds::holderOf($case->id);
         app(UpdateRecord::class)->execute($creator, $code, $record->id, $input, null, $holder);
         $this->deny($code, RecordModuleAction::Read);
-        [$after, $before] = RecordRevision::query()->where('record_id', $record->id)
-            ->orderByDesc('revision')->limit(2)->pluck('id')->all();
+        $this->actingAs($u0002);
 
-        $diff = app(RecordRevisionQuery::class)->diffOnCurrentDefinition(
-            new Requester($u0002->id, null), $before, $after, CarbonImmutable::today(), 'ja',
-        );
+        $rows = $this->get("/workflow/cases/{$case->id}?panel=revisions", [
+            Header::PARTIAL_COMPONENT => 'Workflow/CaseShow',
+            Header::PARTIAL_ONLY => 'panelContent',
+        ])->assertOk()->viewData('page')['props']['panelContent']['rows'];
+        $rowAccess = $rows[0]['changes']['rowAccess'] ?? null;
 
-        $this->assertNull($diff['rowAccess']['restricted'] ?? null);
+        $this->assertNull($rowAccess['restricted'] ?? null);
         $this->assertSame([[], [$u0003->id]], [
-            array_column($diff['rowAccess']['viewers']['before'] ?? [], 'id'),
-            array_column($diff['rowAccess']['viewers']['after'] ?? [], 'id'),
+            array_column($rowAccess['viewers']['before'] ?? [], 'id'),
+            array_column($rowAccess['viewers']['after'] ?? [], 'id'),
         ]);
     }
 }

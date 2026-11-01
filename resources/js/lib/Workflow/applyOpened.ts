@@ -15,7 +15,8 @@ export type ApplyOpened = {
     mode: Props['mode'];
     caseId: number | null;
     targetEntry: Props['targetEntry'];
-    copy: Props['copy'];
+    // 案件からの複製の前に覚えた履歴の項目には無い
+    copy?: Props['copy'];
 };
 
 /**
@@ -58,7 +59,11 @@ export function withOpened(props: Props, opened: ApplyOpened): Props {
         (props.case?.id ?? null) === opened.caseId;
 
     return isSameScreen
-        ? { ...props, targetEntry: opened.targetEntry, copy: opened.copy }
+        ? {
+              ...props,
+              targetEntry: opened.targetEntry,
+              copy: opened.copy ?? null,
+          }
         : props;
 }
 

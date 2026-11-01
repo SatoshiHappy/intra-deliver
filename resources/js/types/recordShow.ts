@@ -200,6 +200,27 @@ export type RecordRevisionRow = {
 };
 
 /**
+ * 更新履歴の版 1 つの写しを、今の見出しのまとまりに入れた詳細の形(申請の詳細の submittedRecord。サーバーの
+ * App\Queries\Records\Api\RecordRevisionQuery の RevisionView)。項目と選択肢の名前は版の写し、見出しの名前と並びは今の定義
+ * (今の定義に無い項目は最後のまとまり)。values = 項目のコード → 値。rowAccess = 写しの時点の参照制限(記録の無い版は null)。添付は持たない
+ */
+export type RecordRevisionView = {
+    groups: {
+        id: number | null; // 頭のまとまりは id・name とも null
+        name: string | null;
+        fields: RecordRevisionField[];
+    }[];
+    values: Record<string, RecordFieldValue>;
+    details: {
+        code: string;
+        name: string; // 版の明細の項目の名前(明細の札「<名前> <行数>」)
+        fields: RecordRevisionField[];
+        rows: { id: number; values: Record<string, RecordFieldValue> }[];
+    }[];
+    rowAccess: { restricted: boolean; viewers: RecordPartyValue[] } | null;
+};
+
+/**
  * 開いた欄の中身(欄の種類ごと)。section の content = null は節が出す内容を返さなかった(「表示する内容がありません」)。
  */
 export type RecordPanelContent =

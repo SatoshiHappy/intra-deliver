@@ -4,6 +4,7 @@ namespace Tests\Feature\Queries\Workflow;
 
 use App\Actions\Workflow\ApproveCase;
 use App\Enums\Records\RecordModuleAction;
+use App\Enums\Workflow\WorkflowProxyKind;
 use App\Models\Master\User;
 use App\Models\Records\Record;
 use App\Models\Records\RecordField;
@@ -135,6 +136,30 @@ final class ApplicationCopyFormTest extends TransactionalTestCase
         $this->post(self::APPLY_URL, $sent)->assertSessionHasErrors('values.'.self::TARGET_FIELD);
 
         $this->assertNull($this->copyPropsAs($u0001, $source->id)['targetValues']);
+    }
+
+    /**
+     * 代理のとき targetValues は既定の申請者(代理元)の権限で作られる: 申請対象の業務モジュールの read が代理元だけにあれば写り、
+     * 代理元に見えない参照先は申請対象の写しの空にした項目に出る(元の申請の値の空にした項目とは別)。自分だけに read があれば写さない。
+     */
+    public function test_the_target_values_of_a_proxy_follow_the_principal(): void
+    {
+        [$u0002, $u0003, $principal] = $this->usersOf('u0002', 'u0003', 'u0009');
+        $flowId = $this->copyFlow([$principal]);
+        $this->addProxy($principal, $u0002, WorkflowProxyKind::Apply, $flowId);
+        $hub = $this->hubRecord($principal, $u0003)['hub'];
+        $source = $this->sourceCase($principal, [self::TARGET_FIELD => $hub]);
+        $this->onlyRelated('m_ref_a');
+        $this->allowOnly(self::HUB, RecordModuleAction::Read, $principal);
+
+        $props = $this->copyPropsAs($u0002, $source->id);
+
+        $this->assertSame($principal->id, $props['applicant']);
+        $this->assertSame($hub, $props['targetValues']['values'][self::TARGET_FIELD]['id'] ?? null);
+        $this->assertSame([['ref'], []], [$props['targetValues']['clearedFields'], $props['copy']['clearedFields']]);
+
+        $this->allowOnly(self::HUB, RecordModuleAction::Read, $u0002);
+        $this->assertNull($this->copyPropsAs($u0002, $source->id)['targetValues']);
     }
 
     /**

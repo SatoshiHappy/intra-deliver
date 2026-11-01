@@ -2,7 +2,12 @@ import { expect, test } from '../support/test';
 import type { Artisan } from '../support/test';
 import type { Page, Route } from '@playwright/test';
 import { fillVersionTwoBaseDate } from '../support/seed-dates';
-import { openAs, submitApplication } from '../support/workflow-operations';
+import { pane, railButton } from '../support/workflow-case-show';
+import {
+    openApplicationTab,
+    openAs,
+    submitApplication,
+} from '../support/workflow-operations';
 import {
     APPLY_URL,
     CONFIRM_TITLE,
@@ -11,7 +16,7 @@ import {
 } from '../support/workflow-target-apply';
 
 // 案件からの複製で開いた申請の画面(クエリ copy)。筋の正本 = docs の 設計/ワークフロー/申請の周辺/画面.md の 9 節の「案件からの複製」。
-// 申請の詳細の「複製して申請」からの入口は、申請の詳細の画面の組み直しの後に足す。ここでは移り先の URL を直に開く。
+// 申請の詳細の「複製して申請」から開く筋は最後の 1 本で、ほかは移り先の URL を直に開く。
 // 見本の案件 WF-000013(新製品の発売計画。申請者 = u0001)を写す。使えない値の 1 行と申請対象の確かめは、開いた時の応答を書き換えて作る
 // (サーバーの確かめは Feature テスト)。プロジェクトを申請対象にするフローが 1 つのうちに流す(tests/e2e/demo/groups.ts の並び)。
 test.use({ viewport: { width: 1280, height: 720 } });
@@ -48,17 +53,51 @@ type OpenedProps = {
     copy: { clearedFields: string[] } | null;
 };
 
+/** 最初の読み込みの HTML がページの props を持つ要素 */
+const PAGE_DATA_OPEN = '<script data-page="app" type="application/json">';
+
+/** サーバーと同じく、HTML に埋める JSON の < と > を逃がす(JSON_HEX_TAG) */
+function hexTagged(json: string): string {
+    return json.replaceAll('<', '\\u003C').replaceAll('>', '\\u003E');
+}
+
+/** 最初の読み込みの HTML の、ページの props を書き換える */
+function rewrittenHtml(html: string, change: (props: OpenedProps) => void) {
+    const start = html.indexOf(PAGE_DATA_OPEN) + PAGE_DATA_OPEN.length;
+    const end = html.indexOf('</script>', start);
+
+    if (start < PAGE_DATA_OPEN.length || end < 0) {
+        throw new Error('ページの props を HTML に見つけられなかった');
+    }
+
+    const page = JSON.parse(html.slice(start, end));
+    change(page.props as OpenedProps);
+
+    return (
+        html.slice(0, start) + hexTagged(JSON.stringify(page)) + html.slice(end)
+    );
+}
+
 /**
  * クエリ copy の付いた申請の画面の GET の応答を書き換える(開いた後の GET には copy が無いので当たらない)。
+ * 直に開く最初の読み込みは HTML、Inertia の移動は JSON で返る。
  */
 async function rewriteOpened(page: Page, change: (props: OpenedProps) => void) {
     await page.route(
         (url) => url.pathname === APPLY_URL && url.searchParams.has('copy'),
         async (route: Route) => {
             const response = await route.fetch();
-            const body = await response.json();
-            change(body.props as OpenedProps);
-            await route.fulfill({ response, json: body });
+
+            if (route.request().headers()['x-inertia'] !== undefined) {
+                const body = await response.json();
+                change(body.props as OpenedProps);
+                await route.fulfill({ response, json: body });
+
+                return;
+            }
+
+            const html = rewrittenHtml(await response.text(), change);
+            await route.fulfill({ response, body: html });
         },
     );
 }
@@ -84,7 +123,7 @@ test('開いた直後に URL から copy が外れ、申請名・値と 2 つの
     page,
     artisan,
 }) => {
-    await openCopy(page, artisan);
+    const id = await openCopy(page, artisan);
     const form = applyForm(page);
     const line = page.getByText(CLEARED_LINE, { exact: true });
     await expect(line).toBeVisible();
@@ -97,15 +136,16 @@ test('開いた直後に URL から copy が外れ、申請名・値と 2 つの
     // 戻る・進むのために覚えた値(開いた時の props の copy・入力)が、copy を外した後の履歴の項目に残る
     await expect
         .poll(() =>
-            page.evaluate(() => {
+            page.evaluate((sourceId) => {
                 const remembered =
                     window.history.state?.page?.rememberedState ?? {};
 
                 return [
                     Object.keys(remembered).sort(),
-                    remembered['WorkflowApply:new::opened']?.copy !== null,
+                    remembered['WorkflowApply:new::opened']?.copy?.caseId ===
+                        sourceId,
                 ];
-            }),
+            }, Number(id)),
         )
         .toEqual([
             expect.arrayContaining([
@@ -202,4 +242,33 @@ test('申請対象の今の値が写した値と違うと、開いた時に確�
 
     await expect(dialog).toHaveCount(0);
     await expect(budgetField(applyForm(page))).toHaveValue(copied);
+});
+
+test('申請の詳細の「複製して申請」から開く。サイドパネルを開いた後もボタンが残る', async ({
+    page,
+    artisan,
+}) => {
+    const id = sourceIdOf(artisan);
+    await rewriteOpened(page, (props) => {
+        props.targetValues = null;
+    });
+    await openAs(page, 'applicant', `/workflow/cases/${id}`);
+    await openApplicationTab(page);
+    const button = page.getByRole('link', {
+        name: '複製して申請',
+        exact: true,
+    });
+    await expect(button).toBeVisible();
+
+    await railButton(page, '更新履歴').click();
+    await expect(pane(page, '更新履歴')).toBeVisible();
+    await expect(button).toBeVisible();
+
+    await button.click();
+
+    await expect(page).toHaveURL(new RegExp(`${APPLY_URL}$`));
+    await expect(page.getByText(HEADING, { exact: false })).toBeVisible();
+    await expect(
+        applyForm(page).getByRole('textbox', { name: '申請名', exact: true }),
+    ).toHaveValue('プロジェクト計画の承認 新製品の発売計画');
 });

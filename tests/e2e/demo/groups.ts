@@ -59,6 +59,8 @@ export const demoGroups = [
         // records-admin-visibility-stop は初期データの申請書の業務モジュールの編集の画面を開くだけで保存しない。
         // app-skeleton-administrator・workflow-home は切替で利用者を替えて画面を開くだけで、DB に書かない。
         // workflow-person-links は初期データの見本の案件の処理のダイアログを開くが決定しない(DB に書かず、見本の案件の初期の状態を前提にする)。
+        // workflow-case-show は見本の案件を読むだけ(処理のダイアログは決定しない)。workflow-case-show-snapshot は申請書の業務モジュールの read の許可を
+        // 筋の前に外し、筋の後に初期の許可(ゲストユーザと認証済みユーザへの許可)に戻すので、ほかの spec の前提を変えない(名前の順で show より前に流れる)。
         // app-skeleton-administrator の先頭の画面は初期データの業務の木を前提にする(前に流れる spec が業務の木を変えない)。
         // zz-workflow-admin.attachment(フローの添付の設定。元に戻す。見本の案件の処理のダイアログを開くだけ)と
         // zz-workflow-admin(版・参照者)と zz-workflow-admin.steps(ステップの設定。元に戻す)はフローの定義を変えるが、
@@ -75,6 +77,8 @@ export const demoGroups = [
             'tests/e2e/demo/records-headings-show.spec.ts',
             'tests/e2e/demo/records-related-columns.spec.ts',
             'tests/e2e/demo/switch-user.spec.ts',
+            'tests/e2e/demo/workflow-case-show-snapshot.spec.ts',
+            'tests/e2e/demo/workflow-case-show.spec.ts',
             'tests/e2e/demo/workflow-connected.spec.ts',
             'tests/e2e/demo/workflow-home.spec.ts',
             'tests/e2e/demo/workflow-person-links.spec.ts',

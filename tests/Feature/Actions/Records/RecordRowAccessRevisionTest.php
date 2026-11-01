@@ -11,7 +11,7 @@ use App\Models\Master\DepartmentSet;
 use App\Models\Master\User;
 use App\Models\Records\RecordRevision;
 use App\Queries\Authz\Api\Requester;
-use App\Queries\Records\Api\RecordRevisionQuery;
+use App\Queries\Records\RecordRevisionDiff;
 use Carbon\CarbonImmutable;
 use Tests\Support\BuildsRowAccessRecords;
 use Tests\Support\TransactionalTestCase;
@@ -125,7 +125,7 @@ final class RecordRowAccessRevisionTest extends TransactionalTestCase
     {
         [$after, $before] = RecordRevision::query()->where('record_id', $id)->orderByDesc('revision')->limit(2)
             ->get()->all();
-        $diff = app(RecordRevisionQuery::class)->diffBetween(
+        $diff = app(RecordRevisionDiff::class)->between(
             new Requester($this->writer->id, null),
             $before->id,
             $after->id,
