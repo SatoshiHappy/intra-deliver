@@ -323,7 +323,6 @@
     "resources/js/components/Authz/Legend.tsx": 1,
     "resources/js/components/Authz/ResourceCell.tsx": 2,
     "resources/js/components/Authz/SettingsHead.tsx": 1,
-    "resources/js/components/FormBlock.tsx": 1,
     "resources/js/components/Master/MasterSearch.tsx": 3,
     "resources/js/components/Menu/HomeCounters.tsx": 2,
     "resources/js/components/Menu/HomePanel.tsx": 1,

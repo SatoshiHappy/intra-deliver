@@ -3,7 +3,9 @@
 namespace Database\Seeders;
 
 use App\Actions\Records\AddRecordField;
+use App\Actions\Records\AddRecordFieldHeading;
 use App\Actions\Records\CreateRecordModule;
+use App\Actions\Records\ReorderRecordFields;
 use App\Actions\Records\UpdateRecordModule;
 use App\Enums\Builtin\Meeting;
 use App\Enums\Menu\MenuIcon;
@@ -29,6 +31,8 @@ class BuiltinSeeder extends Seeder
         private CreateRecordModule $createModule,
         private UpdateRecordModule $updateModule,
         private AddRecordField $addField,
+        private AddRecordFieldHeading $addHeading,
+        private ReorderRecordFields $reorderFields,
     ) {}
 
     /**
@@ -47,29 +51,41 @@ class BuiltinSeeder extends Seeder
                 throw new LogicException('組み込みの会議は業務モジュール '.Meeting::PROJECT_MODULE.' を要する');
             }
 
-            $module = $this->meetingModule();
+            $module = $this->existingMeetingModule();
+            $isNew = $module === null;
+            $module ??= $this->createMeetingModule();
 
             foreach (Meeting::cases() as $field) {
                 $this->ensureField($module, $field, $purgeAfter->duration);
+            }
+
+            if ($isNew) {
+                $this->addHeadings();
             }
         });
     }
 
     /**
-     * 会議の業務モジュール(無ければ作り、参照制限の既定を「制限する」にし、添付ファイルを使用にして旗を立てる。音声を添付に残す = 会議 README の 1.2)。
+     * 既にある会議の業務モジュール(無ければ null)。
      *
      * @throws LogicException 同じコードの組み込みでない業務モジュール(明細のモジュールを含む)があるとき
      */
-    private function meetingModule(): RecordModule
+    private function existingMeetingModule(): ?RecordModule
     {
         $module = RecordModule::query()->where('code', Meeting::CODE)->first();
 
         if ($module !== null) {
             $this->throwIfNotBuiltin($module, Meeting::CODE);
-
-            return $module;
         }
 
+        return $module;
+    }
+
+    /**
+     * 会議の業務モジュールを作り、参照制限の既定を「制限する」にし、添付ファイルを使用にして旗を立てる。音声を添付に残す = 会議 README の 1.2。
+     */
+    private function createMeetingModule(): RecordModule
+    {
         $module = $this->createModule->execute(self::MEETING_MODULE);
         $this->updateModule->execute(Meeting::CODE, [
             'row_access_restricted_by_default' => true,
@@ -78,6 +94,27 @@ class BuiltinSeeder extends Seeder
         RecordModule::query()->whereKey($module->id)->update(['is_builtin' => true]);
 
         return $module;
+    }
+
+    /**
+     * 見出しを足して並べる(会議 README の 1.2)。業務モジュールを作った回だけ呼ぶ = 管理者が消した・名前を変えた見出しを戻さない。
+     */
+    private function addHeadings(): void
+    {
+        $items = [];
+
+        foreach (Meeting::cases() as $field) {
+            $name = $field->headingBefore();
+
+            if ($name !== null) {
+                $heading = $this->addHeading->execute(Meeting::CODE, ['name' => $name]);
+                $items[] = ['kind' => 'heading', 'id' => $heading->id];
+            }
+
+            $items[] = ['kind' => 'field', 'code' => $field->value];
+        }
+
+        $this->reorderFields->execute(Meeting::CODE, $items);
     }
 
     /**

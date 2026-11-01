@@ -4,7 +4,7 @@ namespace App\Enums\Builtin;
 
 /**
  * 組み込みの業務モジュール「会議」の項目のコード(case の値)と定義(docs の 設計/業務ツール/会議/README.md の 1.2、
- * 置き場 = 設計/業務ツール/モジュール境界.md の「組み込みの業務モジュールの置き場」)。case の並び = 項目の並び。
+ * 置き場 = 設計/業務ツール/モジュール境界.md の「組み込みの業務モジュールの置き場」)。case の並び = 項目の並び(見出しの位置は headingBefore)。
  * 定義は項目を足す業務処理の入力の形(型は入れ物の型の値の文字列。Builtin はどのモジュールにも依存しない)。
  */
 enum Meeting: string
@@ -81,6 +81,18 @@ enum Meeting: string
     public function definition(string $purgeAfter): array
     {
         return ['code' => $this->value, ...$this->attributes($purgeAfter)];
+    }
+
+    /**
+     * この項目の前に置く見出しの名前(無ければ null。先頭の項目から見出しの前までは固定の「基本情報」に入る = 会議 README の 1.2)。
+     */
+    public function headingBefore(): ?string
+    {
+        return match ($this) {
+            self::Summary => '議事録',
+            self::Agenda => '材料',
+            default => null,
+        };
     }
 
     /**

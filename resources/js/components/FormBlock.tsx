@@ -1,11 +1,6 @@
-import { CircleQuestionMark } from 'lucide-react';
 import type { ReactNode } from 'react';
+import { TipButton } from '@/components/TipButton';
 import { Label } from '@/components/ui/label';
-import {
-    Tooltip,
-    TooltipContent,
-    TooltipTrigger,
-} from '@/components/ui/tooltip';
 import { unshownErrorKeys } from '@/lib/formErrors';
 import { cn } from '@/lib/utils';
 
@@ -110,11 +105,10 @@ export function RequiredMark() {
 }
 
 /**
- * 入力欄の説明(docs の 設計/画面の意匠/README.md 方針 9(d): ラベルの横の「?」のアイコン + Tooltip。マウスオーバーとキーボードのフォーカスで出す)。
- * 描き方はここ 1 か所。FormBlock の help と、FormBlock を使わない横並びの欄(ラベルが左)が自分の Label の横に置く。
- * 「?」は Label の外のボタン(欄の名前を変えない)で、読み上げの名前は「<ラベル>の説明」。説明文は読み上げ用の見えない要素にも置き、
- * 入力が invalidProps(id, error, true) の aria-describedby で結ぶ(Tooltip は開いている間だけ「?」に結ばれるので、入力にフォーカスした読み上げにも届くように)。
- * id = 入力の id、label = 欄のラベル。
+ * 入力欄のラベルの横の「?」({@link TipButton} の説明。docs の 設計/画面の意匠/README.md 方針 9(d))。FormBlock の help と、
+ * FormBlock を使わない横並びの欄(ラベルが左)が自分の Label の横に置く。「?」は Label の外(欄の名前を変えない)。
+ * 入力にフォーカスした読み上げにも届くよう、入力が invalidProps(id, error, true) の aria-describedby で写しを指す。写しは
+ * hidden(直接指された要素は隠れていても説明に入る。ブラウズの読み上げで 2 度読ませない)。id = 入力の id、label = 欄のラベル。
  */
 export function FieldHelp({
     id,
@@ -127,22 +121,10 @@ export function FieldHelp({
 }) {
     return (
         <>
-            <Tooltip>
-                <TooltipTrigger asChild>
-                    <button
-                        type="button"
-                        aria-label={`${label}の説明`}
-                        className="inline-flex rounded-full text-muted-foreground outline-none hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50"
-                    >
-                        <CircleQuestionMark
-                            className="size-4"
-                            aria-hidden="true"
-                        />
-                    </button>
-                </TooltipTrigger>
-                <TooltipContent>{children}</TooltipContent>
-            </Tooltip>
-            <span id={fieldHelpId(id)} className="sr-only">
+            <TipButton kind="help" name={label}>
+                {children}
+            </TipButton>
+            <span id={fieldHelpId(id)} hidden>
                 {children}
             </span>
         </>

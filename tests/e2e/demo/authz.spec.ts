@@ -36,6 +36,9 @@ function resourceRow(page: Page, name: string) {
     });
 }
 
+/** 画面・処理(アクションが 1 つの種類)のリソースの種類の欄の説明 */
+const TYPE_HELP = '画面・処理のアクションは「実行」の 1 つです';
+
 test('システム管理者に切り替えると歯車の「認可設定」から開け、判定する人とリソースの種類を替えられる', async ({
     page,
 }) => {
@@ -57,11 +60,11 @@ test('システム管理者に切り替えると歯車の「認可設定」か�
     await expect(judge).toHaveText('伊藤 涼子');
     await expect(type).toHaveText('画面・処理');
 
-    // アクションが 1 つの種類は、ラベルの横の「?」にフォーカスすると Tooltip が表示される
+    // アクションが 1 つの種類は「?」の説明が入力の説明に結ばれ(写しは hidden で見える文に出ない)、フォーカスで Tooltip が出る
+    await expect(type).toHaveAccessibleDescription(TYPE_HELP);
+    await expect(page.getByText(TYPE_HELP, { exact: true })).toBeHidden();
     await page.getByRole('button', { name: 'リソースの種類の説明' }).focus();
-    await expect(page.getByRole('tooltip')).toHaveText(
-        '画面・処理のアクションは「実行」の 1 つです',
-    );
+    await expect(page.getByRole('tooltip')).toHaveText(TYPE_HELP);
 
     // 列の見出し: 判定する人に該当する対象者だけ札「該当」
     const administrator = page.getByRole('columnheader', {
