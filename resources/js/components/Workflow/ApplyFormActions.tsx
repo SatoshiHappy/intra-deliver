@@ -9,7 +9,8 @@ import type { applyViewOf } from '@/lib/Workflow/applyScreen';
 import type { WorkflowApplyProps } from '@/types';
 
 /**
- * 申請の画面のボタン列に、画面の文・送り先・申請対象の値を取っている間の印を渡す(送る内容は useApplyForm の send)。
+ * 申請の画面のボタン列に、画面の文・送り先・読み直しの間の印(申請対象の写し・申請者と申請基準日の読み直し)を渡す
+ * (送る内容は useApplyForm の send)。
  */
 export function ApplyFormActions({
     props,
@@ -32,7 +33,7 @@ export function ApplyFormActions({
                 ...view.nextLine,
             ]}
             isApplyDisabled={view.blocker !== null}
-            isFetching={apply.applicationTarget.isBusy}
+            isFetching={apply.isBusy}
             onSaveDraft={() => apply.send(draftActionOf(props), 'saveDraft')}
             onApply={() => apply.send(applyActionOf(props), 'apply')}
         />

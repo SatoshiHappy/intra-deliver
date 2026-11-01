@@ -5,6 +5,7 @@ import {
 } from './applicationTargetFlow';
 import type {
     ApplicationTargetPorts,
+    ApplicationTargetFailure,
     ApplicationTargetView,
 } from './applicationTargetFlow';
 import { createFormData } from '@/lib/recordForm';
@@ -129,8 +130,9 @@ export function row(id: number, title: string, done = false) {
 export function snapshotOf(
     values: Record<string, RecordFieldValue> = {},
     details: ApplicationTargetSnapshot['details'] = {},
+    clearedFields: string[] = [],
 ): ApplicationTargetSnapshot {
-    return { values, details };
+    return { values, details, clearedFields };
 }
 
 /** 応答の処理(microtask)が済むまで待つ */
@@ -139,13 +141,14 @@ const settled = () => new Promise<void>((resolve) => setTimeout(resolve, 0));
 type FlowState = {
     record: RecordFormData;
     denied: number;
+    failures: ApplicationTargetFailure[];
     views: ApplicationTargetView[];
 };
 
 type FlowRequest = {
     url: string;
     succeed: (values: ApplicationTargetSnapshot) => Promise<void>;
-    fail: () => Promise<void>;
+    fail: (failure?: ApplicationTargetFailure) => Promise<void>;
     crash: (error: unknown) => Promise<void>;
 };
 
@@ -174,8 +177,8 @@ function fakePorts(
 
                         return settled();
                     },
-                    fail: () => {
-                        resolve(null);
+                    fail: (failure = 'failed') => {
+                        resolve(failure);
 
                         return settled();
                     },
@@ -186,8 +189,9 @@ function fakePorts(
                     },
                 });
             }),
-        notifyFailed: () => {
+        notifyFailed: (failure) => {
             state.denied += 1;
+            state.failures.push(failure);
         },
         publish: (view) => state.views.push(view),
     };
@@ -198,16 +202,18 @@ export function flowSetup(
     start: RecordFormData,
     targetField: string | null = APPLICATION_TARGET_FIELD,
 ) {
-    const state = {
+    const state: FlowState = {
         record: start,
         denied: 0,
-        views: [] as ApplicationTargetView[],
+        failures: [],
+        views: [],
     };
     const requests: FlowRequest[] = [];
     const ports = fakePorts(state, requests);
     const applicationTarget = applicationTargetFlowOf(targetField, {
         record: start,
         confirm: null,
+        cleared: [],
     });
     const lastView = () => state.views.at(-1);
     /** 申請対象の欄を選ぶ(null = 空にする)。返す Promise は応答を当て終わったとき */

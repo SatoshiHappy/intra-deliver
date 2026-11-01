@@ -20,8 +20,15 @@ const APPLICANT_PROPS = [
     'attachment',
 ];
 
-/** 申請基準日を変えたときに読み直す props */
-const BASE_DATE_PROPS = ['next'];
+/** 申請者・申請基準日の読み直しの失敗のトースト(文の正本 = docs の 設計/ワークフロー/申請の周辺/画面.md の 8 節) */
+export const NEXT_FAILED_MESSAGE =
+    '次のステップを読み込めませんでした。時間をおいて、もう一度選択してください。';
+
+/** 読み直しの失敗の後の、次のステップの表示の上の添え書き(次に読み直しが通ったら消す。文の正本 = 同じ 8 節) */
+export const NEXT_STALE_NOTE = '変更前の申請者・申請基準日での表示です。';
+
+/** 申請基準日を変えたときに読み直す props(baseDate = next を引いた日。戻る・進むで来た時に、next が欄の日付で引いたものかを比べる) */
+const BASE_DATE_PROPS = ['next', 'baseDate'];
 
 /** 部分の読み直しの要求(クエリと読み直す props) */
 export type ApplyReloadRequest = {
@@ -29,32 +36,34 @@ export type ApplyReloadRequest = {
     only: string[];
 };
 
+/** 読み直しの状態(busy = 読み直しの間。申請・一時保存を押せない。stale = 最後の読み直しが失敗し、次のステップの表示が前の値のもの) */
+export type ApplyReloadStatus = { busy: boolean; stale: boolean };
+
+/** 読み直しの状態を画面へ知らせる口(onFailed = 読み直しの失敗のトースト) */
+export type ApplyReloadEvents = {
+    onReselected: () => void;
+    onStatus: (status: ApplyReloadStatus) => void;
+    onFailed: () => void;
+};
+
 /** 読み直しを起こした入力の変更(値は変えた後の値) */
 export type ApplyReloadChange =
     | { field: 'base_date'; value: string }
     | { field: 'applicant'; value: number | null };
 
-/** 画面を開いたときに決まる値(開いたときの申請者と、申請対象から開いた画面か) */
-export type ApplyReloadScope = {
-    openedApplicant: number | null;
-    fromTarget: boolean;
-};
-
 /**
- * 部分の読み直しの要求。どの要求も今の入力の全部をクエリに載せ、待っている要求を取り消して送るときはその only を引き継ぐ
- * (取り消した要求が運ぶはずだった値と props を失わないため)。送らないときは null(待っている要求を取り消すだけ)。
- * current = 変えていない方の今の入力(フォームの値)、pendingOnly = 待っている要求の only(無ければ null)。
+ * 部分の読み直しの要求。どの要求も今の入力の全部をクエリに載せ、引き継ぐ props を only に足す(取り消した要求が運ぶはずだった値と props、
+ * 失敗で古いままの props を失わないため)。送らないときは null(待っている要求を取り消すだけ)。
+ * current = 変えていない方の今の入力(フォームの値)、carried = 待っている要求の only と失敗で古いままの props の和(無ければ空)。
  */
 export function applyReloadOf(
     change: ApplyReloadChange,
     current: { applicant: number | null; baseDate: string },
-    pendingOnly: string[] | null,
-    scope: ApplyReloadScope,
+    carried: string[],
 ): ApplyReloadRequest | null {
-    const pending = pendingOnly ?? [];
     const own = ownPropsOf(change);
 
-    if (own.length === 0 && !pending.includes('applicant')) {
+    if (own.length === 0 && !carried.includes('applicant')) {
         return null;
     }
 
@@ -62,9 +71,9 @@ export function applyReloadOf(
         change.field === 'applicant' ? change.value : current.applicant;
     const baseDate =
         change.field === 'base_date' ? change.value : current.baseDate;
-    const only = [...own, ...pending.filter((prop) => !own.includes(prop))];
+    const only = propsUnionOf(own, carried);
 
-    return requestOf(applicant, baseDate, only, scope);
+    return requestOf(applicant, baseDate, only);
 }
 
 /**
@@ -82,11 +91,10 @@ export function loadedApplicantOf(
 
 /**
  * 読み直しが返した申請者が今の選択肢に無いとき(開いた後に代理の設定が変わった)、選択肢も読み直す要求。要らなければ null。
- * only を付けたままにするのは、申請対象から開いた画面の targetEntry を開いたときのまま保つため。
+ * only を付けるのは、読み直す props を申請者に依るものと選択肢に限るため(targetEntry は useApplyOpened が開いた時のまま保つ)。
  */
 export function staleApplicantsReloadOf(
     loaded: Pick<WorkflowApplyProps, 'applicants' | 'applicant' | 'baseDate'>,
-    scope: ApplyReloadScope,
 ): ApplyReloadRequest | null {
     if (applicantValueOf(loaded.applicants, loaded.applicant) !== '') {
         return null;
@@ -94,7 +102,30 @@ export function staleApplicantsReloadOf(
 
     const only = [...APPLICANT_PROPS, 'applicants'];
 
-    return requestOf(loaded.applicant, loaded.baseDate, only, scope);
+    return requestOf(loaded.applicant, loaded.baseDate, only);
+}
+
+/**
+ * 戻る・進むで来た時の読み直しの要求(次のステップの表示などが、欄の申請者・申請基準日で引いたものでなければ。docs の
+ * 設計/ワークフロー/申請の周辺/画面.md の 5 節の「戻る・進むと申請対象の写し」)。loaded = 今の props が引いた申請者と申請基準日。
+ * 空の申請基準日は比べない(空のときは読み直さない = 変えた直後と同じ)。要らなければ null。
+ */
+export function staleReloadOf(
+    current: { applicant: number | null; baseDate: string },
+    loaded: Pick<WorkflowApplyProps, 'applicant' | 'baseDate'>,
+): ApplyReloadRequest | null {
+    if (current.applicant !== loaded.applicant) {
+        return requestOf(current.applicant, current.baseDate, APPLICANT_PROPS);
+    }
+
+    return current.baseDate !== '' && current.baseDate !== loaded.baseDate
+        ? requestOf(current.applicant, current.baseDate, BASE_DATE_PROPS)
+        : null;
+}
+
+/** 2 つの props の並びの和(前の並びの順のまま、後の並びに足す分を後ろへ) */
+export function propsUnionOf(a: string[], b: string[]): string[] {
+    return [...a, ...b.filter((prop) => !a.includes(prop))];
 }
 
 /** 変えた入力で読み直す props(申請基準日を空にしたときは無い) */
@@ -107,23 +138,18 @@ function ownPropsOf(change: ApplyReloadChange): string[] {
 }
 
 /**
- * クエリ applicant は自分なら外し、空の申請基準日は外す。申請対象から開いた画面で申請者が開いたときと違えば、新しい申請者が申請対象を
- * 閲覧できないと 404 になるのでクエリ target を外す(同じなら URL のまま)。
+ * クエリ applicant は自分なら外し、空の申請基準日は外す。開いた後の URL に target は無い(開いた直後に外す)ので、部分の読み直しは
+ * target の無い GET になる(docs の 設計/ワークフロー/申請の周辺/画面.md の 5 節)。
  */
 function requestOf(
     applicant: number | null,
     baseDate: string,
     only: string[],
-    scope: ApplyReloadScope,
 ): ApplyReloadRequest {
-    const leavesTarget =
-        scope.fromTarget && applicant !== scope.openedApplicant;
-
     return {
         data: {
             applicant: applicant ?? undefined,
             base_date: baseDate === '' ? undefined : baseDate,
-            ...(leavesTarget ? { target: undefined } : {}),
         },
         only,
     };

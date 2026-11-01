@@ -239,25 +239,21 @@ describe('開いた時の写し(続き)', () => {
 
     it('そのものを申請する・入っている・できない(写しの値が無い)・空・新規・一時保存・再申請: 写さない', () => {
         const current = recordOf({ name: '旧名' });
+        const untouched = { record: current, confirm: null, cleared: [] };
 
         for (const mode of ['record', 'new', 'draft', 'reapply'] as const) {
-            expect(openingOf(props({ mode }), current)).toEqual({
-                record: current,
-                confirm: null,
-            });
+            expect(openingOf(props({ mode }), current)).toEqual(untouched);
         }
     });
 
     it('一時保存・再申請は、写しの値があっても開いた時に写さない', () => {
         const current = recordOf({ name: '旧名' });
+        const untouched = { record: current, confirm: null, cleared: [] };
 
         for (const mode of ['draft', 'reapply'] as const) {
             expect(
                 openingOf(props({ mode, targetValues: snapshot }), current),
-            ).toEqual({
-                record: current,
-                confirm: null,
-            });
+            ).toEqual(untouched);
         }
     });
 });

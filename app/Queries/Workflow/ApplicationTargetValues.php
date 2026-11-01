@@ -15,12 +15,13 @@ use LogicException;
 
 /**
  * 申請対象の写しの値を申請の画面の初期値の形で作る(docs の 設計/ワークフロー/申請の周辺/既存のデータからの申請/申請対象からの申請.md の 10.3 節)。
- * 申請の画面の GET と写しの値の入口が同じ口を通るので、主体の判定をしない値の口は閲覧の判定の後にしか呼ばれない。
+ * 申請の画面の GET と写しの値の入口が同じ口を通るので、主体の判定をしない値の口は閲覧の判定の後にしか呼ばれない。写した後の値には、写す先の
+ * 項目の宣言で写す時の確かめ(写しの初期値の口の「値から」= 10.1 の写す時の確かめ)を当て、今は使えない値を空にして clearedFields に名前を返す。
  *
  * @phpstan-type ApplicationTarget array{field: string, module: string}
  * @phpstan-type ApplicationTargetRow array{values: array<string, mixed>}
  * @phpstan-type ApplicationTargetValueSet array{values: array<string, mixed>,
- *     details: array<string, list<ApplicationTargetRow>>}
+ *     details: array<string, list<ApplicationTargetRow>>, clearedFields: list<string>}
  */
 class ApplicationTargetValues
 {
@@ -58,6 +59,7 @@ class ApplicationTargetValues
      *
      * @param  ApplicationTarget  $applicationTarget
      * @param  array<string, mixed>  $applicationDefinition  申請書の業務モジュールの定義(呼び手が開けるアクションで引いたもの)
+     * @param  int|null  $writtenRecordId  写す先の申請書のレコード(そのものを申請する・再申請。ほかは null = 10.3 の写す先のレコードの id)
      * @return ApplicationTargetValueSet|null
      */
     public function valuesFor(
@@ -65,6 +67,7 @@ class ApplicationTargetValues
         array $applicationTarget,
         array $applicationDefinition,
         int $applicationTargetId,
+        ?int $writtenRecordId,
         DateTimeInterface $date,
         string $localeCode,
     ): ?array {
@@ -83,7 +86,10 @@ class ApplicationTargetValues
             $applicationTarget['field'], $reference,
         );
 
-        return $this->withChoiceNames($snapshot, $applicationDefinition);
+        return $this->forms->copyFromValues(
+            $requester, MixedValues::stringOf($applicationDefinition['code'] ?? null), $writtenRecordId,
+            $snapshot['values'], $snapshot['details'], $date, $localeCode,
+        );
     }
 
     /**
@@ -92,6 +98,7 @@ class ApplicationTargetValues
      * @param  ApplicationTarget  $applicationTarget
      * @param  array<string, mixed>  $applicationDefinition
      * @param  array<string, mixed>  $values  申請書のレコードの値(画面の初期値の形)
+     * @param  int  $writtenRecordId  申請書のレコード(写す先)
      * @return ApplicationTargetValueSet|null
      */
     public function valuesOfRecord(
@@ -99,6 +106,7 @@ class ApplicationTargetValues
         array $applicationTarget,
         array $applicationDefinition,
         array $values,
+        int $writtenRecordId,
         DateTimeInterface $date,
         string $localeCode,
     ): ?array {
@@ -107,7 +115,8 @@ class ApplicationTargetValues
         return $applicationTargetId === null
             ? null
             : $this->valuesFor(
-                $requester, $applicationTarget, $applicationDefinition, $applicationTargetId, $date, $localeCode,
+                $requester, $applicationTarget, $applicationDefinition, $applicationTargetId, $writtenRecordId,
+                $date, $localeCode,
             );
     }
 
@@ -122,78 +131,5 @@ class ApplicationTargetValues
         $reference = $values[$applicationTarget['field']] ?? null;
 
         return is_array($reference) && is_int($reference['id'] ?? null) ? $reference['id'] : null;
-    }
-
-    /**
-     * 選択の名前を申請書の業務モジュールの選択肢で引き直す(申請対象の選択肢の名前は申請書の画面の初期値と違いうるため。
-     * 申請書に無いコードの名前は null = 編集の画面の初期値と同じ)。
-     *
-     * @param  ApplicationTargetValueSet  $snapshot  {@see ApplicationTargetSnapshot::snapshot()} の結果
-     * @param  array<array-key, mixed>  $definition
-     * @return ApplicationTargetValueSet
-     */
-    private function withChoiceNames(array $snapshot, array $definition): array
-    {
-        $fields = $this->fieldsByCode($definition);
-        $details = [];
-
-        foreach ($snapshot['details'] as $code => $rows) {
-            $childFields = $this->fieldsByCode(MixedValues::arrayOf($fields[$code]['childModule'] ?? null));
-            $details[$code] = array_map(
-                fn (array $row): array => ['values' => $this->named($row['values'], $childFields)],
-                $rows,
-            );
-        }
-
-        return ['values' => $this->named($snapshot['values'], $fields), 'details' => $details];
-    }
-
-    /**
-     * @param  array<string, mixed>  $values
-     * @param  array<string, array<array-key, mixed>>  $fields
-     * @return array<string, mixed>
-     */
-    private function named(array $values, array $fields): array
-    {
-        foreach ($values as $code => $value) {
-            $field = $fields[$code] ?? [];
-
-            if (($field['type'] ?? null) === 'choice' && is_array($value) && is_string($value['code'] ?? null)) {
-                $values[$code] = ['code' => $value['code'], 'name' => $this->optionName($field, $value['code'])];
-            }
-        }
-
-        return $values;
-    }
-
-    /**
-     * @param  array<array-key, mixed>  $field
-     */
-    private function optionName(array $field, string $optionCode): ?string
-    {
-        foreach (MixedValues::arrayOf($field['options'] ?? null) as $option) {
-            if (is_array($option) && ($option['code'] ?? null) === $optionCode && is_string($option['name'] ?? null)) {
-                return $option['name'];
-            }
-        }
-
-        return null;
-    }
-
-    /**
-     * @param  array<array-key, mixed>  $definition
-     * @return array<string, array<array-key, mixed>>
-     */
-    private function fieldsByCode(array $definition): array
-    {
-        $byCode = [];
-
-        foreach (MixedValues::arrayOf($definition['fields'] ?? null) as $field) {
-            if (is_array($field) && is_string($field['code'] ?? null)) {
-                $byCode[$field['code']] = $field;
-            }
-        }
-
-        return $byCode;
     }
 }

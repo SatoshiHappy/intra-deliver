@@ -1,20 +1,27 @@
-import { useHttp } from '@inertiajs/react';
+import { router, useHttp } from '@inertiajs/react';
 import type { InertiaFormProps } from '@inertiajs/react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { toast } from 'sonner';
 import type { ApplyForm } from '@/lib/Workflow/applyForm';
 import { applicationTargetSnapshotUrlOf } from '@/lib/Workflow/applyRoutes';
 import type { ApplicationTargetOpening } from '@/lib/Workflow/applicationTarget';
-import { fetchOf } from '@/lib/Workflow/applicationTargetFetch';
+import type { RememberedTarget } from '@/lib/Workflow/applyOpened';
+import {
+    failedMessageOf,
+    fetchOf,
+} from '@/lib/Workflow/applicationTargetFetch';
 import {
     applicantChanged,
     applicantReselected,
+} from '@/lib/Workflow/applicationTargetApplicant';
+import {
     applicationTargetFlowOf,
     cancelApplicationTarget,
     recordChanged,
     reflectApplicationTarget,
 } from '@/lib/Workflow/applicationTargetFlow';
 import type {
+    ApplicationTargetFlow,
     ApplicationTargetPorts,
     ApplicationTargetFetch,
     ApplicationTargetView,
@@ -22,10 +29,6 @@ import type {
 import type { RecordFormData } from '@/lib/recordForm';
 import type { ApplicationTargetSnapshot } from '@/types/workflowApplyTarget';
 import type { WorkflowApplyProps } from '@/types';
-
-/** 写しの値を取れなかったときのトースト(403・404 に限らず、どの失敗でも出す。参照の候補の取得の失敗と同じ扱い。文の正本 = docs の 設計/ワークフロー/申請の周辺/画面.md の 8 節) */
-const APPLICATION_TARGET_FAILED_MESSAGE =
-    '申請対象の値を取得できませんでした。';
 
 /** 写しが読み書きするフォームの口 */
 type ApplicationTargetForm = Pick<
@@ -73,8 +76,23 @@ function portsOf(
         },
         urlOf: (id, applicant) =>
             applicationTargetSnapshotUrlOf(id, scope, applicant),
-        notifyFailed: () => toast.error(APPLICATION_TARGET_FAILED_MESSAGE),
+        notifyFailed: (failure) => toast.error(failedMessageOf(failure)),
     };
+}
+
+/**
+ * 戻る・進むで来た時に、最後に決まった申請対象と 1 行を戻すため、履歴の項目に覚える(画面.md の 5 節)。
+ */
+function rememberTarget(
+    applicationTarget: ApplicationTargetFlow,
+    cleared: string[],
+    rememberKey: string,
+) {
+    const remembered: RememberedTarget = {
+        settled: applicationTarget.state.settled,
+        cleared,
+    };
+    router.remember(remembered, `${rememberKey}:target`);
 }
 
 /**
@@ -85,6 +103,7 @@ export function useApplicationTarget(
     form: ApplicationTargetForm,
     props: WorkflowApplyProps,
     opening: ApplicationTargetOpening,
+    rememberKey: string,
 ) {
     const [applicationTarget] = useState(() =>
         applicationTargetFlowOf(props.targetField, opening),
@@ -92,17 +111,26 @@ export function useApplicationTarget(
     const [view, setView] = useState<ApplicationTargetView>({
         busy: false,
         confirm: opening.confirm,
+        cleared: opening.cleared,
     });
+    const remember = (cleared: string[]) =>
+        rememberTarget(applicationTarget, cleared, rememberKey);
     const ports = portsOf(form, props, {
         fetch: useApplicationTargetFetch(),
-        publish: setView,
+        publish: (next) => {
+            setView(next);
+            remember(next.cleared);
+        },
     });
 
+    useEffect(() => remember(opening.cleared), []);
+
     return {
-        /** 写す前の確かめのダイアログと、取っている間の印 */
+        /** 写す前の確かめのダイアログと、取っている間の印と、空にした項目の 1 行の名前 */
         dialog: {
             isBusy: view.busy,
             confirm: view.confirm,
+            cleared: view.cleared,
             reflect: () => reflectApplicationTarget(applicationTarget, ports),
             cancel: () => cancelApplicationTarget(applicationTarget, ports),
         },

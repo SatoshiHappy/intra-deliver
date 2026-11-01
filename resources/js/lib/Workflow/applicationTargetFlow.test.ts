@@ -3,9 +3,9 @@ import { initialApplicationTargetState } from './applicationTarget';
 import {
     applicationTargetFlowOf,
     cancelApplicationTarget,
-    applicantChanged,
     reflectApplicationTarget,
 } from './applicationTargetFlow';
+import { applicantChanged } from './applicationTargetApplicant';
 import {
     APPLICATION_TARGET_FIELD,
     snapshotFor,
@@ -26,12 +26,12 @@ describe('申請対象を選んだとき', () => {
         expect(requests.map((request) => request.url)).toEqual([
             '/values/5?applicant=10',
         ]);
-        expect(lastView()).toEqual({ busy: true, confirm: null });
+        expect(lastView()).toEqual({ busy: true, confirm: null, cleared: [] });
 
         await requests[0].succeed(snapshotFor('新製品'));
 
         expect(state.record.values.name).toBe('新製品');
-        expect(lastView()).toEqual({ busy: false, confirm: null });
+        expect(lastView()).toEqual({ busy: false, confirm: null, cleared: [] });
     });
 
     it('空にしたら要求しない。同じ申請対象を選び直しても要求しない', async () => {
@@ -225,6 +225,7 @@ describe('開いた時の確かめ', () => {
             ...applicationTargetFlowOf(APPLICATION_TARGET_FIELD, {
                 record: current,
                 confirm,
+                cleared: ['前の写しで空にした項目'],
             }),
         };
 
@@ -234,5 +235,6 @@ describe('開いた時の確かめ', () => {
         expect(applicationTarget.state).toEqual(
             initialApplicationTargetState(picked(5, 'P5')),
         );
+        expect(state.views.at(-1)?.cleared).toEqual(['前の写しで空にした項目']);
     });
 });

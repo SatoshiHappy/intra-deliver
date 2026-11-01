@@ -57,6 +57,7 @@ final class RecordCopyControllerTest extends TransactionalTestCase
                         ['values' => ['product' => $project]],
                         ['values' => ['product' => null]],
                     ]],
+                    'clearedFields' => [],
                     'rowAccess' => ['restricted' => false, 'viewers' => []],
                 ]));
         $this->get('/records/data/estimates/create')->assertOk()

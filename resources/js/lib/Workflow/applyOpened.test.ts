@@ -1,0 +1,160 @@
+import { describe, expect, it } from 'vite-plus/test';
+import {
+    openedFormOf,
+    openedOf,
+    rememberKeyOf,
+    restoredOf,
+    strippedUrlOf,
+    withOpened,
+} from './applyOpened';
+import {
+    picked,
+    planModule,
+    recordOf,
+    reference,
+    snapshotOf,
+} from './applicationTarget.testing';
+import type { ApplyForm } from './applyForm';
+import type { WorkflowApplyProps } from '@/types';
+
+/** 開いた時の props(要るキーだけ) */
+function props(overrides: Partial<WorkflowApplyProps>): WorkflowApplyProps {
+    return {
+        mode: 'new',
+        case: null,
+        targetField: 'project',
+        targetEntry: null,
+        ...overrides,
+    } as WorkflowApplyProps;
+}
+
+const entry = { module: 'project', record: 5 };
+
+describe('写しのためだけのクエリを外した URL(画面.md の 5 節)', () => {
+    it('target と copy を外し、ほかのクエリ(record・applicant・base_date)は残す', () => {
+        expect(
+            strippedUrlOf(
+                'https://x.test/workflow/flows/f/apply?target=5&applicant=3&base_date=2026-10-13',
+            ),
+        ).toBe(
+            'https://x.test/workflow/flows/f/apply?applicant=3&base_date=2026-10-13',
+        );
+        expect(
+            strippedUrlOf('https://x.test/workflow/flows/f/apply?copy=7'),
+        ).toBe('https://x.test/workflow/flows/f/apply');
+    });
+
+    it('外すものが無ければ置き換えない(record は申請するものを決めるので外さない)', () => {
+        expect(
+            strippedUrlOf('https://x.test/workflow/flows/f/apply?record=9'),
+        ).toBeNull();
+        expect(
+            strippedUrlOf('https://x.test/workflow/flows/f/apply'),
+        ).toBeNull();
+    });
+});
+
+describe('開いた時の props を保つ', () => {
+    it('同じ申請の画面(入力の誤りで戻る GET・部分の再読み込み)では、開いた時の targetEntry を保つ', () => {
+        const opened = openedOf(props({ targetEntry: entry }));
+
+        expect(withOpened(props({}), opened).targetEntry).toEqual(entry);
+    });
+
+    it('一時保存して一時保存の画面へ移ったら保たない', () => {
+        const opened = openedOf(props({ targetEntry: entry }));
+        const draft = props({
+            mode: 'draft',
+            case: { id: 3, number: null, revision: 1 },
+        });
+
+        expect(withOpened(draft, opened).targetEntry).toBeNull();
+        expect(rememberKeyOf(draft)).not.toBe(rememberKeyOf(props({})));
+    });
+});
+
+describe('戻る・進むで来た時(申請対象からの申請.md の 10.2 の「戻る・進むで来た時」の行)', () => {
+    const left = {
+        name: '',
+        comment: '',
+        base_date: '2026-10-20',
+        applicant: null,
+        record: recordOf({
+            project: picked(6, '選びかけ'),
+            name: '打ち直した',
+        }),
+        contact_users: [],
+        contact_message: '',
+    } as ApplyForm;
+
+    it('欄は離れた時の値のまま、申請対象は最後に決まったものに戻り、確かめのダイアログは出さず、1 行は離れた時のまま', () => {
+        const restored = restoredOf(
+            left,
+            { settled: picked(5, '決まった'), cleared: ['担当者'] },
+            'project',
+        );
+
+        expect(restored.data.record.values.name).toBe('打ち直した');
+        expect(restored.data.record.values.project).toEqual(
+            picked(5, '決まった'),
+        );
+        expect(restored.data.base_date).toBe('2026-10-20');
+        expect(restored.opening).toEqual({
+            record: restored.data.record,
+            confirm: null,
+            cleared: ['担当者'],
+        });
+    });
+
+    it('申請対象の項目が無い画面と、写しの状態を覚えていないときは欄をそのまま戻す', () => {
+        expect(restoredOf(left, undefined, 'project').data).toEqual(left);
+        expect(
+            restoredOf(left, { settled: null, cleared: [] }, null).data,
+        ).toEqual(left);
+    });
+});
+
+describe('開いた時のフォームの値(戻る・進むで来たか)', () => {
+    const fromRecord = props({
+        module: planModule,
+        initial: null,
+        baseDate: '2026-10-13',
+        applicant: null,
+        targetValues: snapshotOf(
+            { project: reference(5, 'P5'), name: '写した名前' },
+            {},
+            ['担当者'],
+        ),
+        targetEntry: { module: 'project', record: 5 },
+    });
+
+    it('初めて開いた: 開いた時の写しを当て、1 行を出す', () => {
+        const opened = openedFormOf(fromRecord, 'k', () => undefined);
+
+        expect(opened.restored).toBe(false);
+        expect(opened.data.record.values.name).toBe('写した名前');
+        expect(opened.opening.cleared).toEqual(['担当者']);
+    });
+
+    it('① 打ち直して離れて戻る: 写しが再び当たらず打ち直した値のまま。④ 確かめの途中で離れて戻る: 申請対象は最後に決まったもの、ダイアログなし', () => {
+        const left = openedFormOf(fromRecord, 'k', () => undefined).data;
+        const remembered: Record<string, unknown> = {
+            'k:data': {
+                ...left,
+                record: recordOf({
+                    project: picked(6, '確かめ中の B'),
+                    name: '打ち直した',
+                }),
+            },
+            'k:target': { settled: picked(5, 'P5'), cleared: ['担当者'] },
+        };
+
+        const opened = openedFormOf(fromRecord, 'k', (key) => remembered[key]);
+
+        expect(opened.restored).toBe(true);
+        expect(opened.data.record.values.name).toBe('打ち直した');
+        expect(opened.data.record.values.project).toEqual(picked(5, 'P5'));
+        expect(opened.opening.confirm).toBeNull();
+        expect(opened.opening.cleared).toEqual(['担当者']);
+    });
+});

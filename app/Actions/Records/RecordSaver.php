@@ -6,6 +6,8 @@ use App\Actions\Records\Api\RecordInput;
 use App\Models\Records\Record;
 use App\Models\Records\RecordModule;
 use App\Queries\Authz\Api\Requester;
+use App\Queries\Records\ReferenceCheck;
+use App\Queries\Records\ReferenceTargets;
 use App\Support\AccessContext;
 use Carbon\CarbonImmutable;
 use DateTimeInterface;
@@ -50,7 +52,7 @@ class RecordSaver
         $parent = new RecordDraft($module, $record, '', $values);
         $plan = $this->details->build($module, $record, $input->details, $errors);
         $rows = array_merge([], ...array_values($plan['drafts']));
-        $check = new ReferenceCheck($requester, $date);
+        $check = new ReferenceCheck($requester, $date, locksTargets: true);
         $this->targets->prepare($check, array_merge([], ...array_map(fn (RecordDraft $draft) => $this->reader->changedReferences($draft), [$parent, ...$rows])));
         $originalRowAccess = $this->rowAccess->original($module, $record);
         $this->targets->prepareParties($check, $this->rowAccess->newViewers($originalRowAccess, $input));

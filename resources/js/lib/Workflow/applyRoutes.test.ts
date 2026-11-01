@@ -91,7 +91,14 @@ describe('申請対象の値の写しの引き先', () => {
 
 const flow = { code: 'project_plan', name: 'プロジェクト計画の承認' };
 const module = { code: 'project_plan_application' };
-const newProps = { mode: 'new', flow, module, case: null, recordId: null };
+const newProps = {
+    mode: 'new',
+    flow,
+    module,
+    case: null,
+    recordId: null,
+    targetEntry: null,
+};
 const recordProps = { ...newProps, mode: 'record', recordId: 7 };
 const reapplyProps = {
     ...newProps,
@@ -148,5 +155,19 @@ describe('既存のデータからの申請の送り先と戻り先', () => {
         expect(breadcrumbsOf(asProps(newProps))[1].href.url).toBe(
             '/workflow/flows/project_plan/apply',
         );
+    });
+});
+
+describe('業務レコードの詳細から開いた申請の画面の戻り先(申請の周辺/画面.md の 5 節)', () => {
+    it('キャンセルは開いた業務レコードの詳細(開いた時の targetEntry)', () => {
+        const fromTarget = {
+            ...newProps,
+            targetEntry: { module: 'project', record: 12 },
+        };
+
+        expect(backHrefOf(asProps(fromTarget)).url).toBe(
+            '/records/data/project/12',
+        );
+        expect(backHrefOf(asProps(newProps)).url).toBe('/workflow/flows');
     });
 });

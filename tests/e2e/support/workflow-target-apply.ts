@@ -12,6 +12,9 @@ export const APPLY_URL = `/workflow/flows/${FLOW_CODE}/apply`;
 export const SOURCE = '社内ポータル刷新';
 export const OTHER = '新規顧客開拓キャンペーン';
 export const APPLICATION_TARGET_ERROR = '申請対象の値を取得できませんでした。';
+/** 403・404 のほかの失敗(5xx・通信の切断)のトースト(画面.md の 8 節) */
+export const APPLICATION_TARGET_RETRY_ERROR =
+    '申請対象の値を取得できませんでした。時間をおいて、もう一度選択してください。';
 export const CONFIRM_TITLE = '申請対象の値を反映しますか？';
 
 /** 申請の画面の入力のフォーム */

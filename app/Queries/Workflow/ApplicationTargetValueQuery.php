@@ -80,9 +80,22 @@ class ApplicationTargetValueQuery
         $action = $this->updates($form) ? RecordModuleAction::Update : RecordModuleAction::Create;
         $definition = $this->forms->definition($requester, $moduleCode, $action, $date);
 
-        return $this->applicationTargetValues
-            ->valuesFor($requester, $applicationTarget, $definition, $applicationTargetId, $date, $context->localeCode)
-            ?? throw (new ModelNotFoundException)->setModel(Record::class, [$applicationTargetId]);
+        return $this->applicationTargetValues->valuesFor(
+            $requester, $applicationTarget, $definition, $applicationTargetId, $this->writtenRecordOf($form),
+            $date, $context->localeCode,
+        ) ?? throw (new ModelNotFoundException)->setModel(Record::class, [$applicationTargetId]);
+    }
+
+    /**
+     * 写す先の申請書のレコード(そのものを申請するフォーム = record、再申請 = 一時保存でない案件のレコード、ほかは null = 10.3 節の読み方)。
+     *
+     * @param  OpenedForm  $form
+     */
+    private function writtenRecordOf(array $form): ?int
+    {
+        $case = $form['case'];
+
+        return $case !== null && $case->state !== WorkflowCaseState::Draft ? $case->record_id : $form['record'];
     }
 
     /**

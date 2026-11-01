@@ -5,7 +5,7 @@ import { ApplyAttachmentSurface } from '@/components/Workflow/ApplyAttachmentSur
 import { ApplyCommentSurface } from '@/components/Workflow/ApplyCommentSurface';
 import { ApplyContactSurface } from '@/components/Workflow/ApplyContactSurface';
 import { ApplyFormActions } from '@/components/Workflow/ApplyFormActions';
-import { ApplyHeading } from '@/components/Workflow/ApplyHeading';
+import { ApplyFormHeading } from '@/components/Workflow/ApplyHeading';
 import { ApplyInfoSurface } from '@/components/Workflow/ApplyInfoSurface';
 import { ApplyRecordSurface } from '@/components/Workflow/ApplyRecordSurface';
 import { ApplicationTargetConfirmDialog } from '@/components/Workflow/ApplicationTargetConfirmDialog';
@@ -22,11 +22,12 @@ type Props = WorkflowApplyProps;
 
 /**
  * 申請・一時保存・再申請(docs の 設計/ワークフロー/画面/申請と案件.md 3 節、ルートの深さ/画面/案件の側の画面.md 5 節、案件の運用/画面/案件の画面.md の 6.1 節)。
- * 面の並び = 申請情報(申請者の欄と注意の囲みを先頭に)→ 申請内容 → コメント → 添付ファイル → 連絡。
+ * 面の並び = 申請情報(申請者の欄と注意の囲みを先頭に)→ 申請内容 → コメント → 添付ファイル → 連絡。開いた時の props は
+ * useApplyForm(の useApplyOpened)が保つ(申請の周辺/画面.md の 5 節)。
  */
-export default function Apply(props: Props) {
-    const apply = useApplyForm(props);
-    const { form, errors } = apply;
+export default function Apply(rawProps: Props) {
+    const apply = useApplyForm(rawProps);
+    const { props, form, errors } = apply;
     const formRef = useRef<HTMLFormElement>(null);
     const view = applyViewOf(props, form.data.record, form.data.name);
     const source = useApplyCandidateSource(props, form.data.applicant);
@@ -38,7 +39,7 @@ export default function Apply(props: Props) {
             <Head title={view.heading} />
 
             <div className="flex h-full flex-1 flex-col gap-6 p-4">
-                <ApplyHeading heading={view.heading} line={view.headingLine} />
+                <ApplyFormHeading view={view} apply={apply} />
                 <form
                     ref={formRef}
                     noValidate

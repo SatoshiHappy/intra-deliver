@@ -81,6 +81,15 @@ class FieldValueParser
         return $field->max_length ?? ($field->is_multiline ? self::MULTILINE_MAX : self::SINGLE_LINE_MAX);
     }
 
+    /**
+     * 選択の項目の選択肢にそのコードがあるか。保存と写しの初期値が同じ確かめを呼ぶ(docs の
+     * 設計/ワークフロー/申請の周辺/既存のデータからの申請/案件からの複製/写す値.md の 13.3)。
+     */
+    public function hasOption(RecordField $field, string $code): bool
+    {
+        return $field->recordFieldOptions->contains(fn (RecordFieldOption $option) => $option->code === $code);
+    }
+
     private function stringOf(RecordField $field, mixed $value): string
     {
         if (! is_string($value) || ! mb_check_encoding($value, 'UTF-8')) {
@@ -186,7 +195,7 @@ class FieldValueParser
             throw new InvalidFieldValue("{$field->name}の値が正しくありません");
         }
 
-        $isOption = $field->recordFieldOptions->contains(fn (RecordFieldOption $option) => $option->code === $value);
+        $isOption = $this->hasOption($field, $value);
 
         // 今の定義(選択肢)だけに合わない誤り(isWrongShape false。InvalidFieldValue の線引き)。文字列でない値は値の形の誤り(上)
         return $isOption ? $value : throw new InvalidFieldValue("{$field->name}の値が正しくありません", isWrongShape: false);

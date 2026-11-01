@@ -8,6 +8,7 @@ use App\Queries\Authz\Api\Requester;
 use DateTimeInterface;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use LogicException;
 
 /**
  * レコード 1 件の読み取り(docs の 設計/業務データの入れ物/画面/業務の画面.md 2.3 の record と、2.2 の編集の record)。判定は呼び手の責任で、定義を読み込んだ業務モジュールを渡す
@@ -26,6 +27,7 @@ class RecordQuery
         private RecordValueReader $reader,
         private RecordDefinitionQuery $definitions,
         private RecordRowAccessValues $rowAccess,
+        private RecordCopyValues $copies,
     ) {}
 
     /**
@@ -91,12 +93,14 @@ class RecordQuery
 
     /**
      * 複製の登録の画面の初期値(設計/業務データの入れ物/レコードの共通機能/複製.md の 1 節・2 節): 写すのはレコードの値(項目と明細)と参照制限の
-     * チェックと参照者(業務モジュールの参照制限の既定は使わない)だけで、明細の行は id を持たない。参照の表示名は編集の画面の初期値と同じ形(読めない参照先は label が null)。
-     * 判定(create と元の read・行の判定)は呼び手の責任。引数と例外は {@see self::show()} と同じ。
+     * チェックと参照者(業務モジュールの参照制限の既定は使わない)だけで、明細の行は id を持たない。今は使えない値・参照者は空にして、
+     * 空にした項目の名前を clearedFields に返す(写しの初期値の内部の 1 か所 {@see RecordCopyValues::fromRecord()})。参照の表示名は編集の画面の
+     * 初期値と同じ形。判定(create と元の read・行の判定)は呼び手の責任。引数と例外は {@see self::show()} と同じ。
      *
      * @param  RecordModule  $module  定義を読み込んだ業務モジュール(判定は呼び手の責任)
      * @return array{id: int, values: array<string, mixed>,
-     *     details: array<string, list<array{values: array<string, mixed>}>>, rowAccess: ShownRowAccess}
+     *     details: array<string, list<array{values: array<string, mixed>}>>, clearedFields: list<string>,
+     *     rowAccess: ShownRowAccess}
      *
      * @throws ModelNotFoundException<Record> レコードがその業務モジュールに無いとき(判定の後に見る)
      */
@@ -107,25 +111,20 @@ class RecordQuery
         DateTimeInterface $date,
         string $localeCode,
     ): array {
-        $read = $this->read($requester, $module, $recordId, $date, $localeCode);
+        $record = Record::query()->where('record_module_id', $module->id)->findOrFail($recordId);
+        $copied = $this->copies->fromRecord($requester, $module, $record, $date, $localeCode);
+        $rowAccess = $copied['rowAccess'] ?? throw new LogicException('レコードからの写しは参照制限を返す');
 
         return [
-            'id' => $read['record']->id,
-            'values' => $read['values'],
-            'details' => array_map(self::withoutIds(...), $read['details']),
-            'rowAccess' => $this->rowAccess->shown($read['record'], $date, $localeCode),
+            'id' => $record->id,
+            'values' => $copied['values'],
+            'details' => $copied['details'],
+            'clearedFields' => $copied['clearedFields'],
+            'rowAccess' => [
+                'restricted' => $rowAccess['restricted'],
+                'viewers' => $this->rowAccess->parties($rowAccess['viewers'], $date, $localeCode),
+            ],
         ];
-    }
-
-    /**
-     * 明細の行から id を外す(複製の初期値の行は新しい行)。
-     *
-     * @param  list<DetailRow>  $rows
-     * @return list<array{values: array<string, mixed>}>
-     */
-    private static function withoutIds(array $rows): array
-    {
-        return array_map(fn (array $row) => ['values' => $row['values']], $rows);
     }
 
     /**

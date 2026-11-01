@@ -1,9 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test';
 import { applyReloadOf, staleApplicantsReloadOf } from './applyReload';
 
-/** 既存のデータからの申請の画面を、申請者 10 で開いた(申請対象から開いた画面ではない) */
-const recordOpened = { openedApplicant: 10, fromTarget: false };
-
 /** レコードの指定を運ぶ props(開いたときの版・初期値・レコードの id と見出し)。読み直しはどれも触らない */
 const RECORD_PROPS = ['recordVersion', 'initial', 'recordId', 'recordTitle'];
 
@@ -20,10 +17,10 @@ describe('既存のデータからの申請の読み直し(レコードの版は
 
     it('どの要求も only にレコードの props を含めず、クエリ record・target を外さない', () => {
         const requests = [
-            applyReloadOf(date, current, null, recordOpened),
-            applyReloadOf(toSelf, current, null, recordOpened),
-            applyReloadOf(date, current, pending, recordOpened),
-            staleApplicantsReloadOf(stale, recordOpened),
+            applyReloadOf(date, current, []),
+            applyReloadOf(toSelf, current, []),
+            applyReloadOf(date, current, pending),
+            staleApplicantsReloadOf(stale),
         ];
 
         for (const request of requests) {

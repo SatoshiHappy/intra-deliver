@@ -1,5 +1,6 @@
 import { Head } from '@inertiajs/react';
 import { RecordForm } from '@/components/Records/RecordForm';
+import { clearedFieldsLineOf } from '@/lib/clearedFields';
 import { createFormData, editFormData } from '@/lib/recordForm';
 import { create, index, show, store } from '@/routes/records/data';
 import type {
@@ -46,18 +47,30 @@ function cancelHrefOf(props: Props) {
 
 /**
  * 業務の登録(docs の 設計/業務データの入れ物/画面/業務の画面.md 2.2)。複製は元の値(項目と明細。明細の行は新しい行。参照制限も
- * 業務モジュールの既定でなく元の値)を初期値にする(設計/業務データの入れ物/レコードの共通機能/複製.md の 1 節・2 節)。
+ * 業務モジュールの既定でなく元の値)を初期値にし、今は使えない値を空にした項目を見出しの下の 1 行で知らせる
+ * (設計/業務データの入れ物/レコードの共通機能/複製.md の 1 節・2 節)。
  */
 export default function Create(props: Props) {
     const { module, headings, copySource, rowAccess } = props;
     const heading = headingOf(module);
+    const clearedLine =
+        copySource === null
+            ? null
+            : clearedFieldsLineOf('元のレコード', copySource.clearedFields);
 
     return (
         <>
             <Head title={heading} />
 
             <div className="flex h-full flex-1 flex-col gap-6 p-4">
-                <h1 className="text-2xl font-semibold">{heading}</h1>
+                <div className="flex flex-col gap-1">
+                    <h1 className="text-2xl font-semibold">{heading}</h1>
+                    {clearedLine !== null && (
+                        <p className="text-sm text-muted-foreground">
+                            {clearedLine}
+                        </p>
+                    )}
+                </div>
                 <RecordForm
                     module={module}
                     headings={headings}

@@ -37,10 +37,11 @@ export type ApplicationTargetConfirm = {
     changes: ApplicationTargetChange[];
 };
 
-/** 開いた時のフォームの値と、開いた直後に確かめるもの */
+/** 開いた時のフォームの値と、開いた直後に確かめるものと、開いた時に写した値で空にした項目の名前 */
 export type ApplicationTargetOpening = {
     record: RecordFormData;
     confirm: ApplicationTargetConfirm | null;
+    cleared: string[];
 };
 
 /**
@@ -159,12 +160,8 @@ export function openingOf(
 ): ApplicationTargetOpening {
     const { module, targetField, targetValues, targetEntry, mode } = props;
 
-    if (targetValues === null) {
-        return { record, confirm: null };
-    }
-
-    if (targetEntry === null && mode !== 'record') {
-        return { record, confirm: null };
+    if (targetValues === null || (targetEntry === null && mode !== 'record')) {
+        return { record, confirm: null, cleared: [] };
     }
 
     const confirm =
@@ -178,11 +175,11 @@ export function openingOf(
               )
             : null;
 
-    return {
-        record:
-            confirm === null
-                ? snapshotRecordOf(module, record, targetValues)
-                : record,
-        confirm,
-    };
+    return confirm === null
+        ? {
+              record: snapshotRecordOf(module, record, targetValues),
+              confirm,
+              cleared: targetValues.clearedFields,
+          }
+        : { record, confirm, cleared: [] };
 }

@@ -6,6 +6,7 @@ import {
     OTHER,
     SOURCE,
     APPLICATION_TARGET_ERROR,
+    APPLICATION_TARGET_RETRY_ERROR,
     applyForm,
     budgetField,
     expectConfirmRows,
@@ -119,4 +120,61 @@ test('写しの値の入口が 404 のとき、トーストが出て、申請対
     await expect(
         form.getByRole('button', { name: '申請', exact: true }),
     ).toBeEnabled();
+});
+
+test('写す時に空にした値は欄が空で、申請対象の値の 1 行に名前が出る', async ({
+    page,
+}) => {
+    await openAs(page, 'applicant', APPLY_URL);
+    const form = applyForm(page);
+    // 今日に有効でない責任者を持つ申請対象の応答(写す時の確かめの結果。サーバーの確かめは Feature テスト)
+    const cleared = { manager: '' };
+    await page.route('**/workflow/target-values/*', async (route) => {
+        const response = await route.fetch();
+        const body = (await response.json()) as {
+            values: Record<string, { label?: string } | null>;
+        };
+        cleared.manager = body.values.manager?.label ?? '';
+        await route.fulfill({
+            response,
+            json: {
+                ...body,
+                values: { ...body.values, manager: null },
+                clearedFields: ['責任者'],
+            },
+        });
+    });
+
+    await pickApplicationTarget(page, '新規', OTHER);
+
+    await expect(nameField(form)).toHaveValue(OTHER);
+    expect(cleared.manager).not.toBe('');
+    await expect(
+        form.getByRole('combobox', { name: '責任者', exact: true }),
+    ).not.toContainText(cleared.manager);
+    await expect(
+        page.getByText(
+            '申請対象の値のうち、責任者は、現在使用できない値を外しました。',
+            { exact: true },
+        ),
+    ).toBeVisible();
+});
+
+test('写しの値の入口が 500 のときは、時間をおいて選び直すトーストが出て、申請対象が戻る', async ({
+    page,
+}) => {
+    await openAs(page, 'applicant', APPLY_URL);
+    const form = applyForm(page);
+    await pickApplicationTarget(page, '新規', OTHER);
+    await expectSnapshot(form, { name: OTHER, budget: '300', rows: 2 });
+
+    await page.route('**/workflow/target-values/*', (route) =>
+        route.fulfill({ status: 500, body: 'Server Error' }),
+    );
+    await pickApplicationTarget(page, '社内', SOURCE);
+
+    await expect(
+        page.getByText(APPLICATION_TARGET_RETRY_ERROR, { exact: true }),
+    ).toBeVisible();
+    await expect(applicationTargetField(form)).toContainText(OTHER);
 });

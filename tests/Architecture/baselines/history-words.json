@@ -1,6 +1,5 @@
 {
     "app/Actions/Authz/Api/CreateSelectionSubjectGroup.php": 1,
-    "app/Actions/Records/ReferenceCheck.php": 2,
     "app/Actions/Workflow/CaseOperationResult.php": 1,
     "app/Actions/Workflow/CasePlanRequest.php": 1,
     "app/Actions/Workflow/CreateWorkflowFlow.php": 1,

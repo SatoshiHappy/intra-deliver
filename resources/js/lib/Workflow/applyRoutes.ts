@@ -65,8 +65,15 @@ export function draftActionOf(props: Props): RouteDefinition<'post' | 'put'> {
         : draftUpdate(caseIdOf(props));
 }
 
-/** キャンセルの戻り先(新規 = フローの選択、一時保存 = 一覧の一時保存、再申請 = 案件の詳細、既存のデータ = そのレコードの詳細) */
+/**
+ * キャンセルの戻り先(新規 = フローの選択、一時保存 = 一覧の一時保存、再申請 = 案件の詳細、既存のデータ = そのレコードの詳細、
+ * 業務レコードの詳細から開いた新規 = そのレコードの詳細 = 申請の周辺/画面.md の 5 節。targetEntry は開いた時の値を保ったもの)。
+ */
 export function backHrefOf(props: Props) {
+    if (props.mode === 'new' && props.targetEntry !== null) {
+        return recordShow(props.targetEntry);
+    }
+
     switch (props.mode) {
         case 'new':
             return flowsIndex();

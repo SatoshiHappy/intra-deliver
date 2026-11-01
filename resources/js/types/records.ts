@@ -165,6 +165,7 @@ export type RecordCopySource = {
     id: number;
     values: Record<string, RecordFieldValue>;
     details: Record<string, { values: Record<string, RecordFieldValue> }[]>;
+    clearedFields: string[]; // 今は使えない値を空にした項目の名前(画面の欄の順。無ければ空 = 複製.md の 2 節)
     rowAccess: RowAccessInput; // 元のレコードの値(業務モジュールの既定を使わない = 設計/業務データの入れ物/レコードの共通機能/複製.md の 2 節)
 };
 

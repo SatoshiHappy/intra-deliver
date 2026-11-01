@@ -225,7 +225,7 @@ class ApplicationFormQuery
         );
         $applicationTarget = $this->applicationTargetValues->applicationTargetOf($flow);
         $copied = $applicationTarget === null ? null : $this->applicationTargetValues->valuesOfRecord(
-            $requester, $applicationTarget, $module, $read['values'], $context->date, $context->localeCode,
+            $requester, $applicationTarget, $module, $read['values'], $recordId, $context->date, $context->localeCode,
         );
 
         return [...$form, 'recordVersion' => $read['version'], 'recordTitle' => $this->display->titleOf($recordId),

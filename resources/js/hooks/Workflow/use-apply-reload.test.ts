@@ -55,12 +55,10 @@ function fakeForm(data: Partial<ApplyForm>): ApplyReloadForm {
     return form;
 }
 
-const scope = { openedApplicant: null, fromTarget: false };
-
 describe('待っている要求が終わったら消す', () => {
     it('申請者の読み直しが終わった後に申請基準日を空にしても送り直さない', () => {
         const { send, sent } = fakeSend();
-        const reloader = applyReloaderOf(send, scope);
+        const reloader = applyReloaderOf(send);
         const form = fakeForm({});
 
         reloader.changeApplicant(form, module, 10);
@@ -73,7 +71,7 @@ describe('待っている要求が終わったら消す', () => {
 
     it('申請者の読み直しが終わる前に申請基準日を空にしたら、取り消して申請者の props を送り直す', () => {
         const { send, sent, cancels } = fakeSend();
-        const reloader = applyReloaderOf(send, scope);
+        const reloader = applyReloaderOf(send);
         const form = fakeForm({});
 
         reloader.changeApplicant(form, module, 10);
@@ -89,7 +87,7 @@ describe('待っている要求が終わったら消す', () => {
 describe('待っている要求が終わったら消す(取り消した要求)', () => {
     it('取り消された古い要求の終わりは、後から送った要求を待ちから消さない', () => {
         const { send, sent } = fakeSend();
-        const reloader = applyReloaderOf(send, scope);
+        const reloader = applyReloaderOf(send);
         const form = fakeForm({});
 
         reloader.changeApplicant(form, module, 10);
@@ -105,7 +103,7 @@ describe('待っている要求が終わったら消す(取り消した要求)',
 describe('申請者の読み直しの応答をフォームへ写す', () => {
     it('返った申請者と申請基準日を写す', () => {
         const { send, sent } = fakeSend();
-        const reloader = applyReloaderOf(send, scope);
+        const reloader = applyReloaderOf(send);
         const form = fakeForm({});
 
         reloader.changeApplicant(form, module, 10);
@@ -124,7 +122,7 @@ describe('申請者の読み直しの応答をフォームへ写す', () => {
 
     it('申請基準日だけの読み直しは写さない', () => {
         const { send, sent } = fakeSend();
-        const reloader = applyReloaderOf(send, scope);
+        const reloader = applyReloaderOf(send);
         const form = fakeForm({ applicant: 10 });
 
         reloader.changeBaseDate(form, '2026-10-20');
@@ -144,7 +142,7 @@ describe('申請者の読み直しの応答をフォームへ写す', () => {
 describe('古い応答', () => {
     it('応答の後に次の要求を送ったら、古い応答はフォームへ写さず、送り直さない', () => {
         const { send, sent } = fakeSend();
-        const reloader = applyReloaderOf(send, scope);
+        const reloader = applyReloaderOf(send);
         const form = fakeForm({});
 
         reloader.changeApplicant(form, module, 10);
@@ -166,7 +164,7 @@ describe('古い応答', () => {
 describe('申請者の読み直しの応答が選択肢に無い申請者', () => {
     it('返った申請者が選択肢に無ければ、選択肢を足して読み直す', () => {
         const { send, sent, cancels } = fakeSend();
-        const reloader = applyReloaderOf(send, scope);
+        const reloader = applyReloaderOf(send);
         const form = fakeForm({});
 
         reloader.changeApplicant(form, module, 10);
@@ -200,7 +198,7 @@ describe('サーバーが別の申請者を選び直したとき', () => {
     it('要求した申請者と違う申請者が返ったら、申請者を変えたのと同じに知らせる', () => {
         const { send, sent } = fakeSend();
         const onReselected = vi.fn();
-        const reloader = applyReloaderOf(send, scope, onReselected);
+        const reloader = applyReloaderOf(send, { onReselected });
 
         reloader.changeApplicant(fakeForm({}), module, 10);
         sent[0].onSuccess(loaded(null));
@@ -211,7 +209,7 @@ describe('サーバーが別の申請者を選び直したとき', () => {
     it('要求した申請者のままなら(自分を要求して自分が返った場合を含む)知らせない', () => {
         const { send, sent } = fakeSend();
         const onReselected = vi.fn();
-        const reloader = applyReloaderOf(send, scope, onReselected);
+        const reloader = applyReloaderOf(send, { onReselected });
         const form = fakeForm({ applicant: 10 });
 
         reloader.changeApplicant(form, module, null);

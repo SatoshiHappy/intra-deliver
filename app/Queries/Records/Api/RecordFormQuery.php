@@ -5,15 +5,21 @@ namespace App\Queries\Records\Api;
 use App\Enums\Records\RecordModuleAction;
 use App\Models\Records\Record;
 use App\Models\Records\RecordModule;
+use App\Models\Records\RecordRevision;
 use App\Queries\Authz\Api\Requester;
 use App\Queries\Records\DraftValueReader;
+use App\Queries\Records\RecordCopyValues;
 use App\Queries\Records\RecordDefinitionQuery;
 use App\Queries\Records\RecordModuleGate;
 use App\Queries\Records\RecordPageQuery;
+use App\Queries\Records\RecordParty;
 use App\Queries\Records\RecordQuery;
+use App\Queries\Records\ReferenceCheck;
+use App\Queries\Records\ReferenceTargets;
 use DateTimeInterface;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
+use LogicException;
 
 /**
  * 申請の画面のフォームの口(業務モジュールの定義・判定・一時保存の入力と再申請の初期値 = docs の 設計/ワークフロー/業務データとの接続/申請と書き込み.md 1 節・
@@ -22,6 +28,10 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
  * @phpstan-import-type ModuleDefinition from RecordDefinitionQuery
  * @phpstan-import-type DraftValues from DraftValueReader
  * @phpstan-import-type DetailRow from RecordQuery
+ * @phpstan-import-type CopiedValues from RecordCopyValues
+ * @phpstan-import-type Party from RecordParty
+ *
+ * @phpstan-type CopiedRows array<string, list<array{values: array<string, mixed>}>>
  */
 class RecordFormQuery
 {
@@ -34,6 +44,8 @@ class RecordFormQuery
         private RecordDefinitionQuery $definitions,
         private DraftValueReader $drafts,
         private RecordQuery $records,
+        private RecordCopyValues $copies,
+        private ReferenceTargets $targets,
     ) {}
 
     /**
@@ -105,5 +117,80 @@ class RecordFormQuery
             'version' => $editable['version'],
             'rowAccessRestricted' => $editable['rowAccess']['restricted'],
         ];
+    }
+
+    /**
+     * 主体の判定をしない(業務モジュールの判定と、写す元のレコードの行の判定をしない)。呼び手が案件の閲覧の判定で守ってから呼ぶ。
+     *
+     * 写しの初期値の「版から」(保証するもの = docs の 設計/ワークフロー/申請の周辺/既存のデータからの申請/案件からの複製/写す値.md の
+     * 13.3 の公開の口の表)。
+     *
+     * @return array{values: array<string, mixed>, details: CopiedRows, clearedFields: list<string>,
+     *     rowAccess: array{restricted: bool, viewers: list<Party>}|null}
+     *
+     * @throws ModelNotFoundException<RecordModule|RecordRevision> 業務モジュールが無い・明細のモジュールのとき、版が無いとき
+     * @throws LogicException 版が写す先の業務モジュールのものでないとき(呼び手が業務モジュールの一致を先に確かめる前提)
+     */
+    public function copyFromRevision(
+        Requester $requester,
+        string $moduleCode,
+        int $revisionId,
+        DateTimeInterface $date,
+        string $localeCode,
+    ): array {
+        $module = $this->definitions->load($this->gate->topLevelModule($moduleCode));
+        $revision = RecordRevision::query()->findOrFail($revisionId);
+
+        return $this->copies->fromRevision($requester, $module, $revision, $date, $localeCode);
+    }
+
+    /**
+     * 主体の判定をしない(業務モジュールの判定をしない)。写す元の判定は呼び手が済ませてから呼ぶ。
+     *
+     * 写しの初期値の「値から」(保証するもの = 写す値.md の 13.3 の公開の口の表)。
+     *
+     * @param  int|null  $targetRecordId  写す先のレコードの id
+     * @param  array<array-key, mixed>  $values  項目のコード → 画面の初期値の形の値
+     * @param  array<array-key, mixed>  $details  明細の項目のコード → 行(行 = values を持つ配列)
+     * @return array{values: array<string, mixed>, details: CopiedRows, clearedFields: list<string>}
+     *
+     * @throws ModelNotFoundException<RecordModule> 業務モジュールが無い・明細のモジュールのとき
+     */
+    public function copyFromValues(
+        Requester $requester,
+        string $moduleCode,
+        ?int $targetRecordId,
+        array $values,
+        array $details,
+        DateTimeInterface $date,
+        string $localeCode,
+    ): array {
+        $module = $this->definitions->load($this->gate->topLevelModule($moduleCode));
+        $copied = $this->copies->fromValues(
+            $requester, $module, $targetRecordId, $values, $details, $date, $localeCode,
+        );
+
+        return [
+            'values' => $copied['values'], 'details' => $copied['details'], 'clearedFields' => $copied['clearedFields'],
+        ];
+    }
+
+    /**
+     * 主体の判定をしない(人と組織が日に有効かは業務モジュールに依らない)。
+     *
+     * 参照者の確かめ(保証するもの = 写す値.md の 13.3 の公開の口の表)。
+     *
+     * @param  list<Party>  $viewers
+     * @return list<Party>
+     */
+    public function effectiveViewers(array $viewers, DateTimeInterface $date): array
+    {
+        $check = new ReferenceCheck(null, $date, locksTargets: false);
+        $this->targets->prepareParties($check, $viewers);
+
+        return array_values(array_filter(
+            $viewers,
+            fn (array $viewer) => $this->targets->acceptsParty($viewer, $check),
+        ));
     }
 }

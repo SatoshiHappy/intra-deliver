@@ -35,7 +35,8 @@ final class TargetValueControllerTest extends TransactionalTestCase
 
     /**
      * 同じコード・型・参照先・複数の指定の項目と、明細の行(id なし・並びのまま)が写り、申請対象の項目には元のレコードが入る。
-     * 型・参照先・複数の指定が違う項目、申請書だけの項目、添付は写らない。空の値は空、読めない参照先は値のまま(表示名なし)で写る。
+     * 型・参照先・複数の指定が違う項目、申請書だけの項目、添付は写らない。空の値は空。読めない参照先は写す時の確かめで空になり、
+     * 名前が clearedFields に出る。
      */
     public function test_the_values_follow_the_copy_rule(): void
     {

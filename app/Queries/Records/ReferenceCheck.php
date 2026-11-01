@@ -1,16 +1,17 @@
 <?php
 
-namespace App\Actions\Records;
+namespace App\Queries\Records;
 
 use App\Queries\Authz\Api\Requester;
 use DateTimeInterface;
 use LogicException;
 
 /**
- * 1 回の保存の中で、参照の項目が新しく指す相手を確かめた結果(修正方針 A6・D5)。確かめた相手と受ける相手を分けて持ち、確かめていない相手を
- * 引くと例外にする(確かめの漏れ・ずれを、黙った 422 や 1 値ずつの問い合わせに戻さず表に出す)。{@see ReferenceTargets::prepare()} が、親と明細の全行の変わった
- * 参照の値を相手の種類(ユーザー・組織・参照先の業務モジュール)ごとに 1 本の問い合わせで確かめて入れ、各行の読み取りが引く。
- * 保存ごとに作って捨てる(業務処理のサービスに状態を持たせない)。
+ * 1 回の保存(または写しの初期値・参照者の確かめの 1 回の読み取り)の中で、参照の相手を確かめた結果。確かめた相手と受ける相手を分けて持ち、
+ * 確かめていない相手を引くと例外にする(確かめの漏れ・ずれを、黙った 422 や 1 値ずつの問い合わせに戻さず表に出す)。
+ * {@see ReferenceTargets::prepare()} が相手の種類(ユーザー・組織・参照先の業務モジュール)ごとに 1 本の問い合わせで確かめて入れ、各行の読み取りが引く。
+ * 確かめごとに作って捨てる(サービスに状態を持たせない)。参照先の行に鍵を取るのは、業務処理がトランザクションの中で鍵の印を付けて作ったときだけ
+ * (docs の 設計/業務データの入れ物/データモデル/値の形と直列化.md 4 節。開く時の確かめは鍵を取らない)。
  */
 final class ReferenceCheck
 {
@@ -22,10 +23,12 @@ final class ReferenceCheck
 
     /**
      * @param  Requester|null  $requester  判定を求める者(null = 判定しない更新。判定の要る確かめに届けば作りの誤り)
+     * @param  bool  $locksTargets  参照先の行に FOR KEY SHARE を取るか(保存の業務処理がトランザクションの中で作るときだけ真。付け忘れに気づけるよう既定を置かない)
      */
     public function __construct(
         private readonly ?Requester $requester,
         public readonly DateTimeInterface $date,
+        public readonly bool $locksTargets,
     ) {}
 
     /**
@@ -53,7 +56,7 @@ final class ReferenceCheck
     /**
      * 相手を受けるか。
      *
-     * @throws LogicException 確かめていない相手のとき(保存の前に ReferenceTargets::prepare で全部を確かめる不変条件が崩れた = 修正方針 D5)
+     * @throws LogicException 確かめていない相手のとき(使う前に ReferenceTargets::prepare で全部を確かめる不変条件が崩れた)
      */
     public function accepts(string $group, int $id): bool
     {

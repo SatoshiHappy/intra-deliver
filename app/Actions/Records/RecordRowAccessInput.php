@@ -7,6 +7,8 @@ use App\Models\Records\Record;
 use App\Models\Records\RecordModule;
 use App\Queries\Records\RecordParty;
 use App\Queries\Records\RecordRowAccessValues;
+use App\Queries\Records\ReferenceCheck;
+use App\Queries\Records\ReferenceTargets;
 
 /**
  * 参照制限の入力(項目でない 2 つのキー)を読み、確かめ、合わせた値を作る。項目の値と同じ要求で確かめて一緒に返すため、書く部品

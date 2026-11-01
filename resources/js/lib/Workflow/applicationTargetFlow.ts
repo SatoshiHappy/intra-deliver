@@ -3,7 +3,6 @@ import {
     initialApplicationTargetState,
     isApplicationTargetBusy,
     applicationTargetAnswered,
-    applicationTargetCleared,
     applicationTargetPicked,
     applicationTargetSettled,
 } from '@/lib/Workflow/applicationTarget';
@@ -19,7 +18,6 @@ import {
 } from '@/lib/Workflow/applicationTargetSnapshot';
 import type { RecordFormData } from '@/lib/recordForm';
 import type { ApplicationTargetSnapshot } from '@/types/workflowApplyTarget';
-import { clearRecordReferences } from '@/lib/Workflow/applyApplicant';
 import type { PickedReference, WorkflowApplyProps } from '@/types';
 
 /**
@@ -27,16 +25,20 @@ import type { PickedReference, WorkflowApplyProps } from '@/types';
  * 外の口(ports)を渡して確かめられるようにした。状態の移りは applicationTarget.ts。
  */
 
-/** 画面に見せる状態(busy = 写しの値を取っている間。confirm = 写す前の確かめ) */
+/** 画面に見せる状態(busy = 写しの値を取っている間。confirm = 写す前の確かめ。cleared = 最後に写した値で空にした項目の名前) */
 export type ApplicationTargetView = {
     busy: boolean;
     confirm: ApplicationTargetConfirm | null;
+    cleared: string[];
 };
 
-/** 写しの値の取り方(取れなければ null = HTTP の失敗。HTTP の失敗でない例外は reject する) */
+/** 取れなかった理由(unavailable = 403・404、failed = ほかの応答の誤りと応答の無い失敗。トーストの文を分ける) */
+export type ApplicationTargetFailure = 'unavailable' | 'failed';
+
+/** 写しの値の取り方(取れなければ理由。HTTP の失敗でない例外は reject する) */
 export type ApplicationTargetFetch = (
     url: string,
-) => Promise<ApplicationTargetSnapshot | null>;
+) => Promise<ApplicationTargetSnapshot | ApplicationTargetFailure>;
 
 /** 写しが触る外の口(確かめるときは偽物を渡す) */
 export type ApplicationTargetPorts = {
@@ -49,24 +51,27 @@ export type ApplicationTargetPorts = {
     };
     urlOf: (applicationTarget: number, applicant: number | null) => string;
     fetch: ApplicationTargetFetch;
-    notifyFailed: () => void;
+    notifyFailed: (failure: ApplicationTargetFailure) => void;
     publish: (view: ApplicationTargetView) => void;
 };
 
-/** 写しの状態(申請対象の欄が無い画面は targetField が null で、何もしない) */
+/** 写しの状態(申請対象の欄が無い画面は targetField が null で、何もしない。cleared = 写すたびに置き換える 1 行の名前) */
 export type ApplicationTargetFlow = {
     targetField: string | null;
     state: ApplicationTargetState;
     confirm: ApplicationTargetConfirm | null;
+    cleared: string[];
 };
 
-function show(
+/** 画面に見せる状態を出す */
+export function showApplicationTarget(
     applicationTarget: ApplicationTargetFlow,
     ports: ApplicationTargetPorts,
 ) {
     ports.publish({
         busy: isApplicationTargetBusy(applicationTarget.state),
         confirm: applicationTarget.confirm,
+        cleared: applicationTarget.cleared,
     });
 }
 
@@ -108,6 +113,7 @@ function offer(
             applicationTarget.state,
             picked,
         );
+        applicationTarget.cleared = values.clearedFields;
     } else {
         applicationTarget.confirm = confirm;
     }
@@ -118,25 +124,27 @@ function answered(
     applicationTarget: ApplicationTargetFlow,
     ports: ApplicationTargetPorts,
     request: number,
-    snapshot: ApplicationTargetSnapshot | null,
+    snapshot: ApplicationTargetSnapshot | ApplicationTargetFailure,
 ) {
     const result = applicationTargetAnswered(
         applicationTarget.state,
         request,
-        snapshot === null ? 'failed' : 'ok',
+        typeof snapshot === 'string' ? 'failed' : 'ok',
     );
     const { next } = result;
     applicationTarget.state = result.state;
 
     try {
-        if (next.kind === 'snapshot' && snapshot !== null) {
+        if (next.kind === 'snapshot' && typeof snapshot !== 'string') {
             offer(applicationTarget, ports, next.applicationTarget, snapshot);
         } else if (next.kind === 'revert') {
             putApplicationTarget(applicationTarget, ports, next.to);
-            ports.notifyFailed();
+            ports.notifyFailed(
+                typeof snapshot === 'string' ? snapshot : 'failed',
+            );
         }
     } finally {
-        show(applicationTarget, ports);
+        showApplicationTarget(applicationTarget, ports);
     }
 }
 
@@ -151,7 +159,8 @@ async function ask(
     request: number,
 ) {
     const bug = { thrown: false, error: undefined as unknown };
-    let snapshot: ApplicationTargetSnapshot | null = null;
+    let snapshot: ApplicationTargetSnapshot | ApplicationTargetFailure =
+        'failed';
 
     try {
         snapshot = await ports.fetch(ports.urlOf(picked.id, ports.applicant));
@@ -189,7 +198,7 @@ async function applicationTargetChanged(
 
     const result = applicationTargetPicked(applicationTarget.state, picked);
     applicationTarget.state = result.state;
-    show(applicationTarget, ports);
+    showApplicationTarget(applicationTarget, ports);
 
     if (picked !== null && result.request !== null) {
         await ask(applicationTarget, ports, picked, result.request);
@@ -214,8 +223,9 @@ export function reflectApplicationTarget(
         applicationTarget.state,
         confirm.applicationTarget,
     );
+    applicationTarget.cleared = confirm.snapshot.clearedFields;
     applicationTarget.confirm = null;
-    show(applicationTarget, ports);
+    showApplicationTarget(applicationTarget, ports);
 }
 
 /** 確かめのダイアログの「キャンセル」(申請対象も欄の値も変えない) */
@@ -229,17 +239,7 @@ export function cancelApplicationTarget(
         applicationTarget.state.settled,
     );
     applicationTarget.confirm = null;
-    show(applicationTarget, ports);
-}
-
-/** 申請者を変えて申請対象が消えたときの片付けを 1 か所にする(docs の 設計/ワークフロー/申請の周辺/画面.md の 5 節の「申請対象の値の写し」) */
-function clearApplicationTarget(
-    applicationTarget: ApplicationTargetFlow,
-    ports: ApplicationTargetPorts,
-) {
-    applicationTarget.state = applicationTargetCleared(applicationTarget.state);
-    applicationTarget.confirm = null;
-    show(applicationTarget, ports);
+    showApplicationTarget(applicationTarget, ports);
 }
 
 /** 写しの状態を作る(開いた時の申請対象が最後に決まった申請対象) */
@@ -253,6 +253,7 @@ export function applicationTargetFlowOf(
             applicationTargetOf(opening.record, targetField),
         ),
         confirm: opening.confirm,
+        cleared: opening.cleared,
     };
 }
 
@@ -268,31 +269,4 @@ export function recordChanged(
     const { before, after } = ports.updateRecord(update);
 
     return applicationTargetChanged(applicationTarget, ports, before, after);
-}
-
-/**
- * 申請者を変える(変わるなら申請対象が消えるので、空を最後に決まった申請対象にしてから change で変える)。
- */
-export function applicantChanged(
-    applicationTarget: ApplicationTargetFlow,
-    ports: ApplicationTargetPorts,
-    applicant: number | null,
-    change: (applicant: number | null) => void,
-) {
-    if (applicant !== ports.applicant) {
-        clearApplicationTarget(applicationTarget, ports);
-    }
-
-    change(applicant);
-}
-
-/**
- * 部分の読み直しでサーバーが別の申請者を選び直した。申請者を変えたのと同じに、参照の値を消し、待っている要求の応答は当てない。
- */
-export function applicantReselected(
-    applicationTarget: ApplicationTargetFlow,
-    ports: ApplicationTargetPorts,
-) {
-    ports.updateRecord((record) => clearRecordReferences(ports.module, record));
-    clearApplicationTarget(applicationTarget, ports);
 }

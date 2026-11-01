@@ -1,8 +1,14 @@
 import { describe, expect, it } from 'vite-plus/test';
-import { fetchOf, isHttpFailure } from './applicationTargetFetch';
+import {
+    failedMessageOf,
+    fetchOf,
+    isHttpFailure,
+} from './applicationTargetFetch';
 import {
     applicantChanged,
     applicantReselected,
+} from './applicationTargetApplicant';
+import {
     reflectApplicationTarget,
     recordChanged,
 } from './applicationTargetFlow';
@@ -16,8 +22,13 @@ import {
 } from './applicationTarget.testing';
 import { withApplicationTarget } from './applicationTargetSnapshot';
 
-/** useHttp が投げる HTTP の失敗(code は @inertiajs/core の httpErrors と同じ) */
-const httpError = (code: string) => Object.assign(new Error('http'), { code });
+/** useHttp が投げる HTTP の失敗(code・response は @inertiajs/core の httpErrors と同じ) */
+const httpError = (code: string, status?: number) =>
+    Object.assign(
+        new Error('http'),
+        { code },
+        status === undefined ? {} : { response: { status } },
+    );
 
 describe('取れなかったときの戻し(403・404・500・通信の失敗・取り消しは同じ)', () => {
     it('申請対象を最後に決まった申請対象へ戻し、トーストを 1 回出し、取得中を解く', async () => {
@@ -29,6 +40,20 @@ describe('取れなかったときの戻し(403・404・500・通信の失敗・
         expect(state.record.values.project).toEqual(picked(9, '開いた時'));
         expect(state.denied).toBe(1);
         expect(lastView()?.busy).toBe(false);
+    });
+
+    it('トーストに 403・404 かほかの失敗かを渡す(例外は failed)', async () => {
+        const { state, requests, choose, chooseAndWait } = flowSetup(opened);
+
+        choose(picked(5));
+        await requests[0].fail('unavailable');
+        choose(picked(6));
+        await requests[1].fail('failed');
+        const crashed = chooseAndWait(picked(7)).catch(() => null);
+        await requests[2].crash(new Error('誤り'));
+        await crashed;
+
+        expect(state.failures).toEqual(['unavailable', 'failed', 'failed']);
     });
 
     it('古い要求の失敗は、戻しもトーストも無い(最後に送った要求の応答だけを当てる)', async () => {
@@ -87,25 +112,39 @@ describe('取れなかったときの戻し(例外)', () => {
 });
 
 describe('要求の口(fetchOf)', () => {
-    it('応答の誤り・取り消し・通信の失敗は取れなかった(null)として扱い、取得中を解く形で返す', async () => {
-        for (const code of [
-            'ERR_HTTP_RESPONSE',
-            'ERR_CANCELLED',
-            'ERR_NETWORK',
-        ]) {
-            const fetch = fetchOf(() => Promise.reject(httpError(code)));
+    it('403・404 の応答は unavailable、ほかの応答の誤り・取り消し・通信の失敗は failed として返す', async () => {
+        const cases = [
+            [httpError('ERR_HTTP_RESPONSE', 403), 'unavailable'],
+            [httpError('ERR_HTTP_RESPONSE', 404), 'unavailable'],
+            [httpError('ERR_HTTP_RESPONSE', 500), 'failed'],
+            [httpError('ERR_HTTP_RESPONSE', 422), 'failed'],
+            [httpError('ERR_CANCELLED'), 'failed'],
+            [httpError('ERR_NETWORK'), 'failed'],
+        ] as const;
 
-            expect(isHttpFailure(httpError(code))).toBe(true);
-            expect(await fetch('/x')).toBeNull();
+        for (const [error, failure] of cases) {
+            expect(isHttpFailure(error)).toBe(true);
+            expect(await fetchOf(() => Promise.reject(error))('/x')).toBe(
+                failure,
+            );
         }
     });
 
-    it('値を返さない応答(検証の誤り)も取れなかったとして扱い、値はそのまま返す', async () => {
+    it('トーストの文は 403・404 とほかの失敗で違う(画面.md の 8 節)', () => {
+        expect(failedMessageOf('unavailable')).toBe(
+            '申請対象の値を取得できませんでした。',
+        );
+        expect(failedMessageOf('failed')).toBe(
+            '申請対象の値を取得できませんでした。時間をおいて、もう一度選択してください。',
+        );
+    });
+
+    it('値を返さない応答(検証の誤り)も取れなかった(failed)として扱い、値はそのまま返す', async () => {
         const values = snapshotFor('x');
 
-        expect(
-            await fetchOf(() => Promise.resolve(undefined))('/x'),
-        ).toBeNull();
+        expect(await fetchOf(() => Promise.resolve(undefined))('/x')).toBe(
+            'failed',
+        );
         expect(await fetchOf(() => Promise.resolve(values))('/x')).toBe(values);
     });
 
@@ -164,7 +203,7 @@ describe('申請者の変更・選び直し', () => {
         expect(state.record.values.project).toBeNull();
         expect(state.record.values.department).toEqual(picked(3));
         expect(state.record.values.name).toBe('直した名前');
-        expect(lastView()).toEqual({ busy: false, confirm: null });
+        expect(lastView()).toEqual({ busy: false, confirm: null, cleared: [] });
     });
 
     it('申請者を変えたら、前の申請者で読んだ値の確かめも消え、反映しても何も写らない', async () => {
