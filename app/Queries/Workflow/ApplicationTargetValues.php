@@ -9,7 +9,6 @@ use App\Queries\Authz\Api\Requester;
 use App\Queries\Records\Api\RecordDisplayQuery;
 use App\Queries\Records\Api\RecordFormQuery;
 use App\Queries\Records\Api\RecordViewAccess;
-use App\Support\MixedValues;
 use DateTimeInterface;
 use LogicException;
 
@@ -58,6 +57,7 @@ class ApplicationTargetValues
      * 判定を求める者が申請対象を閲覧できるときだけ写しの値(できなければ null)。
      *
      * @param  ApplicationTarget  $applicationTarget
+     * @param  string  $applicationModuleCode  申請書の業務モジュールのコード(呼び手が定義を引いたもの)
      * @param  array<string, mixed>  $applicationDefinition  申請書の業務モジュールの定義(呼び手が開けるアクションで引いたもの)
      * @param  int|null  $writtenRecordId  写す先の申請書のレコード(そのものを申請する・再申請。ほかは null = 10.3 の写す先のレコードの id)
      * @return ApplicationTargetValueSet|null
@@ -65,6 +65,7 @@ class ApplicationTargetValues
     public function valuesFor(
         Requester $requester,
         array $applicationTarget,
+        string $applicationModuleCode,
         array $applicationDefinition,
         int $applicationTargetId,
         ?int $writtenRecordId,
@@ -87,8 +88,8 @@ class ApplicationTargetValues
         );
 
         return $this->forms->copyFromValues(
-            $requester, MixedValues::stringOf($applicationDefinition['code'] ?? null), $writtenRecordId,
-            $snapshot['values'], $snapshot['details'], $date, $localeCode,
+            $requester, $applicationModuleCode, $writtenRecordId, $snapshot['values'], $snapshot['details'], $date,
+            $localeCode,
         );
     }
 
@@ -104,6 +105,7 @@ class ApplicationTargetValues
     public function valuesOfRecord(
         Requester $requester,
         array $applicationTarget,
+        string $applicationModuleCode,
         array $applicationDefinition,
         array $values,
         int $writtenRecordId,
@@ -115,8 +117,8 @@ class ApplicationTargetValues
         return $applicationTargetId === null
             ? null
             : $this->valuesFor(
-                $requester, $applicationTarget, $applicationDefinition, $applicationTargetId, $writtenRecordId,
-                $date, $localeCode,
+                $requester, $applicationTarget, $applicationModuleCode, $applicationDefinition, $applicationTargetId,
+                $writtenRecordId, $date, $localeCode,
             );
     }
 

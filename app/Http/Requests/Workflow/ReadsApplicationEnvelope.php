@@ -13,11 +13,18 @@ use App\Http\Requests\Records\ReadsRecordEnvelope;
  * name・comment が文字列か null、values・details は業務データの入れ物の入口と同じ 1 か所({@see ReadsRecordEnvelope})の規則・文言・変換。
  * 入口が見るのは封筒の形だけで、案件名・コメントの長さと使えない文字・一時保存の大きさは業務処理が 422 にする(案件の操作/同時実行と検査.md 6 節)。
  * 添付とその multipart の送り方は {@see ReadsAttachmentEnvelope}。
+ * 案件からの複製の暗号化した値(copy_row_access)は形を問わずに受けたまま業務処理へ渡し(読み方 = 設計/ワークフロー/申請の周辺/
+ * 既存のデータからの申請/案件からの複製/写す値.md の 13.2 節)、受けない入口は捨てる(422 にしない)。
  */
 trait ReadsApplicationEnvelope
 {
     use ReadsAttachmentEnvelope;
     use ReadsRecordEnvelope;
+
+    /**
+     * 案件からの複製の暗号化した値を受ける入口か(新規の申請と一時保存の新規だけ)。
+     */
+    abstract protected function acceptsCopyRowAccess(): bool;
 
     /**
      * @return array<string, list<string>>
@@ -67,7 +74,10 @@ trait ReadsApplicationEnvelope
      */
     public function applicationInput(): ApplicationInput
     {
-        return new ApplicationInput($this->nullableString('name'), $this->nullableString('comment'), $this->recordInput(), $this->attachFiles(), $this->removeAttachmentIds());
+        return new ApplicationInput(
+            $this->nullableString('name'), $this->nullableString('comment'), $this->recordInput(), $this->attachFiles(),
+            $this->removeAttachmentIds(), $this->copyRowAccess(),
+        );
     }
 
     /**
@@ -78,7 +88,18 @@ trait ReadsApplicationEnvelope
         $record = $this->recordInput();
         $details = array_map(fn (array $rows) => array_map(fn (RecordDetailRowInput $row) => ['values' => $row->values], $rows), $record->details);
 
-        return new DraftInput($this->nullableString('name'), $this->nullableString('comment'), $record->values, $details, $this->baseDate(), $this->attachFiles(), $this->removeAttachmentIds());
+        return new DraftInput(
+            $this->nullableString('name'), $this->nullableString('comment'), $record->values, $details,
+            $this->baseDate(), $this->attachFiles(), $this->removeAttachmentIds(), $this->copyRowAccess(),
+        );
+    }
+
+    /**
+     * 受けた暗号化した値(受けない入口は null = 案件からの複製でない)。
+     */
+    private function copyRowAccess(): mixed
+    {
+        return $this->acceptsCopyRowAccess() ? $this->input('copy_row_access') : null;
     }
 
     /**

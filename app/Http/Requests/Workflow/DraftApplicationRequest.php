@@ -77,4 +77,9 @@ class DraftApplicationRequest extends FormRequest
     {
         return true;
     }
+
+    protected function acceptsCopyRowAccess(): bool
+    {
+        return false;
+    }
 }

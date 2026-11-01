@@ -7,6 +7,7 @@ use App\Enums\Workflow\WorkflowOperation;
 use App\Models\Workflow\WorkflowCase;
 use App\Models\Workflow\WorkflowFlow;
 use App\Queries\Workflow\CaseActor;
+use App\Queries\Workflow\CopiedRowAccess;
 use App\Queries\Workflow\PrincipalContext;
 use App\Support\AccessContext;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -19,6 +20,8 @@ use RuntimeException;
  * 一時保存(新規)(docs の 設計/ワークフロー/案件の操作/操作.md 3.4。判定の順は 3.1 の 2、代理元の確かめの位置は 設計/ワークフロー/案件の運用/案件の操作/操作.md の 10.8 節)。
  * レコードの値は検証しない(一時保存は途中の入力を残すためのもので、業務データの入れ物を呼ばない)。
  * 添付は案件の行を書いた後に上げて一時保存の添付の行にする(上げた人 = 実行者。書く順 = 設計/ワークフロー/申請の周辺/添付/書く順と検査.md の 6 節)。
+ * 案件からの複製の暗号化した値は大きさの確かめの直前に解き、開いた時の値のまま入力のサーバーだけが書くキーに持つ
+ * (設計/ワークフロー/申請の周辺/既存のデータからの申請/案件からの複製/写す値.md の 13.2 節)。
  */
 class CreateDraft
 {
@@ -28,6 +31,7 @@ class CreateDraft
         private CaseInputRules $inputRules,
         private CaseAttachmentRules $attachmentRules,
         private CaseDraftAttachments $attachments,
+        private CopiedRowAccess $copied,
     ) {}
 
     /**
@@ -50,7 +54,9 @@ class CreateDraft
             $applicant = $this->proxyChecks->applicantOf($context, $flow->id, $applicantUserId);
             $this->guard->requireApplicable(PrincipalContext::of($context, $applicant), $flow->id);
             $this->guard->permitWithoutCase(WorkflowOperation::SaveDraft);
-            $draft = $this->inputRules->draftInput($input);
+            $copied = $this->copied->open($input->copyRowAccess, $context->userId, $flow->id);
+            $serverKeys = $copied === null ? [] : [CopiedRowAccess::DRAFT_KEY => $copied];
+            $draft = $this->inputRules->draftInput($input, $serverKeys);
             $this->attachmentRules->rejectFiles(WorkflowOperation::SaveDraft, $flow, $input->attachFiles);
 
             $case = WorkflowCase::query()->create([

@@ -81,8 +81,8 @@ class ApplicationTargetValueQuery
         $definition = $this->forms->definition($requester, $moduleCode, $action, $date);
 
         return $this->applicationTargetValues->valuesFor(
-            $requester, $applicationTarget, $definition, $applicationTargetId, $this->writtenRecordOf($form),
-            $date, $context->localeCode,
+            $requester, $applicationTarget, $moduleCode, $definition, $applicationTargetId,
+            $this->writtenRecordOf($form), $date, $context->localeCode,
         ) ?? throw (new ModelNotFoundException)->setModel(Record::class, [$applicationTargetId]);
     }
 

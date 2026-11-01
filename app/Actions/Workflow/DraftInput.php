@@ -18,6 +18,8 @@ final readonly class DraftInput
      * @param  string|null  $baseDate  申請基準日(検証せず保つ = ルートの深さ/案件の操作/操作.md 10.1)
      * @param  list<UploadedFile>  $attachFiles  この送信で足す添付(設計/ワークフロー/申請の周辺/添付/README.md の 3.1 節の attachments)
      * @param  list<int>  $removeAttachmentIds  外す一時保存の添付の行の id(上書きだけが読む。新規は外す相手が無いので読まない)
+     * @param  mixed  $copyRowAccess  案件からの複製の暗号化した値(受けたまま。新規だけが読む = 設計/ワークフロー/申請の周辺/
+     *                                既存のデータからの申請/案件からの複製/写す値.md の 13.2 節)
      */
     public function __construct(
         public ?string $name,
@@ -27,5 +29,6 @@ final readonly class DraftInput
         public ?string $baseDate = null,
         public array $attachFiles = [],
         public array $removeAttachmentIds = [],
+        public mixed $copyRowAccess = null,
     ) {}
 }

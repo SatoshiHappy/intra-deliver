@@ -3,11 +3,13 @@
 namespace App\Actions\Workflow;
 
 use App\Actions\Records\Api\RecordInput;
+use App\Models\Workflow\WorkflowCase;
 use App\Models\Workflow\WorkflowFlow;
 use App\Queries\Authz\Api\Requester;
 use App\Queries\Records\Api\RecordFormQuery;
 use App\Queries\Records\Api\RecordViewAccess;
 use App\Queries\Workflow\ApplicationTargetValues;
+use App\Queries\Workflow\CopiedRowAccess;
 use App\Support\AccessContext;
 
 /**
@@ -15,6 +17,11 @@ use App\Support\AccessContext;
  * 10.1 節の送る参照制限。申請対象の有無によらず、新規・一時保存からの申請・そのものを申請する・再申請のどれもここを通る)。
  * 偽を送らないのは、付いたチェックを外す書き込みを持たないため。
  * 申請対象の行に鍵を取らないので、書き込みの口と同じトランザクションの中の、入力の規則の後・口の前に呼ぶ。
+ * 登録の経路は案件からの複製の元の印と参照者もここで得る(読み方 = 案件からの複製/写す値.md の 13.2 節)。参照者は書く時に有効な相手へ外し直す。
+ *
+ * @phpstan-import-type CopiedParty from CopiedRowAccess
+ *
+ * @phpstan-type RowAccessSend array{restricted: true|null, viewers: list<CopiedParty>|null}
  */
 class ApplicationRowAccess
 {
@@ -22,19 +29,39 @@ class ApplicationRowAccess
         private ApplicationTargetValues $targets,
         private RecordViewAccess $viewAccess,
         private RecordFormQuery $forms,
+        private CopiedRowAccess $copied,
     ) {}
 
     /**
-     * 登録の経路(新規の申請・一時保存からの申請)。
+     * 登録の経路(新規の申請・一時保存からの申請)。元の印と参照者 = 新規の申請は送り返した暗号化した値(写す人 = 今の利用者)、
+     * 一時保存からの申請は一時保存の入力のサーバーだけが書くキー(画面が送った暗号化した値は捨てる)。
      *
+     * @param  AccessContext  $context  今の利用者
      * @param  AccessContext  $applicant  書き込みの口に渡す申請者(代理のときは代理元)
+     * @param  WorkflowCase|null  $draft  一時保存からの申請の一時保存(新規の申請は null)
+     * @return RowAccessSend
      */
-    public function forRegistration(AccessContext $applicant, WorkflowFlow $flow, RecordInput $record): ?true
-    {
-        $target = $this->targets->applicationTargetOf($flow);
-        $id = $target === null ? null : self::idOf($record->values[$target['field']] ?? null);
+    public function forRegistration(
+        AccessContext $context,
+        AccessContext $applicant,
+        WorkflowFlow $flow,
+        ApplicationInput $input,
+        ?WorkflowCase $draft,
+    ): array {
+        $copied = $draft === null
+            ? $this->copied->open($input->copyRowAccess, $context->userId, $flow->id)
+            : $this->copied->ofDraft($draft->draft_input);
 
-        return $this->decide($applicant, $target, $id);
+        if ($copied !== null && $copied['restricted']) {
+            $viewers = $this->forms->effectiveViewers($copied['viewers'], $applicant->date);
+
+            return ['restricted' => true, 'viewers' => $viewers];
+        }
+
+        $target = $this->targets->applicationTargetOf($flow);
+        $id = $target === null ? null : self::idOf($input->record->values[$target['field']] ?? null);
+
+        return ['restricted' => $this->decide($applicant, $target, $id), 'viewers' => null];
     }
 
     /**

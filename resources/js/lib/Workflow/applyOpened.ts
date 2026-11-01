@@ -15,6 +15,7 @@ export type ApplyOpened = {
     mode: Props['mode'];
     caseId: number | null;
     targetEntry: Props['targetEntry'];
+    copy: Props['copy'];
 };
 
 /**
@@ -43,18 +44,22 @@ export function openedOf(props: Props): ApplyOpened {
         mode: props.mode,
         caseId: props.case?.id ?? null,
         targetEntry: props.targetEntry,
+        copy: props.copy,
     };
 }
 
 /**
  * 開いた時の props を保った props(同じ申請の画面 = mode と案件が開いた時と同じ。違えば今の props のまま)。
+ * 申請対象からの申請の targetEntry と案件からの複製の copy は同じ規則(docs の 設計/ワークフロー/申請の周辺/画面.md の 5 節)。
  */
 export function withOpened(props: Props, opened: ApplyOpened): Props {
     const isSameScreen =
         props.mode === opened.mode &&
         (props.case?.id ?? null) === opened.caseId;
 
-    return isSameScreen ? { ...props, targetEntry: opened.targetEntry } : props;
+    return isSameScreen
+        ? { ...props, targetEntry: opened.targetEntry, copy: opened.copy }
+        : props;
 }
 
 /**

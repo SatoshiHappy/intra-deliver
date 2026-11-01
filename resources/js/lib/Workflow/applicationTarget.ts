@@ -152,15 +152,17 @@ export function confirmOf(
 
 /**
  * 開いた時の写し(docs の 設計/ワークフロー/申請の周辺/既存のデータからの申請/申請対象からの申請.md の 10.2 節の「開いた時」の行)。
- * 写しの値を持たない画面(null)は何もしない。
+ * 写しの値を持たない画面(null)と、開いた時に写す経路(業務レコードの詳細から・そのものを申請する・案件からの複製)でない画面は何もしない。
  */
 export function openingOf(
     props: WorkflowApplyProps,
     record: RecordFormData,
 ): ApplicationTargetOpening {
     const { module, targetField, targetValues, targetEntry, mode } = props;
+    const copiesOnOpen =
+        targetEntry !== null || mode === 'record' || props.copy !== null;
 
-    if (targetValues === null || (targetEntry === null && mode !== 'record')) {
+    if (targetValues === null || !copiesOnOpen) {
         return { record, confirm: null, cleared: [] };
     }
 

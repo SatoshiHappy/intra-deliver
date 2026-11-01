@@ -6,6 +6,7 @@ import type {
 } from './records';
 import type { RouteStepState } from './status';
 import type { WorkflowApplicant } from './workflowApplicant';
+import type { WorkflowApplyCopy } from './workflowApplyCopy';
 import type { WorkflowApplyTarget } from './workflowApplyTarget';
 import type {
     WorkflowApplyAttachment,
@@ -87,6 +88,7 @@ export type WorkflowApplyProps = {
     applicants: WorkflowApplicant[]; // 申請者の選択肢
     applicant: number | null; // 既定の申請者(代理元。自分なら null。定義・next・申請基準日の範囲はこの人で引いた値)
     links: WorkflowPersonLinks; // 名前の札の「…」のリンク
+    copy: WorkflowApplyCopy | null; // 案件からの複製で開いたときだけ(ほかは null)
 } & WorkflowApplyTarget;
 
 /** 再申請の差分(再申請の行だけ。設計/ワークフロー/画面/申請と案件.md 5 節) */

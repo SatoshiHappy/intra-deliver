@@ -43,7 +43,8 @@ function ApplyHeading({
 }
 
 /**
- * 申請の画面の見出し(読み直しの失敗の添え書きと、申請対象の値の 1 行を足したもの = docs の 設計/ワークフロー/申請の周辺/画面.md の 5 節・8 節)。
+ * 申請の画面の見出し(読み直しの失敗の添え書きと、案件からの複製の元の申請の値の 1 行・申請対象の値の 1 行を足したもの = docs の
+ * 設計/ワークフロー/申請の周辺/画面.md の 5 節・8 節。開いた時から変わらない元の申請の 1 行を上に置く)。
  */
 export function ApplyFormHeading({
     view,
@@ -58,6 +59,10 @@ export function ApplyFormHeading({
             line={view.headingLine}
             staleNote={apply.isNextStale ? NEXT_STALE_NOTE : null}
             notes={[
+                clearedFieldsLineOf(
+                    '元の申請',
+                    apply.props.copy?.clearedFields ?? [],
+                ),
                 clearedFieldsLineOf(
                     '申請対象',
                     apply.applicationTarget.cleared,

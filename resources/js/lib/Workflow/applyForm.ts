@@ -75,7 +75,17 @@ function recordFieldsOf(props: WorkflowApplyProps) {
 }
 
 /**
- * 送る内容。申請基準日は再申請以外で送る(再申請は申請基準日を変えない = 案件の操作/操作.md の 10.1 節)。連絡は申請と再申請だけで、
+ * 案件からの複製で開いた新規の画面が、申請・一時保存の POST に送り返す暗号化した値(copy は開いた時の値を保ったもの。
+ * ほかの画面は送らない。読み方 = docs の 設計/ワークフロー/申請の周辺/既存のデータからの申請/案件からの複製/写す値.md の 13.2 節)。
+ */
+function copyFieldsOf(props: WorkflowApplyProps) {
+    return props.mode === 'new' && props.copy !== null
+        ? { copy_row_access: props.copy.rowAccess }
+        : {};
+}
+
+/**
+ * 送る内容。申請基準日は再申請以外で送る(再申請は申請基準日を変えない = 案件の運用/案件の操作/操作.md の 10.1 節)。連絡は申請と再申請だけで、
  * 人もひと言も空なら送らない(一時保存は連絡を持たない)。
  */
 export function applyPayloadOf(
@@ -96,6 +106,7 @@ export function applyPayloadOf(
         ...(props.mode === 'reapply' ? {} : { base_date: data.base_date }),
         ...applicantFieldsOf(props.mode, data.applicant),
         ...recordFieldsOf(props),
+        ...copyFieldsOf(props),
         ...(contact === null ? {} : { contact }),
     };
 }

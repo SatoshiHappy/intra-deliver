@@ -67,11 +67,16 @@ export function draftActionOf(props: Props): RouteDefinition<'post' | 'put'> {
 
 /**
  * キャンセルの戻り先(新規 = フローの選択、一時保存 = 一覧の一時保存、再申請 = 案件の詳細、既存のデータ = そのレコードの詳細、
- * 業務レコードの詳細から開いた新規 = そのレコードの詳細 = 申請の周辺/画面.md の 5 節。targetEntry は開いた時の値を保ったもの)。
+ * 業務レコードの詳細から開いた新規 = そのレコードの詳細、案件からの複製 = 元の申請の詳細 = 申請の周辺/画面.md の 5 節。
+ * targetEntry・copy は開いた時の値を保ったもの)。
  */
 export function backHrefOf(props: Props) {
     if (props.mode === 'new' && props.targetEntry !== null) {
         return recordShow(props.targetEntry);
+    }
+
+    if (props.mode === 'new' && props.copy !== null) {
+        return caseShow(props.copy.caseId);
     }
 
     switch (props.mode) {

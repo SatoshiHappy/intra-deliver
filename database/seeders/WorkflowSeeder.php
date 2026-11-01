@@ -64,6 +64,8 @@ use Illuminate\Database\Seeder;
  *
  * 日付(版の開始日・2 段目の計画の見本の申請基準日)は {@see self::DATES} の 1 か所に基準の日の値で置き、使う所で流す日からの相対にする
  * ({@see SeedingDates}。docs の 設計/ワークフロー/案件の運用/初期データ.md 1.1)。
+ *
+ * 途中に足す・並べ替える・消すと、前の日の暗号化した値(案件からの複製)が別のフローに結び付きうる(ADR 0032 の影響の決定 4)。
  */
 class WorkflowSeeder extends Seeder
 {

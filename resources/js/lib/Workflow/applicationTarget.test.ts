@@ -185,6 +185,7 @@ function props(overrides: Partial<WorkflowApplyProps>): WorkflowApplyProps {
         targetField: APPLICATION_TARGET_FIELD,
         targetValues: null,
         targetEntry: null,
+        copy: null,
         ...overrides,
     } as WorkflowApplyProps;
 }

@@ -24,6 +24,7 @@ function props(overrides: Partial<WorkflowApplyProps>): WorkflowApplyProps {
         case: null,
         targetField: 'project',
         targetEntry: null,
+        copy: null,
         ...overrides,
     } as WorkflowApplyProps;
 }

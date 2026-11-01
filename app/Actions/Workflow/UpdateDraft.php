@@ -6,6 +6,7 @@ use App\Enums\Workflow\WorkflowOperation;
 use App\Models\Workflow\WorkflowCase;
 use App\Models\Workflow\WorkflowFlow;
 use App\Queries\Workflow\CaseActor;
+use App\Queries\Workflow\CopiedRowAccess;
 use App\Support\AccessContext;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -16,6 +17,7 @@ use RuntimeException;
 /**
  * 一時保存(上書き)(docs の 設計/ワークフロー/案件の操作/操作.md 3.4。判定の順は 3.1 の 2、代理での判定する人は 設計/ワークフロー/案件の運用/案件の操作/操作.md の 10.8 節)。
  * 添付は外す指定の行を消してから足す(外せるのは実行者が上げた行だけ。書く順 = 設計/ワークフロー/申請の周辺/添付/書く順と検査.md の 6 節)。
+ * サーバーだけが書くキー(案件からの複製の copied_row_access)は持った値を変えない(既存のデータからの申請/案件からの複製/写す値.md の 13.2 節)。
  */
 class UpdateDraft
 {
@@ -25,6 +27,7 @@ class UpdateDraft
         private CaseInputRules $inputRules,
         private CaseAttachmentRules $attachmentRules,
         private CaseDraftAttachments $attachments,
+        private CopiedRowAccess $copied,
     ) {}
 
     /**
@@ -45,7 +48,7 @@ class UpdateDraft
             );
             $permit = $this->guard->lockAndPermit(WorkflowOperation::OverwriteDraft, $context, $caseId, $revision, $authorize);
             $case = $permit->case();
-            $draft = $this->inputRules->draftInput($input);
+            $draft = $this->inputRules->draftInput($input, $this->copied->keptInDraft($case->draft_input));
             $flow = WorkflowFlow::query()->findOrFail($case->workflow_flow_id);
             $this->attachmentRules->rejectFiles(WorkflowOperation::OverwriteDraft, $flow, $input->attachFiles);
             $uploader = CaseActor::forProcessor($permit->processorUserId(), $context)->executorUserId;
