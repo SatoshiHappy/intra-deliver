@@ -55,10 +55,10 @@ use Illuminate\Database\Seeder;
  * 申請の案件名は空で渡して既定にする(docs の 設計/ワークフロー/初期データ.md 4 節)。定義の前に申請書の業務モジュール 2 つを作る({@see WorkflowApplicationModules})。
  * 見本の申請は申請対象のレコードをデータハブ(プロジェクト・課題)に作り、それを申請対象にした申請書で申請する({@see BuildsWorkflowSampleRecords})。
  *
- * 先頭に、接頭辞のリソースグループ 14・ルートのリソース 49 と、ROUTES の 32 本のゲストユーザ・認証済みユーザへの execute の許可
+ * 先頭に、接頭辞のリソースグループ 15・ルートのリソース 50 と、ROUTES の 32 本のゲストユーザ・認証済みユーザへの execute の許可
  * (64 = 設計/ワークフロー/ルートの深さ/初期データ.md 5 節の 38 と、案件の運用・申請の周辺で足したルートの分 =
  * 設計/ワークフロー/案件の運用/認可と一覧.md の 4 節と、ワークフローのホームの 2 = 設計/ワークフロー/認可と一覧.md 4 節)を入れる(設計/ワークフロー/ルートの深さ/初期データ.md 1 節。
- * 接頭辞のリソースグループと、システム管理者だけの ADMIN_ROUTES の 17 本には許可を置かない)。メニューのグループ「ワークフロー」は MenuSeeder が入れる。
+ * 接頭辞のリソースグループと、システム管理者だけの ADMIN_ROUTES の 18 本には許可を置かない)。メニューのグループ「ワークフロー」は MenuSeeder が入れる。
  * 定義の前に workflow-flow のセットとシステム管理者の許可 2 を入れ、フローを作るたびにフローのリソースを足す({@see WorkflowFlowResources}。
  * 設計/ワークフロー/案件の運用/認可と一覧.md の 3 節)。
  *
@@ -103,6 +103,7 @@ class WorkflowSeeder extends Seeder
         'workflow.admin.proxies' => ['代理の管理', 'Proxy administration'],
         'workflow.admin.flows' => ['フロー定義', 'Flow definitions'],
         'workflow.admin.flows.referrers' => ['参照者', 'Referrers'],
+        'workflow.admin.flows.settings' => ['添付ファイル', 'Attachments'],
         'workflow.admin.versions' => ['フロー定義の版', 'Flow definition versions'],
         'workflow.admin.nodes' => ['ステップの設定', 'Step settings'],
     ];
@@ -161,6 +162,7 @@ class WorkflowSeeder extends Seeder
         'workflow.admin.flows.index' => ['フロー定義の一覧', 'Flow definition list'],
         'workflow.admin.flows.show' => ['フロー定義の詳細', 'Flow definition detail'],
         'workflow.admin.flows.referrers.update' => ['参照者の保存', 'Save referrers'],
+        'workflow.admin.flows.settings.update' => ['添付ファイルの設定の保存', 'Save attachment settings'],
         'workflow.admin.versions.store' => ['版の追加', 'Add version'],
         'workflow.admin.versions.disable' => ['版の無効化', 'Disable version'],
         'workflow.admin.versions.enable' => ['版の有効化', 'Enable version'],

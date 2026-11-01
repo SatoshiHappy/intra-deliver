@@ -39,6 +39,7 @@ final class WorkflowSeederRouteResourcesTest extends TransactionalTestCase
         [self::ADMIN_PROXIES, 'http-services.workflow.admin', '代理の管理', 'Proxy administration'],
         [self::ADMIN_FLOWS, 'http-services.workflow.admin', 'フロー定義', 'Flow definitions'],
         ['http-services.workflow.admin.flows.referrers', self::ADMIN_FLOWS, '参照者', 'Referrers'],
+        ['http-services.workflow.admin.flows.settings', self::ADMIN_FLOWS, '添付ファイル', 'Attachments'],
         [self::ADMIN_VERSIONS, 'http-services.workflow.admin', 'フロー定義の版', 'Flow definition versions'],
         ['http-services.workflow.admin.nodes', 'http-services.workflow.admin', 'ステップの設定', 'Step settings'],
         ['http-services.workflow.home', 'http-services.workflow', 'ワークフローのホーム', 'Workflow home'],
@@ -97,6 +98,10 @@ final class WorkflowSeederRouteResourcesTest extends TransactionalTestCase
             'http-services.workflow.admin.flows.referrers.update', 'http-services.workflow.admin.flows.referrers',
             '参照者の保存', 'Save referrers',
         ],
+        [
+            'http-services.workflow.admin.flows.settings.update', 'http-services.workflow.admin.flows.settings',
+            '添付ファイルの設定の保存', 'Save attachment settings',
+        ],
         ['http-services.workflow.admin.versions.store', self::ADMIN_VERSIONS, '版の追加', 'Add version'],
         ['http-services.workflow.admin.versions.disable', self::ADMIN_VERSIONS, '版の無効化', 'Disable version'],
         ['http-services.workflow.admin.versions.enable', self::ADMIN_VERSIONS, '版の有効化', 'Enable version'],
@@ -111,11 +116,12 @@ final class WorkflowSeederRouteResourcesTest extends TransactionalTestCase
     ];
 
     /**
-     * 設計/ワークフロー/ルートの深さ/初期データ.md 5 節: 接頭辞のリソースグループ 14 とルートのリソース 49(ワークフローのホーム = 設計/メニュー/ホーム.md 6.7、ルート 18 本 =
+     * 設計/ワークフロー/ルートの深さ/初期データ.md 5 節: 接頭辞のリソースグループ 15 とルートのリソース 50(ワークフローのホーム = 設計/メニュー/ホーム.md 6.7、ルート 18 本 =
      * 設計/ワークフロー/認可と一覧.md 4 節と、処理対象者の候補と、一括承認・一括確認・利用者の候補・保留・保留解除・振替・確認・参照項目の候補・
      * 代理の設定と申請操作と代理の管理の 12 本 = 設計/ワークフロー/案件の運用/認可と一覧.md の 4 節と、写しの値の入口 =
      * 設計/ワークフロー/申請の周辺/初期データ.md の 3 節。申請操作・代理の管理の親 http-services.workflow.admin の表示名 =
-     * 設計/ワークフロー/ルートの深さ/認可と一覧.md の 4.2 節。定義の管理の接頭辞 4 とルート 8 = 同じ 4.2 節。ID・親は名前から決まる。表示名 ja・en = それぞれの節)。
+     * 設計/ワークフロー/ルートの深さ/認可と一覧.md の 4.2 節。定義の管理の接頭辞 5 とルート 9 = 同じ 4.2 節と、
+     * 設計/ワークフロー/申請の周辺/画面.md の 4 節(添付ファイルの設定の保存。表示名は利用者の決定)。ID・親は名前から決まる。表示名 ja・en = それぞれの節)。
      * ポリシー 64 は WorkflowRouteAuthorizationTest・AuthorizationSeedersTest が確かめる(申請操作・定義の管理はポリシーなし)。
      */
     public function test_seeds_the_route_resources_of_the_design(): void
@@ -134,6 +140,6 @@ final class WorkflowSeederRouteResourcesTest extends TransactionalTestCase
             ->all();
 
         $this->assertSame(self::ROUTE_RESOURCE_GROUPS, $groups);
-        $this->assertSame(49, AuthzResource::query()->where('uri', 'like', 'service://workflow/%')->count());
+        $this->assertSame(50, AuthzResource::query()->where('uri', 'like', 'service://workflow/%')->count());
     }
 }

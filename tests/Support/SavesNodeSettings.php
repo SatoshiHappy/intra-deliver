@@ -38,6 +38,7 @@ trait SavesNodeSettings
             'designatorNodeCode' => $codes[$node->designator_workflow_route_node_id] ?? null,
             'minAssignees' => $node->min_assignees, 'maxAssignees' => $node->max_assignees,
             'preventsApplicantApproval' => $node->prevents_applicant_approval,
+            'preventsAttachmentAdd' => $node->prevents_attachment_add,
             'sendBackNodeCodes' => array_values(array_map(fn (mixed $id) => (string) $codes[$id], $sendBacks)),
             'decisionRule' => $node->decision_rule, 'decisionValue' => $node->decision_value,
         ];

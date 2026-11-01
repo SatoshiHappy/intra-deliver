@@ -74,3 +74,9 @@ export async function confirmToggle(page: Page, title: string, toast: string) {
     );
     await expect(page.getByText(toast, { exact: true })).toBeVisible();
 }
+
+/** タブ「設定」の面(form の名前 = 面の見出し)の中のボタン。面ごとに同じ名前のボタン(「保存」「キャンセル」)があるため */
+export const surfaceButton = (page: Page, surface: string, name: string) =>
+    page
+        .getByRole('form', { name: surface, exact: true })
+        .getByRole('button', { name, exact: true });

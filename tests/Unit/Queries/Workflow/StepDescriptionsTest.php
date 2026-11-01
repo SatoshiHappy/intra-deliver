@@ -81,8 +81,65 @@ final class StepDescriptionsTest extends TestCase
         string $summary,
         ?string $subtitle,
     ): void {
-        $this->assertSame($summary, StepDescriptions::summary($kind, '予算', $target, $rule, $value));
+        $this->assertSame($summary, self::summaryText($kind, '予算', $target, $rule, $value));
         $this->assertSame($subtitle, StepDescriptions::subtitle($kind, $target));
+    }
+
+    /**
+     * 「添付ファイルを追加できません。」は真のときだけ、承認・横配置・縦配置の要約の 1 文の後に続く(図の短い文は変わらない)。
+     */
+    public function test_the_attachment_sentence_follows_only_when_adding_is_prevented(): void
+    {
+        $chief = StepTarget::designated('課長', 1, 2);
+        $summary = fn (WorkflowNodeKind $kind, bool $prevents) => self::summaryText(
+            $kind, '部長', $chief, WorkflowDecisionRule::All, null, $prevents,
+        );
+
+        $this->assertSame('課長が選択した 1 人から 2 人が承認します。', $summary(WorkflowNodeKind::Approve, false));
+        $this->assertSame(
+            '課長が選択した 1 人から 2 人が承認します。添付ファイルを追加できません。',
+            $summary(WorkflowNodeKind::Approve, true),
+        );
+        $this->assertSame(
+            '課長が選択した 1 人から 2 人が、順に承認します。添付ファイルを追加できません。',
+            $summary(WorkflowNodeKind::Serial, true),
+        );
+        $this->assertSame(
+            '課長が選択した 1 人から 2 人のうち、全員が承認すると次へ進みます。添付ファイルを追加できません。',
+            $summary(WorkflowNodeKind::Parallel, true),
+        );
+    }
+
+    /**
+     * 要約の並び: 具体の組織(対象者で指定の組織の行)の名前だけが {departmentId, text}、ほかの行・区切り・文は続く文字列にまとめる。
+     * つなぐと summary と同じ文。組織を持たない指定と分岐・同期は文字列 1 つ。
+     */
+    public function test_the_summary_parts_mark_only_the_department_names(): void
+    {
+        $fixed = StepTarget::fixed([
+            ['type' => 'role', 'id' => 1, 'name' => '一般ユーザー'],
+            ['type' => 'department', 'id' => 21, 'name' => '経理部'],
+            ['type' => 'user', 'id' => 7, 'name' => '山田 恵'],
+            ['type' => 'department', 'id' => 22, 'name' => '総務部'],
+        ]);
+        $parts = StepDescriptions::summaryParts(WorkflowNodeKind::Approve, '部長', $fixed, null, null, true);
+
+        $this->assertSame([
+            '一般ユーザー、', ['departmentId' => 21, 'text' => '経理部'], '、山田 恵、',
+            ['departmentId' => 22, 'text' => '総務部'], 'が承認します。添付ファイルを追加できません。',
+        ], $parts);
+        $this->assertSame(
+            '一般ユーザー、経理部、山田 恵、総務部が承認します。添付ファイルを追加できません。',
+            self::summaryText(WorkflowNodeKind::Approve, '部長', $fixed, null, null, true),
+        );
+        $this->assertSame(
+            ['課長が選択した 1 人から 2 人が承認します。'],
+            StepDescriptions::summaryParts(WorkflowNodeKind::Approve, '部長', StepTarget::designated('課長', 1, 2)),
+        );
+        $this->assertSame(
+            ['分岐「予算」の条件に該当する先へ、すべて進みます。'],
+            StepDescriptions::summaryParts(WorkflowNodeKind::BranchStart, '予算', null),
+        );
     }
 
     /**
@@ -136,5 +193,21 @@ final class StepDescriptionsTest extends TestCase
     public function test_the_placeholders_of_a_placement(int $min, int $max, array $expected): void
     {
         $this->assertSame($expected, StepDescriptions::placeholders($min, $max));
+    }
+
+    /**
+     * 要約の並びをつないだ 1 文。
+     */
+    private static function summaryText(
+        WorkflowNodeKind $kind,
+        string $name,
+        ?StepTarget $target,
+        ?WorkflowDecisionRule $rule = null,
+        ?int $value = null,
+        bool $preventsAttachmentAdd = false,
+    ): string {
+        $parts = StepDescriptions::summaryParts($kind, $name, $target, $rule, $value, $preventsAttachmentAdd);
+
+        return implode('', array_map(fn (string|array $part) => is_string($part) ? $part : $part['text'], $parts));
     }
 }

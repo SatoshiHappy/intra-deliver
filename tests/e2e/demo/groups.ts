@@ -19,7 +19,7 @@ export const demoGroups = [
         // 代理を足して消すだけ(代理先の通知が残る)で、案件と通知の件数を前提にしないので、この 3 つの順はどれでもよい。
         // 3 つとも zz-workflow-record-apply-* の前に置く。zz-workflow-record-apply-* は番号の順に流す(名前に target を含む 3 つは
         // 申請対象からの申請で、プロジェクトを申請対象にするフローが 1 つのうちに流す。2 で 2 つ目のフローを足し、
-        // 3 で申請書の業務モジュールの更新の許可を外すので、最後に置く。名前に attachment を含む 3 つの spec は 2 で足した 2 つ目のフローの入口のダイアログと、
+        // 3 で申請書の業務モジュールの更新の許可を外すので、最後に置く。名前に attachment を含む 4 つの spec は 2 で足した 2 つ目のフローの入口のダイアログと、
         // 申請書のレコードへの添付の追加(更新の許可)を使うので、2 と 3 の間に置く。名前の順に流れるので、番号をそう振る。処理のダイアログの
         // 添付の spec(名前に attachment-process を含む)は更新の許可が無くても付くことを確かめるので、3 の後に置く)。
         // zz-workflow-case-operations は筋の中で申請した案件だけを変えて筋の最後に消すので、見本の案件も前の spec の件数も変えない
@@ -43,6 +43,7 @@ export const demoGroups = [
             'tests/e2e/demo/zz-workflow-record-apply-2b-attachment-draft.spec.ts',
             'tests/e2e/demo/zz-workflow-record-apply-2c-attachment-values.spec.ts',
             'tests/e2e/demo/zz-workflow-record-apply-2d-attachment-limits.spec.ts',
+            'tests/e2e/demo/zz-workflow-record-apply-2e-attachment-flow-settings.spec.ts',
             'tests/e2e/demo/zz-workflow-case-operations.spec.ts',
             'tests/e2e/demo/zz-workflow-record-apply-3-others.spec.ts',
             'tests/e2e/demo/zz-workflow-record-apply-4-attachment-process.spec.ts',
@@ -57,6 +58,7 @@ export const demoGroups = [
         // app-skeleton-administrator・workflow-home は切替で利用者を替えて画面を開くだけで、DB に書かない。
         // workflow-person-links は初期データの見本の案件の処理のダイアログを開くが決定しない(DB に書かず、見本の案件の初期の状態を前提にする)。
         // app-skeleton-administrator の先頭の画面は初期データの業務の木を前提にする(前に流れる spec が業務の木を変えない)。
+        // zz-workflow-admin.attachment(フローの添付の設定。元に戻す。見本の案件の処理のダイアログを開くだけ)と
         // zz-workflow-admin(版・参照者)と zz-workflow-admin.steps(ステップの設定。元に戻す)はフローの定義を変えるが、
         // この組のほかの spec はフローの定義を前提にしない(workflow-person-links が前提にするのは見本の案件の状態だけ)。
         // 名前の順でこの組の最後に流れ、別の組は別の DB なので、定義を変えても申請の筋(demo-workflow)に効かない)。
@@ -74,6 +76,7 @@ export const demoGroups = [
             'tests/e2e/demo/workflow-connected.spec.ts',
             'tests/e2e/demo/workflow-home.spec.ts',
             'tests/e2e/demo/workflow-person-links.spec.ts',
+            'tests/e2e/demo/zz-workflow-admin.attachment.spec.ts',
             'tests/e2e/demo/zz-workflow-admin.spec.ts',
             'tests/e2e/demo/zz-workflow-admin.steps.spec.ts',
         ],

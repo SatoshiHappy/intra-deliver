@@ -115,6 +115,7 @@ class SaveNodeSettings
             'designator_workflow_route_node_id' => $designatorCode === null ? null : $nodeIds[$designatorCode],
             'min_assignees' => $input->minAssignees, 'max_assignees' => $input->maxAssignees,
             'prevents_applicant_approval' => $input->preventsApplicantApproval ?? false,
+            'prevents_attachment_add' => $input->preventsAttachmentAdd ?? false,
             'decision_rule' => $input->decisionRule, 'decision_value' => $input->decisionValue,
         ]);
 

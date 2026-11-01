@@ -1,4 +1,5 @@
 import { StepSettingsForm } from '@/components/Workflow/StepSettingsForm';
+import { NodeSummary } from '@/components/Workflow/NodeSummary';
 import { Badge } from '@/components/ui/badge';
 import { stepKindWord } from '@/lib/Workflow/flowDefinitionTexts';
 import { stepSignature } from '@/lib/Workflow/stepForm';
@@ -67,7 +68,9 @@ export function StepSettingsPane({
             className="flex min-w-0 flex-col gap-4 rounded-xl border bg-card p-5 text-card-foreground"
         >
             <StepPaneHeading step={step} />
-            <p className={SUMMARY_CLASSES}>{step.summary}</p>
+            <p className={SUMMARY_CLASSES}>
+                <NodeSummary parts={step.summary} />
+            </p>
             {step.target !== null && (
                 <StepSettingsForm
                     key={`${version}|${stepSignature(step)}`}

@@ -20,6 +20,13 @@ const stepButton = (page: Page, name: string) =>
         .getByRole('group', { name: 'ステップの選択' })
         .getByRole('button', { name, exact: true });
 
+/** 部長(初期データの版 3)は添付ファイルを追加できない。要約の 1 文の後にその文が続く */
+const MANAGER_SUMMARY = '承認します。添付ファイルを追加できません。';
+
+/** 要約の 1 文(緑の帯) */
+const summaryOf = (page: Page, text: string) =>
+    page.getByText(text, { exact: true });
+
 const cardHeading = (page: Page, name: string) =>
     page.getByRole('heading', { level: 3, name, exact: true });
 
@@ -56,7 +63,7 @@ test('システム管理者: 図で「部長」を押すと右の欄が「部長
         page.getByRole('heading', { level: 2, name: '部長 承認' }),
     ).toBeVisible();
     await expect(
-        page.getByText('申請者の上位組織の部長が承認します。', { exact: true }),
+        summaryOf(page, `申請者の上位組織の部長が${MANAGER_SUMMARY}`),
     ).toBeVisible();
     await expect(cardHeading(page, '誰が承認するか')).toBeVisible();
     await expect(cardHeading(page, '申請者本人の承認を防ぐ')).toBeVisible();
@@ -94,19 +101,22 @@ test('システム管理者: 部長の組織を替えて保存するとトース
 }) => {
     await openAsAdministrator(page, `${PLAN}?node=manager`);
     const scope = page.getByRole('combobox', { name: '組織', exact: true });
-    const summary = (text: string) => page.getByText(text, { exact: true });
     const box = diagramOf(page).getByRole('button', { name: /^部長/ });
 
     await scope.click();
     await page.getByRole('option', { name: '所属組織', exact: true }).click();
     await save(page, 'manager');
-    await expect(summary('申請者の所属組織の部長が承認します。')).toBeVisible();
+    await expect(
+        summaryOf(page, `申請者の所属組織の部長が${MANAGER_SUMMARY}`),
+    ).toBeVisible();
     await expect(box).toContainText('申請者の所属組織 + 部長');
 
     await scope.click();
     await page.getByRole('option', { name: '上位組織', exact: true }).click();
     await save(page, 'manager');
-    await expect(summary('申請者の上位組織の部長が承認します。')).toBeVisible();
+    await expect(
+        summaryOf(page, `申請者の上位組織の部長が${MANAGER_SUMMARY}`),
+    ).toBeVisible();
     await expect(box).toContainText('申請者の上位組織 + 部長');
 });
 

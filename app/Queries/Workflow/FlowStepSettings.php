@@ -14,13 +14,14 @@ use LogicException;
  * 選択の欄の指定するステップの候補。候補は定義の検査と同じ式({@see RouteNodeCandidates})。持たない設定は null。鍵を取らない。
  *
  * @phpstan-import-type SubjectRow from StepTarget
+ * @phpstan-import-type SummaryPart from StepDescriptions
  *
  * @phpstan-type StepTargetSettings array{kind: 'fixed', rows: list<SubjectRow>}
  *     |array{kind: 'relative', base: string, scope: string, companyPostId: int|null}
  *     |array{kind: 'designated', designatorCode: string, min: int, max: int}
  * @phpstan-type NodeChoice array{code: string, name: string}
- * @phpstan-type StepSettings array{code: string, name: string, kind: string, summary: string,
- *     target: StepTargetSettings|null, preventsApplicantApproval: bool|null,
+ * @phpstan-type StepSettings array{code: string, name: string, kind: string, summary: list<SummaryPart>,
+ *     target: StepTargetSettings|null, preventsApplicantApproval: bool|null, preventsAttachmentAdd: bool|null,
  *     sendBack: array{candidates: list<NodeChoice>, selected: list<string>}|null,
  *     decision: array{rule: string, value: int|null}|null}
  */
@@ -45,11 +46,13 @@ class FlowStepSettings
             'code' => $node->code,
             'name' => $node->name,
             'kind' => $node->kind->value,
-            'summary' => StepDescriptions::summary(
+            'summary' => StepDescriptions::summaryParts(
                 $node->kind, $node->name, $target, $node->decision_rule, $node->decision_value,
+                $node->prevents_attachment_add,
             ),
             'target' => $target === null ? null : $this->targetOf($route, $node, $target),
             'preventsApplicantApproval' => $isApproving ? $node->prevents_applicant_approval : null,
+            'preventsAttachmentAdd' => $isApproving ? $node->prevents_attachment_add : null,
             'sendBack' => $isApproving ? $this->sendBackOf($route, $node) : null,
             'decision' => $node->kind === WorkflowNodeKind::Parallel ? [
                 'rule' => $node->decision_rule->value ?? throw new LogicException("縦配置 {$node->id} に可決の条件が無い"),

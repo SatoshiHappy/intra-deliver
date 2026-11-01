@@ -31,5 +31,6 @@ final readonly class NodeSettingsInput
         public ?array $sendBackNodeCodes = null,
         public ?WorkflowDecisionRule $decisionRule = null,
         public ?int $decisionValue = null,
+        public ?bool $preventsAttachmentAdd = null,
     ) {}
 }

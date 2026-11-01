@@ -8,9 +8,11 @@ use App\Enums\Workflow\WorkflowTargetKind;
 use LogicException;
 
 /**
- * ノードの設定から作る文の 1 か所(docs の 設計/ワークフロー/ルートの深さ/画面/図と意匠とE2E.md 9.3 節): 要約の 1 文(summary)・その可変部・
+ * ノードの設定から作る文の 1 か所(docs の 設計/ワークフロー/ルートの深さ/画面/図と意匠とE2E.md 9.3 節): 要約の 1 文(区切りの並びの summaryParts)・その可変部・
  * 図の短い文(subtitle)・縦配置の完了の条件・配置の仮の札。要約と短い文は同じ {@see StepTarget} の名前から作る。値だけを扱い、DB を読まない。
  * 分岐終了・同期の要約と、横配置・縦配置の「{n} 人」は 9.3 節の表に無い行で、表の文の形に揃えた。
+ *
+ * @phpstan-type SummaryPart string|array{departmentId: int, text: string}
  */
 final class StepDescriptions
 {
@@ -19,30 +21,36 @@ final class StepDescriptions
     private const SCOPES = ['own' => '所属組織', 'parent' => '上位組織', 'ancestors' => '上位組織全て'];
 
     /**
-     * 要約の 1 文。
+     * 要約の 1 文を、具体の組織(対象者で指定の組織の行)の名前だけを {departmentId, text} にした並びで返す。画面が組織の名前に
+     * 「…」(組織図で見る)を付けるため(設計/ワークフロー/申請の周辺/メニューと導線.md の 2.2)。つなぐと要約の 1 文になる。
      *
      * @param  string  $name  ノードの名前(分岐開始の文に使う)
      * @param  StepTarget|null  $target  処理対象者の指定(分岐・同期は null)
+     * @param  bool  $preventsAttachmentAdd  真のときだけ「添付ファイルを追加できません。」を続ける(設計/ワークフロー/申請の周辺/画面.md の 4 節)
+     * @return list<SummaryPart>
      */
-    public static function summary(
+    public static function summaryParts(
         WorkflowNodeKind $kind,
         string $name,
         ?StepTarget $target,
         ?WorkflowDecisionRule $rule = null,
         ?int $value = null,
-    ): string {
-        $phrase = fn () => self::targetPhrase($target ?? throw new LogicException("ステップ {$name} に処理対象者の指定が無い"));
+        bool $preventsAttachmentAdd = false,
+    ): array {
+        $phrase = fn () => self::targetParts($target ?? throw new LogicException("ステップ {$name} に処理対象者の指定が無い"));
 
-        return match ($kind) {
-            WorkflowNodeKind::Apply => $phrase().'が申請できます。',
-            WorkflowNodeKind::Approve => $phrase().'が承認します。',
-            WorkflowNodeKind::Serial => $phrase().'が、順に承認します。',
-            WorkflowNodeKind::Parallel => $phrase().'のうち、'.self::decisionPhrase($rule, $value).'が承認すると次へ進みます。',
-            WorkflowNodeKind::BranchStart => "分岐「{$name}」の条件に該当する先へ、すべて進みます。",
-            WorkflowNodeKind::BranchEnd => '分岐の枝がここで合流します。',
-            WorkflowNodeKind::SyncStart => '後ろのステップへ並行して進みます。',
-            WorkflowNodeKind::SyncEnd => '並行したステップがすべて終わると次へ進みます。',
+        $sentence = match ($kind) {
+            WorkflowNodeKind::Apply => [...$phrase(), 'が申請できます。'],
+            WorkflowNodeKind::Approve => [...$phrase(), 'が承認します。'],
+            WorkflowNodeKind::Serial => [...$phrase(), 'が、順に承認します。'],
+            WorkflowNodeKind::Parallel => [...$phrase(), 'のうち、'.self::decisionPhrase($rule, $value).'が承認すると次へ進みます。'],
+            WorkflowNodeKind::BranchStart => ["分岐「{$name}」の条件に該当する先へ、すべて進みます。"],
+            WorkflowNodeKind::BranchEnd => ['分岐の枝がここで合流します。'],
+            WorkflowNodeKind::SyncStart => ['後ろのステップへ並行して進みます。'],
+            WorkflowNodeKind::SyncEnd => ['並行したステップがすべて終わると次へ進みます。'],
         };
+
+        return self::merged($preventsAttachmentAdd ? [...$sentence, '添付ファイルを追加できません。'] : $sentence);
     }
 
     /**
@@ -55,6 +63,51 @@ final class StepDescriptions
             WorkflowTargetKind::Relative => self::relativeScope($target).'の'.($target->companyPostName ?? '所属の人'),
             WorkflowTargetKind::Designated => "{$target->designatorName}が選択した ".self::count($target),
         };
+    }
+
+    /**
+     * 可変部の並び(対象者で指定は行ごと。組織の行だけ {departmentId, text}、ほかの行と区切りの「、」は文字列)。
+     *
+     * @return list<SummaryPart>
+     */
+    private static function targetParts(StepTarget $target): array
+    {
+        if ($target->kind !== WorkflowTargetKind::Fixed) {
+            return [self::targetPhrase($target)];
+        }
+
+        $parts = [];
+
+        foreach ($target->rows as $index => $row) {
+            $parts[] = $index === 0 ? '' : '、';
+            $isDepartment = $row['type'] === 'department';
+            $parts[] = $isDepartment ? ['departmentId' => $row['id'], 'text' => $row['name']] : $row['name'];
+        }
+
+        return $parts;
+    }
+
+    /**
+     * 続く文字列をひとつにまとめる(並びの形を短く保つ)。
+     *
+     * @param  list<SummaryPart>  $parts
+     * @return list<SummaryPart>
+     */
+    private static function merged(array $parts): array
+    {
+        $merged = [];
+
+        foreach ($parts as $part) {
+            $last = count($merged) - 1;
+
+            if (is_string($part) && $last >= 0 && is_string($merged[$last])) {
+                $merged[$last] .= $part;
+            } elseif ($part !== '') {
+                $merged[] = $part;
+            }
+        }
+
+        return $merged;
     }
 
     /**

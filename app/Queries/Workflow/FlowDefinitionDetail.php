@@ -18,7 +18,7 @@ use LogicException;
  * flow.moduleName = 申請対象の業務モジュールの名前(申請対象なしは null)。
  * クエリは解釈した後の値を返す(version = 無い・数でない・そのフローに無い番号なら今日の版、無ければ最後の版。tab = 既定 diagram。
  * node = 選んだ版に無ければ申請のノード)。today = サーバーの今日(版を追加の開始日の範囲に使う。遅延にしない)。
- * 図・選んだステップ・参照者・選択の欄の候補は部分の再読み込みのために遅延で評価する。鍵を取らない。
+ * 図・選んだステップ・参照者・フローの設定・選択の欄の候補は部分の再読み込みのために遅延で評価する。鍵を取らない。
  *
  * @phpstan-import-type SubjectRow from StepTarget
  * @phpstan-import-type StepSettings from FlowStepSettings
@@ -33,6 +33,7 @@ use LogicException;
  *     selectedVersion: int, tab: string, today: string,
  *     diagram: Closure(): array{nodes: list<DefinitionNode>, edges: list<DefinitionEdge>},
  *     selectedNode: Closure(): StepSettings, referrers: Closure(): array{rows: list<SubjectRow>},
+ *     flowSettings: Closure(): array{isAttachmentEnabled: bool},
  *     options: Closure(): array{companyPosts: list<array{id: int, name: string}>, designators: list<NodeChoice>}}
  */
 class FlowDefinitionDetail
@@ -96,6 +97,7 @@ class FlowDefinitionDetail
                 ->of($routeOf(), FlowDefinitionList::contentOf($flow)->record_module_id, $today, $localeCode),
             'selectedNode' => fn () => $this->settings->of($routeOf(), $nodeOf(), $today, $localeCode),
             'referrers' => fn () => ['rows' => $this->referrerRows($flow, $today, $localeCode)],
+            'flowSettings' => fn () => ['isAttachmentEnabled' => $flow->is_attachment_enabled],
             'options' => fn () => [
                 'companyPosts' => $this->companyPosts($today, $localeCode),
                 'designators' => $this->settings->designatorsOf($routeOf(), $nodeOf()),

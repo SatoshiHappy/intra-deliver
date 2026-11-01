@@ -1,4 +1,5 @@
 import type { WorkflowDiagramEdge, WorkflowDiagramNode } from './workflow';
+import type { WorkflowPersonLinks } from './workflowRows';
 import type {
     WorkflowDecisionRule,
     WorkflowNodeKind,
@@ -68,19 +69,25 @@ export type WorkflowStepTarget =
 /** 選択の欄のステップ(写した並び) */
 export type WorkflowNodeChoice = { code: string; name: string };
 
-/** 図で選んだステップの設定(持たない設定は null。summary = 設定から作った要約の 1 文) */
+/** 要約の 1 文の区切り(文字列 = そのまま出す字、departmentId つき = 具体の組織の名前で、横の「…」が組織図で見るを開く) */
+export type WorkflowSummaryPart =
+    | string
+    | { departmentId: number; text: string };
+
+/** 図で選んだステップの設定(持たない設定は null。summary = 設定から作った要約の 1 文の区切りの並び) */
 export type WorkflowStepSettings = {
     code: string;
     name: string;
     kind: WorkflowNodeKind;
-    summary: string;
+    summary: WorkflowSummaryPart[];
     target: WorkflowStepTarget | null;
     preventsApplicantApproval: boolean | null; // 承認・横配置・縦配置だけ
+    preventsAttachmentAdd: boolean | null; // 承認・横配置・縦配置だけ(真 = 添付ファイルを追加できない)
     sendBack: { candidates: WorkflowNodeChoice[]; selected: string[] } | null; // 承認・横配置・縦配置だけ
     decision: { rule: WorkflowDecisionRule; value: number | null } | null; // 縦配置だけ
 };
 
-/** 詳細のタブ(settings = タブ「設定」。面「参照者」を持つ) */
+/** 詳細のタブ(settings = タブ「設定」。面「参照者」と面「添付ファイル」を持つ) */
 export type WorkflowFlowDefinitionTab = 'diagram' | 'versions' | 'settings';
 
 /**
@@ -97,6 +104,8 @@ export type WorkflowAdminFlowShowProps = {
     diagram: { nodes: WorkflowDiagramNode[]; edges: WorkflowDiagramEdge[] };
     selectedNode: WorkflowStepSettings;
     referrers: { rows: WorkflowSubjectRow[] };
+    flowSettings: { isAttachmentEnabled: boolean }; // タブ「設定」の面「添付ファイル」
+    links: WorkflowPersonLinks; // 見出しの「認可設定で見る」と要約の組織の「組織図で見る」を出すか
     options: {
         companyPosts: { id: number; name: string }[];
         designators: WorkflowNodeChoice[]; // 選んだステップの指定するステップの候補(承認・横配置・縦配置のほかは空)

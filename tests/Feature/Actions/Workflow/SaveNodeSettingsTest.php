@@ -165,14 +165,14 @@ final class SaveNodeSettingsTest extends TransactionalTestCase
     }
 
     /**
-     * 入力に無い列(期限・確認する人・添付の追加の禁止)は変えない。
+     * 入力に無い列(期限・確認する人)は変えない。添付の追加の禁止は入力の欄で、NodeAttachmentSettingsTest が見る。
      */
     public function test_the_columns_not_in_the_input_are_kept(): void
     {
         $confirmer = app(CreateSelectionSubjectGroup::class)
             ->execute([$this->userCondition('u0010')], ['ja' => '確認する人']);
         $this->routeNode($this->linear, 'approval1')->update([
-            'deadline_days' => 5, 'confirm_authz_subject_group_id' => $confirmer, 'prevents_attachment_add' => true,
+            'deadline_days' => 5, 'confirm_authz_subject_group_id' => $confirmer,
         ]);
 
         $this->saveSettings($this->linear, 'approval1', [
@@ -182,9 +182,7 @@ final class SaveNodeSettingsTest extends TransactionalTestCase
         ]);
 
         $node = $this->routeNode($this->linear, 'approval1');
-        $this->assertSame([5, $confirmer, true], [
-            $node->deadline_days, $node->confirm_authz_subject_group_id, $node->prevents_attachment_add,
-        ]);
+        $this->assertSame([5, $confirmer], [$node->deadline_days, $node->confirm_authz_subject_group_id]);
     }
 
     /**

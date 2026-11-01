@@ -1,9 +1,9 @@
-import { userChartUrl } from '@/lib/organizationChart';
+import { departmentChartUrl, userChartUrl } from '@/lib/organizationChart';
 import { overview } from '@/routes/authz';
 import type { WorkflowLinkedPerson, WorkflowPersonLinks } from '@/types';
 
 /** 名前の札の「…」の 1 項目(新しいタブで開く) */
-type PersonLinkItem = { label: string; href: string };
+export type PersonLinkItem = { label: string; href: string };
 
 /** リンクを渡さない画面の既定(「…」を出さない) */
 export const NO_PERSON_LINKS: WorkflowPersonLinks = {
@@ -36,4 +36,35 @@ export function personLinkItemsOf(
     }
 
     return items;
+}
+
+/**
+ * フロー定義の詳細の要約の、具体の組織の名前の「…」に出す項目(組織図で見る。メニューと導線.md 2.2。出す条件は組織図の execute)。
+ */
+export function departmentLinkItemsOf(
+    departmentId: number,
+    links: WorkflowPersonLinks,
+): PersonLinkItem[] {
+    return links.organizationChart
+        ? [
+              {
+                  label: '組織図で見る',
+                  href: departmentChartUrl(departmentId),
+              },
+          ]
+        : [];
+}
+
+/**
+ * フロー定義の詳細の見出しの右の「認可設定で見る」(フローの種類の格子。出す条件は認可設定の execute)。出さないときは null。
+ */
+export function flowAuthzLinkOf(
+    links: WorkflowPersonLinks,
+): PersonLinkItem | null {
+    return links.authz
+        ? {
+              label: '認可設定で見る',
+              href: overview.url({ query: { type: 'workflow-flow' } }),
+          }
+        : null;
 }

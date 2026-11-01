@@ -31,6 +31,7 @@ export type StepForm = {
     min: string;
     max: string;
     prevents: boolean;
+    preventsAttachmentAdd: boolean;
     sendBack: string[];
     decisionRule: WorkflowDecisionRule | '';
     countValue: string;
@@ -48,6 +49,7 @@ type StepPayload = {
     min_assignees: number | string | null;
     max_assignees: number | string | null;
     prevents_applicant_approval: boolean | null;
+    prevents_attachment_add: boolean | null;
     send_back_node_codes: string[] | null;
     decision_rule: WorkflowDecisionRule | null;
     decision_value: number | string | null;
@@ -64,6 +66,7 @@ const EMPTY: StepForm = {
     min: '',
     max: '',
     prevents: false,
+    preventsAttachmentAdd: false,
     sendBack: [],
     decisionRule: '',
     countValue: '',
@@ -90,6 +93,7 @@ const ERROR_KEYS: Record<keyof StepForm, string[]> = {
     min: ['min_assignees'],
     max: ['min_assignees', 'max_assignees'],
     prevents: ['prevents_applicant_approval'],
+    preventsAttachmentAdd: ['prevents_attachment_add'],
     sendBack: ['send_back_node_codes'],
     decisionRule: ['decision_rule', 'decision_value', 'min_assignees'],
     countValue: ['decision_value'],
@@ -134,6 +138,7 @@ export function formOf(step: WorkflowStepSettings): StepForm {
         ...EMPTY,
         ...targetValues(step.target),
         prevents: step.preventsApplicantApproval ?? false,
+        preventsAttachmentAdd: step.preventsAttachmentAdd ?? false,
         sendBack: step.sendBack?.selected ?? [],
         decisionRule: decision?.rule ?? '',
         countValue:
@@ -203,6 +208,10 @@ export function payloadOf(
         max_assignees: isDesignated ? numberOf(form.max) : null,
         prevents_applicant_approval:
             step.preventsApplicantApproval === null ? null : form.prevents,
+        prevents_attachment_add:
+            step.preventsAttachmentAdd === null
+                ? null
+                : form.preventsAttachmentAdd,
         send_back_node_codes: step.sendBack === null ? null : form.sendBack,
         ...(hasDecision
             ? decisionPayload(form)
@@ -224,8 +233,12 @@ export function stepSignature(step: WorkflowStepSettings): string {
     return JSON.stringify(step);
 }
 
-/** カード 2・カード 3 の欄の下に出す誤りのキー(カードはステップが設定を持てば出る) */
-const CARD_KEYS = ['prevents_applicant_approval', 'send_back_node_codes'];
+/** カードの欄の下に出す誤りのキー(カードはノードが設定を持てば出る) */
+const CARD_KEYS = [
+    'prevents_applicant_approval',
+    'send_back_node_codes',
+    'prevents_attachment_add',
+];
 
 /**
  * 欄の下に出すキー(誤りのうち、欄の無いキーだけを先頭に出すための照合)。カード 1・カード 4 は出している欄のキーだけ
@@ -244,4 +257,28 @@ export function shownErrorKeys(
             ? errorKeys.filter((key) => key.startsWith('targets.'))
             : []),
     ];
+}
+
+/** ステップの設定のカード(出す並び) */
+export type NodeCard =
+    | 'target'
+    | 'prevents'
+    | 'sendBack'
+    | 'decision'
+    | 'attachment';
+
+/**
+ * ノードが持つ設定のカードを、出す並びで返す(番号は並びの順に 1 から振る。出す条件の 1 か所。
+ * 設計/ワークフロー/ルートの深さ/画面/定義の管理の画面.md の 3.3 節、設計/ワークフロー/申請の周辺/画面.md の 4 節)。
+ */
+export function cardOrderOf(node: WorkflowStepSettings): NodeCard[] {
+    const cards: [NodeCard, boolean][] = [
+        ['target', node.target !== null],
+        ['prevents', node.preventsApplicantApproval !== null],
+        ['sendBack', node.sendBack !== null],
+        ['decision', node.decision !== null],
+        ['attachment', node.preventsAttachmentAdd !== null],
+    ];
+
+    return cards.filter(([, shown]) => shown).map(([card]) => card);
 }

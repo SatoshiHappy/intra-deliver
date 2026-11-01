@@ -2,6 +2,11 @@
 
 namespace Tests\Feature\Queries\Workflow;
 
+use App\Actions\Authz\Api\SelectionCondition;
+use App\Actions\Workflow\NodeSettingsInput;
+use App\Actions\Workflow\SaveNodeSettings;
+use App\Enums\Authz\SelectionConditionKind;
+use App\Enums\Workflow\WorkflowTargetKind;
 use App\Models\Authz\Role;
 use App\Models\Master\CompanyPost;
 use App\Models\Master\Department;
@@ -132,17 +137,17 @@ final class FlowDefinitionPagesTest extends TransactionalTestCase
         $choice = fn (string $code, string $name) => ['code' => $code, 'name' => $name];
 
         $this->assertSame([
-            'code' => 'section_chief', 'name' => '課長', 'kind' => 'approve', 'summary' => '申請者の所属組織の課長が承認します。',
+            'code' => 'section_chief', 'name' => '課長', 'kind' => 'approve', 'summary' => ['申請者の所属組織の課長が承認します。'],
             'target' => ['kind' => 'relative', 'base' => 'applicant', 'scope' => 'own', 'companyPostId' => $post],
-            'preventsApplicantApproval' => true,
+            'preventsApplicantApproval' => true, 'preventsAttachmentAdd' => false,
             'sendBack' => ['candidates' => [$choice('apply', '申請')], 'selected' => ['apply']],
             'decision' => null,
         ], $chief);
         $this->assertSame([
             'code' => 'council', 'name' => '関係部署の合議', 'kind' => 'parallel',
-            'summary' => '課長が選択した 2 人から 5 人のうち、2 人が承認すると次へ進みます。',
+            'summary' => ['課長が選択した 2 人から 5 人のうち、2 人が承認すると次へ進みます。'],
             'target' => ['kind' => 'designated', 'designatorCode' => 'section_chief', 'min' => 2, 'max' => 5],
-            'preventsApplicantApproval' => true,
+            'preventsApplicantApproval' => true, 'preventsAttachmentAdd' => false,
             'sendBack' => [
                 'candidates' => [$choice('apply', '申請'), $choice('section_chief', '課長'), $choice('manager', '部長')],
                 'selected' => ['apply', 'section_chief'],
@@ -155,17 +160,57 @@ final class FlowDefinitionPagesTest extends TransactionalTestCase
             $apply['selectedNode']['target'],
         );
         $applyNode = $apply['selectedNode'];
-        $this->assertSame(['一般利用者が申請できます。', null, null], [
-            $applyNode['summary'], $applyNode['preventsApplicantApproval'], $applyNode['sendBack'],
+        $this->assertSame([['一般利用者が申請できます。'], null, null, null], [
+            $applyNode['summary'], $applyNode['preventsApplicantApproval'], $applyNode['preventsAttachmentAdd'],
+            $applyNode['sendBack'],
         ]);
         $this->assertSame([], $apply['options']['designators']);
-        $this->assertSame(['分岐「予算」の条件に該当する先へ、すべて進みます。', null, null, null, null], [
-            $budget['summary'], $budget['target'], $budget['preventsApplicantApproval'], $budget['sendBack'],
-            $budget['decision'],
+        $this->assertSame([['分岐「予算」の条件に該当する先へ、すべて進みます。'], null, null, null, null, null], [
+            $budget['summary'], $budget['target'], $budget['preventsApplicantApproval'],
+            $budget['preventsAttachmentAdd'], $budget['sendBack'], $budget['decision'],
         ]);
         $president = CompanyPost::query()->where('code', 'president')->sole()->id;
         $this->assertSame(['id' => $president, 'name' => '社長'], $apply['options']['companyPosts'][0]);
         $this->assertCount(7, $apply['options']['companyPosts']);
+    }
+
+    /**
+     * 「追加できない」の部長(初期データの版 3)は要約の 1 文に「添付ファイルを追加できません。」が続き、追加できる課長は続かない。
+     * フローの設定(添付ファイルを使用するか)はタブ「設定」の面の値で、既定は使用する。
+     */
+    public function test_the_attachment_settings_of_the_step_and_the_flow(): void
+    {
+        $manager = $this->detail(['node' => 'manager'])['selectedNode'];
+
+        $this->assertSame(
+            [['申請者の上位組織の部長が承認します。添付ファイルを追加できません。'], true],
+            [$manager['summary'], $manager['preventsAttachmentAdd']],
+        );
+        $this->assertSame(['isAttachmentEnabled' => true], $this->detail([])['flowSettings']);
+        WorkflowFlow::query()->where('code', self::PLAN)->update(['is_attachment_enabled' => false]);
+        $this->assertSame(['isAttachmentEnabled' => false], $this->detail([])['flowSettings']);
+    }
+
+    /**
+     * 対象者で指定の組織の行は、要約の並びで組織の id つきの区切りになる(画面が名前の横に「組織図で見る」を付ける)。ほかの種類の行は文字列のまま。
+     */
+    public function test_the_summary_marks_the_department_of_a_fixed_target(): void
+    {
+        $accounting = Department::query()->where('code', 'accounting')->sole();
+        $role = Role::query()->where('code', 'general_user')->sole();
+        $targets = [
+            new SelectionCondition(SelectionConditionKind::Department, $accounting->id),
+            new SelectionCondition(SelectionConditionKind::Role, $role->id),
+        ];
+        $input = new NodeSettingsInput(
+            WorkflowTargetKind::Fixed, $targets, sendBackNodeCodes: ['apply'], preventsAttachmentAdd: true,
+        );
+        app(SaveNodeSettings::class)->execute(self::PLAN, 3, 'manager', $input);
+
+        $this->assertSame(
+            [['departmentId' => $accounting->id, 'text' => '経理部'], '、一般利用者が承認します。添付ファイルを追加できません。'],
+            $this->detail(['node' => 'manager'])['selectedNode']['summary'],
+        );
     }
 
     /**

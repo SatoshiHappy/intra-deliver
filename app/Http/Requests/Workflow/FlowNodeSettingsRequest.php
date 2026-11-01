@@ -24,6 +24,9 @@ class FlowNodeSettingsRequest extends FlowDefinitionRequest
     /** 申請者本人の承認を防ぐの型の誤り(6 節に文が無い欄。画面は必ず真偽を送るので、壊れた送りでしか出ない) */
     public const PREVENTS_APPLICANT_APPROVAL_INVALID = '申請者本人の承認を防ぐ設定を選択してください';
 
+    /** 添付ファイルの追加の型の誤り(同上) */
+    public const PREVENTS_ATTACHMENT_ADD_INVALID = '添付ファイルの追加の設定を選択してください';
+
     /**
      * @return array<string, list<string|Closure|Enum>>
      */
@@ -42,6 +45,7 @@ class FlowNodeSettingsRequest extends FlowDefinitionRequest
             'min_assignees' => $integer,
             'max_assignees' => $integer,
             'prevents_applicant_approval' => ['bail', 'nullable', 'boolean'],
+            'prevents_attachment_add' => ['bail', 'nullable', 'boolean'],
             'send_back_node_codes' => ['bail', 'nullable', 'list', self::codesRule()],
             'decision_rule' => self::enumRules(WorkflowDecisionRule::class),
             'decision_value' => $integer,
@@ -67,6 +71,7 @@ class FlowNodeSettingsRequest extends FlowDefinitionRequest
             'min_assignees' => FlowDefinitionErrors::ASSIGNEES_RANGE,
             'max_assignees' => FlowDefinitionErrors::ASSIGNEES_RANGE,
             'prevents_applicant_approval' => self::PREVENTS_APPLICANT_APPROVAL_INVALID,
+            'prevents_attachment_add' => self::PREVENTS_ATTACHMENT_ADD_INVALID,
             'send_back_node_codes' => FlowDefinitionErrors::SEND_BACK_INVALID,
             'decision_rule' => FlowDefinitionErrors::DECISION_RULE_REQUIRED,
             'decision_value' => $decisionValue,
@@ -94,6 +99,8 @@ class FlowNodeSettingsRequest extends FlowDefinitionRequest
             sendBackNodeCodes: is_array($codes) ? array_values(array_filter($codes, 'is_string')) : null,
             decisionRule: $this->enum('decision_rule', WorkflowDecisionRule::class),
             decisionValue: $this->nullableInteger('decision_value'),
+            preventsAttachmentAdd: $this->input('prevents_attachment_add') === null
+                ? null : $this->boolean('prevents_attachment_add'),
         );
     }
 

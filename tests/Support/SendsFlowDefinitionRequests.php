@@ -16,7 +16,7 @@ use Illuminate\Testing\TestResponse;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * 定義の管理の 8 ルート(docs の 設計/ワークフロー/ルートの深さ/画面/README.md 1.1 節)を、初期データの「プロジェクト計画の承認」
+ * 定義の管理の 9 ルート(docs の 設計/ワークフロー/ルートの深さ/画面/README.md 1.1 節)を、初期データの「プロジェクト計画の承認」
  * (版 1 = ユーザー無効、版 2、版 3 = 分岐 B = ルートの深さ/初期データ.md 3 節)に送るテストの手助け。システム管理者 = u0004。
  */
 trait SendsFlowDefinitionRequests
@@ -39,6 +39,7 @@ trait SendsFlowDefinitionRequests
         return [
             'workflow.admin.flows.index' => ['get', '/workflow/admin/flows', []],
             'workflow.admin.flows.show' => ['get', $base, []],
+            'workflow.admin.flows.settings.update' => ['put', "{$base}/settings", ['is_attachment_enabled' => false]],
             'workflow.admin.flows.referrers.update' => ['put', "{$base}/referrers", $this->referrersInput()],
             'workflow.admin.versions.store' => ['post', "{$base}/versions", ['start_date' => $this->tomorrow()]],
             'workflow.admin.versions.disable' => ['post', "{$base}/versions/2/disable", []],
@@ -102,6 +103,7 @@ trait SendsFlowDefinitionRequests
             'designator_node_code' => $codes[$node->designator_workflow_route_node_id] ?? null,
             'min_assignees' => $node->min_assignees, 'max_assignees' => $node->max_assignees,
             'prevents_applicant_approval' => $node->prevents_applicant_approval,
+            'prevents_attachment_add' => $node->prevents_attachment_add,
             'send_back_node_codes' => array_values(array_map(fn (mixed $id) => $codes[$id], $sendBacks)),
             'decision_rule' => $node->decision_rule?->value, 'decision_value' => $node->decision_value,
             ...$overrides,
@@ -122,7 +124,7 @@ trait SendsFlowDefinitionRequests
     }
 
     /**
-     * 拒否で何も変わらないことを比べる写し(版・フローの参照者・ノードの列・差戻しできる先)。
+     * 拒否で何も変わらないことを比べる写し(版・フローの行(参照者・機能設定)・ノードの列・差戻しできる先)。
      *
      * @return array<string, mixed>
      */
@@ -133,7 +135,7 @@ trait SendsFlowDefinitionRequests
 
         return [
             'versions' => $rows(WorkflowFlowVersion::class),
-            'flows' => WorkflowFlow::query()->orderBy('id')->pluck('authz_subject_group_id')->all(),
+            'flows' => $rows(WorkflowFlow::class),
             'nodes' => $rows(WorkflowRouteNode::class),
             'send_backs' => $rows(WorkflowRouteSendBack::class),
         ];

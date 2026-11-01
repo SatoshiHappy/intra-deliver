@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vite-plus/test';
-import { personLinkItemsOf } from './personLinks';
+import {
+    flowAuthzLinkOf,
+    departmentLinkItemsOf,
+    personLinkItemsOf,
+} from './personLinks';
 
 const person = {
     id: 9,
@@ -37,5 +41,47 @@ describe('名前の札の「…」の項目(links の真偽の 4 通り。空な
                 href: '/master/organization-chart?user=9',
             },
         ]);
+    });
+});
+
+describe('要約の具体の組織の名前の「…」(組織図で見るだけ。出す条件は組織図の execute)', () => {
+    it('組織図を許されると組織を選んだ行き先を出す', () => {
+        expect(
+            departmentLinkItemsOf(21, {
+                organizationChart: true,
+                authz: false,
+            }),
+        ).toEqual([
+            {
+                label: '組織図で見る',
+                href: '/master/organization-chart?department=21',
+            },
+        ]);
+    });
+
+    it('組織図を許されないと、認可設定を許されても「…」を出さない', () => {
+        expect(
+            departmentLinkItemsOf(21, {
+                organizationChart: false,
+                authz: true,
+            }),
+        ).toEqual([]);
+    });
+});
+
+describe('見出しの右の「認可設定で見る」(フローの種類の格子。出す条件は認可設定の execute)', () => {
+    it('認可設定を許されると、フローの種類を選んだ行き先を出す', () => {
+        expect(
+            flowAuthzLinkOf({ organizationChart: false, authz: true }),
+        ).toEqual({
+            label: '認可設定で見る',
+            href: '/authz/overview?type=workflow-flow',
+        });
+    });
+
+    it('認可設定を許されないと出さない(組織図を許されても)', () => {
+        expect(
+            flowAuthzLinkOf({ organizationChart: true, authz: false }),
+        ).toBeNull();
     });
 });

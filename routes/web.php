@@ -240,6 +240,8 @@ $definitionCode = '[a-z][a-z0-9_]{0,49}';
 Route::get('/workflow/admin/flows', [AdminFlowController::class, 'index'])->name('workflow.admin.flows.index');
 Route::get('/workflow/admin/flows/{flow}', [AdminFlowController::class, 'show'])
     ->name('workflow.admin.flows.show')->where('flow', $definitionCode);
+Route::put('/workflow/admin/flows/{flow}/settings', [AdminFlowController::class, 'updateSettings'])
+    ->name('workflow.admin.flows.settings.update')->where('flow', $definitionCode);
 Route::put('/workflow/admin/flows/{flow}/referrers', [ReferrerController::class, 'update'])
     ->name('workflow.admin.flows.referrers.update')->where('flow', $definitionCode);
 Route::post('/workflow/admin/flows/{flow}/versions', [VersionController::class, 'store'])

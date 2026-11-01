@@ -10,7 +10,8 @@ use Tests\Support\TransactionalTestCase;
 
 /**
  * 名前の札の「…」のリンクを出すかの props links(docs の 設計/ワークフロー/申請の周辺/メニューと導線.md 2.1・2.3): 札を出すページ(申請・申請一覧・
- * 申請の詳細・代理の設定・代理の管理)が、移り先のルートの execute を今日で判定した値を持つ。条件は 2 つの独立した判定で、表の行 = 2 × 2 の全部。
+ * 申請の詳細・代理の設定・代理の管理)と、フロー定義の詳細(見出しの「認可設定で見る」・要約の組織の「組織図で見る」)が、
+ * 移り先のルートの execute を今日で判定した値を持つ。条件は 2 つの独立した判定で、表の行 = 2 × 2 の全部。
  * 合う設定に許可が 1 つでもあれば許可なので、許さない形はそのリソースグループの設定を消して作る。
  *
  * | 組織図(master.organization-chart)の execute | 認可設定(authz.overview)の execute | links |
@@ -34,6 +35,10 @@ final class PersonLinksPropsTest extends TransactionalTestCase
 
     private const ADMIN_PROXIES = 'http-services.workflow.admin.proxies';
 
+    private const ADMIN_FLOWS = 'http-services.workflow.admin.flows';
+
+    private const FLOW_DETAIL = '/workflow/admin/flows/project_plan';
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -41,7 +46,7 @@ final class PersonLinksPropsTest extends TransactionalTestCase
     }
 
     /**
-     * 一般ユーザー(u0001。代理の管理を開けるポリシーを足す)の 5 つのページ: 初期は組織図だけ。認可設定を許すポリシーを足すと両方、
+     * 一般ユーザー(u0001。代理の管理とフロー定義を開けるポリシーを足す)の 6 つのページ: 初期は組織図だけ。認可設定を許すポリシーを足すと両方、
      * さらに組織図を許さないと認可設定だけ。
      */
     public function test_a_general_user_gets_the_authz_link_by_an_added_policy(): void
@@ -75,7 +80,7 @@ final class PersonLinksPropsTest extends TransactionalTestCase
     public function test_the_administrator_gets_both_links(): void
     {
         $case = $this->applyOnBranch('u0001', 350);
-        $pages = ['/workflow/admin/proxies', "/workflow/cases/{$case}", '/workflow/cases'];
+        $pages = ['/workflow/admin/proxies', "/workflow/cases/{$case}", '/workflow/cases', self::FLOW_DETAIL];
         $this->actingAsUser('u0004');
 
         $this->assertLinks($pages, organizationChart: true, authz: true);
@@ -87,11 +92,13 @@ final class PersonLinksPropsTest extends TransactionalTestCase
     public function test_a_partial_reload_does_not_carry_the_links(): void
     {
         $this->place(self::ADMIN_PROXIES, $this->userColumn('u0001'), PolicyEffect::Permit);
+        $this->place(self::ADMIN_FLOWS, $this->userColumn('u0001'), PolicyEffect::Permit);
         $this->actingAsUser('u0001');
         $reloads = [
             '/workflow/cases' => 'cases',
             '/workflow/admin/proxies' => 'proxies',
             '/workflow/flows/project_plan/apply' => 'next',
+            self::FLOW_DETAIL => 'diagram',
         ];
 
         foreach ($reloads as $page => $prop) {
@@ -102,7 +109,7 @@ final class PersonLinksPropsTest extends TransactionalTestCase
     }
 
     /**
-     * 一般ユーザーが札を見るページ(申請・申請一覧・申請の詳細・代理の設定と、ポリシーを足して開ける代理の管理)。
+     * 一般ユーザーが札を見るページ(申請・申請一覧・申請の詳細・代理の設定と、ポリシーを足して開ける代理の管理・フロー定義の詳細)。
      *
      * @return list<string>
      */
@@ -110,6 +117,7 @@ final class PersonLinksPropsTest extends TransactionalTestCase
     {
         $case = $this->applyOnBranch('u0001', 350);
         $this->place(self::ADMIN_PROXIES, $this->userColumn('u0001'), PolicyEffect::Permit);
+        $this->place(self::ADMIN_FLOWS, $this->userColumn('u0001'), PolicyEffect::Permit);
 
         return [
             '/workflow/flows/project_plan/apply',
@@ -117,6 +125,7 @@ final class PersonLinksPropsTest extends TransactionalTestCase
             "/workflow/cases/{$case}",
             '/workflow/proxies',
             '/workflow/admin/proxies',
+            self::FLOW_DETAIL,
         ];
     }
 

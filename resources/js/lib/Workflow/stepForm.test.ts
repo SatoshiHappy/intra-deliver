@@ -22,7 +22,7 @@ function step(overrides: Partial<WorkflowStepSettings>): WorkflowStepSettings {
         code: 'manager',
         name: '部長',
         kind: 'approve',
-        summary: '申請者の上位組織の部長が承認します。',
+        summary: ['申請者の上位組織の部長が承認します。'],
         target: {
             kind: 'relative',
             base: 'applicant',
@@ -30,6 +30,7 @@ function step(overrides: Partial<WorkflowStepSettings>): WorkflowStepSettings {
             companyPostId: 7,
         },
         preventsApplicantApproval: true,
+        preventsAttachmentAdd: true,
         sendBack: SEND_BACK,
         decision: null,
         ...overrides,
@@ -56,6 +57,7 @@ describe('formOf', () => {
             relativeScope: 'parent',
             companyPostId: '7',
             prevents: true,
+            preventsAttachmentAdd: true,
             sendBack: ['apply'],
             decisionRule: '',
         });
@@ -96,6 +98,7 @@ describe('formOf(縦配置・対象者)', () => {
                 kind: 'apply',
                 target,
                 preventsApplicantApproval: null,
+                preventsAttachmentAdd: null,
                 sendBack: null,
             }),
         );
@@ -105,6 +108,7 @@ describe('formOf(縦配置・対象者)', () => {
             { type: 'role', id: 3, name: '一般利用者' },
         ]);
         expect(form.prevents).toBe(false);
+        expect(form.preventsAttachmentAdd).toBe(false);
         expect(form.sendBack).toEqual([]);
     });
 });
@@ -121,6 +125,7 @@ describe('payloadOf(指定の種類で使わない欄を空で送る)', () => {
             min_assignees: null,
             max_assignees: null,
             prevents_applicant_approval: true,
+            prevents_attachment_add: true,
             send_back_node_codes: ['apply'],
             decision_rule: null,
             decision_value: null,
@@ -181,16 +186,18 @@ describe('payloadOf(縦配置・持たない設定・数の欄)', () => {
         ).toMatchObject({ decision_rule: 'all', decision_value: null });
     });
 
-    it('持たない設定は null で送る(申請は申請者承認防止・差戻しできる先・可決の条件を持たない)', () => {
+    it('持たない設定は null で送る(申請は申請者承認防止・差戻しできる先・可決の条件・添付ファイルの追加を持たない)', () => {
         const apply = step({
             kind: 'apply',
             target: { kind: 'fixed', rows: [] },
             preventsApplicantApproval: null,
+            preventsAttachmentAdd: null,
             sendBack: null,
         });
 
         expect(payloadOf(formOf(apply), apply)).toMatchObject({
             prevents_applicant_approval: null,
+            prevents_attachment_add: null,
             send_back_node_codes: null,
             decision_rule: null,
             decision_value: null,
@@ -229,7 +236,7 @@ describe('errorKeysOf', () => {
 describe('stepSignature', () => {
     it('設定が替わると識別が替わる', () => {
         expect(stepSignature(step({}))).toBe(stepSignature(step({})));
-        expect(stepSignature(step({ summary: '別の文' }))).not.toBe(
+        expect(stepSignature(step({ summary: ['別の文'] }))).not.toBe(
             stepSignature(step({})),
         );
     });

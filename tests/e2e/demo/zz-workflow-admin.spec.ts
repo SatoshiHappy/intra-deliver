@@ -12,6 +12,7 @@ import {
     stateCell,
     tab,
     versionRows,
+    surfaceButton,
 } from '../support/workflow-admin';
 
 // 定義の管理の画面(docs の 設計/ワークフロー/ルートの深さ/画面/図と意匠とE2E.md の 10 節)の筋のうち、システム管理者の
@@ -211,7 +212,7 @@ test('システム管理者: タブ「設定」の面「参照者」で、1 つ�
     await expect(page.getByText('該当する候補はありません')).toBeVisible();
     await page.keyboard.press('Escape');
 
-    const save = page.getByRole('button', { name: '保存', exact: true });
+    const save = surfaceButton(page, '参照者', '保存');
     await submitAndExpectUrl(page, save, /tab=settings/);
     await expect(
         page.getByText('参照者を保存しました', { exact: true }),
@@ -222,6 +223,6 @@ test('システム管理者: タブ「設定」の面「参照者」で、1 つ�
         .getByRole('button', { name: '吉田 達也を外す', exact: true })
         .click();
     await expect(chips).toHaveCount(1);
-    await page.getByRole('button', { name: 'キャンセル', exact: true }).click();
+    await surfaceButton(page, '参照者', 'キャンセル').click();
     await expect(chips).toHaveCount(2);
 });

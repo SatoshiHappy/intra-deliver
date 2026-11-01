@@ -1,5 +1,6 @@
 import { HeadingHelp } from '@/components/HeadingHelp';
 import { Button } from '@/components/ui/button';
+import { FlowAttachmentSurface } from '@/components/Workflow/FlowAttachmentSurface';
 import { SubjectPartyField } from '@/components/Workflow/SubjectPartyField';
 import {
     REFERRERS_ERROR_KEY,
@@ -66,15 +67,17 @@ function ReferrersSurface({
 }
 
 /**
- * タブ「設定」(docs の 設計/ワークフロー/ルートの深さ/画面/定義の管理の画面.md の 3.4 節): フローの設定の面を縦に並べる(今は面「参照者」。
- * 面「添付ファイル」は申請の周辺の画面で足す)。サーバーの行が替わったら(保存の後の取り直し)入力を作り直して、サーバーの値から始める。
+ * タブ「設定」(docs の 設計/ワークフロー/ルートの深さ/画面/定義の管理の画面.md の 3.4 節): フローの設定の面を縦に並べる(面「参照者」・
+ * 面「添付ファイル」= 設計/ワークフロー/申請の周辺/画面.md の 4 節)。サーバーの値が替わったら(保存の後の取り直し)入力を作り直して、サーバーの値から始める。
  */
 export function FlowSettingsTab({
     flowCode,
     referrers,
+    isAttachmentEnabled,
 }: {
     flowCode: string;
     referrers: WorkflowSubjectRow[];
+    isAttachmentEnabled: boolean;
 }) {
     return (
         <div className="flex flex-col gap-6">
@@ -82,6 +85,11 @@ export function FlowSettingsTab({
                 key={rowsSignature(referrers)}
                 flowCode={flowCode}
                 rows={referrers}
+            />
+            <FlowAttachmentSurface
+                key={String(isAttachmentEnabled)}
+                flowCode={flowCode}
+                isAttachmentEnabled={isAttachmentEnabled}
             />
         </div>
     );

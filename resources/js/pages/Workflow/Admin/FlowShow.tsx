@@ -1,4 +1,5 @@
 import { Head } from '@inertiajs/react';
+import { PersonLinksContext } from '@/hooks/Workflow/use-person-links';
 import { FlowHeading } from '@/components/Workflow/FlowHeading';
 import { FlowTabs } from '@/components/Workflow/FlowTabs';
 import { FlowTabPanel } from '@/components/Workflow/FlowTabPanel';
@@ -16,11 +17,15 @@ export default function FlowShow(props: Props) {
     const { flow, versions, selectedVersion, tab, selectedNode } = props;
 
     return (
-        <>
+        <PersonLinksContext value={props.links}>
             <Head title={flow.name} />
 
             <div className="flex h-full flex-1 flex-col gap-6 p-4">
-                <FlowHeading flow={flow} versions={versions} />
+                <FlowHeading
+                    flow={flow}
+                    versions={versions}
+                    links={props.links}
+                />
                 <FlowTabs
                     flowCode={flow.code}
                     version={selectedVersion}
@@ -30,7 +35,7 @@ export default function FlowShow(props: Props) {
                 />
                 <FlowTabPanel {...props} />
             </div>
-        </>
+        </PersonLinksContext>
     );
 }
 

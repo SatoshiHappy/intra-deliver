@@ -61,6 +61,7 @@ final class AdminFlowDefinitionInputTest extends TransactionalTestCase
     {
         $row = $this->referrersInput()['referrers'][0];
         $prevents = FlowNodeSettingsRequest::PREVENTS_APPLICANT_APPROVAL_INVALID;
+        $attachment = FlowNodeSettingsRequest::PREVENTS_ATTACHMENT_ADD_INVALID;
         $cases = [
             ['target_kind', ['x'], 'target_kind', Errors::TARGET_KIND_REQUIRED],
             ['target_kind', 'other', 'target_kind', Errors::TARGET_KIND_REQUIRED],
@@ -73,6 +74,7 @@ final class AdminFlowDefinitionInputTest extends TransactionalTestCase
             ['min_assignees', 'x', 'min_assignees', Errors::ASSIGNEES_RANGE],
             ['max_assignees', 1.5, 'max_assignees', Errors::ASSIGNEES_RANGE],
             ['prevents_applicant_approval', 'x', 'prevents_applicant_approval', $prevents],
+            ['prevents_attachment_add', 'x', 'prevents_attachment_add', $attachment],
             ['send_back_node_codes', 'x', 'send_back_node_codes', Errors::SEND_BACK_INVALID],
             ['send_back_node_codes', [1], 'send_back_node_codes', Errors::SEND_BACK_INVALID],
             ['decision_rule', 'x', 'decision_rule', Errors::DECISION_RULE_REQUIRED],

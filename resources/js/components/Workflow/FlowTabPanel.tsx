@@ -25,6 +25,7 @@ export function FlowTabPanel(props: WorkflowAdminFlowShowProps) {
             <FlowSettingsTab
                 flowCode={flow.code}
                 referrers={props.referrers.rows}
+                isAttachmentEnabled={props.flowSettings.isAttachmentEnabled}
             />
         );
     }

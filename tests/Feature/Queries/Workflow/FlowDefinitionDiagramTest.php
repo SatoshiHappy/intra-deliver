@@ -74,9 +74,10 @@ final class FlowDefinitionDiagramTest extends TransactionalTestCase
         $subtitles = collect($this->detail([])['diagram']['nodes'])->pluck('subtitle', 'code');
         $summary = fn (string $code) => $this->detail(['node' => $code])['selectedNode']['summary'];
 
-        $this->assertSame(['申請者の上位組織 + 部長', '申請者の上位組織の部長が承認します。'], [$subtitles['manager'], $summary('manager')]);
-        $this->assertSame(['課長が選択', '課長が選択した 1 人が承認します。'], [$subtitles['owner'], $summary('owner')]);
-        $this->assertSame(['一般利用者', '一般利用者が申請できます。'], [$subtitles['apply'], $summary('apply')]);
+        $manager = ['申請者の上位組織の部長が承認します。添付ファイルを追加できません。'];
+        $this->assertSame(['申請者の上位組織 + 部長', $manager], [$subtitles['manager'], $summary('manager')]);
+        $this->assertSame(['課長が選択', ['課長が選択した 1 人が承認します。']], [$subtitles['owner'], $summary('owner')]);
+        $this->assertSame(['一般利用者', ['一般利用者が申請できます。']], [$subtitles['apply'], $summary('apply')]);
     }
 
     /**
@@ -98,7 +99,7 @@ final class FlowDefinitionDiagramTest extends TransactionalTestCase
 
         $manager = collect($detail['diagram']['nodes'])->firstOrFail('code', 'manager');
         $texts = [$manager['subtitle'], $detail['selectedNode']['summary']];
-        $this->assertSame(["#{$retired}", "#{$retired}が承認します。"], $texts);
+        $this->assertSame(["#{$retired}", ["#{$retired}が承認します。"]], $texts);
         $this->assertSame(["#{$retired}", '経理部'], array_column($detail['referrers']['rows'], 'name'));
         $this->assertSame("#{$retired}、経理部", $flows[0]['referrerSummary']);
     }

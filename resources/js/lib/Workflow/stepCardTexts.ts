@@ -47,6 +47,8 @@ export const HELP = {
 export const SEND_BACK_LINE = '差戻しの際に指定できる差戻し先を設定します。';
 export const DECISION_LINE =
     '合議の人数と、次へ進むために必要な承認の条件を設定します。';
+export const ATTACHMENT_LINE =
+    'このステップの処理で、添付ファイルを追加できるかどうかを設定します。';
 
 /**
  * 選べる指定の種類(申請は対象者で指定だけ、横配置・縦配置は処理の時に指定だけ。分岐・同期は設定を持たない)。

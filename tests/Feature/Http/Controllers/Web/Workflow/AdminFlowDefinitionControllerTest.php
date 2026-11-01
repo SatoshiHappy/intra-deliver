@@ -13,7 +13,7 @@ use Tests\Support\SendsFlowDefinitionRequests;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * 定義の管理の入口 8 ルート(docs の 設計/ワークフロー/ルートの深さ/画面/README.md 1.1 節、定義の管理.md 6 節の判定の順、認可と一覧.md 4.2 節・7 節):
+ * 定義の管理の入口 9 ルート(docs の 設計/ワークフロー/ルートの深さ/画面/README.md 1.1 節、定義の管理.md 6 節の判定の順、認可と一覧.md 4.2 節・7 節):
  * 結果の優先 = ルートの拒否 > フロー・版・ノードが無い 404 > 封筒の 422 > 業務処理の 422(壊れた入力でも 404 が先)。成功は詳細の
  * 移り先とトースト、移り先の GET が 200、業務処理が書いたこと。拒否の組で何も変わらない。初期データのプロジェクト計画の承認で確かめる。
  */
@@ -39,7 +39,7 @@ final class AdminFlowDefinitionControllerTest extends TransactionalTestCase
     }
 
     /**
-     * ルートの execute が偽(ゲスト・u0001): 8 ルートのどれも 403。無いフローでも 403(ルートの拒否が 404 より先)。何も変わらない。
+     * ルートの execute が偽(ゲスト・u0001): 9 ルートのどれも 403。無いフローでも 403(ルートの拒否が 404 より先)。何も変わらない。
      */
     #[DataProvider('outsiders')]
     public function test_the_route_authorization_rejects_first(?string $userCode): void
@@ -81,7 +81,10 @@ final class AdminFlowDefinitionControllerTest extends TransactionalTestCase
     {
         $this->actingAs($this->seededAccount(self::ADMIN));
         $before = $this->definitionSnapshot();
-        $broken = ['start_date' => 'x', 'referrers' => 'x', 'target_kind' => ['x'], 'min_assignees' => 'x'];
+        $broken = [
+            'start_date' => 'x', 'referrers' => 'x', 'target_kind' => ['x'], 'min_assignees' => 'x',
+            'is_attachment_enabled' => 'x',
+        ];
         $missing = $this->definitionRoutes('missing_flow');
         unset($missing['workflow.admin.flows.index'], $missing['workflow.admin.subject-candidates']);
         $issue = '/workflow/admin/flows/issue_resolution/versions';
@@ -139,6 +142,9 @@ final class AdminFlowDefinitionControllerTest extends TransactionalTestCase
 
         return [
             'referrers' => ['workflow.admin.flows.referrers.update', "{$show}?tab=settings", '参照者を保存しました'],
+            'settings' => [
+                'workflow.admin.flows.settings.update', "{$show}?tab=settings", '添付ファイルの設定を保存しました',
+            ],
             'store' => ['workflow.admin.versions.store', "{$show}?tab=versions&version=4", '版を追加しました'],
             'disable' => ['workflow.admin.versions.disable', "{$show}?tab=versions&version=2", '版を無効にしました'],
             'enable' => ['workflow.admin.versions.enable', "{$show}?tab=versions&version=1", '版を有効にしました'],
@@ -181,11 +187,13 @@ final class AdminFlowDefinitionControllerTest extends TransactionalTestCase
         $referrers = app(SubjectRows::class)->of([$groupId], CarbonImmutable::today(), 'ja');
         $written = match ($name) {
             'workflow.admin.flows.referrers.update' => array_column($referrers[$groupId], 'type'),
+            'workflow.admin.flows.settings.update' => $flow->is_attachment_enabled,
             'workflow.admin.nodes.update' => $this->planNode(3, 'section_chief')->prevents_applicant_approval,
             default => $numbers,
         };
         $expected = [
             'workflow.admin.flows.referrers.update' => ['department', 'role'],
+            'workflow.admin.flows.settings.update' => false,
             'workflow.admin.versions.store' => [[1, true], [2, false], [3, false], [4, false]],
             'workflow.admin.versions.disable' => [[1, true], [2, true], [3, false]],
             'workflow.admin.versions.enable' => [[1, false], [2, false], [3, false]],
