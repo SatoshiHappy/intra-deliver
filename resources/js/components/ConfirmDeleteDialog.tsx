@@ -19,8 +19,8 @@ type Props = {
     triggerText?: string;
     /** 開くボタンの読み上げの名前(省くと見た目の文字) */
     triggerLabel?: string;
-    /** 開くボタンの見た目(詳細の画面の「削除」= destructive、表の行の操作 = ghost) */
-    triggerVariant?: 'destructive' | 'ghost';
+    /** 開くボタンの見た目(詳細の画面の「削除」= destructive、表の行の操作 = outline sm) */
+    triggerVariant?: 'destructive' | 'outline';
     title: string;
     description: string;
     /** 削除の後も今のスクロール位置を保つか(同じ画面に戻る管理の表 = true、別の画面へ移るレコードの削除 = false。既定 false) */
@@ -39,7 +39,7 @@ type Props = {
 export function ConfirmDeleteDialog({
     triggerText = '削除',
     triggerLabel,
-    triggerVariant = 'ghost',
+    triggerVariant = 'outline',
     preserveScroll = false,
     title,
     description,
@@ -67,7 +67,7 @@ export function ConfirmDeleteDialog({
             <DialogTrigger asChild>
                 <Button
                     variant={triggerVariant}
-                    size={triggerVariant === 'ghost' ? 'sm' : 'default'}
+                    size={triggerVariant === 'outline' ? 'sm' : 'default'}
                     aria-label={triggerLabel}
                 >
                     {triggerText}

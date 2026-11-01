@@ -73,13 +73,14 @@ final class StoreUploadsTest extends TransactionalTestCase
     public function test_no_files_and_more_than_three_files_are_rejected(): void
     {
         $four = array_map(fn (int $index) => $this->uploadedFile("{$index}.pdf"), range(1, 4));
+        $before = Upload::query()->count();
 
         $none = $this->validationErrors(fn () => $this->store([]));
         $tooMany = $this->validationErrors(fn () => $this->store($four));
 
         $this->assertSame(['attachments' => UploadLimits::NO_FILES], $none);
         $this->assertSame(['attachments' => UploadLimits::TOO_MANY_FILES], $tooMany);
-        $this->assertSame(0, Upload::query()->count());
+        $this->assertSame($before, Upload::query()->count());
     }
 
     public function test_a_file_over_the_limit_is_rejected_and_one_of_exactly_the_limit_passes(): void
@@ -255,6 +256,7 @@ final class StoreUploadsTest extends TransactionalTestCase
 
     public function test_a_rolled_back_caller_leaves_no_file(): void
     {
+        $before = Upload::query()->count();
         try {
             DB::transaction(function () {
                 $this->store([$this->uploadedFile('a.pdf'), $this->uploadedFile('b.png', 'png')]);
@@ -266,20 +268,20 @@ final class StoreUploadsTest extends TransactionalTestCase
         }
 
         $this->assertSame(0, $this->storedFileCount());
-        $this->assertSame(0, Upload::query()->count());
+        $this->assertSame($before, Upload::query()->count());
     }
 
     public function test_a_file_that_cannot_be_written_rolls_back_the_rows(): void
     {
         // ディレクトリの名前の所にファイルを置き、実体を書けなくする
         Storage::disk('local')->put('uploads', 'x');
-
+        $before = Upload::query()->count();
         $this->expectException(RuntimeException::class);
 
         try {
             $this->store([$this->uploadedFile('a.pdf')]);
         } finally {
-            $this->assertSame(0, Upload::query()->count());
+            $this->assertSame($before, Upload::query()->count());
         }
     }
 

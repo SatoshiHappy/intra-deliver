@@ -94,7 +94,7 @@ final class CaseRoutePlannerTargetTest extends TransactionalTestCase
         $chiefApplies = $this->caseOf($r1, $this->seededUser('u0002'), ['budget' => 100]);
 
         $this->assertSame(
-            ['case' => '課長の処理担当者が申請者本人だけのため、この操作はできません。このステップには、申請者承認防止が設定されています。'],
+            ['case' => '課長の承認者が申請者本人だけのため、この操作はできません。このステップには、申請者承認防止が設定されています。'],
             $this->validationErrors(fn () => $this->step($chiefApplies, 'apply', WorkflowAction::Apply, 'u0002')),
         );
 
@@ -110,7 +110,7 @@ final class CaseRoutePlannerTargetTest extends TransactionalTestCase
         $this->step($case, 'apply', WorkflowAction::Apply, 'u0001');
 
         $this->assertSame(
-            ['case' => '関係部署の合議 承認 1の処理担当者が申請者本人だけのため、この操作はできません。このステップには、申請者承認防止が設定されています。'],
+            ['case' => '関係部署の合議 承認 1の承認者が申請者本人だけのため、この操作はできません。このステップには、申請者承認防止が設定されています。'],
             $this->validationErrors(fn () => $this->step($case, 'section_chief', WorkflowAction::Approve, 'u0002', ['council' => ['u0001', 'u0010'], 'owner' => ['u0007']])),
         );
         $this->assertSame('waiting[u0002]', $this->shape($case)['section_chief']);

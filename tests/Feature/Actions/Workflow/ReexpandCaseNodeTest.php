@@ -148,7 +148,7 @@ final class ReexpandCaseNodeTest extends TransactionalTestCase
         $error = $this->attemptOf(fn () => $this->reexpandOn($case, 'guarded'));
 
         $this->assertSame('waiting[u0001,u0002]', $kept);
-        $message = 'guardedの処理担当者が申請者本人と申請者の代理先だけのため、この操作はできません。'
+        $message = 'guardedの承認者が申請者本人と申請者の代理先だけのため、この操作はできません。'
             .'このステップには、申請者承認防止が設定されています。';
         $this->assertSame(['case' => $message], $error);
         $this->assertSame($before, $this->snapshot($case));

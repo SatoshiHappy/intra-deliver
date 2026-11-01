@@ -63,8 +63,10 @@ final class WorkflowAttachmentEntryTest extends TransactionalTestCase
 
         $this->multipart('PUT', "/workflow/drafts/{$draft}", $put, $files)
             ->assertStatus(303)->assertRedirect("/workflow/drafts/{$draft}/edit")->assertSessionHasNoErrors();
-        $this->assertSame(['a.pdf', 'b.pdf'], $this->draftAttachmentNames($draft));
-        $first = WorkflowCaseDraftAttachment::query()->where('workflow_case_id', $draft)->orderBy('id')->firstOrFail();
+        $seeded = '請求書の新様式案.pdf';
+        $this->assertSame([$seeded, 'a.pdf', 'b.pdf'], $this->draftAttachmentNames($draft));
+        $first = WorkflowCaseDraftAttachment::query()->where('workflow_case_id', $draft)->where('name', 'a.pdf')
+            ->firstOrFail();
 
         $apply = [
             'revision' => $this->revisionOf($draft), 'values' => $this->issueValues('請求書の様式の変更'),
@@ -73,7 +75,7 @@ final class WorkflowAttachmentEntryTest extends TransactionalTestCase
         $this->multipart('POST', "/workflow/drafts/{$draft}/apply", $apply, [$this->uploadedFile('c.pdf')])
             ->assertRedirect("/workflow/cases/{$draft}")->assertSessionHasNoErrors();
 
-        $this->assertSame(['b.pdf', 'c.pdf'], $this->recordAttachmentNames($draft));
+        $this->assertSame([$seeded, 'b.pdf', 'c.pdf'], $this->recordAttachmentNames($draft));
         $this->assertSame([], $this->draftAttachmentNames($draft));
     }
 

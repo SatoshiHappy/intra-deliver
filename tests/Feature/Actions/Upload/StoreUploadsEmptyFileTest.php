@@ -29,11 +29,12 @@ final class StoreUploadsEmptyFileTest extends TransactionalTestCase
     public function test_an_empty_file_is_rejected_as_empty(): void
     {
         $empty = UploadedFile::fake()->createWithContent('memo.txt', '');
+        $before = Upload::query()->count();
 
         $errors = $this->validationErrors(fn () => app(StoreUploads::class)->execute(null, [$empty]));
 
         $this->assertSame(['attachments.0' => UploadLimits::EMPTY_FILE], $errors);
-        $this->assertSame(0, Upload::query()->count());
+        $this->assertSame($before, Upload::query()->count());
     }
 
     public function test_an_empty_file_and_a_wrong_name_are_both_returned(): void

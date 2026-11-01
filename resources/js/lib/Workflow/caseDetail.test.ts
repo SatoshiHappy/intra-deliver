@@ -66,10 +66,10 @@ describe('historyNoteOf: 履歴に添える 1 行', () => {
         const users = [yoshida, takahashi];
 
         expect(historyNoteOf({ ...base, action: 'retarget', users })).toBe(
-            '処理担当者: 吉田 達也、高橋 誠',
+            '承認者: 吉田 達也、高橋 誠',
         );
         expect(historyNoteOf({ ...base, action: 'reexpand', users })).toBe(
-            '処理担当者: 吉田 達也、高橋 誠',
+            '承認者: 吉田 達也、高橋 誠',
         );
     });
 
@@ -148,7 +148,7 @@ describe('確認の面', () => {
     });
 });
 
-describe('基本情報とフロー情報の値', () => {
+describe('申請情報とフロー情報の値', () => {
     it('到達日は YYYY/MM/DD、無ければ null', () => {
         const deadline = {
             reachedOn: '2026-10-06',
@@ -177,7 +177,7 @@ describe('基本情報とフロー情報の値', () => {
     });
 });
 
-describe('progressItemKeysOf: 基本情報の進み具合の項目', () => {
+describe('progressItemKeysOf: 申請情報の進み具合の項目', () => {
     it('完了は現在のステップ(値は「—」)の後に完了日だけ', () => {
         expect(progressItemKeysOf('completed')).toEqual([
             'currentStep',

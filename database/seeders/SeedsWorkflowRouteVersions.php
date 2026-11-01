@@ -56,6 +56,7 @@ trait SeedsWorkflowRouteVersions
     /**
      * 分岐 B(設計/ワークフロー/ルートの深さ/初期データ.md 3.2: 申請 → 課長 → 分岐「予算」(部長を通る枝 / 通らない枝)→ 関係部署の合議(縦配置)→ 責任者)。
      * 承認・合議のノードに期限の日数、課長と部長に確認する人(設計/ワークフロー/案件の運用/初期データ.md 3 節)。
+     * 部長のノードは添付を追加できない(設計/ワークフロー/申請の周辺/初期データ.md 1 節)。
      *
      * @param  int  $confirmer  確認する人の対象者の id
      * @return array{list<RouteNodeInput>, list<RouteEdgeInput>}
@@ -73,7 +74,7 @@ trait SeedsWorkflowRouteVersions
             new RouteNodeInput('budget', '予算', WorkflowNodeKind::BranchStart, closingCode: 'budget_end'),
             new RouteNodeInput('manager', '部長', WorkflowNodeKind::Approve, WorkflowTargetKind::Relative, relativeBase: WorkflowRelativeBase::Applicant,
                 relativeScope: WorkflowRelativeScope::Parent, companyPostId: $this->companyPostId('manager'), preventsApplicantApproval: true, sendBackCodes: $front,
-                deadlineDays: $days['manager'], confirmSubjectGroupId: $confirmer),
+                deadlineDays: $days['manager'], confirmSubjectGroupId: $confirmer, preventsAttachmentAdd: true),
             new RouteNodeInput('budget_end', '分岐終了', WorkflowNodeKind::BranchEnd),
             new RouteNodeInput('council', '関係部署の合議', WorkflowNodeKind::Parallel, WorkflowTargetKind::Designated, designatorCode: 'section_chief', minAssignees: 2,
                 maxAssignees: 5, decisionRule: WorkflowDecisionRule::Count, decisionValue: 2, preventsApplicantApproval: true, sendBackCodes: $front,

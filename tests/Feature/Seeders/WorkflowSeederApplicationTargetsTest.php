@@ -203,7 +203,7 @@ final class WorkflowSeederApplicationTargetsTest extends TransactionalTestCase
     }
 
     /**
-     * 件数: データハブのプロジェクト 14・課題 10、申請書 = 計画の申請 11・課題の対応の申請 5(一時保存は申請書を持たない = 案件の運用/初期データ.md の 5 節)。
+     * 件数: データハブのプロジェクト 14・課題 10、申請書 = 計画の申請 13(申請対象からの申請 2 を含む)・課題の対応の申請 5(一時保存は申請書を持たない = 案件の運用/初期データ.md の 5 節)。
      * 一時保存の見本は課題の対応の承認のフローで、レコードを持たない。
      */
     public function test_counts_the_data_hub_records_and_the_applications_and_the_draft_has_no_record(): void
@@ -218,7 +218,7 @@ final class WorkflowSeederApplicationTargetsTest extends TransactionalTestCase
         $this->assertEquals(
             [
                 'issue_resolution_application' => 5, 'project' => 14, 'project_issue' => 10,
-                'project_plan_application' => 11,
+                'project_plan_application' => 13,
             ],
             $counts,
         );

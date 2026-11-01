@@ -10,7 +10,7 @@ use App\Models\Workflow\WorkflowCase;
  * {@see WorkflowSeeder} の案件の運用の見本(docs の 設計/ワークフロー/案件の運用/初期データ.md 4.1・4.3): 代理 4、案件 4(保留・連絡・申請の代理・担当変更)、
  * u0010 の確認。時刻は基準の日に書いた値(操作ごとに時計を合わせる = 同じ文書の 1.2)。使う側は代理の登録・保留・振替・確認の業務処理と、
  * applyPlan()・applyIssue()・issueInput()・approveAs()・contextAt()・targetNodeIdOf()・revisionOf()・projectIdOf()・
- * seedingDay()・userId() を持つ。
+ * seedingDay()・userId()・sampleFile() を持つ。WF-000014 の添付は 設計/ワークフロー/申請の周辺/初期データ.md の 2 節。
  */
 trait SeedsWorkflowOperationSamples
 {
@@ -49,8 +49,12 @@ trait SeedsWorkflowOperationSamples
         );
 
         $contact = new CaseContact([$this->userId('u0012')], '来週から販促の準備を始めます。ご確認ください。');
-        ['caseId' => $fourteenth] = $this->applyPlan('2026-10-12 09:00', 'u0001', 14, null, $base, $contact);
-        $this->approveAs('2026-10-13 10:00', 'u0002', $fourteenth, null, ['u0009', 'u0010']);
+        $outline = $this->sampleFile('sample-sales-plan.pdf', '第二四半期の営業計画の概要.pdf');
+        $estimate = $this->sampleFile('sample-promotion-estimate.pdf', '販促費の見積り.pdf');
+        ['caseId' => $fourteenth] = $this->applyPlan(
+            '2026-10-12 09:00', 'u0001', 14, null, $base, $contact, [$outline],
+        );
+        $this->approveAs('2026-10-13 10:00', 'u0002', $fourteenth, null, ['u0009', 'u0010'], [$estimate]);
 
         $issue = $this->issueInput('在庫システムの表示不具合', $this->projectIdOf('経費精算の電子化'), 'u0010', 'high', '2026-10-31');
         $this->applyIssue('2026-10-10 09:00', 'u0009', $issue, '在庫システムの不具合の対応を、山田 恵さんの代理で申請します。', 'u0010');

@@ -53,9 +53,9 @@ final class ApplicantApprovalGuardTest extends TestCase
     public function test_the_only_applicant_targets_message_mentions_the_proxy_when_a_proxy_was_removed(): void
     {
         $this->assertSame([
-            '承認の処理担当者が申請者本人だけのため、この操作はできません。このステップには、申請者承認防止が設定されています。',
-            '承認の処理担当者が申請者本人と申請者の代理先だけのため、この操作はできません。このステップには、申請者承認防止が設定されています。',
-            '承認の処理担当者が申請者本人と申請者の代理先だけのため、この操作はできません。このステップには、申請者承認防止が設定されています。',
+            '承認の承認者が申請者本人だけのため、この操作はできません。このステップには、申請者承認防止が設定されています。',
+            '承認の承認者が申請者本人と申請者の代理先だけのため、この操作はできません。このステップには、申請者承認防止が設定されています。',
+            '承認の承認者が申請者本人と申請者の代理先だけのため、この操作はできません。このステップには、申請者承認防止が設定されています。',
         ], [
             ApplicantApprovalGuard::onlyApplicantTargetsMessage('承認', [self::A], self::A),
             ApplicantApprovalGuard::onlyApplicantTargetsMessage('承認', [self::A, self::B], self::A),

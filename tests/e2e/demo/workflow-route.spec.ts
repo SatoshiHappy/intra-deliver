@@ -38,7 +38,7 @@ const CASE_NAME = `プロジェクト計画の承認 ${PROJECT_NAME}`;
 
 /** 申請者承認防止で申請者本人だけのときの文言(設計/ワークフロー/ルートの深さ/案件の操作/同時実行と検査.md 13 節・画面/案件の側の画面.md 5 節。課長 = 申請者の所属組織 + 課長 = u0002 だけ) */
 const APPLICANT_ONLY =
-    '課長の処理担当者が申請者本人だけのため、この操作はできません。このステップには、申請者承認防止が設定されています。';
+    '課長の承認者が申請者本人だけのため、この操作はできません。このステップには、申請者承認防止が設定されています。';
 
 /** 筋の中で申請した案件の詳細の URL(申請の筋で決まり、後の筋が使う) */
 let caseUrl = '';
@@ -140,11 +140,11 @@ async function openActionDialog(page: Page, trigger: string, title: string) {
 }
 
 /**
- * 基本情報の「現在のステップ」の値。
+ * 申請情報の「現在のステップ」の値。
  */
 function currentSteps(page: Page) {
     return page
-        .getByRole('region', { name: '基本情報' })
+        .getByRole('region', { name: '申請情報' })
         .locator('div')
         .filter({ has: page.getByText('現在のステップ', { exact: true }) })
         .locator('dd');
@@ -332,7 +332,7 @@ test('申請者: 申請の画面に申請基準日(既定は今日)と担当組�
     );
     await expect(page.getByText('申請しました', { exact: true })).toBeVisible();
     caseUrl = page.url();
-    const basic = page.getByRole('region', { name: '基本情報' });
+    const basic = page.getByRole('region', { name: '申請情報' });
     await expect(basic).toContainText(today.replaceAll('-', '/'));
     await expect(basic).toContainText('版 3');
     await expect(currentSteps(page)).toHaveText('課長');
@@ -481,7 +481,7 @@ test('引戻しの申請者承認防止: 引戻せるステップに防止の文
 }) => {
     // 初期データの版 3 では申請者が防止のステップの処理対象者にならないので、詳細の応答の引戻せるステップに文言を入れて返す(画面/案件の側の画面.md 6 節、通しの回の T02・解消確認の R09)
     const reason =
-        '課長の承認の処理担当者が申請者本人だけのため、この操作はできません。このステップには、申請者承認防止が設定されています。';
+        '課長の承認の承認者が申請者本人だけのため、この操作はできません。このステップには、申請者承認防止が設定されています。';
     await openAs(page, 'chief', '/workflow/cases?tab=processed');
     await rewriteDetailProps(page, caseUrl, (props) => {
         for (const node of props.pullBackNodes) {
@@ -622,7 +622,7 @@ test('古い画面: 合議の 2 人が同じ詳細を開き、先に 1 人が承
     await stale.context().close();
 });
 
-test('申請者承認防止: 上長が版 3 の申請の画面を開くと、課長の処理担当者が申請者本人だけのため、送る前に申請情報の下に文言が出て「申請」を押せない', async ({
+test('申請者承認防止: 上長が版 3 の申請の画面を開くと、課長の承認者が申請者本人だけのため、送る前に申請情報の下に文言が出て「申請」を押せない', async ({
     page,
 }) => {
     await openAs(page, 'chief', '/workflow/flows/project_plan/apply');

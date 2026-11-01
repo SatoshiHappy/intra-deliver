@@ -73,6 +73,7 @@ trait BuildsWorkflowSampleRecords
     /**
      * 申請書の入力 = 申請対象と同じ入力(値と明細の行)と申請対象の項目。申請書の業務モジュールは申請対象のすべての項目を同じコード・同じ型で持つので、
      * 写しの規則(設計/ワークフロー/申請の周辺/既存のデータからの申請/申請対象からの申請.md の 10.1)の結果と同じになる(seeder は読み取りの層に依存できない)。
+     * 結果が同じことは seeder のテストで確かめる(設計/ワークフロー/初期データ.md の 4 節)。
      */
     private function applicationInputOf(
         string $applicationModule,

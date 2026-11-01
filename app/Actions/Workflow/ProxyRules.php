@@ -27,7 +27,7 @@ class ProxyRules
 
     public const PROXY_REQUIRED = '代理先を選択してください';
 
-    public const SAME_USER = '代理元と代理先に同じユーザーは指定できません';
+    public const SAME_USER = '代理元と代理先に同じユーザーは選択できません';
 
     public const KIND_REQUIRED = '種類を選択してください';
 

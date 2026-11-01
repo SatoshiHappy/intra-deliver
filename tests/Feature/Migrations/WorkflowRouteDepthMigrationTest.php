@@ -112,6 +112,16 @@ final class WorkflowRouteDepthMigrationTest extends TransactionalTestCase
     }
 
     /**
+     * 添付の追加できない旗と一時保存の添付の行(初期データの見本)を、前の形で表せる形にする。
+     */
+    private function makeAttachmentsRepresentableInTheOldForm(): void
+    {
+        DB::table('workflow_route_nodes')->update(['prevents_attachment_add' => false]);
+        DB::table('workflow_case_nodes')->update(['prevents_attachment_add' => false]);
+        DB::table('workflow_case_draft_attachments')->delete();
+    }
+
+    /**
      * 段 3a のマイグレーションを、正しい順に down する(戻す数は migrations の表から数える)。
      */
     private function rollBack(): void
@@ -121,6 +131,9 @@ final class WorkflowRouteDepthMigrationTest extends TransactionalTestCase
         DB::table('record_fields')->whereRaw("jsonb_typeof(default_value) = 'object'")
             ->update(['default_value' => null]);
         DB::table('record_fields')->where('max_length', '>', 4000)->update(['max_length' => null]);
+        // 後のマイグレーションの添付の down は、添付を追加できないノードと一時保存の添付の行があると止まる(初期データの見本)。
+        // TX の中で戻してから戻す(docs の 設計/ワークフロー/申請の周辺/初期データ.md の 1 節・2 節)。
+        $this->makeAttachmentsRepresentableInTheOldForm();
         // 後のマイグレーションの申請対象の列の down は、申請対象を持つコンテンツの行があると止まる(初期データのコンテンツ)。
         // TX の中で申請対象を外してから戻す(docs の 設計/ワークフロー/初期データ.md の 3 節)。
         DB::table('workflow_contents')->update(['target_record_field_id' => null, 'target_record_module_id' => null]);

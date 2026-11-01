@@ -64,7 +64,7 @@ describe('noticeTemplate(レコードのコメント)', () => {
         ).toEqual({
             label: 'コメント',
             tone: 'settled',
-            sentence: '中村 美咲さんがコメントの宛先にあなたを指定しました。',
+            sentence: '中村 美咲さんがコメントの宛先にあなたを選択しました。',
         });
         expect(
             noticeTemplate(
@@ -73,7 +73,7 @@ describe('noticeTemplate(レコードのコメント)', () => {
                     actor: { name: null, code: 'u0002' },
                 }),
             ).sentence,
-        ).toBe('u0002さんがコメントの宛先にあなたを指定しました。');
+        ).toBe('u0002さんがコメントの宛先にあなたを選択しました。');
     });
 });
 

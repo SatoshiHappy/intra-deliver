@@ -45,11 +45,12 @@ use Illuminate\Database\Seeder;
 /**
  * ワークフローの初期データ(docs の 設計/ワークフロー/ルートの深さ/初期データ.md。中身の正本はこの seeder、設計の値 = 2〜4 節)。RecordsSeeder の後に 1 回入れる前提。
  * すべて業務処理を通す: 処理対象者と参照者の対象者 5(用途 selection)はフローを作る業務処理の中で作り(確認する人の 1 は認可の口)、定義(コンテンツ 2・フロー 2・版 4 = 計画の版 1(ユーザー無効)・2 が
- * 一本道 A、版 3 が分岐 B、課題の版 1 が一本道 A。一本道 A の版は同じ対象者を指す = 2 節・3 節)の後に、代理 4・案件の見本 17 を業務処理で作る
+ * 一本道 A、版 3 が分岐 B、課題の版 1 が一本道 A。一本道 A の版は同じ対象者を指す = 2 節・3 節)の後に、代理 4・案件の見本 19 を業務処理で作る
  * (番号は申請の順に WF-000001 から。2 段目の見本 9 は申請基準日を版 2・版 1 に置き、足した見本 4 は版 3 = 4 節。案件の運用の見本 4 =
- * 設計/ワークフロー/案件の運用/初期データ.md 4.3)。
+ * 設計/ワークフロー/案件の運用/初期データ.md 4.3)。最後の 2 件の申請対象からの申請と添付の見本は 設計/ワークフロー/申請の周辺/初期データ.md の 2 節
+ * ({@see BuildsWorkflowSampleFiles})。
  *
- * 見本(代理 4・案件 17・確認)は操作ごとに時計をその操作の時刻に合わせて業務処理を通し、全部の後に時計を戻す({@see SeedingClock}。
+ * 見本(代理 4・案件 19・確認)は操作ごとに時計をその操作の時刻に合わせて業務処理を通し、全部の後に時計を戻す({@see SeedingClock}。
  * 設計/ワークフロー/案件の運用/初期データ.md 1.2・4 節)。判定の入力は操作する人ごとの AccessContext(接続元・選んだ組織なし、基準日 = 操作の日、ロケール ja)。
  * 申請の案件名は空で渡して既定にする(docs の 設計/ワークフロー/初期データ.md 4 節)。定義の前に申請書の業務モジュール 2 つを作る({@see WorkflowApplicationModules})。
  * 見本の申請は申請対象のレコードをデータハブ(プロジェクト・課題)に作り、それを申請対象にした申請書で申請する({@see BuildsWorkflowSampleRecords})。
@@ -66,9 +67,11 @@ use Illuminate\Database\Seeder;
  */
 class WorkflowSeeder extends Seeder
 {
+    use BuildsWorkflowSampleFiles;
     use BuildsWorkflowSampleRecords;
     use FillsAllLocales;
     use FindsAuthzSubjects;
+    use SeedsWorkflowApplicationTargetCases;
     use SeedsWorkflowOperationSamples;
     use SeedsWorkflowRouteCases;
     use SeedsWorkflowRouteVersions;
@@ -124,7 +127,7 @@ class WorkflowSeeder extends Seeder
         'workflow.cases.send-back' => ['差戻し', 'Send back'],
         'workflow.cases.pull-back' => ['引戻し', 'Pull back'],
         'workflow.cases.withdraw' => ['取止め', 'Withdraw'],
-        'workflow.cases.assignee-candidates' => ['処理対象者の候補', 'Assignee candidates'],
+        'workflow.cases.assignee-candidates' => ['承認者の候補', 'Assignee candidates'],
         'workflow.reapplications.create' => ['再申請の画面', 'Reapplication form'],
         'workflow.reapplications.store' => ['再申請', 'Reapply'],
         'workflow.cases.bulk-approve' => ['一括承認', 'Bulk approve'],
@@ -227,6 +230,7 @@ class WorkflowSeeder extends Seeder
             $this->createRouteCases();
             $this->createOperationCases();
             $this->confirmSamples();
+            $this->createApplicationTargetCases();
         });
     }
 

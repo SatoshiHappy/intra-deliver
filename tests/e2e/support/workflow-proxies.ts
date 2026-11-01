@@ -43,7 +43,7 @@ export async function pickUser(
     await requested;
     await page.getByRole('option', { name: new RegExp(name) }).click();
     await expect(
-        field.getByRole('list', { name: `選んだ${label}` }),
+        field.getByRole('list', { name: `選択した${label}` }),
     ).toContainText(name);
 }
 

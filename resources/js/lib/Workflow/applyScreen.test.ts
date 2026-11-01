@@ -49,7 +49,7 @@ describe('申請できない理由', () => {
         } as WorkflowApplyProps;
 
         expect(blockerOf(props)).toBe(
-            '部長の処理担当者がいないため、申請できません',
+            '部長の承認者がいないため、申請できません',
         );
     });
 

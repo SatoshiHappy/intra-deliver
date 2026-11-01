@@ -125,6 +125,7 @@ final class StepAttachmentsTest extends TransactionalTestCase
             $this->workflowCounts(), $this->nodeStates($case), $this->revisionOf($case), $this->revisionCount($case),
         ];
         $before = $snapshot();
+        $rows = [RecordAttachment::query()->count(), Upload::query()->count()];
         $approve = fn () => $this->step('approve', $u0002, $case, [$this->uploadedFile('a.pdf')]);
 
         if ($module && $copy && ! $prevents) {
@@ -136,7 +137,7 @@ final class StepAttachmentsTest extends TransactionalTestCase
 
         $this->assertSame(['attachments' => CaseAttachmentRules::NOT_ATTACHABLE], $this->validationErrors($approve));
         $this->assertSame($before, $snapshot());
-        $this->assertSame([0, 0], [RecordAttachment::query()->count(), Upload::query()->count()]);
+        $this->assertSame($rows, [RecordAttachment::query()->count(), Upload::query()->count()]);
     }
 
     /**

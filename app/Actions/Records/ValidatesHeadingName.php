@@ -2,6 +2,7 @@
 
 namespace App\Actions\Records;
 
+use App\Models\Records\RecordFieldHeading;
 use App\Support\DefinitionText;
 
 /**
@@ -11,7 +12,28 @@ use App\Support\DefinitionText;
 trait ValidatesHeadingName
 {
     /**
-     * 見出しの名前の誤りの文言(無ければ null)。
+     * 索引では固定の「基本情報」を表せず、規則より前の重なりがあると張れないので、業務処理で止める(docs の
+     * 設計/業務データの入れ物/レコードの共通機能/データモデル/表.md 2.6・見出し.md 4 節)。保存済みの名前は書き込みで
+     * 前後の空白を除いてあるので、そのまま比べる。業務モジュールの排他の勧告ロックの下で呼ぶ。
+     */
+    private function headingNameErrorIn(mixed $name, int $recordModuleId, ?int $exceptId = null): ?string
+    {
+        $error = $this->headingNameError($name);
+
+        if ($error !== null) {
+            return $error;
+        }
+
+        $isUsed = $name === RecordFieldHeading::HEAD_GROUP_NAME
+            || RecordFieldHeading::query()->where('record_module_id', $recordModuleId)->where('name', $name)
+                ->when($exceptId !== null, fn ($query) => $query->whereKeyNot($exceptId))
+                ->exists();
+
+        return $isUsed ? 'ほかの見出しと同じ名前と「基本情報」は設定できません' : null;
+    }
+
+    /**
+     * 見出しの名前の形の誤りの文言(無ければ null)。
      */
     private function headingNameError(mixed $name): ?string
     {

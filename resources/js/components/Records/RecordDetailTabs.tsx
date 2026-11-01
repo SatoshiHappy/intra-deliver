@@ -8,7 +8,7 @@ import {
     RecordRelatedTab,
 } from '@/components/RecordRelatedTab';
 import { RecordShowTabs } from '@/components/RecordShowTabs';
-import { RecordDetailsTable } from '@/components/Records/RecordDetailsTable';
+import { RecordDetailBands } from '@/components/Records/RecordDetailBands';
 import { RecordRowAccessSummary } from '@/components/Records/RecordRowAccessSummary';
 import { RecordValue } from '@/components/RecordValue';
 import type { useRecordRelated } from '@/hooks/use-record-related';
@@ -16,7 +16,7 @@ import { ownValue } from '@/lib/Records/recordAddons';
 import { RELATED_TAB, relatedTotal } from '@/lib/recordRelated';
 import { isWideField } from '@/lib/recordForm';
 import {
-    detailsTabKey,
+    ACCESS_TAB,
     FIELDS_TAB,
     personText,
     selectedTabKey,
@@ -77,9 +77,9 @@ function FieldItem({
 }
 
 /**
- * 詳細タブ: 見出しのまとまりごとの項目の格子(列は左の面の幅の段階 = 帯だけで 3 列、パネルを開くと 2 列 =
- * 設計/業務データの入れ物/レコードの共通機能/詳細の画面/README.md の 1 節。複数行は全幅。見出しの行で畳める = 見出し.md の 2 節)と、
- * 作成・更新の日時と人、区画「参照制限」(設計/業務データの入れ物/画面/業務の画面.md の 2.3)。notes = 後ろのモジュールが足す、項目の名前の横の注(項目のコード → 文)。
+ * 詳細タブ(中の並び = 設計/業務データの入れ物/レコードの共通機能/詳細の画面/README.md の 4 節): 関連レコードのチップ、見出しのまとまりごとの
+ * 項目の格子(列は左の面の幅の段階 = 帯だけで 3 列、パネルを開くと 2 列 = 同 1 節。複数行は全幅。見出しの行で畳める = 見出し.md の 2 節)、
+ * 明細の帯と表、作成・更新の日時と人。notes = 後ろのモジュールが足す、項目の名前の横の注(項目のコード → 文)。
  */
 function FieldsTab({ module, headings, record, notes, related }: TabProps) {
     return (
@@ -106,8 +106,14 @@ function FieldsTab({ module, headings, record, notes, related }: TabProps) {
                     </dl>
                 )}
             </RecordHeadingGroups>
+            <RecordDetailBands
+                fields={module.fields.filter(
+                    (field) => field.type === 'details',
+                )}
+                details={record.details}
+                idPrefix="record-show"
+            />
             <Authors record={record} />
-            <RecordRowAccessSummary rowAccess={record.rowAccess} />
         </div>
     );
 }
@@ -135,35 +141,29 @@ function Authors({ record }: { record: RecordDetail }) {
 }
 
 /**
- * 選んだタブの中身(詳細 = 見出しのまとまりごとの項目の格子、明細の札 = その明細の表、関連レコード = 選んだ入口の表)。
+ * 選んだタブの中身(詳細 = 項目・明細、参照制限 = 読むだけ、関連レコード = 選んだ入口の表)。
  */
 function TabBody({
     selected,
-    selectedField,
     related,
     ...props
-}: TabProps & {
-    selected: string;
-    selectedField: RecordFieldDefinition | undefined;
-}) {
-    if (selected === RELATED_TAB) {
-        return (
-            <RecordRelatedTab
-                {...related}
-                onPage={related.page}
-                onNew={related.dialog.openFor}
-            />
-        );
+}: TabProps & { selected: string }) {
+    switch (selected) {
+        case RELATED_TAB:
+            return (
+                <RecordRelatedTab
+                    {...related}
+                    onPage={related.page}
+                    onNew={related.dialog.openFor}
+                />
+            );
+        case ACCESS_TAB:
+            return (
+                <RecordRowAccessSummary rowAccess={props.record.rowAccess} />
+            );
+        default:
+            return <FieldsTab {...props} related={related} />;
     }
-
-    return selectedField === undefined ? (
-        <FieldsTab {...props} related={related} />
-    ) : (
-        <RecordDetailsTable
-            field={selectedField}
-            rows={props.record.details[selectedField.code] ?? []}
-        />
-    );
 }
 
 /**
@@ -190,8 +190,8 @@ function relatedTabs(related: RelatedTabState) {
 }
 
 /**
- * 左のタブ(詳細 / 明細の札 / 関連レコード)。選んだタブは URL のクエリ tab に映す(詳細と明細の札は中身が props にあるので URL だけを置き換え、
- * 関連レコードは表が無ければ部分の再読み込み = 詳細の画面/README.md の 3 節)。
+ * 左のタブ(詳細 / 参照制限 / 関連レコード = 同 4 節)。選んだタブは URL のクエリ tab に映す(詳細と参照制限は中身が props にあるので
+ * URL だけを置き換え、関連レコードは表が無ければ部分の再読み込み = 同 3 節)。
  */
 export function RecordDetailTabs({
     module,
@@ -201,24 +201,14 @@ export function RecordDetailTabs({
     related,
 }: Omit<TabProps, 'notes'> & { fieldNotes?: Record<string, string> }) {
     const { url } = usePage();
-    const detailsFields = module.fields.filter(
-        (field) => field.type === 'details',
-    );
     const tabs = [
         { key: FIELDS_TAB, label: '詳細', count: null },
-        ...detailsFields.map((field) => ({
-            key: detailsTabKey(field.code),
-            label: field.name,
-            count: (record.details[field.code] ?? []).length,
-        })),
+        { key: ACCESS_TAB, label: '参照制限', count: null },
         ...relatedTabs(related),
     ];
     const selected = selectedTabKey(
         url,
         tabs.map((tab) => tab.key),
-    );
-    const selectedField = detailsFields.find(
-        (field) => detailsTabKey(field.code) === selected,
     );
     const select = (key: string) =>
         key === RELATED_TAB
@@ -237,7 +227,6 @@ export function RecordDetailTabs({
                 record={record}
                 notes={fieldNotes}
                 selected={selected}
-                selectedField={selectedField}
                 related={related}
             />
         </RecordShowTabs>

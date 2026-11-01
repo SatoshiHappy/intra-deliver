@@ -34,7 +34,7 @@ export function CaseActionButton({
             type="button"
             variant={
                 placement === 'row'
-                    ? 'ghost'
+                    ? 'outline'
                     : definition.isDestructive
                       ? 'destructive'
                       : target.operation === 'approve'

@@ -25,7 +25,7 @@ use LogicException;
  * 失って取り戻した場合は返す(受け入れた代償)。
  * 引戻し・取止めの入口の添付の可否と attachmentLimits = 設計/ワークフロー/申請の周辺/添付/README.md の 5 節({@see CaseAttachEntries})。
  * だれとして処理するか(処理担当者の選択肢・引戻しと取止めの処理者・代理の 1 行)は {@see CaseProcessorChoices}、確認の面は
- * {@see CaseConfirmationPanel}、基本情報の期限は {@see CaseDeadlines}、申請操作の面(can.operate と operation)は {@see CaseOperationPanel}
+ * {@see CaseConfirmationPanel}、申請情報の期限は {@see CaseDeadlines}、申請操作の面(can.operate と operation)は {@see CaseOperationPanel}
  * (設計/ワークフロー/案件の運用/画面/案件の画面.md の 4 節)。
  *
  * @phpstan-import-type Person from WorkflowPeople

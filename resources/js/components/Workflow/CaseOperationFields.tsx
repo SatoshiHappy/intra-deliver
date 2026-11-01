@@ -40,12 +40,12 @@ export function RetargetFields({
         <>
             <OperationPeopleField
                 id={TARGETS_ID}
-                label="現在の処理担当者"
+                label="現在の承認者"
                 people={node?.targets ?? []}
             />
             <UserPickerField
                 id={NEW_TARGETS_ID}
-                label="変更後の処理担当者"
+                label="変更後の承認者"
                 labelAddon={<Badge variant="secondary">必須</Badge>}
                 help={retargetHelpOf(node?.single === true)}
                 error={errors.user_ids}
@@ -72,16 +72,16 @@ export function ReexpandFields({
     return (
         <>
             <p className="text-sm">
-                フロー定義の指定で、現在のステップの処理担当者を展開し直します。
+                フロー定義の指定で、現在のステップの承認者を展開し直します。
             </p>
             <OperationPeopleField
                 id={TARGETS_ID}
-                label="現在の処理担当者"
+                label="現在の承認者"
                 people={node?.targets ?? []}
             />
             <OperationPeopleField
                 id={EXPANDED_ID}
-                label="展開後の処理担当者"
+                label="展開後の承認者"
                 help={reexpandHelpOf(node)}
                 people={node?.expanded ?? []}
             />

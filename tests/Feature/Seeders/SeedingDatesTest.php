@@ -174,6 +174,8 @@ final class SeedingDatesTest extends TransactionalTestCase
             ->where('tablename', '<>', 'migrations')->pluck('tablename')->all();
         DB::statement('TRUNCATE '.implode(', ', $tables).' RESTART IDENTITY CASCADE');
         config(['seeding.date' => $day]);
+        // 添付の実体は本物の置き場でなくテストの置き場に書く(TransactionalTestCase)
+        $this->fakeSeedingDisk();
 
         $this->seed(DatabaseSeeder::class);
     }

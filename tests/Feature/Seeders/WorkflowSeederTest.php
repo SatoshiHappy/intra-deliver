@@ -30,7 +30,7 @@ use Tests\Support\TransactionalTestCase;
 
 /**
  * ワークフローの初期データ(docs の 設計/ワークフロー/ルートの深さ/初期データ.md 7 節の検査。見せるもの = 設計/ワークフロー/初期データ.md 4 節を追従させたもの): 定義の件数・版の期間と状態・
- * 一本道 A の版の中身、案件の見本 17 の状態・現在のノード・履歴、再申請の差分、つながる申請、未完了の案件のレコードの持ち主。
+ * 一本道 A の版の中身、案件の見本 19 の状態・現在のノード・履歴、再申請の差分、つながる申請、未完了の案件のレコードの持ち主。
  * ルートのリソースは {@see WorkflowSeederRouteResourcesTest}、版 3(分岐 B)の中身と足した見本の細部は {@see WorkflowSeederRouteDepthTest}、案件の運用の見本は {@see WorkflowSeederOperationSamplesTest}、
  * 利用者ごとのタブは {@see WorkflowSeederTabsTest}、申請書の業務モジュールは {@see WorkflowSeederApplicationModulesTest}、
  * 見本の申請対象(つながる申請の前提 = 課題が指すプロジェクトを含む)は {@see WorkflowSeederApplicationTargetsTest}。
@@ -40,9 +40,10 @@ use Tests\Support\TransactionalTestCase;
  */
 final class WorkflowSeederTest extends TransactionalTestCase
 {
-    /** 未完了の案件の番号(設計/ワークフロー/案件の運用/初期データ.md 5 節の未完了 10) */
+    /** 未完了の案件の番号(設計/ワークフロー/案件の運用/初期データ.md 5 節の未完了 10 と、申請対象からの申請の未完了 1) */
     private const ACTIVE_NUMBERS = [
-        'WF-000002', 'WF-000003', 'WF-000004', 'WF-000005', 'WF-000009', 'WF-000010', 'WF-000013', 'WF-000014', 'WF-000015', 'WF-000016',
+        'WF-000002', 'WF-000003', 'WF-000004', 'WF-000005', 'WF-000009', 'WF-000010',
+        'WF-000013', 'WF-000014', 'WF-000015', 'WF-000016', 'WF-000018',
     ];
 
     /**
@@ -82,7 +83,8 @@ final class WorkflowSeederTest extends TransactionalTestCase
     }
 
     /**
-     * 案件の見本 17 = 申請の順に WF-000001〜WF-000016 と一時保存 1(一時保存 1・未完了 10・完了 6 = 設計/ワークフロー/案件の運用/初期データ.md 5 節)。状態・完了の理由・
+     * 案件の見本 19 = 申請の順に WF-000001〜WF-000018 と一時保存 1(一時保存 1・未完了 11・完了 7 = 設計/ワークフロー/案件の運用/初期データ.md 5 節に、
+     * 設計/ワークフロー/申請の周辺/初期データ.md の 2 節の申請対象からの申請 2 を足した値)。状態・完了の理由・
      * 現在のノード(表示名・状態・処理対象者)・案件名(空で渡した既定)・履歴(種別と処理者)。申請基準日と版は {@see WorkflowSeederRouteDepthTest}。
      */
     public function test_seeds_the_sample_cases_of_the_design(): void
@@ -109,6 +111,14 @@ final class WorkflowSeederTest extends TransactionalTestCase
             ['WF-000014', 'project_plan', 'u0001', 'プロジェクト計画の承認 第二四半期の営業計画', 'active', null, [['部長', 'waiting', ['u0003']]], ['apply u0001', 'approve u0002']],
             ['WF-000015', 'issue_resolution', 'u0010', '課題の対応の承認 在庫システムの表示不具合', 'active', null, [['課長の承認', 'waiting', ['u0002']]], ['apply u0010']],
             ['WF-000016', 'issue_resolution', 'u0001', '課題の対応の承認 ログイン画面の文言修正', 'active', null, [['課長の承認', 'waiting', ['u0009']]], ['apply u0001', 'transfer u0002']],
+            [
+                'WF-000017', 'project_plan', 'u0001', 'プロジェクト計画の承認 新規顧客開拓キャンペーン', 'completed', 'approved', [],
+                ['apply u0001', 'approve u0002', 'approve u0003', 'approve u0009', 'approve u0010', 'approve u0003'],
+            ],
+            [
+                'WF-000018', 'project_plan', 'u0001', 'プロジェクト計画の承認 新規顧客開拓キャンペーン', 'active', null,
+                [['課長', 'waiting', ['u0002']]], ['apply u0001'],
+            ],
             [null, 'issue_resolution', 'u0001', null, 'draft', null, [], []],
         ], $cases);
     }
@@ -145,7 +155,8 @@ final class WorkflowSeederTest extends TransactionalTestCase
     }
 
     /**
-     * 未完了の案件(WF-000002〜000005・WF-000009・WF-000010・WF-000013〜000016)のレコードは、業務データの入れ物の業務処理の更新(鍵なし)が 422 record で拒まれる。
+     * 未完了の案件(WF-000002〜000005・WF-000009・WF-000010・WF-000013〜000016・WF-000018)のレコードは、
+     * 業務データの入れ物の業務処理の更新(鍵なし)が 422 record で拒まれる。
      */
     public function test_the_records_of_the_active_cases_are_held(): void
     {

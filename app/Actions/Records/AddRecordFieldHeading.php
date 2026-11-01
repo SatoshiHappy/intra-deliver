@@ -11,7 +11,7 @@ use Illuminate\Validation\ValidationException;
 /**
  * 見出しを末尾に足す(docs の 設計/業務データの入れ物/レコードの共通機能/詳細の画面/見出し.md の 4 節。入力 = 業務モジュールのコードと { name })。
  * sort_key は見出しと項目の最大 + 10({@see RecordSortKeys}。どちらも無ければ 0)。位置は {@see ReorderRecordFields} で動かす。
- * 明細のモジュールには足せない(キー module)。持ち主のあるレコードがあっても拒まない(値を変えない定義)。版にしない。
+ * 同じ業務モジュールのほかの見出しと固定の「基本情報」と同じ名前は足せない(キー name)。明細のモジュールには足せない(キー module)。持ち主のあるレコードがあっても拒まない(値を変えない定義)。版にしない。
  * 共通マスタと業務モジュールの排他の勧告ロック({@see LocksRecordModule})の下で行う。
  */
 class AddRecordFieldHeading
@@ -43,7 +43,7 @@ class AddRecordFieldHeading
 
             $next = $this->sortKeys->next($module->id);
             $this->throwIfAny([
-                'name' => $this->headingNameError($input['name'] ?? null),
+                'name' => $this->headingNameErrorIn($input['name'] ?? null, $module->id),
                 'sort_key' => $this->sortKeys->limitError($next),
             ]);
 

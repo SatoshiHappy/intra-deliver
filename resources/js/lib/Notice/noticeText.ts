@@ -68,13 +68,13 @@ function workflowTemplate(row: NoticeRow): NoticeTemplate | null {
             return {
                 label: '担当変更',
                 tone: 'returned',
-                sentence: `${caseName}　${stepName}の処理担当者が変更されました。`,
+                sentence: `${caseName}　${stepName}の承認者が変更されました。`,
             };
         case 'workflow.retarget':
             return {
                 label: '処理担当者の変更',
                 tone: 'returned',
-                sentence: `${caseName}　${stepName}の処理担当者に指定されました。`,
+                sentence: `${caseName}　${stepName}の承認者に指定されました。`,
             };
         case 'workflow.result':
             return {
@@ -185,7 +185,7 @@ function meetingReasonSentence(row: NoticeRow): string {
 function commentSentence(row: NoticeRow): string {
     const actor = row.actor === null ? '' : nameOrCode(row.actor);
 
-    return `${actor}さんがコメントの宛先にあなたを指定しました。`;
+    return `${actor}さんがコメントの宛先にあなたを選択しました。`;
 }
 
 /**

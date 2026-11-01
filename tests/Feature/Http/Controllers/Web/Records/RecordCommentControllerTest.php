@@ -64,7 +64,7 @@ final class RecordCommentControllerTest extends TransactionalTestCase
             ->assertRedirect(self::PAGE)
             ->assertSessionHasErrors([
                 'body' => 'コメントを入力してください',
-                'mentions.0' => '宛先に指定できないユーザーが含まれています',
+                'mentions.0' => '宛先に選択できないユーザーが含まれています',
             ])
             ->assertSessionHasInput('mentions', [$stranger]);
         $post(['body' => str_repeat('あ', 4001)])

@@ -119,7 +119,7 @@ function CouncilProgress({ council }: { council: WorkflowCouncil }) {
                     : `未処理 ${council.pending} 人。${council.required} 人が承認すると、合議は完了します。`}
             </p>
             <ul
-                aria-label={`${council.name}の処理担当者`}
+                aria-label={`${council.name}の承認者`}
                 className="flex flex-col divide-y"
             >
                 {council.rows.map((row) => (

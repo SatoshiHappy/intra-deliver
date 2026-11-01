@@ -31,7 +31,7 @@ export async function expectCandidateLabel(
         .click();
     await expect(
         page.getByRole('combobox', {
-            name: `${nodeName}の処理担当者の候補`,
+            name: `${nodeName}の承認者の候補`,
             exact: true,
         }),
     ).toBeVisible();

@@ -95,7 +95,7 @@ class CaseDeadlines
 
     /**
      * 画面の期限の表示(設計/ワークフロー/案件の運用/画面/README.md の 1.2 節の WorkflowDeadline)。到達日 = 集まりで最も早い到達した日
-     * (経過日数 = 最も長い と同じノード)。一覧の行と詳細の基本情報が同じ形を使う。
+     * (経過日数 = 最も長い と同じノード)。一覧の行と詳細の申請情報が同じ形を使う。
      *
      * @param  list<CurrentNode>  $nodes  対象のノードの集まり(呼び手が選ぶ)
      * @return Deadline

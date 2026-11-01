@@ -64,7 +64,7 @@ class CaseOperationController extends Controller
             $request->comment(),
         );
 
-        return $this->redirectToCase($request, '処理担当者を再展開しました');
+        return $this->redirectToCase($request, '承認者を再展開しました');
     }
 
     public function move(CaseOperationRequest $request): RedirectResponse

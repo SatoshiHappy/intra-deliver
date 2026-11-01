@@ -29,7 +29,7 @@ export const OPERATION_TITLES: Record<OperationKind, string> = {
     assign: '指定を変更する',
 };
 
-/** 面の 1 行 */
+/** 面の見出しの横の「?」の説明 */
 export const OPERATION_SURFACE_NOTE =
     '申請操作の権限がある人だけに表示されます。';
 
@@ -57,19 +57,19 @@ export function operationSubtitleOf(
  * 変更後の処理担当者の「?」(展開の行は 1 人だけ)。
  */
 export function retargetHelpOf(single: boolean): string {
-    return `${single ? '1 人' : '1 人以上'}を指定します。自分自身を除く、申請基準日に有効な利用者を指定できます。`;
+    return `${single ? '1 人' : '1 人以上'}を選択します。自分自身を除く、申請基準日に有効な利用者を選択できます。`;
 }
 
 /** 処理担当者の変更の注意の囲みの文 */
 const RETARGET_CALLOUT_TEXT =
-    '変更後の処理担当者の未処理に表示され、通知が届きます。差戻しなどで再び到達すると、フロー定義の指定で展開し直します。';
+    '変更後の承認者の未処理に表示され、通知が届きます。差戻しなどで再び到達すると、フロー定義の指定で展開し直します。';
 
 /**
  * 処理担当者の変更の注意の囲み(保留中なら保留が解除されることを見出しにする)。
  */
 export function retargetCalloutOf(onHold: boolean): OperationCallout {
     return {
-        title: onHold ? '保留は解除されます' : '処理担当者が替わります',
+        title: onHold ? '保留は解除されます' : '承認者が替わります',
         text: RETARGET_CALLOUT_TEXT,
     };
 }
@@ -147,7 +147,7 @@ const MOVE_CALLOUTS: Record<MoveDirection, OperationCallout> = {
     },
     forward: {
         title: '現在のステップを処理済みにして、次へ進みます',
-        text: '次のステップの処理担当者の未処理に表示され、通知が届きます。',
+        text: '次のステップの承認者の未処理に表示され、通知が届きます。',
     },
     finish: {
         title: '申請を完了します',
@@ -186,5 +186,5 @@ export function assignHelpOf(
 ): string | undefined {
     return node === undefined
         ? undefined
-        : `到達していない動的承認や配置のステップの指定を書き直します。${node.min} 人から ${node.max} 人まで指定します。最小が 0 人のステップは、0 人にすると削除されます。`;
+        : `到達していない動的承認・順次承認・並列承認のステップの指定を書き直します。${node.min} 人から ${node.max} 人まで選択します。最小が 0 人のステップは、0 人にすると削除されます。`;
 }

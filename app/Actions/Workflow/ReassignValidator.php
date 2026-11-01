@@ -22,10 +22,10 @@ class ReassignValidator
     public const KEY = 'user_ids';
 
     /** %1$s = ステップの名前、%2$d = 最小、%3$d = 最大 */
-    public const COUNT = '%1$sの処理担当者は %2$d 人から %3$d 人まで指定してください';
+    public const COUNT = '%1$sの承認者は %2$d 人から %3$d 人まで選択してください';
 
     /** 人数の下限 = 上限のとき。%1$s = ステップの名前、%2$d = 人数 */
-    public const EXACT_COUNT = '%1$sの処理担当者は %2$d 人を指定してください';
+    public const EXACT_COUNT = '%1$sの承認者は %2$d 人を選択してください';
 
     public function __construct(
         private EffectiveUsers $effectiveUsers,

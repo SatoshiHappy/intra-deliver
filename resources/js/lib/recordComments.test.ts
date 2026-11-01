@@ -11,14 +11,14 @@ describe('commentErrors', () => {
         expect(
             commentErrors({
                 body: 'コメントを入力してください',
-                'mentions.1': '宛先に指定できないユーザーが含まれています',
+                'mentions.1': '宛先に選択できないユーザーが含まれています',
                 mentions: '宛先は 10 人までです',
                 other: '無視',
             }),
         ).toEqual({
             body: 'コメントを入力してください',
             mentions: [
-                '宛先に指定できないユーザーが含まれています',
+                '宛先に選択できないユーザーが含まれています',
                 '宛先は 10 人までです',
             ],
         });
@@ -28,10 +28,10 @@ describe('commentErrors', () => {
     it('同じ文言の宛先の誤り(mentions.0 と mentions.1)は 1 件にまとめる', () => {
         expect(
             commentErrors({
-                'mentions.0': '宛先に指定できないユーザーが含まれています',
-                'mentions.1': '宛先に指定できないユーザーが含まれています',
+                'mentions.0': '宛先に選択できないユーザーが含まれています',
+                'mentions.1': '宛先に選択できないユーザーが含まれています',
             }).mentions,
-        ).toEqual(['宛先に指定できないユーザーが含まれています']);
+        ).toEqual(['宛先に選択できないユーザーが含まれています']);
     });
 });
 

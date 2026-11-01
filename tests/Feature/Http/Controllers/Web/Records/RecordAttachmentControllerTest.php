@@ -57,6 +57,7 @@ final class RecordAttachmentControllerTest extends TransactionalTestCase
     public function test_the_input_errors_use_the_keys_and_messages_of_the_upload_rules(): void
     {
         $url = "/records/data/projects/{$this->projectRecord()}/attachments";
+        $before = RecordAttachment::query()->count();
         $pdf = $this->uploadedFile('a.pdf');
         $tooLarge = new UploadedFile($pdf->getPathname(), 'a.pdf', null, UPLOAD_ERR_INI_SIZE, true);
         $four = array_map(fn (int $index) => $this->uploadedFile("{$index}.pdf"), range(1, 4));
@@ -70,12 +71,13 @@ final class RecordAttachmentControllerTest extends TransactionalTestCase
         $pngAsPdf = new UploadedFile($source->getPathname(), 'a.pdf', null, null, true);
         $this->from(self::PAGE)->post($url, ['attachments' => [$pngAsPdf]])
             ->assertSessionHasErrors(['attachments.0' => UploadLimits::UNSUPPORTED_FORMAT]);
-        $this->assertSame(0, RecordAttachment::query()->count());
+        $this->assertSame($before, RecordAttachment::query()->count());
     }
 
     public function test_an_element_that_is_not_a_file_is_not_received_and_empty_fields_are_dropped(): void
     {
-        $url = "/records/data/projects/{$this->projectRecord()}/attachments";
+        $recordId = $this->projectRecord();
+        $url = "/records/data/projects/{$recordId}/attachments";
         // 空のファイル欄(PHP が送る形。Symfony の FileBag が null にし、Laravel が除く)
         $noFile = ['name' => '', 'type' => '', 'tmp_name' => '', 'error' => UPLOAD_ERR_NO_FILE, 'size' => 0];
         $referer = ['HTTP_REFERER' => self::PAGE];
@@ -87,7 +89,7 @@ final class RecordAttachmentControllerTest extends TransactionalTestCase
         $this->call('POST', $url, [], [], ['attachments' => [$this->uploadedFile('b.pdf'), $noFile]], $referer)
             ->assertStatus(303);
 
-        $this->assertSame(['b.pdf'], RecordAttachment::query()->pluck('name')->all());
+        $this->assertSame(['b.pdf'], RecordAttachment::query()->where('record_id', $recordId)->pluck('name')->all());
     }
 
     public function test_a_reader_cannot_add_or_remove_and_an_updater_adds_without_reading(): void
@@ -107,6 +109,7 @@ final class RecordAttachmentControllerTest extends TransactionalTestCase
     {
         $recordId = $this->projectRecord();
         $other = $this->projectRecord();
+        $before = RecordAttachment::query()->count();
         $attachmentId = $this->attach($recordId, 'a.pdf');
         $this->recordModule('readonly', [RecordModuleAction::Read]);
 
@@ -121,7 +124,7 @@ final class RecordAttachmentControllerTest extends TransactionalTestCase
         $this->get("/records/data/projects/{$other}/attachments/{$attachmentId}")->assertNotFound();
         $this->delete("/records/data/projects/{$other}/attachments/{$attachmentId}")->assertNotFound();
         $this->get("/records/data/projects/{$recordId}/attachments/abc")->assertNotFound();
-        $this->assertSame(1, RecordAttachment::query()->count());
+        $this->assertSame($before + 1, RecordAttachment::query()->count());
     }
 
     public function test_a_download_and_a_preview_answer_with_the_headers_and_ranges(): void

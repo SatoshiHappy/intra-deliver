@@ -48,7 +48,6 @@ test('畳んだ見出しの中の必須を空にして保存すると、誤り�
     const form = recordForm(page);
     const owner = headingButton(page, '担当情報');
     const memo = headingButton(page, '補足事項');
-    await expect(owner).toContainText('1 項目');
     await expect(owner).toHaveAttribute('aria-expanded', 'true');
     await expect(memo).toHaveAttribute('aria-expanded', 'true');
 
@@ -69,6 +68,30 @@ test('畳んだ見出しの中の必須を空にして保存すると、誤り�
         'true',
     );
     await expect(textField(form, '担当者')).toBeFocused();
+});
+
+test('先頭の見出し「基本情報」(最初の見出しより前の項目)も畳め、その中の必須を空にして保存すると開いて最初の誤りの欄にフォーカスが移る', async ({
+    page,
+}) => {
+    await openAsAdministrator(page, CREATE);
+    const form = recordForm(page);
+    const basic = headingButton(page, '基本情報');
+    await expect(basic).toHaveAttribute('aria-expanded', 'true');
+
+    await basic.click();
+    await expect(basic).toHaveAttribute('aria-expanded', 'false');
+    await expect(textField(form, '件名')).toBeHidden();
+
+    await submitAndExpectUrl(
+        page,
+        form.getByRole('button', { name: '登録', exact: true }),
+    );
+    await expect(basic).toHaveAttribute('aria-expanded', 'true');
+    await expect(textField(form, '件名')).toHaveAttribute(
+        'aria-invalid',
+        'true',
+    );
+    await expect(textField(form, '件名')).toBeFocused();
 });
 
 test('畳んだ見出しの中の欄の値も送られ、登録した詳細に出る', async ({
@@ -100,7 +123,6 @@ test('詳細では見出しごとに畳め、URL に映らず、再読み込み�
     const owner = headingButton(page, '担当情報');
     const value = page.getByText('担当者の値', { exact: true });
 
-    await expect(owner).toContainText('1 項目');
     await expect(owner).toHaveAttribute('aria-expanded', 'true');
     await expect(value).toBeVisible();
 

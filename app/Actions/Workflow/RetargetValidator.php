@@ -19,11 +19,11 @@ class RetargetValidator
     /** 入力のキー */
     public const KEY = 'user_ids';
 
-    public const COUNT = '処理担当者を 1 人から '.RetargetUserLimit::MAX_USERS.' 人まで指定してください';
+    public const COUNT = '承認者を 1 人から '.RetargetUserLimit::MAX_USERS.' 人まで選択してください';
 
-    public const ONE_FOR_CHILD = 'このステップの処理担当者は 1 人を指定してください';
+    public const ONE_FOR_CHILD = 'このステップの承認者は 1 人を選択してください';
 
-    public const SELF = '自分自身は処理担当者に指定できません';
+    public const SELF = '自分自身は承認者に選択できません';
 
     /** 存在しない・申請基準日に有効でない(処理の時の指定と同じ文) */
     public const NOT_EFFECTIVE = CaseOperationErrors::ASSIGNMENTS_NOT_EFFECTIVE;

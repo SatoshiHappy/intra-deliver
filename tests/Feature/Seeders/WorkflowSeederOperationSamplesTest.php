@@ -21,7 +21,7 @@ use Tests\Support\TransactionalTestCase;
 /**
  * 案件の運用の初期データ(docs の 設計/ワークフロー/案件の運用/初期データ.md 6 節の検査。値 = 同じ文書の 3 節・4 節): 期限の日数と確認する人、代理 4、
  * 代理の登録の通知、保留・申請の代理・担当変更の見本、u0010 の確認、足した見本の通知。
- * 案件の一覧の 17 件は {@see WorkflowSeederTest}、時刻は {@see WorkflowSeederSampleTimesTest}。
+ * 案件の一覧の 19 件は {@see WorkflowSeederTest}、時刻は {@see WorkflowSeederSampleTimesTest}。
  * 初期データは DatabaseSeeder が 1 回入れたもの(流し直さない)。
  */
 final class WorkflowSeederOperationSamplesTest extends TransactionalTestCase

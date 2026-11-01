@@ -66,7 +66,7 @@ export const OPERATION_TEXTS: Record<CaseOperation, OperationText> = {
     release: {
         trigger: '保留解除',
         title: '保留を解除する',
-        note: '保留を解除すると、承認待ちに戻ります。処理担当者の全員が、再び処理できます。',
+        note: '保留を解除すると、承認待ちに戻ります。承認者の全員が、再び処理できます。',
         callout: null,
         isDestructive: false,
     },
@@ -76,14 +76,14 @@ export const OPERATION_TEXTS: Record<CaseOperation, OperationText> = {
         note: null,
         callout: {
             title: '担当変更後は取り消せません',
-            text: 'この申請は、自分の未処理から外れ、変更後の処理担当者の未処理に表示されます。変更後の処理担当者へ通知が届きます。',
+            text: 'この申請は、自分の未処理から外れ、変更後の承認者の未処理に表示されます。変更後の承認者へ通知が届きます。',
         },
         isDestructive: false,
     },
     pullBack: {
         trigger: '引戻し',
         title: '引戻す',
-        note: '次のステップの処理担当者が処理する前に、自分のステップへ戻します。',
+        note: '次のステップの承認者が処理する前に、自分のステップへ戻します。',
         callout: null,
         isDestructive: false,
     },

@@ -36,7 +36,7 @@ class PostRecordComment
     public const MENTIONS_MAX = 10;
 
     /** 宛先の誤りの文言(有効でない・無い・閲覧できないのどれでも同じ。名前と閲覧の可否を返さない) */
-    public const MENTION_ERROR = '宛先に指定できないユーザーが含まれています';
+    public const MENTION_ERROR = '宛先に選択できないユーザーが含まれています';
 
     /** 本文が空・文字列でない(不正な UTF-8)ときの文言 */
     public const BODY_EMPTY = 'コメントを入力してください';

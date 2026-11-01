@@ -4,6 +4,7 @@ import { SortHandle, useSortableRow } from '@/components/Records/SortableList';
 import { Button } from '@/components/ui/button';
 import { TableCell, TableRow } from '@/components/ui/table';
 import { itemId } from '@/lib/Records/adminItems';
+import { HEAD_GROUP_NAME } from '@/lib/recordHeadingGroups';
 import { destroy } from '@/routes/records/admin/headings';
 import { cn } from '@/lib/utils';
 import type { RecordAdminHeading } from '@/types';
@@ -32,7 +33,7 @@ function HeadingActions({
                 nameMaxLength={nameMaxLength}
                 trigger={
                     <Button
-                        variant="ghost"
+                        variant="outline"
                         size="sm"
                         aria-label={`見出し「${heading.name}」を編集`}
                     >
@@ -92,6 +93,26 @@ export function RecordHeadingRow({
                     nameMaxLength={nameMaxLength}
                 />
             </TableCell>
+        </TableRow>
+    );
+}
+
+/**
+ * 管理の項目の表の固定の行「基本情報」(最初の見出しより前の項目のまとまり。見出しの行と同じ背景・名前・「<n> 項目」。
+ * 取っ手も操作も無い = 動かせない・名前を変えられない・消せない。並び替えの並びには入れない。
+ * 明細でない業務モジュールなら、頭のまとまりが空でも「0 項目」で出す = docs の 見出し.md の 1 節)。
+ */
+export function RecordHeadGroupRow({ fieldCount }: { fieldCount: number }) {
+    return (
+        <TableRow className="bg-muted/50 hover:bg-muted/50">
+            <TableCell className="w-0 pr-0" />
+            <TableCell colSpan={4} className="whitespace-normal">
+                <span className="font-semibold">{HEAD_GROUP_NAME}</span>
+                <span className="ml-2 text-xs text-muted-foreground">
+                    {fieldCount} 項目
+                </span>
+            </TableCell>
+            <TableCell />
         </TableRow>
     );
 }

@@ -30,7 +30,7 @@ type Props = {
 };
 
 /**
- * 選べる項目のチェックの一覧(6 つ目は押せない形 = 業務モジュールの管理.md の 4 節)。
+ * 選択できる項目のチェックの一覧(6 つ目は押せない形 = docs の 設計/業務データの入れ物/レコードの共通機能/業務モジュールの管理.md の 4 節)。
  */
 function CandidateList({
     setting,
@@ -44,7 +44,7 @@ function CandidateList({
     const full = selected.length >= MAX_RELATED_COLUMNS;
 
     return (
-        <ul aria-label="選べる項目" className="flex flex-col gap-2">
+        <ul aria-label="選択できる項目" className="flex flex-col gap-2">
             {setting.candidates.map((candidate) => {
                 const id = `related-${setting.entry}-${candidate.code}`;
                 const checked = selected.includes(candidate.code);
@@ -89,7 +89,7 @@ function SelectedList({
         code;
 
     return (
-        <ol aria-label="選んだ列" className="flex flex-col gap-1">
+        <ol aria-label="選択した列" className="flex flex-col gap-1">
             {selected.map((code, index) => (
                 <li key={code} className="flex items-center gap-2 text-sm">
                     <span className="w-5 font-num text-muted-foreground tabular-nums">

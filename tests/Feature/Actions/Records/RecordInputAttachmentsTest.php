@@ -139,12 +139,13 @@ final class RecordInputAttachmentsTest extends TransactionalTestCase
     public function test_a_module_not_using_attachments_rejects_attachments_in_the_input(): void
     {
         $this->module->update(['is_attachment_enabled' => false]);
+        $before = Upload::query()->count();
 
         $input = new RecordInput(['title' => '申請'], [], [$this->uploadedFile('a.pdf')]);
         $errors = $this->validationErrors(fn () => $this->create($input));
 
         $this->assertSame(['attachments' => RecordAttachmentGate::DISABLED], $errors);
-        $this->assertSame(0, Upload::query()->count());
+        $this->assertSame($before, Upload::query()->count());
     }
 
     /**

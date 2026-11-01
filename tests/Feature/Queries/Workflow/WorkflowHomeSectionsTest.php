@@ -60,10 +60,10 @@ final class WorkflowHomeSectionsTest extends TransactionalTestCase
 
     public function test_the_lead_and_the_counters_of_the_applicant(): void
     {
-        $this->assertSame('未処理の申請は1件、進行中の申請は9件です。', $this->section(WorkflowLeadHomeSection::class, 'u0001')['text'] ?? null);
+        $this->assertSame('未処理の申請は1件、進行中の申請は10件です。', $this->section(WorkflowLeadHomeSection::class, 'u0001')['text'] ?? null);
         $this->assertSame([
             ['pending', '未処理の申請', 'inbox', 1, '再申請待ち 1', route('workflow.cases.index', ['tab' => 'pending'])],
-            ['active-applications', '進行中の申請', 'send', 9, '承認待ち 7・再申請待ち 1・保留中 1', route('workflow.cases.index', ['tab' => 'processed'])],
+            ['active-applications', '進行中の申請', 'send', 10, '承認待ち 8・再申請待ち 1・保留中 1', route('workflow.cases.index', ['tab' => 'processed'])],
             ['processed-this-month', '今月の処理済み', 'folder', 0, null, route('workflow.cases.index', ['tab' => 'processed'])],
             ['draft', '一時保存', 'file-text', 1, null, route('workflow.cases.index', ['tab' => 'draft'])],
         ], $this->counters('u0001'));
@@ -72,9 +72,9 @@ final class WorkflowHomeSectionsTest extends TransactionalTestCase
     public function test_the_counters_of_the_section_chief(): void
     {
         $this->assertSame([
-            ['pending', 3, '承認待ち 3'],
+            ['pending', 4, '承認待ち 4'],
             ['active-applications', 0, null],
-            ['processed-this-month', 13, '承認 8・承認終了 1・否認 1・差戻し 3'],
+            ['processed-this-month', 14, '承認 9・承認終了 1・否認 1・差戻し 3'],
             ['draft', 0, null],
         ], array_map(fn (array $item) => [$item[0], $item[3], $item[4]], $this->counters('u0002')));
     }
@@ -86,9 +86,13 @@ final class WorkflowHomeSectionsTest extends TransactionalTestCase
         $this->assertSame(['workflow-pending', 'table', 'main', '未処理の申請', '処理を待っている申請はありません'], [$section['code'] ?? null, $section['kind'] ?? null, $section['area'] ?? null, $section['heading'] ?? null, $section['emptyText'] ?? null]);
         $this->assertSame([['applied-on', '申請日', 'date'], ['name', '申請名', 'title'], ['applicant', '申請者', 'text'], ['state', '状態', 'status'], ['due', '期限', 'status']], array_map(array_values(...), $section['columns'] ?? []));
         $this->assertSame(['label' => '申請一覧', 'url' => route('workflow.cases.index', ['tab' => 'pending'])], $section['more'] ?? null);
-        // 更新の新しい順。期限 = WF-000005 の課長は D(d の 2 日後)、課題の WF-000015・WF-000002 は期限なし(設計/ワークフロー/案件の運用/初期データ.md 3 節・4.2)
+        // 更新の新しい順。期限 = WF-000018 の課長は D + 1、WF-000005 の課長は D(d の 2 日後)、課題の WF-000015・WF-000002 は期限なし
+        // (設計/ワークフロー/案件の運用/初期データ.md 3 節・4.2)
         $this->assertSame(
-            [$this->pendingRow(5, '2026-10-15'), $this->pendingRow(15, '—', '山田 恵'), $this->pendingRow(2, '—')],
+            [
+                $this->pendingRow(18, '2026-10-16'), $this->pendingRow(5, '2026-10-15'),
+                $this->pendingRow(15, '—', '山田 恵'), $this->pendingRow(2, '—'),
+            ],
             $section['rows'] ?? null,
         );
     }
@@ -124,21 +128,21 @@ final class WorkflowHomeSectionsTest extends TransactionalTestCase
         $section = $this->section(ProcessedThisMonthHomeSection::class, 'u0002');
 
         $this->assertSame(['workflow-processed-this-month', '今月の処理済み', '今月に処理した申請はありません', ['label' => '申請一覧', 'url' => route('workflow.cases.index', ['tab' => 'processed'])]], [$section['code'] ?? null, $section['heading'] ?? null, $section['emptyText'] ?? null, $section['more'] ?? null]);
-        // 担当変更(WF-000016)は数えない。処理日時はそろえたので、履歴の id の新しい順
+        // 担当変更(WF-000016)は数えない。処理日時はそろえたので、履歴の id の新しい順(WF-000017 が最後に入る)
         $this->assertSame([
+            [17, '佐々木 陽太', ['承認', 'settled', '✓']],
             [14, '佐々木 陽太', ['承認', 'settled', '✓']],
             [13, '佐々木 陽太', ['承認', 'settled', '✓']],
             [12, '佐々木 陽太', ['承認', 'settled', '✓']],
             [11, '佐々木 陽太', ['承認', 'settled', '✓']],
-            [10, '佐々木 陽太', ['承認', 'settled', '✓']],
         ], array_map(fn (array $row) => [
             $this->caseOfRow($row)->case_number,
             $row['cells'][2]['text'],
             array_values($row['cells'][3]),
         ], $section['rows'] ?? []));
         $first = $section['rows'][0] ?? null;
-        $history = WorkflowCaseHistory::query()->where('workflow_case_id', $this->caseNumbered(14)->id)->where('user_id', $this->userId('u0002'))->sole();
-        $this->assertSame([(string) $history->id, '2026-10-13T03:00:00+00:00', $this->caseNumbered(14)->name], [$first['code'] ?? null, $first['cells'][0]['text'] ?? null, $first['cells'][1]['text'] ?? null]);
+        $history = WorkflowCaseHistory::query()->where('workflow_case_id', $this->caseNumbered(17)->id)->where('user_id', $this->userId('u0002'))->sole();
+        $this->assertSame([(string) $history->id, '2026-10-13T03:00:00+00:00', $this->caseNumbered(17)->name], [$first['code'] ?? null, $first['cells'][0]['text'] ?? null, $first['cells'][1]['text'] ?? null]);
     }
 
     /**
@@ -152,7 +156,7 @@ final class WorkflowHomeSectionsTest extends TransactionalTestCase
         $wf3 = $this->caseNumbered(3);
         WorkflowCaseHistory::factory()->create(['workflow_case_id' => $wf3->id, 'workflow_case_node_id' => $this->nodesOf($wf3)[1]->id, 'user_id' => $this->userId('u0002'), 'action' => WorkflowAction::PullBack]);
 
-        $this->assertSame([12, '承認 7・承認終了 1・否認 1・差戻し 3'], [$this->counters('u0002')[2][3], $this->counters('u0002')[2][4]]);
+        $this->assertSame([13, '承認 8・承認終了 1・否認 1・差戻し 3'], [$this->counters('u0002')[2][3], $this->counters('u0002')[2][4]]);
     }
 
     public function test_the_active_applications_of_the_applicant_are_the_latest_three_with_their_steps(): void
@@ -162,15 +166,14 @@ final class WorkflowHomeSectionsTest extends TransactionalTestCase
 
         $this->assertSame(['workflow-active-applications', 'routes', 'side', '進行中の申請', '進行中の申請はありません'], [$section['code'] ?? null, $section['kind'] ?? null, $section['area'] ?? null, $section['heading'] ?? null, $section['emptyText'] ?? null]);
         $done = fn (string $label) => [$label, 'done', '処理済み'];
-        $council = ['関係部署の合議', 'current', '承認待ち'];
         $owner = ['責任者', 'upcoming', '到達していない'];
         $upcoming = fn (string $label) => [$label, 'upcoming', '到達していない'];
-        // 更新の新しい順(設計/ワークフロー/案件の運用/初期データ.md 4.2・4.3): WF-000013 = D − 1 の保留、WF-000014 = D − 2 の承認、
-        // WF-000010 と WF-000005 は D − 3 10:00 で同じ時刻なので id の新しい WF-000010
+        // 更新の新しい順(設計/ワークフロー/案件の運用/初期データ.md 4.2・4.3): WF-000013 = D − 1 の保留、WF-000014 = D − 2 10:00 の承認、
+        // WF-000018 = D − 2 09:30 の申請(設計/ワークフロー/申請の周辺/初期データ.md の 2 節)
         $this->assertSame([
             [13, '保留中：部長', [$done('申請'), $done('課長'), $done('予算'), ['部長', 'current', '保留中'], $upcoming('分岐終了'), $upcoming('関係部署の合議'), $owner], null],
             [14, '承認待ち：部長', [$done('申請'), $done('課長'), $done('予算'), ['部長', 'current', '承認待ち'], $upcoming('分岐終了'), $upcoming('関係部署の合議'), $owner], null],
-            [10, '承認待ち：関係部署の合議(承認 1、承認 2)', [$done('申請'), $done('課長'), $done('予算'), ['部長', 'skipped', '省略'], $done('分岐終了'), $council, $owner], null],
+            [18, '承認待ち：課長', [$done('申請'), ['課長', 'current', '承認待ち'], $upcoming('予算'), $upcoming('部長'), $upcoming('分岐終了'), $upcoming('関係部署の合議'), $owner], null],
         ], $this->itemsOf($section));
         $this->assertSame([$this->caseNumbered(13)->name, route('workflow.cases.show', $this->caseNumbered(13)->id)], [$section['items'][0]['title'] ?? null, $section['items'][0]['url'] ?? null]);
 
@@ -193,7 +196,7 @@ final class WorkflowHomeSectionsTest extends TransactionalTestCase
             $this->reach($approve, $chief);
         }
 
-        $this->assertSame(7, $this->counters('u0002')[0][3]);
+        $this->assertSame(8, $this->counters('u0002')[0][3]);
         $this->assertCount(5, $this->section(PendingCasesHomeSection::class, 'u0002')['rows'] ?? []);
     }
 

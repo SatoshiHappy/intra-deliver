@@ -66,8 +66,8 @@ final class PurgeUploadsTest extends TransactionalTestCase
     public function test_a_purged_row_is_out_of_the_total_and_has_no_path_to_read(): void
     {
         [$id] = $this->store(['a.mp3'], ['mp3']);
-        $size = Upload::query()->findOrFail($id)->size;
-        $this->limitUploads(1_000, 1_000, $size + 1);
+        $total = (int) Upload::query()->whereNull('purged_at')->sum('size');
+        $this->limitUploads(1_000, 1_000, $total + 1);
         $other = $this->uploadedFile('b.pdf');
         $errors = $this->validationErrors(fn () => app(StoreUploads::class)->execute(null, [$other]));
         $this->assertSame(['attachments' => UploadLimits::TOTAL_EXCEEDED], $errors);

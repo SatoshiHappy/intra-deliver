@@ -45,6 +45,10 @@ final class WorkflowAttachmentMigrationTest extends TransactionalTestCase
             WorkflowCase::factory()->active()->createOne(),
             WorkflowCase::factory()->completed()->createOne(),
         ];
+        // 初期データの見本(追加できない旗・一時保存の添付の行)があると down が止まるので、TX の中で戻す(docs の 設計/ワークフロー/申請の周辺/初期データ.md)
+        DB::table('workflow_route_nodes')->update(['prevents_attachment_add' => false]);
+        DB::table('workflow_case_nodes')->update(['prevents_attachment_add' => false]);
+        DB::table('workflow_case_draft_attachments')->delete();
         $this->down();
         $this->assertFalse(Schema::hasColumn('workflow_cases', 'is_attachment_enabled'));
 

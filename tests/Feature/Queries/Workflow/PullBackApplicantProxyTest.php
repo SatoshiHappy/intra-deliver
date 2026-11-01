@@ -30,7 +30,7 @@ final class PullBackApplicantProxyTest extends TransactionalTestCase
 
     private const OTHER_FLOW_CODE = 'wf_other_plan';
 
-    private const BLOCKED = '営業の処理担当者が申請者本人と申請者の代理先だけのため、この操作はできません。'
+    private const BLOCKED = '営業の承認者が申請者本人と申請者の代理先だけのため、この操作はできません。'
         .'このステップには、申請者承認防止が設定されています。';
 
     protected function setUp(): void

@@ -1,5 +1,6 @@
 import { Head, Link, router } from '@inertiajs/react';
 import { useState } from 'react';
+import { HeadingHelp } from '@/components/HeadingHelp';
 import { Pagination } from '@/components/Pagination';
 import { RecordAddonActions } from '@/components/Records/RecordAddonActions';
 import { RecordListRows } from '@/components/Records/RecordListRows';
@@ -12,6 +13,7 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { moduleDescriptionHelp } from '@/lib/Records/moduleDescription';
 import { create, index } from '@/routes/records/data';
 import type { QueryParams } from '@/wayfinder';
 import type {
@@ -121,6 +123,23 @@ function SortableHead({
     );
 }
 
+/**
+ * 一覧の見出し。管理者が書いた業務モジュールの説明は名前の横の「?」に入れ、空なら出さない
+ * (docs の 設計/画面の意匠/README.md 方針 9(d)、設計/業務データの入れ物/画面/業務の画面.md の 2.1)。
+ */
+function ListTitle({ module }: { module: RecordModuleDefinition }) {
+    const description = moduleDescriptionHelp(module.description);
+
+    return (
+        <div className="flex items-center gap-1.5">
+            <h1 className="text-2xl font-semibold">{module.name}</h1>
+            {description !== null && (
+                <HeadingHelp label={module.name}>{description}</HeadingHelp>
+            )}
+        </div>
+    );
+}
+
 export default function Index(props: Props) {
     const { module, records, query, can } = props;
     const listed = module.fields.filter((field) => field.isListed);
@@ -138,7 +157,7 @@ export default function Index(props: Props) {
 
             <div className="flex h-full flex-1 flex-col gap-6 p-4">
                 <div className="flex items-center justify-between gap-4">
-                    <h1 className="text-2xl font-semibold">{module.name}</h1>
+                    <ListTitle module={module} />
                     <div className="flex items-center gap-2">
                         <RecordAddonActions
                             actions={props.addons.actions}

@@ -31,9 +31,9 @@ export function CaseActionPrincipalField({
     return (
         <FormBlock
             id={PRINCIPAL_ID}
-            label="処理担当者"
+            label="承認者"
             labelAddon={<Badge variant="secondary">必須</Badge>}
-            help="自分と、代理元のうち、この申請の処理担当者に該当する人から選択します。該当する人が 1 人だけの場合、この欄は表示されません。"
+            help="自分と、代理元のうち、この申請の承認者に該当する人から選択します。該当する人が 1 人だけの場合、この欄は表示されません。"
             error={error}
         >
             <Select value={value} onValueChange={onChange}>

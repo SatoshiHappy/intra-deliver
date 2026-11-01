@@ -29,9 +29,14 @@ let caseUrl = '';
 async function openOperationSurface(page: Page): Promise<Locator> {
     await openAsAdministrator(page, new URL(caseUrl).pathname);
     const surface = page.getByRole('region', { name: '申請操作', exact: true });
-    await expect(surface).toContainText(
+    // 面の説明は見出しの横の「?」(フォーカスで開く Tooltip。docs の 設計/画面の意匠/README.md 方針 9(d))。見たら閉じる
+    await surface
+        .getByRole('button', { name: '申請操作の説明', exact: true })
+        .focus();
+    await expect(page.getByRole('tooltip')).toHaveText(
         '申請操作の権限がある人だけに表示されます。',
     );
+    await page.keyboard.press('Escape');
 
     return surface;
 }
@@ -146,12 +151,12 @@ test('システム管理者: 詳細の申請操作の面から処理担当者を
     const dialog = page.getByRole('dialog', { name: '処理担当者を変更する' });
     await expect(dialog).toContainText(`${CASE_NAME}　課長`);
     await expect(
-        dialog.getByRole('list', { name: '現在の処理担当者' }),
+        dialog.getByRole('list', { name: '現在の承認者' }),
     ).toContainText('中村 美咲');
-    await expect(dialog).toContainText('処理担当者が替わります');
+    await expect(dialog).toContainText('承認者が替わります');
 
     const field = dialog.getByRole('group', {
-        name: '変更後の処理担当者',
+        name: '変更後の承認者',
         exact: true,
     });
     // 変更後の処理担当者の候補は申請基準日の有効なユーザー(案件を渡す)
@@ -170,7 +175,7 @@ test('システム管理者: 詳細の申請操作の面から処理担当者を
     const history = page.getByRole('region', { name: '履歴' });
     await expect(history).toContainText('処理担当者の変更');
     await expect(
-        history.getByText('処理担当者: 山田 恵', { exact: true }),
+        history.getByText('承認者: 山田 恵', { exact: true }),
     ).toBeVisible();
 });
 

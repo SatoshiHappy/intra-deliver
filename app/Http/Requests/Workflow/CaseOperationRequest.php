@@ -27,7 +27,7 @@ class CaseOperationRequest extends FormRequest
     private const MOVE_ROUTE = 'workflow.admin.cases.move';
 
     /** 人の並びの形の誤りの文言 */
-    private const USERS_SHAPE = '処理担当者の指定が正しくありません';
+    private const USERS_SHAPE = '承認者の指定が正しくありません';
 
     public function authorize(CaseEntryGate $gate): bool
     {

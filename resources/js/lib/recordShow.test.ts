@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vite-plus/test';
 import {
     deleteRecordDescription,
     fileSizeText,
-    fittingTabCount,
     isLinkableUrl,
     openPanelKey,
     previewKind,
@@ -44,13 +43,14 @@ describe('openPanelKey', () => {
 });
 
 describe('selectedTabKey', () => {
-    const keys = ['fields', 'details-milestones'];
+    const keys = ['fields', 'access'];
 
     it('タブのキーだけを選び、ほかは詳細タブ', () => {
-        expect(selectedTabKey('/x?tab=details-milestones', keys)).toBe(
-            'details-milestones',
-        );
+        expect(selectedTabKey('/x?tab=access', keys)).toBe('access');
         expect(selectedTabKey('/x?tab=related', keys)).toBe('fields');
+        expect(selectedTabKey('/x?tab=details-milestones', keys)).toBe(
+            'fields',
+        );
         expect(selectedTabKey('/x', keys)).toBe('fields');
     });
 });
@@ -60,27 +60,12 @@ describe('urlWithQuery', () => {
         expect(
             urlWithQuery('/x?tab=fields&panel=revisions', { panel: null }),
         ).toBe('/x?tab=fields');
-        expect(urlWithQuery('/x?panel=revisions', { tab: 'details-a' })).toBe(
-            '/x?panel=revisions&tab=details-a',
+        expect(urlWithQuery('/x?panel=revisions', { tab: 'access' })).toBe(
+            '/x?panel=revisions&tab=access',
         );
-        expect(urlWithQuery('/x?tab=fields', { tab: 'details-a' })).toBe(
-            '/x?tab=details-a',
+        expect(urlWithQuery('/x?tab=fields', { tab: 'access' })).toBe(
+            '/x?tab=access',
         );
-    });
-});
-
-describe('fittingTabCount', () => {
-    it('全部が入れば全部', () => {
-        expect(fittingTabCount([100, 100, 100], 300, 80)).toBe(3);
-    });
-
-    it('入らなければ「その他」の幅を残して先頭から', () => {
-        expect(fittingTabCount([100, 100, 100], 299, 80)).toBe(2);
-        expect(fittingTabCount([100, 100, 100], 250, 80)).toBe(1);
-    });
-
-    it('1 つも入らなくても 1 つは並べる', () => {
-        expect(fittingTabCount([100, 100], 50, 80)).toBe(1);
     });
 });
 

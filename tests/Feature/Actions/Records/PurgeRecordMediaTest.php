@@ -82,7 +82,8 @@ final class PurgeRecordMediaTest extends TransactionalTestCase
         $secondCount = $this->purge($recordId);
 
         $this->assertSame([1, 1], [$firstCount, $secondCount]);
-        $dues = Upload::query()->orderBy('id')->get()
+        $uploadIds = RecordAttachment::query()->where('record_id', $recordId)->select('upload_id');
+        $dues = Upload::query()->whereIn('id', $uploadIds)->orderBy('id')->get()
             ->map(fn (Upload $upload) => [$upload->mime, $upload->purge_due_on?->toDateString()]);
         $this->assertSame([['audio/mpeg', '2026-10-20'], ['audio/x-wav', '2026-10-19']], $dues->all());
         $thirdCount = $this->purge($recordId);
@@ -116,14 +117,14 @@ final class PurgeRecordMediaTest extends TransactionalTestCase
 
     public function test_a_purged_record_can_be_deleted_with_its_rows_and_revisions(): void
     {
+        $before = [Upload::query()->count(), RecordAttachment::query()->count()];
         $recordId = $this->meeting('2026-10-20', [$this->uploadedFile('a.mp3', 'mp3')]);
         $this->attachAndDetach($recordId, $this->uploadedFile('b.mp4', 'mp4'));
         $this->purge($recordId);
 
         app(DeleteRecord::class)->execute($this->contextFor(), 'meetings', $recordId);
 
-        $this->assertSame(0, Upload::query()->count());
-        $this->assertSame(0, RecordAttachment::query()->count());
+        $this->assertSame($before, [Upload::query()->count(), RecordAttachment::query()->count()]);
         $this->assertSame(0, RecordRevision::query()->where('record_id', $recordId)->count());
     }
 

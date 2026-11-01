@@ -60,7 +60,7 @@ describe('noticeTemplate(ワークフローの処理依頼・担当変更)', () 
         ).toEqual({
             label: '担当変更',
             tone: 'returned',
-            sentence: '出張申請　課長の処理担当者が変更されました。',
+            sentence: '出張申請　課長の承認者が変更されました。',
         });
     });
 });
@@ -78,7 +78,7 @@ describe('noticeTemplate(ワークフローの処理担当者の変更)', () => 
         ).toEqual({
             label: '処理担当者の変更',
             tone: 'returned',
-            sentence: '出張申請　関係部署の合議の処理担当者に指定されました。',
+            sentence: '出張申請　関係部署の合議の承認者に指定されました。',
         });
     });
 });

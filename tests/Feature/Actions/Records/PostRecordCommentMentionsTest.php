@@ -65,7 +65,7 @@ final class PostRecordCommentMentionsTest extends TransactionalTestCase
 
         $this->assertSame(['mentions.1', 'mentions.2', 'mentions.3'], array_keys($errors));
         $this->assertSame(
-            array_fill_keys(['mentions.1', 'mentions.2', 'mentions.3'], '宛先に指定できないユーザーが含まれています'),
+            array_fill_keys(['mentions.1', 'mentions.2', 'mentions.3'], '宛先に選択できないユーザーが含まれています'),
             $errors,
         );
         $this->assertSame([0, 0], [$this->commentsAdded(), $this->commentNoticesAdded()]);

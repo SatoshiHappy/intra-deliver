@@ -97,7 +97,7 @@ export function blockerOf(props: Props): string | null {
 
     for (const node of props.next.nodes) {
         if (node.targets.length === 0) {
-            return `${node.name}の処理担当者がいないため、申請できません`;
+            return `${node.name}の承認者がいないため、申請できません`;
         }
 
         if (node.blockedReason !== null) {

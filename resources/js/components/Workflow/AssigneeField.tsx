@@ -53,15 +53,15 @@ export function AssigneeField({
             </h3>
             <UserPickerField
                 id={id}
-                label="処理担当者"
+                label="承認者"
                 help={`${assigneeField.min} 人から ${assigneeField.max} 人まで選択できます。`}
                 error={error}
                 caseId={caseId}
                 candidateNodeId={assigneeField.nodeId}
                 picked={picked}
                 isOrdered={assigneeField.kind === 'serial'}
-                listLabel={`${assigneeField.name}の処理担当者`}
-                candidateLabel={`${assigneeField.name}の処理担当者の候補`}
+                listLabel={`${assigneeField.name}の承認者`}
+                candidateLabel={`${assigneeField.name}の承認者の候補`}
                 max={Number.POSITIVE_INFINITY}
                 onChange={onChange}
             />

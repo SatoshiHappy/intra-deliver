@@ -57,7 +57,6 @@
     "tests/Feature/Queries/Records/RecordConditionsTest.php": 1,
     "tests/Feature/Queries/Workflow/ApplicableFlowsTest.php": 1,
     "tests/Feature/Queries/Workflow/CaseDiagramTest.php": 1,
-    "tests/Feature/Queries/Workflow/CaseReadingOnRoutesTest.php": 1,
     "tests/Feature/Queries/Workflow/PreviousProcessorsTest.php": 1,
     "tests/Feature/Queries/Workflow/WorkflowHomeOnRoutesTest.php": 2,
     "tests/Support/BuildsRouteVersions.php": 1,

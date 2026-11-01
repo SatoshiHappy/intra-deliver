@@ -71,9 +71,9 @@ async function postToApplicant(page: Page, pane: Locator, body: string) {
     await form.getByRole('combobox', { name: '宛先を追加' }).click();
     await page.getByPlaceholder('検索する語').fill('佐々木');
     await page.getByRole('option', { name: /佐々木 陽太/ }).click();
-    await expect(form.getByRole('list', { name: '選んだ宛先' })).toContainText(
-        '佐々木 陽太',
-    );
+    await expect(
+        form.getByRole('list', { name: '選択した宛先' }),
+    ).toContainText('佐々木 陽太');
     await form
         .getByRole('textbox', { name: 'コメント', exact: true })
         .fill(body);
@@ -110,7 +110,7 @@ test('宛先を選んで投稿すると一覧の先頭に出て、宛先の人�
     const notice = page
         .locator('[data-slot="popover-content"]')
         .getByRole('button', {
-            name: '伊藤 涼子さんがコメントの宛先にあなたを指定しました。',
+            name: '伊藤 涼子さんがコメントの宛先にあなたを選択しました。',
         })
         .first();
     await expect(notice).toBeVisible();

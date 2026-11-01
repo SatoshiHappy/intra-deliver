@@ -83,7 +83,7 @@ function RowButton({
     return (
         <Button
             type="button"
-            variant="ghost"
+            variant="outline"
             size="sm"
             aria-label={`${name}を${label}`}
             onClick={onClick}

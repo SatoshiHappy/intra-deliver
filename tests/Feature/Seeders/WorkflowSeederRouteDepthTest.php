@@ -75,7 +75,7 @@ final class WorkflowSeederRouteDepthTest extends TransactionalTestCase
     /**
      * 案件の申請基準日と版(初期データ.md 4 節・設計/ワークフロー/案件の運用/初期データ.md 4.2): 2 段目の計画の見本 = 版 2 の日(DATES の 1 か所)、
      * 課題の見本 = 申請の操作の日(版 1。WF-000002 = D − 6、WF-000006 = D − 30、WF-000007 = D − 25、WF-000015 = D − 5、WF-000016 = D − 6)、
-     * 版 3 の見本 = 流す日。
+     * 版 3 の見本 = 流す日(申請対象からの申請の WF-000017・WF-000018 を含む)。
      */
     public function test_the_cases_are_applied_on_the_base_dates_of_the_design(): void
     {
@@ -85,7 +85,8 @@ final class WorkflowSeederRouteDepthTest extends TransactionalTestCase
 
         $this->assertSame(
             [[$plan, 2], ['2026-10-09', 1], [$plan, 2], [$plan, 2], [$plan, 2], ['2026-09-15', 1], ['2026-09-20', 1], [$plan, 2],
-                $version3, $version3, $version3, $version3, $version3, $version3, ['2026-10-10', 1], ['2026-10-09', 1]],
+                $version3, $version3, $version3, $version3, $version3, $version3, ['2026-10-10', 1], ['2026-10-09', 1],
+                $version3, $version3],
             WorkflowCase::query()->with('workflowFlowVersion')->whereNotNull('case_number')->orderBy('case_number')->get()
                 ->map(fn (WorkflowCase $case) => [$case->base_date?->toDateString(), $case->workflowFlowVersion?->number])->all(),
         );
@@ -130,7 +131,7 @@ final class WorkflowSeederRouteDepthTest extends TransactionalTestCase
 
         $errors = $this->validationErrors(fn () => app(ApplyCase::class)->execute(new AccessContext($u0002->id, null, null, $today, AccessContext::LOCALE_CODE), 'project_plan', $input, $today->toDateString()));
 
-        $this->assertSame(['case' => '課長の処理担当者が申請者本人だけのため、この操作はできません。このステップには、申請者承認防止が設定されています。'], $errors);
+        $this->assertSame(['case' => '課長の承認者が申請者本人だけのため、この操作はできません。このステップには、申請者承認防止が設定されています。'], $errors);
         $this->assertSame($before, [WorkflowCase::query()->count(), Record::query()->count()]);
     }
 

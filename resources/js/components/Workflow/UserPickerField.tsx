@@ -202,7 +202,7 @@ export function UserPickerField({
     candidateNodeId,
     picked,
     isOrdered,
-    listLabel = `選んだ${label}`,
+    listLabel = `選択した${label}`,
     candidateLabel = `${label}の候補`,
     max,
     onChange,

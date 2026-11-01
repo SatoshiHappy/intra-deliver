@@ -177,10 +177,9 @@ test('初期データの見本: 上長のワークフローのホームに、あ
     await expect(page.getByRole('heading', { level: 1 })).toHaveText(
         'ワークフロー',
     );
-    // 件数カード(4 枚)。数字と内訳の 1 行(設計/ワークフロー/案件の運用/初期データ.md 4 節: u0002 = 未処理 3(期限超過なし = WF-000005 は当日)・
-    // 進行中 0・一時保存 0。今月の処理済みは流す日の日付で変わる = home.chiefProcessedThisMonth)
+    // 件数カード(4 枚。設計/ワークフロー/案件の運用/初期データ.md 4 節): u0002 = 未処理 4(期限超過なし)・進行中 0・一時保存 0。今月の処理済みは home.chiefProcessedThisMonth
     await expect(counterCard(page, '未処理の申請')).toHaveText(
-        /^未処理の申請3件承認待ち\s*3$/,
+        /^未処理の申請4件承認待ち\s*4$/,
     );
     await expect(counterCard(page, '進行中の申請')).toHaveText(
         /^進行中の申請0件$/,
@@ -191,7 +190,7 @@ test('初期データの見本: 上長のワークフローのホームに、あ
     );
     await expect(counterCard(page, '一時保存')).toHaveText(/^一時保存0件$/);
 
-    // 未処理の申請の表: WF-000002・WF-000005・WF-000015 の申請名が承認待ちで出る
+    // 未処理の申請の表: WF-000002・WF-000005・WF-000015・WF-000018 の申請名が承認待ちで出る
     const pending = page.getByRole('table', { name: '未処理の申請' });
     await expect(pending.getByRole('columnheader')).toHaveText([
         '申請日',
@@ -200,11 +199,12 @@ test('初期データの見本: 上長のワークフローのホームに、あ
         '状態',
         '期限',
     ]);
-    await expect(pending.getByRole('row')).toHaveCount(4);
+    await expect(pending.getByRole('row')).toHaveCount(5);
     for (const name of [
         '課題の対応の承認 導入先の部署が決定していない',
         'プロジェクト計画の承認 代理店向け説明会の開催',
         '課題の対応の承認 在庫システムの表示不具合',
+        'プロジェクト計画の承認 新規顧客開拓キャンペーン',
     ]) {
         await expect(
             pending
@@ -278,7 +278,7 @@ test('初期データの見本: 上長のホームの件数カードを押すと
         'aria-current',
         'page',
     );
-    await expect(caseTab(page, '未処理')).toHaveText('未処理3');
+    await expect(caseTab(page, '未処理')).toHaveText('未処理4');
 
     // タイルの行き先は引数つき(?tab=…)でも、現在地はパスだけで比べる(表示.md 3.2)
     await page.goto('/workflow');
@@ -309,12 +309,12 @@ test('初期データの見本: 申請者のワークフローのホームの進
 }) => {
     await openAs(page, 'applicant', '/workflow');
 
-    // u0001 = 未処理 1・進行中 10(2 段目の 4・版 3 の 2・案件の運用の 3・workflow-route.spec.ts の申請 1)・今月の処理済み 0・一時保存 1
+    // u0001 = 未処理 1・進行中 11(2 段目の 4・版 3 の 2・案件の運用の 3・申請対象からの申請の 1・workflow-route.spec.ts の申請 1)・今月の処理済み 0・一時保存 1
     await expect(counterCard(page, '未処理の申請')).toHaveText(
         /^未処理の申請1件再申請待ち\s*1$/,
     );
     await expect(counterCard(page, '進行中の申請')).toHaveText(
-        /^進行中の申請10件承認待ち\s*8・再申請待ち\s*1・保留中\s*1$/,
+        /^進行中の申請11件承認待ち\s*9・再申請待ち\s*1・保留中\s*1$/,
     );
     await expect(counterCard(page, '今月の処理済み')).toHaveText(
         /^今月の処理済み0件$/,
@@ -354,7 +354,7 @@ test('初期データの見本: 部長の承認待ちを上長が引戻せる', 
         'aria-current',
         'page',
     );
-    await expect(caseTab(page, '未処理')).toHaveText('未処理3');
+    await expect(caseTab(page, '未処理')).toHaveText('未処理4');
 
     // 引戻しは詳細の見出しから行う(成功は同じ詳細へのリダイレクトで、ページの部品が残る。差戻しの既定が開いた時の候補から作られることを後で確かめる)
     await page.goto('/workflow/cases?tab=processed');
@@ -374,7 +374,7 @@ test('初期データの見本: 部長の承認待ちを上長が引戻せる', 
     const detailUrl = page.url();
     const dialog = await openActionDialog(page, '引戻し', '引戻す');
     await expect(dialog).toContainText(
-        '次のステップの処理担当者が処理する前に、自分のステップへ戻します。',
+        '次のステップの承認者が処理する前に、自分のステップへ戻します。',
     );
     await submitAndExpectUrl(
         page,
@@ -555,7 +555,7 @@ test('申請者が一時保存すると一時保存のタブの件数が 1 増�
         page.getByRole('heading', { level: 1, name: CASE_NAME }),
     ).toBeVisible();
     caseUrl = page.url();
-    await expect(page.getByRole('region', { name: '基本情報' })).toContainText(
+    await expect(page.getByRole('region', { name: '申請情報' })).toContainText(
         /WF-\d{6}/,
     );
     const flowRows = (await flowTable(page)).getByRole('row');
@@ -722,7 +722,7 @@ test('上長・部長が承認すると完了(承認)になり、完了の後も
         dialog.getByRole('button', { name: '決定', exact: true }),
     );
     await expect(page.getByText('承認しました', { exact: true })).toBeVisible();
-    await expect(page.getByRole('region', { name: '基本情報' })).toContainText(
+    await expect(page.getByRole('region', { name: '申請情報' })).toContainText(
         '完了(承認)',
     );
 

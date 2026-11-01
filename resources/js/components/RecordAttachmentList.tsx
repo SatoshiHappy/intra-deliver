@@ -36,7 +36,7 @@ type ItemProps = Pick<Props, 'canAttach' | 'held'> & {
 function DeleteAttachment({ row, held, deleteAction }: ItemProps) {
     return held ? (
         <Button
-            variant="ghost"
+            variant="outline"
             size="sm"
             disabled
             aria-label={`${row.name}を削除`}

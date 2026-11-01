@@ -28,6 +28,7 @@ const CHIEF_SAMPLE_PROCESSES: ReadonlyArray<readonly [number, ResultKind]> = [
     [11, '差戻し'], // WF-000005
     [14, '承認'], // WF-000011
     [19, '差戻し'], // WF-000008
+    [21, '承認'], // WF-000017
     [24, '承認終了'], // WF-000007
     [29, '否認'], // WF-000006
     [34, '承認'], // WF-000012

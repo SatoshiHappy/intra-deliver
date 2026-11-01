@@ -138,7 +138,7 @@ final class ApplicantApprovalProxyTest extends TransactionalTestCase
         $errors = $this->validationErrors(fn () => app(ApproveCase::class)
             ->execute($context, $case->id, $this->revisionOf($case), $this->labelIds($case)['first'], null));
 
-        $this->assertSame(['case' => '申請者と代理先の処理担当者が申請者本人と申請者の代理先だけのため、この操作はできません。'
+        $this->assertSame(['case' => '申請者と代理先の承認者が申請者本人と申請者の代理先だけのため、この操作はできません。'
             .'このステップには、申請者承認防止が設定されています。'], $errors);
         $this->assertSame($before, $snapshot());
     }

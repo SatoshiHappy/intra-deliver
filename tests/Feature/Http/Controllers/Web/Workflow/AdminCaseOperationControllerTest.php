@@ -161,7 +161,7 @@ final class AdminCaseOperationControllerTest extends TransactionalTestCase
         $this->actingAs($this->seededUser(self::MANAGER));
         $before = $this->historyCount();
         $manager = $this->idsOf([self::MANAGER]);
-        $owner = '責任者の処理担当者は 1 人を指定してください';
+        $owner = '責任者の承認者は 1 人を選択してください';
 
         $this->assertInputError('retarget', $case, ['user_ids' => $manager], ['user_ids' => RetargetValidator::SELF]);
         $sideways = ['direction' => 'sideways'];
@@ -180,7 +180,7 @@ final class AdminCaseOperationControllerTest extends TransactionalTestCase
     {
         return [
             'retarget' => ['retarget', '処理担当者を変更しました', 'retarget'],
-            'reexpand' => ['reexpand', '処理担当者を再展開しました', 'reexpand'],
+            'reexpand' => ['reexpand', '承認者を再展開しました', 'reexpand'],
             'move' => ['move', 'ステップを移動しました', 'move_back'],
             'assign' => ['assign', '指定を変更しました', 'reassign'],
         ];

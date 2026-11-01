@@ -27,7 +27,7 @@ async function pickInTransferDialog(page: Page) {
         exact: true,
     });
     const field = dialog.getByRole('group', {
-        name: '変更後の処理担当者',
+        name: '変更後の承認者',
         exact: true,
     });
     await field
@@ -68,7 +68,7 @@ test('処理のダイアログで選んだ人の札の「…」から「組織�
     expect(page.url()).toBe(detailUrl);
     await expect(dialog).toBeVisible();
     await expect(
-        field.getByRole('list', { name: '選んだ変更後の処理担当者' }),
+        field.getByRole('list', { name: '選択した変更後の承認者' }),
     ).toContainText('松本 さくら');
     await chart.close();
 });

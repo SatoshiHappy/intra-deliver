@@ -21,7 +21,7 @@ use Throwable;
 
 /**
  * 現在のノードが集合になった後の読み取り(docs の 設計/ワークフロー/ルートの深さ/認可と一覧.md 1〜3 節・7 節の読み取りの Feature テスト)。期待は 7 節の箇条から書いた。
- * ホームの節(H1〜H3)の期待は区切り 3-3。
+ * ホームの節の期待は同じ文書の 2 節の「ホームの節」の項から書いた。
  */
 final class CaseReadingOnRoutesTest extends TransactionalTestCase
 {
@@ -141,7 +141,7 @@ final class CaseReadingOnRoutesTest extends TransactionalTestCase
     }
 
     /**
-     * 引戻せるノードの blockedReason(画面/申請と案件.md 6 節、通しの回の T02): 申請者承認防止がオンのステップで申請者が差戻した後は、引戻すと業務処理が 422 にするので
+     * 引戻せるノードの blockedReason(docs の 設計/ワークフロー/画面/申請と案件.md 6 節): 申請者承認防止がオンのステップで申請者が差戻した後は、引戻すと業務処理が 422 にするので
      * 同じ文言(引戻しのボタンは出し、ダイアログが「決定」を押せなくする)。ほかの処理対象者が処理したステップ・防止がオフのステップを申請者が処理した後は null。
      * 詳細の props と一覧の行が同じ値を返す。
      */
@@ -160,7 +160,7 @@ final class CaseReadingOnRoutesTest extends TransactionalTestCase
         $approvedOnOpen = $this->applyOnRoute([])[0];
         $this->approve($approvedOnOpen, 'sales', 'u0002');
         $this->approve($approvedOnOpen, 'open', 'u0001');
-        $blocked = '東京営業課の処理担当者が申請者本人だけのため、この操作はできません。このステップには、申請者承認防止が設定されています。';
+        $blocked = '東京営業課の承認者が申請者本人だけのため、この操作はできません。このステップには、申請者承認防止が設定されています。';
 
         $this->assertSame([
             [true, [['東京営業課', $blocked]]],
@@ -171,7 +171,7 @@ final class CaseReadingOnRoutesTest extends TransactionalTestCase
 
     /**
      * 承認の行の指定は、承認したノードが指定するノードごとに写した並びで出し、0 人を指定したノードは people が空(画面は「指定: {ステップ} = 省略」=
-     * 画面/ホームと意匠とE2E.md 7 節・案件の表.md 3.5、通しの回の T08)。指定するノードを持たない承認の行と、申請の行は空。
+     * 設計/ワークフロー/画面/ホームと意匠とE2E.md 7 節・設計/ワークフロー/ルートの深さ/データモデル/案件の表.md 3.5)。指定するノードを持たない承認の行と、申請の行は空。
      */
     public function test_an_approval_lists_every_designated_step_and_a_step_designated_with_nobody_has_no_people(): void
     {

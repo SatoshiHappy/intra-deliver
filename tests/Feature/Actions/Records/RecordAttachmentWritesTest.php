@@ -161,12 +161,13 @@ final class RecordAttachmentWritesTest extends TransactionalTestCase
             'parent_record_module_id' => $this->module->id,
             'parent_record_id' => $parent,
         ]);
+        $before = Upload::query()->count();
 
         $file = $this->uploadedFile('a.pdf');
         $this->assertThrows(fn () => $this->attach($row->id, [$file]), ModelNotFoundException::class);
         $inDetailsModule = fn () => $this->attach($row->id, [$file], module: 'tasks_rows');
         $this->assertThrows($inDetailsModule, ModelNotFoundException::class);
-        $this->assertSame(0, Upload::query()->count());
+        $this->assertSame($before, Upload::query()->count());
     }
 
     public function test_another_records_attachment_is_not_found_on_detach(): void

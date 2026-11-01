@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Enums\Workflow\WorkflowNodeState;
 use App\Models\Workflow\WorkflowCaseNode;
+use Illuminate\Http\UploadedFile;
 
 /**
  * {@see WorkflowSeeder} の版 3(分岐 B)の案件の見本 4(docs の 設計/ワークフロー/ルートの深さ/初期データ.md 4 節の足す見本)。使う側は申請・承認・否認の業務処理と、
@@ -44,6 +45,7 @@ trait SeedsWorkflowRouteCases
      * その人が処理対象者の現在のノードを承認する。合議の人を渡したときは、課長の承認として合議(council)と責任者(owner = u0003)を指定する。
      *
      * @param  list<string>|null  $council  合議に指定する人のコード(指定の順)
+     * @param  list<UploadedFile>  $attachFiles  承認の時に付ける添付
      */
     private function approveAs(
         string $at,
@@ -51,6 +53,7 @@ trait SeedsWorkflowRouteCases
         int $caseId,
         ?string $comment,
         ?array $council = null,
+        array $attachFiles = [],
     ): void {
         $assignments = $council === null ? [] : [
             $this->caseNodeOf($caseId, 'council')->id => array_map(fn (string $code) => $this->userId($code), $council),
@@ -58,7 +61,9 @@ trait SeedsWorkflowRouteCases
         ];
         $nodeId = $this->targetNodeIdOf($caseId, $userCode);
         $context = $this->contextAt($at, $userCode);
-        $this->approve->execute($context, $caseId, $this->revisionOf($caseId), $nodeId, $comment, $assignments);
+        $this->approve->execute(
+            $context, $caseId, $this->revisionOf($caseId), $nodeId, $comment, $assignments, attachFiles: $attachFiles,
+        );
     }
 
     /**

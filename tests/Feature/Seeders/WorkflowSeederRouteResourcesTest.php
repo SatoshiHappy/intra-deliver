@@ -62,7 +62,7 @@ final class WorkflowSeederRouteResourcesTest extends TransactionalTestCase
         ['http-services.workflow.cases.pull-back', 'http-services.workflow.cases', '引戻し', 'Pull back'],
         ['http-services.workflow.cases.withdraw', 'http-services.workflow.cases', '取止め', 'Withdraw'],
         [
-            'http-services.workflow.cases.assignee-candidates', 'http-services.workflow.cases', '処理対象者の候補',
+            'http-services.workflow.cases.assignee-candidates', 'http-services.workflow.cases', '承認者の候補',
             'Assignee candidates',
         ],
         [

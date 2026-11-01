@@ -33,10 +33,10 @@ export async function openAsAdministrator(page: Page, path: string) {
 }
 
 /**
- * フォーム・詳細の見出しの行のボタン(名前で始まる。「<n> 項目」が続く)。
+ * フォーム・詳細の見出しの行のボタン(名前だけの帯)。
  */
 export function headingButton(page: Page, name: string) {
-    return page.getByRole('button', { name: new RegExp(`^${name}`) });
+    return page.getByRole('button', { name, exact: true });
 }
 
 /**

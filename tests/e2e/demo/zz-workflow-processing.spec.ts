@@ -87,11 +87,11 @@ async function searchUsers(page: Page, field: Locator, word: string) {
 }
 
 /**
- * 基本情報の 1 項目の値(項目名の dt の次の dd)。
+ * 申請情報の 1 項目の値(項目名の dt の次の dd)。
  */
 function basicItem(page: Page, label: string) {
     return page
-        .getByRole('region', { name: '基本情報' })
+        .getByRole('region', { name: '申請情報' })
         .getByText(label, { exact: true })
         .locator('xpath=following-sibling::dd');
 }
@@ -155,10 +155,10 @@ test('保留と保留解除: u0009 が代理元として保留を解除しても
 
     const release = await openActionDialog(page, '保留解除', '保留を解除する');
     await expect(release).toContainText(
-        '保留を解除すると、承認待ちに戻ります。処理担当者の全員が、再び処理できます。',
+        '保留を解除すると、承認待ちに戻ります。承認者の全員が、再び処理できます。',
     );
     await expect(
-        release.getByRole('group', { name: '処理担当者', exact: true }),
+        release.getByRole('group', { name: '承認者', exact: true }),
     ).toHaveCount(0);
     const contact = release.getByRole('group', {
         name: '連絡する人',
@@ -202,7 +202,7 @@ test('代理元としての承認: u0009 が高橋 誠さんの代理として�
 
     const approve = await openActionDialog(page, '承認', '承認する');
     await expect(
-        approve.getByRole('group', { name: '処理担当者', exact: true }),
+        approve.getByRole('group', { name: '承認者', exact: true }),
     ).toHaveCount(0);
     await decide(page, approve, detailUrl);
     await expect(page.getByText('承認しました', { exact: true })).toBeVisible();
@@ -231,7 +231,7 @@ test('担当変更: u0002 が課長のステップを松本 さくらへ変更�
     const dialog = await openActionDialog(page, '担当変更', '担当変更する');
     await expect(dialog).toContainText('担当変更後は取り消せません');
     const field = dialog.getByRole('group', {
-        name: '変更後の処理担当者',
+        name: '変更後の承認者',
         exact: true,
     });
     // 変更後の処理担当者の候補は申請基準日の有効なユーザー(案件を渡す)
@@ -239,7 +239,7 @@ test('担当変更: u0002 が課長のステップを松本 さくらへ変更�
     expect(transferUrl.searchParams.has('case')).toBe(true);
     await page.getByRole('option', { name: /^松本 さくら/ }).click();
     await expect(
-        field.getByRole('list', { name: '選んだ変更後の処理担当者' }),
+        field.getByRole('list', { name: '選択した変更後の承認者' }),
     ).toContainText('松本 さくら');
     // 欄を足しても題と「決定」は画面の中に残る(欄だけが中でスクロールする)
     await expect(
@@ -269,9 +269,14 @@ test('確認の面: u0010 が未確認の申請の詳細で確認すると、ト
     await openCase(page, SECOND_QUARTER, '未確認の申請');
     const detailUrl = page.url();
     const panel = page.getByRole('region', { name: '確認', exact: true });
-    await expect(panel).toContainText(
+    // 面の説明は見出しの横の「?」(フォーカスで開く Tooltip。docs の 設計/画面の意匠/README.md 方針 9(d))
+    await panel
+        .getByRole('button', { name: '確認の説明', exact: true })
+        .focus();
+    await expect(page.getByRole('tooltip')).toHaveText(
         '確認は処理に影響しません。何度でも確認でき、確認した日時が残ります。',
     );
+    await page.keyboard.press('Escape');
     const rows = panel
         .getByRole('table', { name: '確認の状況' })
         .getByRole('row');

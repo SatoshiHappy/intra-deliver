@@ -171,7 +171,7 @@ export function RecordMentionPicker(props: Props) {
     return (
         <div className="flex w-full flex-col gap-2">
             {value.length > 0 && (
-                <ul className="flex flex-wrap gap-2" aria-label="選んだ宛先">
+                <ul className="flex flex-wrap gap-2" aria-label="選択した宛先">
                     {value.map((person) => (
                         <MentionChip
                             key={person.id}

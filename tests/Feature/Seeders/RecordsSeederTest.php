@@ -140,17 +140,18 @@ final class RecordsSeederTest extends TransactionalTestCase
 
         // 業務データの入れ物の分 + ワークフローの案件の見本の申請対象の分(2 段目の見本 = プロジェクト 5・マイルストーン 3・課題 3、版 3 の見本 = プロジェクト 4・
         // マイルストーン 2 = ルートの深さ/初期データ.md 4 節、案件の運用の見本 = プロジェクト 2・課題 2 = 設計/ワークフロー/案件の運用/初期データ.md 4.3)と、
-        // 見本の申請書(申請対象と同じ行数。一時保存は持たない)
+        // 見本の申請書(申請対象と同じ行数。一時保存は持たない)と、プロジェクトのレコードを申請対象にする申請の申請書(計画の申請書 2・その明細 4。
+        // プロジェクトは書かないので、申請対象の分は増えない = 設計/ワークフロー/申請の周辺/初期データ.md の 2 節)
         $this->assertEquals([
             'project' => 3 + 5 + 4 + 2, 'project_milestone' => 7 + 3 + 2, 'project_issue' => 5 + 3 + 2,
-            'project_plan_application' => 5 + 4 + 2, 'project_plan_application_milestones' => 3 + 2,
+            'project_plan_application' => 5 + 4 + 2 + 2, 'project_plan_application_milestones' => 3 + 2 + 4,
             'issue_resolution_application' => 3 + 2,
         ], $counts);
         // 参照の値 = プロジェクトの担当部署と責任者 14 × 2、課題のプロジェクト 10 と担当者 9(業務データの入れ物の 1 件は担当者なし)、
-        // 計画の申請書の申請対象・担当部署・責任者 11 × 3、課題の対応の申請書の申請対象・プロジェクト・担当者 5 × 3
+        // 計画の申請書の申請対象・担当部署・責任者 13 × 3、課題の対応の申請書の申請対象・プロジェクト・担当者 5 × 3
         $builtinModuleIds = RecordModule::query()->where('is_builtin', true)->select('id');
         $references = RecordReference::query()->whereNotIn('record_module_id', $builtinModuleIds)->count();
-        $this->assertSame(14 * 2 + 10 + 9 + 11 * 3 + 5 * 3, $references);
+        $this->assertSame(14 * 2 + 10 + 9 + 13 * 3 + 5 * 3, $references);
     }
 
     /**

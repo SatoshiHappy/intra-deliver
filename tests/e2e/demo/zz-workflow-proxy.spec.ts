@@ -75,7 +75,7 @@ test('連絡: u0001 が閲覧できない u0003 を連絡する人に選んで�
     await page.getByPlaceholder('名前・コードで検索').fill('高橋');
     await page.getByRole('option', { name: /高橋 誠/ }).click();
     await expect(
-        contact.getByRole('list', { name: '選んだ連絡する人' }),
+        contact.getByRole('list', { name: '選択した連絡する人' }),
     ).toContainText('高橋 誠');
     await form
         .getByRole('textbox', { name: 'ひと言', exact: true })

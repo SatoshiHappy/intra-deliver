@@ -35,7 +35,7 @@ final class WorkflowSeederTabsTest extends TransactionalTestCase
 
         $this->assertSame([
             ['draft' => 1, 'pending' => 1, 'unconfirmed' => 0],
-            ['draft' => 0, 'pending' => 3, 'unconfirmed' => 0],
+            ['draft' => 0, 'pending' => 4, 'unconfirmed' => 0],
             ['draft' => 0, 'pending' => 4, 'unconfirmed' => 0],
             ['draft' => 0, 'pending' => 5, 'unconfirmed' => 0],
             ['draft' => 0, 'pending' => 2, 'unconfirmed' => 4],
@@ -43,15 +43,21 @@ final class WorkflowSeederTabsTest extends TransactionalTestCase
             ['draft' => 0, 'pending' => 0, 'unconfirmed' => 0],
         ], $counts);
         $this->assertSame(['WF-000004'], $this->numbersOf('u0001', 'pending'));
-        $this->assertSame(['WF-000002', 'WF-000005', 'WF-000015'], $this->numbersOf('u0002', 'pending'));
+        $this->assertSame(['WF-000002', 'WF-000005', 'WF-000015', 'WF-000018'], $this->numbersOf('u0002', 'pending'));
         $this->assertSame(['WF-000003', 'WF-000009', 'WF-000013', 'WF-000014'], $this->numbersOf('u0003', 'pending'));
         $this->assertSame($this->numbered(3, 10, 13, 14, 16), $this->numbersOf('u0009', 'pending'));
         $this->assertSame(['WF-000009', 'WF-000010'], $this->numbersOf('u0010', 'pending'));
         $this->assertSame(['WF-000009'], $this->numbersOf('u0016', 'pending'));
-        $this->assertSame($this->numbered(2, 3, 4, 5, 9, 10, 13, 14, 15, 16), $this->numbersOf('u0010', 'referenced'));
-        $this->assertSame($this->numbered(1, 6, 7, 8, 11, 12), $this->numbersOf('u0010', 'referenced', 'completed'));
         $this->assertSame(
-            [['WF-000015'], ['WF-000006', 'WF-000011', 'WF-000012']],
+            $this->numbered(2, 3, 4, 5, 9, 10, 13, 14, 15, 16, 18),
+            $this->numbersOf('u0010', 'referenced'),
+        );
+        $this->assertSame(
+            $this->numbered(1, 6, 7, 8, 11, 12, 17),
+            $this->numbersOf('u0010', 'referenced', 'completed'),
+        );
+        $this->assertSame(
+            [['WF-000015'], ['WF-000006', 'WF-000011', 'WF-000012', 'WF-000017']],
             [$this->numbersOf('u0010', 'processed'), $this->numbersOf('u0010', 'processed', 'completed')],
         );
         $tabs = ['draft', 'pending', 'processed', 'referenced'];

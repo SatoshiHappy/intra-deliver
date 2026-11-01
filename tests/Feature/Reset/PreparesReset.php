@@ -34,6 +34,9 @@ trait PreparesReset
 
         if ($stubSeeder) {
             $this->app->bind(DatabaseSeeder::class, StubInitialSeeder::class);
+        } else {
+            // 本物の初期データの添付の実体は、本物の置き場でなくテストの置き場に書く(TransactionalTestCase)
+            $this->fakeSeedingDisk();
         }
 
         $this->beforeApplicationDestroyed(function (): void {

@@ -7,11 +7,12 @@ use App\Actions\Workflow\ApplicationInput;
 use App\Actions\Workflow\CaseContact;
 use App\Actions\Workflow\DraftInput;
 use App\Models\Workflow\WorkflowCaseNode;
+use Illuminate\Http\UploadedFile;
 
 /**
  * {@see WorkflowSeeder} の 2 段目の案件の見本 9(docs の 設計/ワークフロー/初期データ.md 4 節)と、見本の申請・差戻しの手助け(版 3 と案件の運用の見本も使う)。
  * 見本の申請はどれも申請対象を持つ(一時保存は持たない = 同じ 4 節)。使う側は申請・承認・承認終了・否認・差戻し・再申請・取止め・一時保存の業務処理と、
- * DATES・planInput()・withNewApplicationTarget()・applicationInputOf()・projectIdOf()・
+ * DATES・planInput()・sampleFile()・withNewApplicationTarget()・applicationInputOf()・projectIdOf()・
  * approveAs()・contextAt()・currentNodeIdOf()・revisionOf()・userId() を持つ。
  */
 trait SeedsWorkflowSampleCases
@@ -61,10 +62,19 @@ trait SeedsWorkflowSampleCases
         $context = $this->contextAt('2026-09-27 11:00', 'u0001');
         $this->withdraw->execute($context, $eighth, $this->revisionOf($eighth), '今期は見送ります。');
 
+        $this->createDraftSample();
+    }
+
+    /**
+     * 一時保存の見本(添付は一時保存の業務処理に渡して入れる = 設計/ワークフロー/申請の周辺/初期データ.md の 2 節)。
+     */
+    private function createDraftSample(): void
+    {
+        $attachment = $this->sampleFile('sample-invoice-format.pdf', '請求書の新様式案.pdf');
         $draft = new DraftInput('課題の対応の承認 請求書の様式の変更', null, [
             'title' => '請求書の様式の変更', 'project' => $this->projectIdOf('経費精算の電子化'),
             'priority' => 'medium', 'status' => 'open',
-        ], []);
+        ], [], attachFiles: [$attachment]);
         $this->createDraft->execute($this->contextAt('2026-10-14 17:00', 'u0001'), 'issue_resolution', $draft);
     }
 
@@ -84,6 +94,7 @@ trait SeedsWorkflowSampleCases
     /**
      * 計画の案件を申請する(申請対象のプロジェクトを作り、案件名は空 = 既定)。申請基準日の既定 = 2 段目の見本の日(版 2)を流す日からの相対にした日。
      *
+     * @param  list<UploadedFile>  $attachFiles  申請の時に付ける添付
      * @return array{caseId: int, applicationTargetId: int} 案件と申請対象のレコードの id
      */
     private function applyPlan(
@@ -93,13 +104,14 @@ trait SeedsWorkflowSampleCases
         ?string $comment = null,
         ?string $baseDate = null,
         ?CaseContact $contact = null,
+        array $attachFiles = [],
     ): array {
         $baseDate ??= SeedingDates::day(self::DATES['stage2_plan_base_date']);
         $context = $this->contextAt($at, $applicant);
         $values = $this->planInput($plan);
         $created = $this->withNewApplicationTarget($context, WorkflowApplicationModules::PLAN, $values);
         ['applicationTargetId' => $applicationTargetId, 'record' => $record] = $created;
-        $input = new ApplicationInput(null, $comment, $record);
+        $input = new ApplicationInput(null, $comment, $record, $attachFiles);
         $caseId = $this->apply->execute($context, 'project_plan', $input, $baseDate, contact: $contact)->caseId;
 
         return ['caseId' => $caseId, 'applicationTargetId' => $applicationTargetId];

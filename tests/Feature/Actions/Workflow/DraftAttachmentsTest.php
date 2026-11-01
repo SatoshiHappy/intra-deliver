@@ -172,7 +172,8 @@ final class DraftAttachmentsTest extends TransactionalTestCase
         });
 
         $this->assertFalse(WorkflowCase::query()->whereKey($draft->id)->exists());
-        $this->assertSame([0, 0], [WorkflowCaseDraftAttachment::query()->count(), $this->uploadCount($uploadIds)]);
+        $rows = WorkflowCaseDraftAttachment::query()->where('workflow_case_id', $draft->id)->count();
+        $this->assertSame([0, 0], [$rows, $this->uploadCount($uploadIds)]);
         Storage::disk('local')->assertMissing($paths);
     }
 }

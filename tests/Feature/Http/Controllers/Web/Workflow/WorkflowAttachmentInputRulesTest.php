@@ -26,6 +26,9 @@ final class WorkflowAttachmentInputRulesTest extends TransactionalTestCase
     use UsesSeededRecords;
     use WritesWorkflowInputs;
 
+    /** 初期データの一時保存が持つ添付の表示名 */
+    private const SEEDED_DRAFT_ATTACHMENT = '請求書の新様式案.pdf';
+
     private const REMOVALS_INVALID = '削除する添付ファイルの指定が正しくありません';
 
     /** 外す指定の数の上限(入口の決め) */
@@ -71,6 +74,7 @@ final class WorkflowAttachmentInputRulesTest extends TransactionalTestCase
         $file = $this->uploadedFile('a.pdf');
         $whole = ['attachments' => UploadLimits::NOT_RECEIVED];
         $first = ['attachments.0' => UploadLimits::NOT_RECEIVED];
+        $before = WorkflowCaseDraftAttachment::query()->count();
 
         $this->postJson($uri, ['attachments' => 'x'])->assertJsonValidationErrors($whole);
         $this->postJson($uri, ['attachments' => ['x']])->assertJsonValidationErrors($first);
@@ -79,7 +83,7 @@ final class WorkflowAttachmentInputRulesTest extends TransactionalTestCase
         $this->multipart('POST', $uri, [], [['x' => $file]])->assertSessionHasErrors($first);
         $this->multipart('POST', $uri, ['attachments' => ['x']])->assertSessionHasErrors($first);
 
-        $this->assertSame(0, WorkflowCaseDraftAttachment::query()->count());
+        $this->assertSame($before, WorkflowCaseDraftAttachment::query()->count());
     }
 
     public function test_the_shape_and_the_count_of_removals_are_checked_on_the_draft_overwrite(): void
@@ -89,7 +93,8 @@ final class WorkflowAttachmentInputRulesTest extends TransactionalTestCase
         $uri = "/workflow/drafts/{$draft}";
         $this->multipart('PUT', $uri, ['revision' => $this->revisionOf($draft)], [$this->uploadedFile('a.pdf')])
             ->assertSessionHasNoErrors();
-        $rowId = WorkflowCaseDraftAttachment::query()->where('workflow_case_id', $draft)->sole()->id;
+        $rowId = WorkflowCaseDraftAttachment::query()->where('workflow_case_id', $draft)->where('name', 'a.pdf')
+            ->sole()->id;
         $put = fn (mixed $ids) => $this->putJson($uri, [
             'revision' => $this->revisionOf($draft), 'remove_attachment_ids' => $ids,
         ]);
@@ -99,11 +104,11 @@ final class WorkflowAttachmentInputRulesTest extends TransactionalTestCase
         $put(['a' => $rowId])->assertJsonValidationErrors($whole);
         $put([$rowId, 'x'])->assertJsonValidationErrors(['remove_attachment_ids.1' => self::REMOVALS_INVALID]);
         $put(array_fill(0, self::MAX_REMOVALS + 1, $rowId))->assertJsonValidationErrors($whole);
-        $this->assertSame(['a.pdf'], $this->draftAttachmentNames($draft));
+        $this->assertSame([self::SEEDED_DRAFT_ATTACHMENT, 'a.pdf'], $this->draftAttachmentNames($draft));
 
         // 上限ちょうどは入口を通る(同じ id の重なりは業務処理が 1 つにまとめる)
         $put(array_fill(0, self::MAX_REMOVALS, $rowId))->assertRedirect("{$uri}/edit")->assertSessionHasNoErrors();
-        $this->assertSame([], $this->draftAttachmentNames($draft));
+        $this->assertSame([self::SEEDED_DRAFT_ATTACHMENT], $this->draftAttachmentNames($draft));
     }
 
     public function test_the_removals_are_dropped_where_they_are_not_received(): void

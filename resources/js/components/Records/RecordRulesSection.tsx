@@ -46,7 +46,7 @@ function RuleRow({
                         messageMaxLength={messageMaxLength}
                         trigger={
                             <Button
-                                variant="ghost"
+                                variant="outline"
                                 size="sm"
                                 aria-label={`規則「${summary}」を編集`}
                             >

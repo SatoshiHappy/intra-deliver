@@ -31,6 +31,7 @@ final class StoreUploadsRollbackReportTest extends TransactionalTestCase
         Exceptions::fake();
         $this->makeUploadsUndeletable(fn (): bool => true);
         $message = null;
+        $before = Upload::query()->count();
 
         try {
             DB::transaction(function () {
@@ -44,7 +45,7 @@ final class StoreUploadsRollbackReportTest extends TransactionalTestCase
 
         $this->assertSame('呼び手の失敗', $message);
         Exceptions::assertReported(UnableToDeleteFile::class);
-        $this->assertSame(0, Upload::query()->count());
+        $this->assertSame($before, Upload::query()->count());
         $this->assertSame(1, $this->storedFileCount());
     }
 }

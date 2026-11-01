@@ -48,6 +48,7 @@ final class RecordAttachmentRulesTest extends TransactionalTestCase
         $this->recordModule('held', [RecordModuleAction::Read]);
         $recordId = $this->recordIn('held');
         $this->registerRecordHolds([]);
+        $before = [RecordAttachment::query()->count(), Upload::query()->count()];
 
         foreach ([$this->user()->id, null] as $userId) {
             $attach = fn () => app(AttachRecordUploads::class)
@@ -56,8 +57,7 @@ final class RecordAttachmentRulesTest extends TransactionalTestCase
             $this->assertThrows($attach, InvalidArgumentException::class);
         }
 
-        $this->assertSame(0, RecordAttachment::query()->count());
-        $this->assertSame(0, Upload::query()->count());
+        $this->assertSame($before, [RecordAttachment::query()->count(), Upload::query()->count()]);
         $this->assertSame(0, RecordRevision::query()->where('record_id', $recordId)->count());
     }
 

@@ -86,14 +86,14 @@ final class ReassignCaseNodeTest extends TransactionalTestCase
         $before = $this->snapshot($case);
 
         $this->assertSame([
-            ['user_ids' => '関係部署の合議の処理担当者は 2 人から 5 人まで指定してください'],
-            ['user_ids' => '責任者の処理担当者は 1 人を指定してください'],
-            ['user_ids' => '責任者の処理担当者は 1 人を指定してください'],
+            ['user_ids' => '関係部署の合議の承認者は 2 人から 5 人まで選択してください'],
+            ['user_ids' => '責任者の承認者は 1 人を選択してください'],
+            ['user_ids' => '責任者の承認者は 1 人を選択してください'],
             ['user_ids' => '申請基準日に有効でないユーザーは指定できません'],
             ['user_ids' => '同じユーザーを重複して指定できません'],
             ['user_ids' => '申請者本人は、このステップの承認者に選択できません'],
             ['user_ids' => '申請者の代理先は、このステップの承認者に選択できません'],
-            ['user_ids' => '自分自身は処理担当者に指定できません'],
+            ['user_ids' => '自分自身は承認者に選択できません'],
         ], [
             $this->attemptReassign($case, 'council', ['u0006']),
             $this->attemptReassign($case, 'owner', ['u0006', 'u0007']),

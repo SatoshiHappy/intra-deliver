@@ -1,5 +1,6 @@
 import type { MouseEvent } from 'react';
 import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog';
+import { HeadingHelp } from '@/components/HeadingHelp';
 import { Button } from '@/components/ui/button';
 import type { OpenCaseAction } from '@/components/Workflow/CaseActionDialog';
 import type { OpenCaseOperation } from '@/hooks/Workflow/use-operation-dialog';
@@ -125,7 +126,7 @@ function OperationButtons(props: Props) {
 }
 
 /**
- * 詳細の申請操作の面(docs の 設計/ワークフロー/案件の運用/画面/管理と通知の画面.md の 7.2 節。詳細の面の最後): 見出し・1 行・ボタンの並び。
+ * 詳細の申請操作の面(docs の 設計/ワークフロー/案件の運用/画面/管理と通知の画面.md の 7.2 節。詳細の面の最後): 見出し(横の「?」に説明)・ボタンの並び。
  */
 export function CaseOperationSurface(props: Props) {
     return (
@@ -133,15 +134,17 @@ export function CaseOperationSurface(props: Props) {
             aria-labelledby="case-operation-heading"
             className="flex flex-col gap-3 rounded-xl border bg-card p-5 text-card-foreground"
         >
-            <h2
-                id="case-operation-heading"
-                className="text-[15px] font-semibold"
-            >
-                申請操作
-            </h2>
-            <p className="text-sm text-muted-foreground">
-                {OPERATION_SURFACE_NOTE}
-            </p>
+            <div className="flex items-center gap-1.5">
+                <h2
+                    id="case-operation-heading"
+                    className="text-[15px] font-semibold"
+                >
+                    申請操作
+                </h2>
+                <HeadingHelp label="申請操作">
+                    {OPERATION_SURFACE_NOTE}
+                </HeadingHelp>
+            </div>
             <OperationButtons {...props} />
         </section>
     );

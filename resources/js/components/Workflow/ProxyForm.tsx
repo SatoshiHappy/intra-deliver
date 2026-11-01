@@ -55,7 +55,7 @@ function PeopleFields({
                 id={PROXY_ID}
                 label="代理先"
                 labelAddon={REQUIRED}
-                help="代理先に指定できるのはユーザーだけです。代理先の代理先は、代わりに処理できません。"
+                help="代理先に選択できるのはユーザーだけです。代理先の代理先は、代わりに処理できません。"
                 error={errors.proxy_user_id}
                 caseId={null}
                 baseDate={baseDate}

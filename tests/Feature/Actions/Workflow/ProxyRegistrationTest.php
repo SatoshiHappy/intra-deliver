@@ -46,7 +46,7 @@ final class ProxyRegistrationTest extends TransactionalTestCase
             ['principal_user_id' => '代理元を選択してください'],
             ['proxy_user_id' => '代理先を選択してください'],
             ['proxy_user_id' => '代理先を選択してください'],
-            ['proxy_user_id' => '代理元と代理先に同じユーザーは指定できません'],
+            ['proxy_user_id' => '代理元と代理先に同じユーザーは選択できません'],
             ['kind' => '種類を選択してください'],
             ['kind' => '種類を選択してください'],
             ['workflow_flow_code' => '対象のフローを選択してください'],

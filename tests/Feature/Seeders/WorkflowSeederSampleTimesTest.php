@@ -51,6 +51,8 @@ final class WorkflowSeederSampleTimesTest extends TransactionalTestCase
             14 => ['D-3 09:00', 'D-2 10:00'],
             15 => ['D-5 09:00'],
             16 => ['D-6 09:00', 'D-5 15:20'],
+            17 => ['D-21 09:00', 'D-21 15:00', 'D-20 10:00', 'D-19 11:00', 'D-19 14:00', 'D-18 10:00'],
+            18 => ['D-2 09:30'],
         ]), $histories);
         $draft = WorkflowCase::query()->where('state', 'draft')->sole();
         $this->assertSame($this->at('D-1 17:00'), $this->tokyo($draft->created_at));
@@ -73,11 +75,12 @@ final class WorkflowSeederSampleTimesTest extends TransactionalTestCase
         $this->assertSame($this->numbered([
             [2, 'D-6 09:30'], [3, 'D-9 10:30'], [4, 'D-4 14:00'], [5, 'D-3 10:00'], [9, 'D-6 11:00'], [9, 'D-6 11:00'],
             [10, 'D-3 10:00'], [10, 'D-3 10:00'], [13, 'D-9 10:30'], [14, 'D-2 10:00'], [15, 'D-5 09:00'],
-            [16, 'D-6 09:00'],
+            [16, 'D-6 09:00'], [18, 'D-2 09:30'],
         ]), $reached);
         $this->assertSame($this->numbered([
             [1, 'D-39 10:00'], [3, 'D-9 10:30'], [9, 'D-7 10:00'], [9, 'D-6 11:00'], [10, 'D-3 10:00'],
             [11, 'D-14 10:00'], [11, 'D-13 11:00'], [12, 'D-34 10:00'], [13, 'D-9 10:30'], [14, 'D-2 10:00'],
+            [17, 'D-21 15:00'], [17, 'D-20 10:00'],
         ]), $opened);
         $this->assertSame(
             array_map($this->at(...), ['D-1 10:20', 'D-1 10:20']),

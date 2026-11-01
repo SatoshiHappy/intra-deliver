@@ -100,9 +100,9 @@ function TransferField({
     return (
         <UserPickerField
             id={TRANSFER_ID}
-            label="変更後の処理担当者"
+            label="変更後の承認者"
             labelAddon={<Badge variant="secondary">必須</Badge>}
-            help="指定できるのはユーザー 1 人です。自分自身、申請基準日に無効な利用者、このステップのほかの承認者と同じ利用者は指定できません。"
+            help="選択できるのはユーザー 1 人です。自分自身、申請基準日に無効な利用者、このステップのほかの承認者と同じ利用者は選択できません。"
             error={error}
             caseId={caseId}
             picked={picked}
