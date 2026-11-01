@@ -16,7 +16,7 @@ use App\Models\Records\RecordRevision;
 use App\Models\Workflow\WorkflowCase;
 use App\Models\Workflow\WorkflowCaseHistory;
 use App\Queries\Authz\Api\Requester;
-use App\Queries\Records\Api\RecordRevisionQuery;
+use App\Queries\Records\RecordRevisionDiff;
 use App\Queries\Workflow\CaseActor;
 use Illuminate\Support\Facades\DB;
 use Tests\Support\RunsWorkflowOperations;
@@ -74,7 +74,7 @@ final class ApplicationRevisionsTest extends TransactionalTestCase
         );
         [$applied, $reapplied] = [$revisions[0]->id, $revisions[1]->id];
         $guest = new Requester(null, null);
-        $diff = app(RecordRevisionQuery::class)->diffBetween($guest, $applied, $reapplied, now(), 'ja');
+        $diff = app(RecordRevisionDiff::class)->between($guest, $applied, $reapplied, now(), 'ja');
         $this->assertSame([[], [], []], [$diff['fields'], $diff['details'], $diff['attachments']]);
     }
 

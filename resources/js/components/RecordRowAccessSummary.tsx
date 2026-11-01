@@ -10,8 +10,11 @@ import type { RowAccessInput } from '@/types';
  */
 export function RecordRowAccessSummary({
     rowAccess,
+    viewersNote,
 }: {
     rowAccess: RowAccessInput;
+    /** 項目「参照者」の名前の横の注の文(呼び手が渡す。無ければ出さない) */
+    viewersNote?: string;
 }) {
     return (
         <section aria-label="参照制限">
@@ -20,7 +23,17 @@ export function RecordRowAccessSummary({
                     {restrictedText(rowAccess.restricted)}
                 </DetailItem>
                 {rowAccess.restricted && (
-                    <DetailItem name={VIEWERS_FIELD.name}>
+                    <DetailItem
+                        name={VIEWERS_FIELD.name}
+                        note={
+                            viewersNote === undefined
+                                ? undefined
+                                : {
+                                      name: VIEWERS_FIELD.name,
+                                      text: viewersNote,
+                                  }
+                        }
+                    >
                         <RecordValue
                             field={VIEWERS_FIELD}
                             value={rowAccess.viewers}

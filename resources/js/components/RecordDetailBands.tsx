@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { RecordFoldSection } from '@/components/RecordFoldSection';
-import { RecordDetailsTable } from '@/components/Records/RecordDetailsTable';
+import { RecordDetailsTable } from '@/components/RecordDetailsTable';
 import type { RecordDetailRow, RecordFieldDefinition } from '@/types';
 
 /** 明細の帯 1 つ(帯「<明細の名前> <n> 件」と全幅の表(字下げは見出しのまとまりの中と同じ)。0 件でも出す。畳みは保たない = 既定は開く) */

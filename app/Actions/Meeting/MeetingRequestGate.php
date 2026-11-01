@@ -16,6 +16,8 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
  * 会議の作成と再作成の入口の判定(docs の 設計/業務ツール/会議/処理.md の 3.2・3.7)。許す人の判定は {@see MeetingPermissions}(一覧と詳細の
  * 操作を出す条件と同じ)で、ここは 403 の文を分ける(ゲスト = AI に依頼できない、ほか = 業務モジュールの操作)。
  * 判定の順は入れ物の入口と同じ(403 をレコードの有無と行の判定より先に返す = 設計/業務データの入れ物/認可とメニュー/README.md の 2.2)。
+ * 再作成の閲覧は業務モジュールの read と行の判定だけで決め、申請の経路を含めない(再作成は会議のレコードの詳細の画面から行う操作 =
+ * 設計/業務データの入れ物/レコードの共通機能/認可と初期データ.md の 1.1 節の「使わない所」)。
  */
 class MeetingRequestGate
 {
@@ -47,7 +49,7 @@ class MeetingRequestGate
 
         $requester = Requester::fromAccessContext($context);
 
-        if (! $this->access->canView($requester, Meeting::CODE, $recordId, $context->date)) {
+        if (! $this->access->canViewInModule($requester, Meeting::CODE, $recordId, $context->date)) {
             throw new ModelNotFoundException("会議 {$recordId} が無いか、閲覧できない");
         }
     }

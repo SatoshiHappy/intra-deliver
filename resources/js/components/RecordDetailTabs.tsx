@@ -1,4 +1,4 @@
-import { router, usePage } from '@inertiajs/react';
+import type { ReactNode } from 'react';
 import { DetailItem } from '@/components/DetailItem';
 import { RecordFieldName } from '@/components/RecordFieldBadges';
 import { RecordHeadingGroups } from '@/components/RecordHeadingGroups';
@@ -7,21 +7,15 @@ import {
     RecordRelatedMenuItems,
     RecordRelatedTab,
 } from '@/components/RecordRelatedTab';
-import { RecordShowTabs } from '@/components/RecordShowTabs';
-import { RecordDetailBands } from '@/components/Records/RecordDetailBands';
-import { RecordRowAccessSummary } from '@/components/Records/RecordRowAccessSummary';
+import { RecordDetailBands } from '@/components/RecordDetailBands';
+import { RecordRowAccessSummary } from '@/components/RecordRowAccessSummary';
+import { RecordTabsFrame } from '@/components/RecordTabsFrame';
+import type { RecordFrameTab } from '@/components/RecordTabsFrame';
 import { RecordValue } from '@/components/RecordValue';
 import type { useRecordRelated } from '@/hooks/use-record-related';
-import { ownValue } from '@/lib/Records/recordAddons';
 import { RELATED_TAB, relatedTotal } from '@/lib/recordRelated';
 import { isWideField } from '@/lib/recordForm';
-import {
-    ACCESS_TAB,
-    FIELDS_TAB,
-    personText,
-    selectedTabKey,
-    urlWithQuery,
-} from '@/lib/recordShow';
+import { ACCESS_TAB, FIELDS_TAB, personText } from '@/lib/recordShow';
 import { EMPTY_VALUE, formatDatetime } from '@/lib/recordValues';
 import { cn } from '@/lib/utils';
 import type {
@@ -44,6 +38,8 @@ type TabProps = {
     record: RecordShowDetail;
     notes: Record<string, string>;
     related: RelatedTabState;
+    /** 詳細タブの先頭の 1 行(呼び手が渡す。無ければ出さない) */
+    notice?: ReactNode;
 };
 
 /**
@@ -81,9 +77,17 @@ function FieldItem({
  * 項目の格子(列は左の面の幅の段階 = 帯だけで 3 列、パネルを開くと 2 列 = 同 1 節。複数行は全幅。見出しの行で畳める = 見出し.md の 2 節)、
  * 明細の帯と表、作成・更新の日時と人。notes = 後ろのモジュールが足す、項目の名前の横の注(項目のコード → 文)。
  */
-function FieldsTab({ module, headings, record, notes, related }: TabProps) {
+function FieldsTab({
+    module,
+    headings,
+    record,
+    notes,
+    related,
+    notice,
+}: TabProps) {
     return (
         <div className="flex flex-col gap-5">
+            {notice}
             <RecordRelatedChips
                 entries={related.entries}
                 onSelect={related.select}
@@ -100,7 +104,11 @@ function FieldsTab({ module, headings, record, notes, related }: TabProps) {
                                     key={field.code}
                                     field={field}
                                     record={record}
-                                    note={ownValue(notes, field.code)}
+                                    note={
+                                        Object.hasOwn(notes, field.code)
+                                            ? notes[field.code]
+                                            : undefined
+                                    }
                                 />
                             ))}
                     </dl>
@@ -141,35 +149,9 @@ function Authors({ record }: { record: RecordDetail }) {
 }
 
 /**
- * 選んだタブの中身(詳細 = 項目・明細、参照制限 = 読むだけ、関連レコード = 選んだ入口の表)。
- */
-function TabBody({
-    selected,
-    related,
-    ...props
-}: TabProps & { selected: string }) {
-    switch (selected) {
-        case RELATED_TAB:
-            return (
-                <RecordRelatedTab
-                    {...related}
-                    onPage={related.page}
-                    onNew={related.dialog.openFor}
-                />
-            );
-        case ACCESS_TAB:
-            return (
-                <RecordRowAccessSummary rowAccess={props.record.rowAccess} />
-            );
-        default:
-            return <FieldsTab {...props} related={related} />;
-    }
-}
-
-/**
  * 関連レコードのタブ(見える入口が無ければ出さない = 関連レコード.md の 3 節)。件数 = 見える入口の件数の和、メニュー = 入口の切り替えと「新規」。
  */
-function relatedTabs(related: RelatedTabState) {
+function relatedTabs(related: RelatedTabState): RecordFrameTab[] {
     return related.entries.length === 0
         ? []
         : [
@@ -185,13 +167,29 @@ function relatedTabs(related: RelatedTabState) {
                           onNew={related.dialog.openFor}
                       />
                   ),
+                  body: (
+                      <RecordRelatedTab
+                          {...related}
+                          onPage={related.page}
+                          onNew={related.dialog.openFor}
+                      />
+                  ),
               },
           ];
 }
 
+/** 呼び手(申請の詳細など)が足す、汎用の受け口 */
+type Additions = {
+    /** 詳細の後ろに差し込むタブ(中身は呼び手が持つ) */
+    extraTab?: { key: string; label: string; body: ReactNode };
+    /** 詳細タブの先頭の 1 行 */
+    fieldsNotice?: ReactNode;
+    /** タブ「参照制限」の項目「参照者」の名前の横の注の文 */
+    viewersNote?: string;
+};
+
 /**
- * 左のタブ(詳細 / 参照制限 / 関連レコード = 同 4 節)。選んだタブは URL のクエリ tab に映す(詳細と参照制限は中身が props にあるので
- * URL だけを置き換え、関連レコードは表が無ければ部分の再読み込み = 同 3 節)。
+ * 左のタブ(詳細 / 呼び手のタブ / 参照制限 / 関連レコード = 同 4 節)。枠は {@link RecordTabsFrame}(クエリ tab への映し)。
  */
 export function RecordDetailTabs({
     module,
@@ -199,36 +197,42 @@ export function RecordDetailTabs({
     record,
     fieldNotes = {},
     related,
-}: Omit<TabProps, 'notes'> & { fieldNotes?: Record<string, string> }) {
-    const { url } = usePage();
-    const tabs = [
-        { key: FIELDS_TAB, label: '詳細', count: null },
-        { key: ACCESS_TAB, label: '参照制限', count: null },
+    extraTab,
+    fieldsNotice,
+    viewersNote,
+}: Omit<TabProps, 'notes' | 'notice'> & {
+    fieldNotes?: Record<string, string>;
+} & Additions) {
+    const tabs: RecordFrameTab[] = [
+        {
+            key: FIELDS_TAB,
+            label: '詳細',
+            body: (
+                <FieldsTab
+                    module={module}
+                    headings={headings}
+                    record={record}
+                    notes={fieldNotes}
+                    related={related}
+                    notice={fieldsNotice}
+                />
+            ),
+        },
+        ...(extraTab === undefined ? [] : [extraTab]),
+        {
+            key: ACCESS_TAB,
+            label: '参照制限',
+            body: (
+                <RecordRowAccessSummary
+                    rowAccess={record.rowAccess}
+                    viewersNote={viewersNote}
+                />
+            ),
+        },
         ...relatedTabs(related),
     ];
-    const selected = selectedTabKey(
-        url,
-        tabs.map((tab) => tab.key),
-    );
-    const select = (key: string) =>
-        key === RELATED_TAB
-            ? related.select(null)
-            : router.replace({
-                  url: urlWithQuery(url, { tab: key }),
-                  preserveState: true,
-                  preserveScroll: true,
-              });
 
     return (
-        <RecordShowTabs tabs={tabs} selected={selected} onSelect={select}>
-            <TabBody
-                module={module}
-                headings={headings}
-                record={record}
-                notes={fieldNotes}
-                selected={selected}
-                related={related}
-            />
-        </RecordShowTabs>
+        <RecordTabsFrame tabs={tabs} onRelated={() => related.select(null)} />
     );
 }

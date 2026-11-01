@@ -7,17 +7,16 @@ use App\Models\Workflow\WorkflowCase;
 use App\Models\Workflow\WorkflowCaseHistory;
 use App\Models\Workflow\WorkflowCaseNode;
 use App\Queries\Authz\Api\Requester;
-use App\Queries\Records\Api\RecordDisplayQuery;
 use App\Support\AccessContext;
-use Carbon\CarbonImmutable;
 use Closure;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use LogicException;
 
 /**
- * 案件の詳細(docs の 設計/ワークフロー/画面/申請と案件.md 5 節の Props のうち読み取りの分)。閲覧の判定 {@see CaseVisibility} を最初に行い(見えない・一時保存 → 404)、
- * その後にだけ業務データの入れ物の主体の判定をしない口(表示・差分・関係)を呼ぶ(業務データとの接続/写しとつながる申請.md 9 節)。業務モジュールの read は求めない。
+ * 案件の詳細の申請の層の props(docs の 設計/ワークフロー/画面/申請と案件.md 5 節の Props のうち読み取りの分。層 =
+ * 設計/業務データの入れ物/レコードの共通機能/詳細の画面/申請の詳細.md の 6 節の表の「申請」。レコードの層とつながる申請は {@see CaseShowProps})。
+ * 閲覧の判定 {@see CaseVisibility} を最初に行う(見えない・一時保存 → 404)。業務モジュールの read は求めない。
  *
  * 複数の読み取りを同じ改訂に揃えない: 案件の行を最初に読んでその改訂番号を返し、ノード・履歴・レコードはその後に読む(READ COMMITTED)。
  * 揃わないときの害は画面の一時的な混在だけで、操作は改訂番号で守られる。組み立ての最後に、案件の行を閲覧の判定を通してもう 1 回読み、見えなくなっていれば 404
@@ -30,7 +29,6 @@ use LogicException;
  *
  * @phpstan-import-type Person from WorkflowPeople
  * @phpstan-import-type History from CaseHistories
- * @phpstan-import-type RelatedGroup from RelatedCases
  * @phpstan-import-type DiagramNode from CaseDiagram
  * @phpstan-import-type DiagramEdge from CaseDiagram
  * @phpstan-import-type Council from CaseCouncils
@@ -44,9 +42,8 @@ use LogicException;
  * @phpstan-type Processing array{can: ShowCan,
  *     nodeActions: list<array<string, mixed>>, pullBackNodes: list<DetailPullBackNode>, casePrincipal: int|null,
  *     proxyNote: string|null, canAttachOnWithdraw: bool, attachmentLimits: AttachmentLimits|null}
- * @phpstan-type Detail array{case: array<string, mixed>, content: array<string, mixed>, nodes: list<DiagramNode>,
+ * @phpstan-type Detail array{case: array<string, mixed>, nodes: list<DiagramNode>,
  *     edges: list<DiagramEdge>, councils: list<Council>, histories: list<History>,
- *     related: list<RelatedGroup>,
  *     can: ShowCan, operation: Panel|null,
  *     nodeActions: list<array<string, mixed>>, pullBackNodes: list<DetailPullBackNode>, casePrincipal: int|null,
  *     proxyNote: string|null,
@@ -60,8 +57,6 @@ class CaseDetailQuery
         private CaseOperationDecider $decider,
         private WorkflowPeople $people,
         private CaseHistories $histories,
-        private RelatedCases $related,
-        private RecordDisplayQuery $display,
         private CaseProcessorChoices $choices,
         private CaseDesignations $designations,
         private CaseDiagram $diagram,
@@ -83,7 +78,6 @@ class CaseDetailQuery
     {
         $requester = Requester::fromAccessContext($context);
         $case = $this->visibleCase($requester, $context, $caseId)->load('workflowFlow.workflowContent');
-        $recordId = $case->record_id ?? throw new LogicException("申請した案件 {$case->id} がレコードを指していない");
         $nodes = WorkflowCaseNode::query()->with('parent')->where('workflow_case_id', $case->id)->get()->sort(WorkflowCaseNode::compareInRoute(...))->values();
         $histories = WorkflowCaseHistory::query()->where('workflow_case_id', $case->id)->orderBy('id')->get();
         $situation = $this->decider->situationsOf($requester, $context->date, [$case])[$case->id];
@@ -93,22 +87,18 @@ class CaseDetailQuery
         $assignedIds = array_merge([], ...array_values($assignments));
         $peopleIds = [$case->user_id, ...$targets, ...self::actorIdsOf($histories), ...$assignedIds];
         $people = $this->people->users($peopleIds, $context->date, $context->localeCode);
-        $content = $this->display->show($requester, $recordId, $context->date, $context->localeCode);
         $historiesById = $histories->keyBy('id');
         $councils = $this->councils->of($case, $nodes, $historiesById, $assignments, $situation, $requester->userId, $context);
         $linked = $this->people->linked($people, $context->date, $context->localeCode);
         $diagram = $this->diagram->of($case, $nodes, $historiesById, $assignments, $situation, $linked, $councils, $requester->userId);
-        $updatedAfter = $this->updatedAfterSubmission($content['record']['updatedAt'], $histories);
         $operation = $this->operationPanel->of($requester, $context, $situation, $nodes);
         $detail = [
             'case' => $this->caseOf($case, $situation, $people, $context),
-            'content' => [...$content, 'updatedAfterSubmission' => $updatedAfter],
             'nodes' => $diagram['nodes'],
             'edges' => $diagram['edges'],
             'councils' => array_values($councils),
             'histories' => $this->histories
-                ->of($requester, $context->date, $context->localeCode, $histories, $nodes->keyBy('id'), $people),
-            'related' => $this->related->of($requester, $context->date, $context->localeCode, $case, $content),
+                ->of($context->date, $context->localeCode, $histories, $nodes->keyBy('id'), $people),
             ...$this->processingOf($requester, $context, $situation, $nodes, $operation !== null),
             'operation' => $operation,
             'confirmations' => $this->confirmationPanel
@@ -166,7 +156,7 @@ class CaseDetailQuery
      *
      * @throws ModelNotFoundException<WorkflowCase> 案件が無い・閲覧できない・一時保存のとき
      */
-    private function visibleCase(Requester $requester, AccessContext $context, int $caseId): WorkflowCase
+    public function visibleCase(Requester $requester, AccessContext $context, int $caseId): WorkflowCase
     {
         return $this->visibility->visible(WorkflowCase::query()->whereKey($caseId)->where('state', '<>', WorkflowCaseState::Draft), $requester, $context->date)->firstOrFail();
     }
@@ -216,20 +206,5 @@ class CaseDetailQuery
         }
 
         return $ids;
-    }
-
-    /**
-     * レコードが、最後の提出(申請・再申請)の履歴の行の後に更新されたか(秒の精度で比べ、同じ秒は変更なし = 画面/申請と案件.md 5 節)。レコードの更新日時は表示の口
-     * {@see RecordDisplayQuery::show()} が返した値(ISO 8601 の文字列、秒まで = 設計/ワークフロー/業務データとの接続/公開の口.md 7 節)を日時に読む
-     * (業務データの入れ物の表を直接読まない)。
-     *
-     * @param  string|null  $recordUpdatedAt  表示の口の record.updatedAt
-     * @param  Collection<int, WorkflowCaseHistory>  $histories
-     */
-    private function updatedAfterSubmission(?string $recordUpdatedAt, Collection $histories): bool
-    {
-        $submittedAt = $histories->last(fn (WorkflowCaseHistory $history) => in_array($history->action, CaseHistories::SUBMISSIONS, true))?->created_at;
-
-        return $submittedAt !== null && $recordUpdatedAt !== null && CarbonImmutable::parse($recordUpdatedAt)->getTimestamp() > $submittedAt->getTimestamp();
     }
 }

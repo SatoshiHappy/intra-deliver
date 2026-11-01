@@ -1,5 +1,5 @@
 import { expect, test } from '../support/test';
-import { openAs } from '../support/workflow-operations';
+import { openApplicationTab, openAs } from '../support/workflow-operations';
 
 // 詳細のつながる申請(docs の 設計/ワークフロー/業務データとの接続/写しとつながる申請.md 6 節の例)。初期データの見本の案件を読むだけで、DB に書かない。
 test.use({ viewport: { width: 1280, height: 720 } });
@@ -18,6 +18,8 @@ test('初期データの見本: 課題の対応の申請につながる申請が
         })
         .click();
 
+    // つながる申請は左のタブ「申請」の面
+    await openApplicationTab(page);
     await expect(
         page
             .getByRole('table', {

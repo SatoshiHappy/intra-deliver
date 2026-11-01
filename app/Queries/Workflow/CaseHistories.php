@@ -7,35 +7,29 @@ use App\Models\Workflow\WorkflowCaseAssignment;
 use App\Models\Workflow\WorkflowCaseHistory;
 use App\Models\Workflow\WorkflowCaseHistoryUser;
 use App\Models\Workflow\WorkflowCaseNode;
-use App\Queries\Authz\Api\Requester;
-use App\Queries\Records\Api\RecordRevisionQuery;
 use DateTimeInterface;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use LogicException;
 
 /**
- * 案件の詳細の履歴(docs の 設計/ワークフロー/画面/申請と案件.md 5 節の histories、業務データとの接続/写しとつながる申請.md 5 節の差分)。並びは id の昇順(画面が並べ替える)。
- * 差分は再申請の行だけで、直前の申請・再申請の行(id が小さい側で最大)が指す版を前、その行が指す版を後として業務データの入れ物の口
- * {@see RecordRevisionQuery::diffOnCurrentDefinition()}(業務モジュールの read を見ない)で求め、画面の差分の形(項目と明細)にする
- * (設計/業務データの入れ物/レコードの共通機能/更新履歴.md の 4.2 節)。呼び手(詳細)が案件の閲覧の判定を済ませてから呼ぶ。
+ * 案件の詳細の履歴(docs の 設計/ワークフロー/画面/申請と案件.md 5 節の histories)。並びは id の昇順(画面が並べ替える)。値の差分は持たない
+ * (差分はサイドパネルの更新履歴 = 設計/業務データの入れ物/レコードの共通機能/詳細の画面/申請の詳細.md の 3 節)。呼び手(詳細)が案件の閲覧の判定を
+ * 済ませてから呼ぶ。
  *
  * @phpstan-import-type Person from WorkflowPeople
- * @phpstan-import-type RowChange from RecordRevisionQuery
  *
  * 承認の行の指定(ルートの深さ/画面/案件の側の画面.md 7 節の履歴「指定: {指定されたステップ} = {名前}」)= 承認したノードが指定するノードごと(写した並び)に、その行が書いた指定の行
  * (人は指定の順)。行が 0 のノードは people が空(= 0 人を指定 = 省略。データモデル/案件の表.md 3.5、通しの回の T08)。ノード名は表示名(ルートの深さ/案件の操作/README.md 1.3)。
- *
- * @phpstan-type CaseDiff array{fields: list<array{code: string, before: mixed, after: mixed}>,
- *     details: list<array{code: string, rows: list<RowChange>}>}
  *
  * 処理実行者の表示 = actor(処理者)と executor(代理で処理したときの実行者。本人なら null)。添える 1 行の人 users =
  * 振替先・処理対象者の変更と再展開の後の人(履歴の人)、指定の変更の人(その行の指定の行)。
  * sendBackNodeName = 差戻しの行の差戻し先(戻るの行は null)。moveTargetName = ステップの移動(戻る)の
  * 戻り先(設計/ワークフロー/案件の運用/画面/案件の画面.md の 4 節、データモデル/表.md の 3.9 節)。
+ *
  * @phpstan-type History array{id: int, nodeName: string, action: string, actor: Person, executor: Person|null,
- *     at: string|null, comment: string|null, sendBackNodeName: string|null, diff: CaseDiff|null,
- *     diffBaseAt: string|null, assignments: list<array{nodeName: string, people: list<Person>}>, users: list<Person>,
+ *     at: string|null, comment: string|null, sendBackNodeName: string|null,
+ *     assignments: list<array{nodeName: string, people: list<Person>}>, users: list<Person>,
  *     moveTargetName: string|null}
  */
 class CaseHistories
@@ -46,10 +40,7 @@ class CaseHistories
     /** 履歴の人を持つ種別(データモデル/表.md の 3.9 節) */
     private const PEOPLE_ACTIONS = [WorkflowAction::Transfer, WorkflowAction::Retarget, WorkflowAction::Reexpand];
 
-    public function __construct(
-        private RecordRevisionQuery $revisions,
-        private WorkflowPeople $people,
-    ) {}
+    public function __construct(private WorkflowPeople $people) {}
 
     /**
      * @param  Collection<int, WorkflowCaseHistory>  $histories  案件の履歴(id の昇順)
@@ -58,7 +49,6 @@ class CaseHistories
      * @return list<History>
      */
     public function of(
-        Requester $requester,
         DateTimeInterface $date,
         string $localeCode,
         Collection $histories,
@@ -66,12 +56,10 @@ class CaseHistories
         array $people,
     ): array {
         $rows = [];
-        $base = null;
         $assignments = $this->assignmentsOf($histories, $nodes, $date, $localeCode);
         $users = $this->usersOf($histories, $date, $localeCode);
 
         foreach ($histories as $history) {
-            $isReapply = $history->action === WorkflowAction::Reapply && $base !== null;
             $executorId = $history->executor_user_id;
             $rows[] = [
                 'id' => $history->id,
@@ -82,52 +70,13 @@ class CaseHistories
                 'at' => $history->created_at?->toIso8601String(),
                 'comment' => $history->comment,
                 'sendBackNodeName' => $this->targetName($nodes, $history, WorkflowAction::SendBack),
-                'diff' => $isReapply ? $this->diff($requester, $base, $history, $date, $localeCode) : null,
-                'diffBaseAt' => $isReapply ? $base->created_at?->toIso8601String() : null,
                 'assignments' => $assignments[$history->id] ?? [],
                 'users' => $users[$history->id] ?? [],
                 'moveTargetName' => $this->targetName($nodes, $history, WorkflowAction::MoveBack),
             ];
-
-            if (in_array($history->action, self::SUBMISSIONS, true)) {
-                $base = $history;
-            }
         }
 
         return $rows;
-    }
-
-    /**
-     * 再申請の行の差分を、画面の差分の形(項目のコード・前・後と、明細の項目のコード・行の変化)にする(項目と明細の描き方を変えない)。
-     *
-     * @return CaseDiff
-     *
-     * @throws LogicException 申請・再申請の行が版を指していないとき(検査制約が止める)
-     */
-    private function diff(
-        Requester $requester,
-        WorkflowCaseHistory $base,
-        WorkflowCaseHistory $history,
-        DateTimeInterface $date,
-        string $localeCode,
-    ): array {
-        $before = $this->revisionOf($base);
-        $after = $this->revisionOf($history);
-        $diff = $this->revisions->diffOnCurrentDefinition($requester, $before, $after, $date, $localeCode);
-        $field = fn (array $field) => [
-            'code' => $field['code'], 'before' => $field['before'], 'after' => $field['after'],
-        ];
-        $detail = fn (array $detail) => ['code' => $detail['code'], 'rows' => $detail['rows']];
-
-        return ['fields' => array_map($field, $diff['fields']), 'details' => array_map($detail, $diff['details'])];
-    }
-
-    /**
-     * @throws LogicException 版を指していないとき
-     */
-    private function revisionOf(WorkflowCaseHistory $history): int
-    {
-        return $history->record_revision_id ?? throw new LogicException("提出の履歴の行 {$history->id} が版を指していない");
     }
 
     /**

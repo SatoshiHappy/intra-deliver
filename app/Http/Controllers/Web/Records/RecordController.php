@@ -259,7 +259,6 @@ class RecordController extends Controller
 
     /**
      * 開いた欄の中身(クエリ panel の値は口がキーの一覧で照らす)。before は部分の再読み込みのときだけ読む(全体の応答は新しいものから)。
-     * 開く URL はここで足す(ルートの名前は入口が持つ = 詳細の画面/README.md の 7 節)。
      *
      * @return array<string, mixed>|null
      */
@@ -269,66 +268,7 @@ class RecordController extends Controller
         $before = $request->query('before');
         $beforeId = self::isPartial($request) && is_string($before)
             && preg_match('/^[1-9][0-9]{0,17}\z/', $before) === 1 ? (int) $before : null;
-        $content = is_string($key) ? $this->panels->content($context, $module, $recordId, $key, $beforeId) : null;
-        $route = ['module' => $module, 'record' => $recordId];
 
-        return match ($content['kind'] ?? null) {
-            'attachments' => [...$content, 'rows' => array_map(
-                fn (array $row) => $this->withAttachmentLinks($row, $route),
-                $content['rows'],
-            )],
-            'revisions' => [...$content, 'rows' => array_map(
-                fn (array $row) => $this->withRevisionFileLinks($row, $route),
-                $content['rows'],
-            )],
-            default => $content,
-        };
-    }
-
-    /**
-     * 添付の行のダウンロード・プレビューの URL(期限で実体を消した行は開けない = 添付ファイル/レコードの添付.md の 9 節)。
-     *
-     * @param  array{id: int, previewable: bool, purgeDueOn: string|null}  $row
-     * @param  array{module: string, record: int}  $route
-     * @return array<string, mixed>
-     */
-    private function withAttachmentLinks(array $row, array $route): array
-    {
-        $parameters = [...$route, 'attachment' => $row['id']];
-
-        return [
-            ...$row,
-            'downloadUrl' => $row['purgeDueOn'] === null ? route('records.data.attachments.show', $parameters) : null,
-            'previewUrl' => $row['previewable'] ? route('records.data.attachments.preview', $parameters) : null,
-        ];
-    }
-
-    /**
-     * 更新履歴の添付の削除の行から開く、外した時点のファイルの URL(開けない行は uploadId が null = 更新履歴.md の 5.2 節)。
-     *
-     * @param  array{changes: array{attachments: list<array{uploadId: int|null, previewable: bool}>}|null}  $row
-     * @param  array{module: string, record: int}  $route
-     * @return array<string, mixed>
-     */
-    private function withRevisionFileLinks(array $row, array $route): array
-    {
-        if ($row['changes'] === null) {
-            return $row;
-        }
-
-        $row['changes']['attachments'] = array_map(function (array $change) use ($route) {
-            $parameters = [...$route, 'upload' => $change['uploadId']];
-            $opens = $change['uploadId'] !== null;
-
-            return [
-                ...$change,
-                'downloadUrl' => $opens ? route('records.data.revision-files.show', $parameters) : null,
-                'previewUrl' => $opens && $change['previewable']
-                    ? route('records.data.revision-files.preview', $parameters)
-                    : null,
-            ];
-        }, $row['changes']['attachments']);
-
-        return $row;
+        return is_string($key) ? $this->panels->content($context, $module, $recordId, $key, $beforeId) : null;
     }
 }

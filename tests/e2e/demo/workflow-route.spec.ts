@@ -11,6 +11,15 @@ import {
     addAssignee,
     expectCandidateLabel,
 } from '../support/workflow-assignees';
+import {
+    councilProgress,
+    currentSteps,
+    dashedEdges,
+    diagram,
+    diagramStep,
+    expectInsideDiagram,
+} from '../support/workflow-case-flow';
+import { openApplicationTab } from '../support/workflow-operations';
 
 // ワークフローのルートの深さの画面(docs の 設計/ワークフロー/ルートの深さ/画面/図と意匠とE2E.md 10 節の demo): 申請の画面の申請基準日、承認のダイアログの
 // 指定するステップ、差戻し先の制限、古い画面、申請者承認防止(送る前に知らせる)と、詳細のフロー図(既定)・図と表の切替・合議の進み具合・通らなかった枝。
@@ -137,70 +146,6 @@ async function openActionDialog(page: Page, trigger: string, title: string) {
         .click();
 
     return page.getByRole('dialog', { name: title });
-}
-
-/**
- * 申請情報の「現在のステップ」の値。
- */
-function currentSteps(page: Page) {
-    return page
-        .getByRole('region', { name: '申請情報' })
-        .locator('div')
-        .filter({ has: page.getByText('現在のステップ', { exact: true }) })
-        .locator('dd');
-}
-
-/**
- * 詳細のフロー図(既定の表示)。
- */
-function diagram(page: Page) {
-    return page.getByRole('group', { name: 'フロー図', exact: true });
-}
-
-/**
- * フロー図の中の、名前が name のステップの箱(箱の名前の行は名前だけの文字)。
- */
-function diagramStep(page: Page, name: string) {
-    return diagram(page)
-        .locator('.react-flow__node')
-        .filter({ has: page.getByText(name, { exact: true }) });
-}
-
-/**
- * フロー図の点線の辺(通らなかった枝とその続き = 画面/図と意匠とE2E.md 8 節。辺の線に破線の書式が付く)。
- */
-function dashedEdges(page: Page) {
-    return diagram(page).locator(
-        'path.react-flow__edge-path[style*="stroke-dasharray"]',
-    );
-}
-
-/**
- * ステップの箱の境界の箱が、図の面の境界の箱の内にある(はみ出して切れていない)。
- */
-async function expectInsideDiagram(page: Page, name: string) {
-    await expect
-        .poll(async () => {
-            const outer = await diagram(page).boundingBox();
-            const inner = await diagramStep(page, name).boundingBox();
-
-            return (
-                outer !== null &&
-                inner !== null &&
-                inner.x >= outer.x &&
-                inner.y >= outer.y &&
-                inner.x + inner.width <= outer.x + outer.width &&
-                inner.y + inner.height <= outer.y + outer.height
-            );
-        })
-        .toBe(true);
-}
-
-/**
- * 合議の進み具合の面(見出し = 縦配置の名前)。
- */
-function councilProgress(page: Page) {
-    return page.getByRole('region', { name: '関係部署の合議', exact: true });
 }
 
 /** 詳細の props のうち、横取りで書き換える部分(画面/案件の側の画面.md 7 節の nodeActions[].designations・pullBackNodes[].blockedReason・histories[].assignments) */
@@ -332,10 +277,10 @@ test('申請者: 申請の画面に申請基準日(既定は今日)と担当組�
     );
     await expect(page.getByText('申請しました', { exact: true })).toBeVisible();
     caseUrl = page.url();
-    const basic = page.getByRole('region', { name: '申請情報' });
+    const basic = await openApplicationTab(page);
     await expect(basic).toContainText(today.replaceAll('-', '/'));
     await expect(basic).toContainText('版 3');
-    await expect(currentSteps(page)).toHaveText('課長');
+    await expect(await currentSteps(page)).toHaveText('課長');
 
     // フロー情報の既定は図: 凡例の札 4 つ・課長が承認待ち・未到達の責任者・最後の「終了」(画面/案件の側の画面.md 7 節・画面/図と意匠とE2E.md 8 節)
     await expect(
@@ -440,9 +385,9 @@ test('上長: 承認のダイアログに指定するステップが 2 つ出て
     await submitAndExpectUrl(page, decide);
 
     await expect(page.getByText('承認しました', { exact: true })).toBeVisible();
-    await expect(currentSteps(page)).toHaveText('部長');
+    await expect(await currentSteps(page)).toHaveText('部長');
     await expect(
-        page.getByRole('region', { name: '履歴' }).getByText(/^指定: /),
+        page.getByRole('region', { name: '処理履歴' }).getByText(/^指定: /),
     ).toHaveText([
         '指定: 関係部署の合議 = 吉田 達也、山田 恵、清水 美穂',
         '指定: 責任者 = 高橋 誠',
@@ -469,9 +414,10 @@ test('0 人の指定の履歴: 承認の行の指定のうち人のいない指�
         }
     });
     await openCaseFromPending(page);
+    await openApplicationTab(page);
 
     await expect(
-        page.getByRole('region', { name: '履歴' }).getByText(/^指定: /),
+        page.getByRole('region', { name: '処理履歴' }).getByText(/^指定: /),
     ).toHaveText(['指定: 関係部署の合議 = 省略', '指定: 責任者 = 高橋 誠']);
     await page.unrouteAll({ behavior: 'wait' });
 });
@@ -519,7 +465,7 @@ test('部長: 承認すると合議の 3 人が承認待ちになり、現在の
     );
 
     await expect(page.getByText('承認しました', { exact: true })).toBeVisible();
-    await expect(currentSteps(page)).toHaveText(
+    await expect(await currentSteps(page)).toHaveText(
         '関係部署の合議(承認 1、承認 2、承認 3)',
     );
 
@@ -589,6 +535,7 @@ test('古い画面: 合議の 2 人が同じ詳細を開き、先に 1 人が承
         .click();
 
     // 再表示した詳細の合議の進み具合: 1 人(吉田 達也)が承認・必要 2 人、自分(山田 恵)の行に「自分」の札(画面/図と意匠とE2E.md 10 節)
+    await openApplicationTab(stale);
     const progress = councilProgress(stale);
     await expect(progress).toContainText('1 人が承認　必要 2 人');
     await expect(progress).toContainText(
@@ -609,14 +556,12 @@ test('古い画面: 合議の 2 人が同じ詳細を開き、先に 1 人が承
     await expect(
         stale.getByText('承認しました', { exact: true }),
     ).toBeVisible();
-    await expect(currentSteps(stale)).toHaveText('責任者');
+    await expect(await currentSteps(stale)).toHaveText('責任者');
     // 可決: 合議は完了し(残りの子 = 清水 美穂は省略)、責任者の箱が承認待ち
-    await expect(councilProgress(stale)).toContainText('2 人が承認　必要 2 人');
-    await expect(councilProgress(stale)).toContainText('合議は完了しました。');
+    await expect(progress).toContainText('2 人が承認　必要 2 人');
+    await expect(progress).toContainText('合議は完了しました。');
     await expect(
-        councilProgress(stale)
-            .getByRole('listitem')
-            .filter({ hasText: '清水 美穂' }),
+        progress.getByRole('listitem').filter({ hasText: '清水 美穂' }),
     ).toContainText('省略');
     await expect(diagramStep(stale, '責任者')).toContainText('承認待ち');
     await stale.context().close();
@@ -648,6 +593,7 @@ test('通らなかった枝: 予算 120 の見本 WF-000010 の詳細の図で�
         })
         .click();
 
+    await openApplicationTab(page);
     await expect(diagramStep(page, '課長')).toContainText('処理済み(承認)');
     await expect(diagramStep(page, '部長')).toContainText('省略');
     await expect(diagram(page)).toContainText('予算(万円) ≧ 300');
@@ -679,6 +625,7 @@ test('否認の票と通らなかった枝: 見本 WF-000011(合議が可決で�
         })
         .click();
 
+    await openApplicationTab(page);
     await expect(diagramStep(page, '吉田 達也(自分)')).toContainText(
         '処理済み(否認)',
     );

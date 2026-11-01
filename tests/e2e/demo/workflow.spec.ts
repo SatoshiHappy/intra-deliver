@@ -7,8 +7,10 @@ import {
 import { submitAndExpectUrl } from '../support/submit';
 import { sidebarHeading, sidebarLink } from '../support/app-navigation';
 import * as home from '../support/workflow-home';
+import { openApplicationTab } from '../support/workflow-operations';
+import { pane, railButton } from '../support/workflow-case-show';
 
-// ワークフローの画面(docs の 設計/ワークフロー/画面/ホームと意匠とE2E.md 9 節の demo)。デモユーザー切替で利用者を替え、初期データの案件の見本(ルートの深さ/初期データ.md 4 節)と、
+// ワークフローの画面(docs の 設計/ワークフロー/画面/ホームと意匠とE2E.md 9 節の demo)。デモユーザー切替で利用者を替え、初期データの案件の見本(設計/ワークフロー/ルートの深さ/初期データ.md 4 節)と、
 // 筋の中で申請する案件を使う。ワークフローのホームは /workflow(全体のホームは /)。画面は PC の幅だけを前提にする。筋は前の筋の結果(申請した案件・処理の後の状態)を使うので、順に走らせる
 // (申請はレコードを作り、案件が指すレコードは消せないので、E2E の DB は流すたびに作り直す = scripts/ci/front)。
 // 同じ秒の提出と更新で注意が出ないことは Feature テスト(tests/Feature/Queries/Workflow/CaseDetailQueryTest.php)で確かめる。
@@ -101,9 +103,10 @@ async function openActionDialog(page: Page, trigger: string, title: string) {
 }
 
 /**
- * 案件の詳細のフロー情報を表に切り替えて、その表を返す(既定は図 = ルートの深さ/画面/案件の側の画面.md 7 節)。
+ * 案件の詳細のフロー情報(左のタブ「申請」の面)を表に切り替えて、その表を返す(既定は図 = 設計/ワークフロー/ルートの深さ/画面/案件の側の画面.md 7 節)。
  */
 async function flowTable(page: Page) {
+    await openApplicationTab(page);
     await page
         .getByRole('group', { name: 'フロー情報の表示' })
         .getByRole('button', { name: '表', exact: true })
@@ -248,7 +251,7 @@ test('初期データの見本: 兼務の利用者のワークフローのホー
     page,
 }) => {
     await openAs(page, 'concurrent', '/workflow');
-    // u0009 = 合議の票(WF-000009 = D − 5・000012 の承認、WF-000011 = D − 12 の否認 = 案件の運用/初期データ.md 4.2)と route の承認。否認は今月の分だけ
+    // u0009 = 合議の票(WF-000009・000012 の承認、WF-000011 の否認)と route の承認。否認は今月の分だけ(設計/ワークフロー/案件の運用/初期データ.md 4.2)
     const processed = page.getByRole('table', { name: '今月の処理済み' });
     const rejected = processed.getByRole('row').filter({
         has: page.getByRole('link', {
@@ -280,7 +283,7 @@ test('初期データの見本: 上長のホームの件数カードを押すと
     );
     await expect(caseTab(page, '未処理')).toHaveText('未処理4');
 
-    // タイルの行き先は引数つき(?tab=…)でも、現在地はパスだけで比べる(表示.md 3.2)
+    // タイルの行き先は引数つき(?tab=…)でも、現在地はパスだけで比べる(設計/メニュー/表示.md 3.2)
     await page.goto('/workflow');
     await homePanel(page, '主な操作')
         .getByRole('link', { name: '承認する', exact: true })
@@ -322,7 +325,7 @@ test('初期データの見本: 申請者のワークフローのホームの進
     await expect(counterCard(page, '一時保存')).toHaveText(/^一時保存1件$/);
 
     // 経路は先頭の 3 件(更新の新しい順 = route の申請・WF-000013 = D − 1・WF-000014 = D − 2。WF-000009・000004 は出ない)。WF-000013 は部長が
-    // 保留中: ステップはノードの状態どおり(通過の分岐は処理済み、保留中は現在のステップ = 案件の運用/認可と一覧.md の 2.4 節)
+    // 保留中: ステップはノードの状態どおり(通過の分岐は処理済み、保留中は現在のステップ = 設計/ワークフロー/案件の運用/認可と一覧.md の 2.4 節)
     const routes = homePanel(page, '進行中の申請');
     await expect(routes.getByRole('list', { name: 'ステップ' })).toHaveCount(3);
     const title = 'プロジェクト計画の承認 新製品の発売計画';
@@ -555,10 +558,10 @@ test('申請者が一時保存すると一時保存のタブの件数が 1 増�
         page.getByRole('heading', { level: 1, name: CASE_NAME }),
     ).toBeVisible();
     caseUrl = page.url();
+    const flowRows = (await flowTable(page)).getByRole('row');
     await expect(page.getByRole('region', { name: '申請情報' })).toContainText(
         /WF-\d{6}/,
     );
-    const flowRows = (await flowTable(page)).getByRole('row');
     await expect(flowRows.nth(1)).toContainText('処理済み(申請)');
     await expect(flowRows.filter({ hasText: '課長の承認' })).toContainText(
         '承認待ち',
@@ -597,7 +600,7 @@ test('申請者が一時保存すると一時保存のタブの件数が 1 増�
     ).toBeDisabled();
 });
 
-test('上長が差戻し先の「申請」を選択して差戻すと、申請者の未処理に再申請待ちで表示され、再申請の差分に予算の変更前・変更後が表示される', async ({
+test('上長が差戻し先の「申請」を選択して差戻すと、申請者の未処理に再申請待ちで表示され、再申請の版の変化に予算の変更前・変更後が表示される', async ({
     page,
 }) => {
     await openAs(page, 'chief', '/workflow/cases');
@@ -631,7 +634,7 @@ test('上長が差戻し先の「申請」を選択して差戻すと、申請�
 
     await switchUser(page, USERS.chief[1], 'applicant');
     await page.goto('/workflow/cases');
-    // 未処理のタブの現在のステップは「申請」。未処理の行は操作の列を持たないので、再申請・取止めは処理済のタブの行から(案件の画面.md の 2 節)
+    // 未処理のタブの現在のステップは「申請」。未処理の行は操作の列を持たないので、再申請・取止めは処理済のタブの行から(設計/ワークフロー/案件の運用/画面/案件の画面.md の 2 節)
     const pendingRow = page.getByRole('row').filter({ hasText: CASE_NAME });
     await expect(
         pendingRow.getByRole('cell', { name: '申請', exact: true }),
@@ -693,14 +696,13 @@ test('上長が差戻し先の「申請」を選択して差戻すと、申請�
     await expect(staleWithdraw).toHaveCount(0);
     await stale.close();
 
-    await page.getByRole('button', { name: '差分を表示', exact: true }).click();
-    const diff = page.getByRole('table', { name: /^直前の申請 .* との差分$/ });
-    const budget = diff.getByRole('row').filter({ hasText: '予算(万円)' });
-    await expect(budget.getByRole('cell').nth(1)).toHaveText('100');
-    await expect(budget.getByRole('cell').nth(2)).toHaveText('150');
-    await expect(
-        page.getByRole('button', { name: '差分を非表示', exact: true }),
-    ).toBeVisible();
+    // 再申請の版の変化はサイドパネルの更新履歴(処理履歴には値の差分を出さない = 設計/業務データの入れ物/レコードの共通機能/詳細の画面/申請の詳細.md の 3 節)
+    await railButton(page, '更新履歴').click();
+    const reapplied = pane(page, '更新履歴').getByRole('listitem').first();
+    await expect(reapplied).toContainText('再申請');
+    await expect(reapplied).toContainText('予算(万円)');
+    await expect(reapplied).toContainText('100');
+    await expect(reapplied).toContainText('150');
 });
 
 test('上長・部長が承認すると完了(承認)になり、完了の後もレコードを業務データの画面で変更できず、経理部長の参照(完了)に表示される', async ({
@@ -722,9 +724,7 @@ test('上長・部長が承認すると完了(承認)になり、完了の後も
         dialog.getByRole('button', { name: '決定', exact: true }),
     );
     await expect(page.getByText('承認しました', { exact: true })).toBeVisible();
-    await expect(page.getByRole('region', { name: '申請情報' })).toContainText(
-        '完了(承認)',
-    );
+    await expect(await openApplicationTab(page)).toContainText('完了(承認)');
 
     // 完了の後も持ち主が外れない(設計/ワークフロー/業務データとの接続/申請と書き込み.md の 4 節)。開くのは参照制限のある申請書の作成者
     await switchUser(page, USERS.manager[1], 'applicant');

@@ -6,21 +6,20 @@ use App\Actions\Records\Api\CreateRecord;
 use App\Actions\Records\Api\RecordDetailRowInput;
 use App\Actions\Records\Api\RecordInput;
 use App\Actions\Records\Api\UpdateRecord;
-use App\Actions\Records\DeleteRecordField;
-use App\Enums\Records\RecordFieldType;
 use App\Models\Records\Record;
-use App\Models\Records\RecordModule;
 use App\Models\Records\RecordRevision;
 use App\Queries\Authz\Api\Requester;
 use App\Queries\Records\Api\RecordRevisionQuery;
+use App\Queries\Records\RecordRevisionDiff;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Tests\Support\BuildsRecordModules;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * 更新履歴の版の読み取りの公開の口(docs の 設計/業務データの入れ物/レコードの共通機能/更新履歴.md の 4.1 節の表): 最新の版の id と、
- * 同じレコードの版 2 つの差分。無いレコード・明細の行・無い版・別のレコードの版は 404。
+ * 更新履歴の版の読み取りの公開の口(docs の 設計/業務データの入れ物/レコードの共通機能/更新履歴.md の 4.1 節の表): 最新の版の id と、その版より後の版の有無と、
+ * 同じレコードの版 2 つの差分(内部の 1 か所 {@see RecordRevisionDiff::between()})。無いレコード・明細の行・無い版・別のレコードの版は 404。
+ * 版の写しの形は RecordRevisionViewTest。
  */
 final class RecordRevisionQueryTest extends TransactionalTestCase
 {
@@ -59,6 +58,22 @@ final class RecordRevisionQueryTest extends TransactionalTestCase
         }
     }
 
+    public function test_a_revision_after_the_given_one_exists_only_before_the_latest(): void
+    {
+        $recordId = $this->create('企画');
+        $this->update($recordId, '改訂');
+        [$first, $latest] = $this->revisionIds($recordId);
+        [$other] = $this->revisionIds($this->create('ほか'));
+
+        $this->assertSame([true, false, false], [
+            $this->revisionQuery()->hasRevisionAfter($first),
+            $this->revisionQuery()->hasRevisionAfter($latest),
+            $this->revisionQuery()->hasRevisionAfter($other),
+        ]);
+        $missing = fn () => $this->revisionQuery()->hasRevisionAfter(999_999_999);
+        $this->assertThrows($missing, ModelNotFoundException::class);
+    }
+
     public function test_diff_between_two_revisions_of_the_record(): void
     {
         $recordId = $this->create('企画');
@@ -84,111 +99,6 @@ final class RecordRevisionQueryTest extends TransactionalTestCase
         $this->assertThrows(fn () => $this->diff($revision, $other), ModelNotFoundException::class);
     }
 
-    public function test_the_diff_on_the_current_definition_drops_fields_whose_code_was_reused(): void
-    {
-        $module = RecordModule::query()->where('code', 'projects')->sole();
-        $child = RecordModule::query()->where('code', 'tasks_rows')->sole();
-        $amount = $this->field($module, 'amount', RecordFieldType::Integer);
-        $quantity = $this->field($child, 'quantity', RecordFieldType::Integer);
-        $rows = [['task_name' => '設計', 'quantity' => 1], ['task_name' => '実装', 'quantity' => 1]];
-        $newRows = array_map(fn (array $row) => new RecordDetailRowInput(null, $row), $rows);
-        $input = new RecordInput(['title' => '企画', 'amount' => 100], ['tasks' => $newRows]);
-        $recordId = app(CreateRecord::class)->execute($this->contextFor(), 'projects', $input);
-        $rowIds = Record::query()->where('parent_record_id', $recordId)->orderBy('sort_key')->pluck('id');
-        [$design, $build] = $rowIds->all();
-        $this->updateWith($recordId, new RecordInput(['title' => '改訂', 'amount' => 200], ['tasks' => [
-            new RecordDetailRowInput($design, ['task_name' => '設計', 'quantity' => 2]),
-            new RecordDetailRowInput($build, ['task_name' => '構築', 'quantity' => 2]),
-        ]]));
-        [$before, $after] = $this->revisionIds($recordId);
-        // 項目を消して、同じコードで型の違う項目を作り直す(コードは消した後に再利用できる)
-        $amount->delete();
-        $quantity->delete();
-        $this->choiceField($module, 'amount', ['high']);
-        $this->choiceField($child, 'quantity', ['many']);
-        $guest = new Requester(null, null);
-        $date = CarbonImmutable::parse(self::TODAY);
-
-        $all = $this->revisionQuery()->diffBetween($guest, $before, $after, $date, 'ja');
-        $current = $this->revisionQuery()->diffOnCurrentDefinition($guest, $before, $after, $date, 'ja');
-
-        $this->assertEqualsCanonicalizing(['title', 'amount'], array_column($all['fields'], 'code'));
-        $this->assertSame(['title'], array_column($current['fields'], 'code'));
-        $this->assertCount(2, $all['details'][0]['rows'] ?? []);
-        $this->assertSame(
-            [[$build, ['task_name'], ['task_name' => '実装'], ['task_name' => '構築']]],
-            array_map(
-                fn (array $row) => [$row['rowId'], $row['changedCodes'], $row['before'], $row['after']],
-                $current['details'][0]['rows'] ?? [],
-            ),
-        );
-    }
-
-    public function test_the_diff_on_the_current_definition_drops_a_details_field_with_no_rows_left(): void
-    {
-        $child = RecordModule::query()->where('code', 'tasks_rows')->sole();
-        $quantity = $this->field($child, 'quantity', RecordFieldType::Integer);
-        [$recordId, $rowId] = $this->recordWithOneRow(['task_name' => '設計', 'quantity' => 1]);
-        $this->updateWith($recordId, new RecordInput([], ['tasks' => [
-            new RecordDetailRowInput($rowId, ['task_name' => '設計', 'quantity' => 2]),
-        ]]));
-        $quantity->delete();
-        $this->choiceField($child, 'quantity', ['many']);
-
-        [$all, $current] = $this->bothDiffs($recordId);
-
-        $this->assertSame(['tasks'], array_column($all['details'], 'code'));
-        $this->assertSame([[], []], [$current['fields'], $current['details']]);
-    }
-
-    public function test_the_diff_on_the_current_definition_drops_a_details_field_recreated_with_the_same_code(): void
-    {
-        [$recordId, $rowId] = $this->recordWithOneRow(['task_name' => '設計']);
-        $this->updateWith($recordId, new RecordInput([], ['tasks' => [
-            new RecordDetailRowInput($rowId, ['task_name' => '基本設計']),
-        ]]));
-        app(DeleteRecordField::class)->execute('projects', 'tasks');
-        $tasks = $this->detailsField(RecordModule::query()->where('code', 'projects')->sole(), 'tasks');
-        $this->field($this->childOf($tasks), 'task_name');
-
-        [$all, $current] = $this->bothDiffs($recordId);
-
-        $this->assertSame(['tasks'], array_column($all['details'], 'code'));
-        $this->assertSame([], $current['details']);
-    }
-
-    /**
-     * 明細 tasks に行を 1 つ持つレコード。
-     *
-     * @param  array<string, mixed>  $row
-     * @return array{int, int} レコードの id と行の id
-     */
-    private function recordWithOneRow(array $row): array
-    {
-        $input = new RecordInput(['title' => '企画'], ['tasks' => [new RecordDetailRowInput(null, $row)]]);
-        $recordId = app(CreateRecord::class)->execute($this->contextFor(), 'projects', $input);
-
-        return [$recordId, Record::query()->where('parent_record_id', $recordId)->soleValue('id')];
-    }
-
-    /**
-     * 最初の版と最新の版の、全部の差分と今の定義で絞った差分。
-     *
-     * @return array{array<string, mixed>, array<string, mixed>}
-     */
-    private function bothDiffs(int $recordId): array
-    {
-        $ids = $this->revisionIds($recordId);
-        [$before, $after] = [$ids[0], $ids[count($ids) - 1]];
-        $guest = new Requester(null, null);
-        $date = CarbonImmutable::parse(self::TODAY);
-
-        return [
-            $this->revisionQuery()->diffBetween($guest, $before, $after, $date, 'ja'),
-            $this->revisionQuery()->diffOnCurrentDefinition($guest, $before, $after, $date, 'ja'),
-        ];
-    }
-
     private function revisionQuery(): RecordRevisionQuery
     {
         return app(RecordRevisionQuery::class);
@@ -201,18 +111,12 @@ final class RecordRevisionQueryTest extends TransactionalTestCase
     {
         $date = CarbonImmutable::parse(self::TODAY);
 
-        return $this->revisionQuery()->diffBetween(new Requester(null, null), $before, $after, $date, 'ja');
+        return app(RecordRevisionDiff::class)->between(new Requester(null, null), $before, $after, $date, 'ja');
     }
 
     private function create(string $title): int
     {
         return app(CreateRecord::class)->execute($this->contextFor(), 'projects', new RecordInput(['title' => $title]));
-    }
-
-    private function updateWith(int $recordId, RecordInput $input): void
-    {
-        $version = Record::query()->findOrFail($recordId)->version();
-        app(UpdateRecord::class)->execute($this->contextFor(), 'projects', $recordId, $input, $version);
     }
 
     private function update(int $recordId, string $title): void

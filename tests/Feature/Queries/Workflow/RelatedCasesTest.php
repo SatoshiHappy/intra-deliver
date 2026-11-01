@@ -3,9 +3,13 @@
 namespace Tests\Feature\Queries\Workflow;
 
 use App\Enums\Records\RecordModuleAction;
+use App\Enums\Workflow\WorkflowAction;
+use App\Enums\Workflow\WorkflowCaseState;
+use App\Enums\Workflow\WorkflowCompletionReason;
 use App\Models\Master\User;
 use App\Models\Records\Record;
 use App\Models\Workflow\WorkflowCase;
+use App\Models\Workflow\WorkflowCaseHistory;
 use App\Models\Workflow\WorkflowFlow;
 use Illuminate\Support\Facades\DB;
 use Tests\Support\BuildsRelatedCases;
@@ -68,11 +72,19 @@ final class RelatedCasesTest extends TransactionalTestCase
     }
 
     /**
-     * recordAccess が偽(申請書の業務モジュールの read が無い): 申請書のレコードからたどる群は出ず、申請対象からたどる群は出る
-     * (R からの群で出ていた issue の案件は、T の参照元の群に出る)。
+     * recordAccess が偽(申請書の業務モジュールの read が無く、見る案件が完了して申請の経路でも閲覧できない): 申請書のレコードからたどる群は出ず、
+     * 申請対象からたどる群は出る(R からの群で出ていた issue の案件は、T の参照元の群に出る)。T は申請の版の写しの値から引く。
      */
     public function test_without_the_record_access_only_the_groups_from_the_application_target_are_shown(): void
     {
+        $apply = WorkflowCaseHistory::query()->where('workflow_case_id', $this->cases['viewed']->id)
+            ->where('action', WorkflowAction::Apply)->sole();
+        $this->pointAtSubmittedRevision($apply, $this->records['form'], [], []);
+        $this->cases['viewed']->update([
+            'state' => WorkflowCaseState::Completed,
+            'completion_reason' => WorkflowCompletionReason::Approved,
+            'completed_at' => now(),
+        ]);
         $this->denyRead('m_plan');
 
         $this->assertSame([
@@ -144,7 +156,7 @@ final class RelatedCasesTest extends TransactionalTestCase
     }
 
     /**
-     * 同じ業務レコードを申請対象にして 2 回申請すると、申請対象を閲覧できる人には互いが出て、閲覧できない人には出ない。recordAccess が偽でも、
+     * 同じ業務レコードを申請対象にして 2 回申請すると、申請対象を閲覧できる人には互いが出て、閲覧できない人には出ない。申請書の業務モジュールの read が無くても、
      * 申請対象を閲覧できれば申請対象からたどる群に出る。
      */
     public function test_two_applications_for_the_same_record_show_each_other_to_who_can_view_the_record(): void

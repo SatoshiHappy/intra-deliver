@@ -5,6 +5,7 @@ import { submitAndExpectUrl } from '../support/submit';
 import { openAdminMenu, sidebarHeading } from '../support/app-navigation';
 import {
     fillPlanApplication,
+    openApplicationTab,
     openAs,
     submitApplication,
 } from '../support/workflow-operations';
@@ -28,6 +29,7 @@ let caseUrl = '';
  */
 async function openOperationSurface(page: Page): Promise<Locator> {
     await openAsAdministrator(page, new URL(caseUrl).pathname);
+    await openApplicationTab(page);
     const surface = page.getByRole('region', { name: '申請操作', exact: true });
     // 面の説明は見出しの横の「?」(フォーカスで開く Tooltip。docs の 設計/画面の意匠/README.md 方針 9(d))。見たら閉じる
     await surface
@@ -172,7 +174,8 @@ test('システム管理者: 詳細の申請操作の面から処理担当者を
     await expect(
         page.getByText('処理担当者を変更しました', { exact: true }),
     ).toBeVisible();
-    const history = page.getByRole('region', { name: '履歴' });
+    await openApplicationTab(page);
+    const history = page.getByRole('region', { name: '処理履歴' });
     await expect(history).toContainText('処理担当者の変更');
     await expect(
         history.getByText('承認者: 山田 恵', { exact: true }),
@@ -210,7 +213,8 @@ test('システム管理者: ステップの移動(戻る)で申請のステッ�
     await expect(
         page.getByText('ステップを移動しました', { exact: true }),
     ).toBeVisible();
-    const history = page.getByRole('region', { name: '履歴' });
+    await openApplicationTab(page);
+    const history = page.getByRole('region', { name: '処理履歴' });
     await expect(history).toContainText('ステップの移動(戻る)');
     await expect(
         history.getByText('戻り先: 申請', { exact: true }),

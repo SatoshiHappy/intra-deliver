@@ -12,13 +12,21 @@ type Props = {
     route: { module: string; record: number };
     loading: boolean;
     onMore: (beforeId: number) => void;
+    /** 欄の先頭の 1 行(呼び手が渡す。無ければ出さない) */
+    notice?: string;
 };
 
 /**
  * サイドパネルの「コメント」の欄(docs の 設計/業務データの入れ物/レコードの共通機能/コメント.md の 7 節): 上に入力(ゲストは入力の代わりに 1 行)、
  * 下に一覧。ルートの名前はここ(呼び手)が持ち、部品へ URL で渡す。自分の分の削除は業務の経路、ほかの人の分は管理の経路。
  */
-export function RecordCommentsPane({ content, route, loading, onMore }: Props) {
+export function RecordCommentsPane({
+    content,
+    route,
+    loading,
+    onMore,
+    notice,
+}: Props) {
     const deleteActionOf = (row: RecordCommentRow) =>
         row.mine
             ? comments.destroy({ ...route, comment: row.id })
@@ -26,6 +34,9 @@ export function RecordCommentsPane({ content, route, loading, onMore }: Props) {
 
     return (
         <div className="grid gap-4">
+            {notice !== undefined && (
+                <p className="text-xs text-muted-foreground">{notice}</p>
+            )}
             {content.canPost ? (
                 <RecordCommentForm
                     storeUrl={comments.store(route).url}

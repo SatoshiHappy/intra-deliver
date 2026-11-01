@@ -7,7 +7,7 @@ use App\Enums\Records\RecordFieldType;
 /**
  * 更新履歴の版の写し 2 つ(snapshot と labels)を比べる 1 か所(規則 = docs の
  * 設計/業務データの入れ物/レコードの共通機能/更新履歴.md の 5.2 節)。版を作らない判定(同じ文書の 1 節)と差分の表示
- * ({@see RecordRevisionDiff})が同じ規則で決まるように分けた。形の違う写しの値は例外にせず無い値として読む。
+ * ({@see RecordRevisionDiff})が同じ規則で決まるように分けた。版 1 つの写しの値({@see RecordRevisionViews})も同じ読み方で読む。形の違う写しの値は例外にせず無い値として読む。
  *
  * @phpstan-import-type ReferenceTarget from RecordValueReader
  * @phpstan-import-type FieldEntry from RecordRevisionLabels
@@ -70,7 +70,7 @@ class RecordRevisionComparison
      * @param  list<FieldEntry>  $entries  通常・参照の項目
      * @return RawRow
      */
-    private function rawRow(array $entries, mixed $part): array
+    public function rawRow(array $entries, mixed $part): array
     {
         $values = $this->mapIn($part, 'values');
         $references = $this->mapIn($part, 'references');
@@ -203,7 +203,7 @@ class RecordRevisionComparison
      * @param  list<FieldEntry>  $children
      * @return array<int, RawRow>
      */
-    private function rows(array $children, mixed $rows): array
+    public function rows(array $children, mixed $rows): array
     {
         $raw = [];
 

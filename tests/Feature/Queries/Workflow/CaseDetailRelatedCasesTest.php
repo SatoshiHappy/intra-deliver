@@ -5,7 +5,8 @@ namespace Tests\Feature\Queries\Workflow;
 use App\Enums\Records\RecordModuleAction;
 use App\Models\Master\User;
 use App\Models\Workflow\WorkflowCase;
-use App\Queries\Workflow\CaseDetailQuery;
+use App\Queries\Workflow\CaseShowProps;
+use App\Queries\Workflow\CaseShowSelection;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Facades\DB;
@@ -88,7 +89,7 @@ final class CaseDetailRelatedCasesTest extends TransactionalTestCase
      */
     private function show(User $viewer): array
     {
-        return app(CaseDetailQuery::class)->show($this->contextFor($viewer->id), $this->viewed->id);
+        return app(CaseShowProps::class)->of($this->contextFor($viewer->id), $this->viewed->id, new CaseShowSelection);
     }
 
     /**

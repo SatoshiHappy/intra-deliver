@@ -143,11 +143,29 @@ export async function submitApplication(page: Page, form: Locator) {
 }
 
 /**
- * 申請の詳細の申請情報の 1 項目の値(項目名の dt の次の dd)。
+ * 申請の詳細で左のタブ「申請」を開き、面「申請情報」を返す(申請情報・フロー情報・処理履歴・確認・つながる申請・申請操作の面はこのタブの中。
+ * 既定は詳細タブ)。開いていれば何もしない。処理や再申請の後は詳細の URL に戻って既定の詳細タブになるので、面を引く前にもう一度呼ぶ。
  */
-export function basicItem(page: Page, label: string) {
-    return page
-        .getByRole('region', { name: '申請情報' })
+export async function openApplicationTab(page: Page): Promise<Locator> {
+    const tab = page.getByRole('tab', { name: '申請', exact: true });
+    const basic = page.getByRole('region', { name: '申請情報' });
+
+    await expect(tab).toBeVisible();
+    if ((await tab.getAttribute('aria-selected')) !== 'true') {
+        await tab.click();
+    }
+    await expect(basic).toBeVisible();
+
+    return basic;
+}
+
+/**
+ * 申請の詳細の申請情報の 1 項目の値(項目名の dt の次の dd)。左のタブ「申請」を開いてから引く。
+ */
+export async function basicItem(page: Page, label: string) {
+    const basic = await openApplicationTab(page);
+
+    return basic
         .getByText(label, { exact: true })
         .locator('xpath=following-sibling::dd');
 }

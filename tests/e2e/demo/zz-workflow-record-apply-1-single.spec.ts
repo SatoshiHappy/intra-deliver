@@ -1,5 +1,10 @@
 import { expect, test } from '../support/test';
-import { switchUser, openAs, basicItem } from '../support/workflow-operations';
+import {
+    switchUser,
+    openAs,
+    basicItem,
+    openApplicationTab,
+} from '../support/workflow-operations';
 import {
     APPLY_FORM,
     CHIEF,
@@ -58,7 +63,7 @@ test('詳細の「申請する」→ 申請の画面(見出しの 1 行・値を
 
     await editAndApply(page, recordUrl, name);
     caseUrl = page.url();
-    await expect(basicItem(page, '申請者')).toHaveText('佐々木 陽太');
+    await expect(await basicItem(page, '申請者')).toHaveText('佐々木 陽太');
 });
 
 test('申請したレコードは、直した値が入り、編集・申請する・削除が押せない形で理由の 1 行が出る', async ({
@@ -79,6 +84,7 @@ test('承認を進めて完了になっても、申請した申請書のレコ�
     await switchUser(page, CHIEF, 'manager');
     await page.goto(caseUrl);
     await approve(page);
+    await openApplicationTab(page);
     await expect(page.getByRole('region', { name: '申請情報' })).toContainText(
         '完了(承認)',
     );

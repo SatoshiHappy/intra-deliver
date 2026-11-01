@@ -6,8 +6,10 @@ import {
     INVENTORY_BUG,
     NEW_PRODUCT,
     SECOND_QUARTER,
+    basicItem,
     caseRow,
     daysSince,
+    openApplicationTab,
     openAs,
 } from '../support/workflow-operations';
 
@@ -87,16 +89,6 @@ async function searchUsers(page: Page, field: Locator, word: string) {
 }
 
 /**
- * 申請情報の 1 項目の値(項目名の dt の次の dd)。
- */
-function basicItem(page: Page, label: string) {
-    return page
-        .getByRole('region', { name: '申請情報' })
-        .getByText(label, { exact: true })
-        .locator('xpath=following-sibling::dd');
-}
-
-/**
  * フロー情報を表に切り替えて、その表の行を返す。
  */
 async function flowRows(page: Page) {
@@ -117,13 +109,15 @@ test('代理元として開いた詳細: u0009 が保留中の申請を開くと
     await expect(
         page.getByText('高橋 誠さんの代理として処理します。', { exact: true }),
     ).toBeVisible();
-    await expect(basicItem(page, '状態')).toHaveText('保留中');
-    await expect(basicItem(page, '現在のステップ')).toContainText('部長');
-    await expect(basicItem(page, '期限')).toHaveText(
+    await expect(await basicItem(page, '状態')).toHaveText('保留中');
+    await expect(await basicItem(page, '現在のステップ')).toContainText('部長');
+    await expect(await basicItem(page, '期限')).toHaveText(
         new RegExp(`^${shownDate('2026-10-11')}\\s*期限超過$`),
     );
-    await expect(basicItem(page, '到達日')).toHaveText(shownDate('2026-10-06'));
-    await expect(basicItem(page, '経過日数')).toHaveText(
+    await expect(await basicItem(page, '到達日')).toHaveText(
+        shownDate('2026-10-06'),
+    );
+    await expect(await basicItem(page, '経過日数')).toHaveText(
         `${daysSince('2026-10-06')} 日`,
     );
 
@@ -173,7 +167,7 @@ test('保留と保留解除: u0009 が代理元として保留を解除しても
     await expect(
         page.getByText('保留を解除しました', { exact: true }),
     ).toBeVisible();
-    await expect(basicItem(page, '状態')).toHaveText('承認待ち');
+    await expect(await basicItem(page, '状態')).toHaveText('承認待ち');
     await expect(
         main.getByRole('button', { name: '保留解除', exact: true }),
     ).toHaveCount(0);
@@ -185,10 +179,10 @@ test('保留と保留解除: u0009 が代理元として保留を解除しても
     );
     await decide(page, hold, detailUrl);
     await expect(page.getByText('保留しました', { exact: true })).toBeVisible();
-    await expect(basicItem(page, '状態')).toHaveText('保留中');
+    await expect(await basicItem(page, '状態')).toHaveText('保留中');
     await expect(
         page
-            .getByRole('region', { name: '履歴' })
+            .getByRole('region', { name: '処理履歴' })
             .getByText(PROXY_ACTOR, { exact: true }),
     ).toHaveCount(3);
 });
@@ -206,9 +200,10 @@ test('代理元としての承認: u0009 が高橋 誠さんの代理として�
     ).toHaveCount(0);
     await decide(page, approve, detailUrl);
     await expect(page.getByText('承認しました', { exact: true })).toBeVisible();
+    await openApplicationTab(page);
 
     const latest = page
-        .getByRole('region', { name: '履歴' })
+        .getByRole('region', { name: '処理履歴' })
         .getByRole('listitem')
         .last();
     await expect(latest).toContainText('部長');
@@ -253,9 +248,10 @@ test('担当変更: u0002 が課長のステップを松本 さくらへ変更�
     await expect(
         page.getByText('担当を変更しました', { exact: true }),
     ).toBeVisible();
+    await openApplicationTab(page);
     await expect(
         page
-            .getByRole('region', { name: '履歴' })
+            .getByRole('region', { name: '処理履歴' })
             .getByText('担当変更: 松本 さくら', { exact: true }),
     ).toBeVisible();
     await page.goto('/workflow/cases');
@@ -268,6 +264,7 @@ test('確認の面: u0010 が未確認の申請の詳細で確認すると、ト
     await openAs(page, 'accounting', '/workflow/cases?tab=unconfirmed');
     await openCase(page, SECOND_QUARTER, '未確認の申請');
     const detailUrl = page.url();
+    await openApplicationTab(page);
     const panel = page.getByRole('region', { name: '確認', exact: true });
     // 面の説明は見出しの横の「?」(フォーカスで開く Tooltip。docs の 設計/画面の意匠/README.md 方針 9(d))
     await panel
@@ -292,6 +289,7 @@ test('確認の面: u0010 が未確認の申請の詳細で確認すると、ト
         detailUrl,
     );
     await expect(page.getByText('確認しました', { exact: true })).toBeVisible();
+    await openApplicationTab(page);
     await expect(rows.filter({ hasText: '課長' })).toContainText('確認済');
     await page.goto('/workflow/cases?tab=confirmed');
     await expect(caseRow(page, '確認済の申請', SECOND_QUARTER)).toHaveCount(1);

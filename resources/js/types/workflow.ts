@@ -1,5 +1,4 @@
 import type {
-    RecordDetail,
     RecordFieldValue,
     RecordHeadingGroup,
     RecordModuleDefinition,
@@ -7,19 +6,9 @@ import type {
 import type { RouteStepState } from './status';
 import type { WorkflowApplicant } from './workflowApplicant';
 import type { WorkflowApplyTarget } from './workflowApplyTarget';
-import type {
-    WorkflowApplyAttachment,
-    WorkflowAttachmentLimits,
-} from './workflowAttachments';
-import type {
-    WorkflowCaseOperationPanel,
-    WorkflowCaseCan,
-} from './workflowOperations';
+import type { WorkflowApplyAttachment } from './workflowAttachments';
 import type {
     WorkflowActorView,
-    WorkflowCaseRow,
-    WorkflowCurrentSummary,
-    WorkflowDeadline,
     WorkflowLinkedPerson,
     WorkflowPerson,
     WorkflowPersonLinks,
@@ -29,7 +18,6 @@ import type {
 } from './workflowRows';
 import type {
     WorkflowAction,
-    WorkflowCompletionReason,
     WorkflowConfirmationProgress,
     WorkflowNodeKind,
     WorkflowNodeState,
@@ -88,25 +76,6 @@ export type WorkflowApplyProps = {
     applicant: number | null; // 既定の申請者(代理元。自分なら null。定義・next・申請基準日の範囲はこの人で引いた値)
     links: WorkflowPersonLinks; // 名前の札の「…」のリンク
 } & WorkflowApplyTarget;
-
-/** 再申請の差分(再申請の行だけ。設計/ワークフロー/画面/申請と案件.md 5 節) */
-export type WorkflowDiff = {
-    fields: {
-        code: string;
-        before: RecordFieldValue;
-        after: RecordFieldValue;
-    }[];
-    details: {
-        code: string;
-        rows: {
-            change: 'added' | 'removed' | 'changed';
-            rowId: number;
-            before: Record<string, RecordFieldValue> | null;
-            after: Record<string, RecordFieldValue> | null;
-            changedCodes: string[];
-        }[];
-    }[];
-};
 
 /** 図の 1 ノード(定義と案件で共通。ルートの深さ/画面/README.md 1.2)。並びはサーバーの写した並び(展開の行は親の直後に番号の順) */
 export type WorkflowDiagramNode = {
@@ -174,8 +143,6 @@ export type WorkflowCaseHistory = WorkflowActorView & {
     at: string;
     comment: string | null;
     sendBackNodeName: string | null; // 差戻しの行だけ(戻るの戻り先は moveTargetName)
-    diff: WorkflowDiff | null; // 再申請の行だけ
-    diffBaseAt: string | null; // 比べた直前の申請・再申請の日時
     assignments: { nodeName: string; people: WorkflowPerson[] }[]; // 承認の行の指定(指定されたステップごと。写した並び。people が空 = 0 人を指定 = 省略)
     users: WorkflowPerson[]; // 担当変更先・変更後の処理担当者(処理担当者の変更・再展開)・指定の変更の人(並びの順)
     moveTargetName: string | null; // ステップの移動(戻る)の戻り先
@@ -213,7 +180,7 @@ export type WorkflowNodeOperation =
     | 'transfer';
 
 /** 案件の詳細のステップごとの操作の可否(ルートの深さ/画面/案件の側の画面.md 7 節、案件の運用/画面/案件の画面.md の 4 節) */
-type WorkflowNodeAction = {
+export type WorkflowNodeAction = {
     nodeId: number;
     name: string;
     approve: boolean;
@@ -248,46 +215,4 @@ export type WorkflowCaseConfirmation = {
         status: WorkflowConfirmationProgress;
         confirmedAt: string | null; // 最新の確認の日時
     }[];
-};
-
-/** 案件の詳細のページ Workflow/CaseShow の props(設計/ワークフロー/画面/申請と案件.md 5 節) */
-export type WorkflowCaseShowProps = {
-    case: {
-        id: number;
-        number: string;
-        name: string;
-        state: 'active' | 'completed';
-        completionReason: WorkflowCompletionReason | null;
-        flow: { code: string; name: string };
-        applicant: WorkflowPerson;
-        department: WorkflowPerson | null;
-        appliedAt: string;
-        completedAt: string | null;
-        baseDate: string; // 申請基準日(YYYY-MM-DD)
-        version: number; // 版の番号
-        currentSummary: WorkflowCurrentSummary | null;
-        deadline: WorkflowDeadline | null; // 未完了だけ(対象 = 現在のステップの全部)
-        revision: number;
-    };
-    content: {
-        module: RecordModuleDefinition;
-        record: RecordDetail;
-        updatedAfterSubmission: boolean;
-    };
-    nodes: WorkflowCaseDiagramNode[];
-    edges: WorkflowDiagramEdge[];
-    councils: WorkflowCouncil[];
-    histories: WorkflowCaseHistory[];
-    related: { heading: string; cases: WorkflowCaseRow[] }[]; // つながる申請の群(並び・見出し = 業務データとの接続の 6 節。空の群は入れない)
-    can: WorkflowCaseCan;
-    operation: WorkflowCaseOperationPanel | null; // 申請操作の面(can.operate が偽なら null)
-    nodeActions: WorkflowNodeAction[]; // 自分が処理対象者の現在のステップごと
-    pullBackNodes: WorkflowCasePullBackNode[]; // 自分か代理元として引戻せるステップ(写した並び。未完了だけ)
-    casePrincipal: number | null; // 再申請・取止めで送る処理者(自分が申請者なら null、ほかは申請者)
-    proxyNote: string | null; // 代理の 1 行(自分が代理元としてだけ処理できるとき)
-    confirmations: WorkflowCaseConfirmation[]; // 確認の面
-    commentMaxLength: number; // コメントの文字数の上限(処理のダイアログ)
-    canAttachOnWithdraw: boolean; // 取止めで添付を追加できる
-    attachmentLimits: WorkflowAttachmentLimits | null; // どの入口も添付を受けなければ null
-    links: WorkflowPersonLinks; // 名前の札の「…」のリンク
 };

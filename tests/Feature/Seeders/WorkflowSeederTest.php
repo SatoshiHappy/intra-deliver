@@ -20,8 +20,9 @@ use App\Models\Workflow\WorkflowFlowVersion;
 use App\Models\Workflow\WorkflowRouteEdge;
 use App\Models\Workflow\WorkflowRouteNode;
 use App\Models\Workflow\WorkflowRouteSendBack;
-use App\Queries\Workflow\CaseDetailQuery;
 use App\Queries\Workflow\CaseNumbers;
+use App\Queries\Workflow\CaseShowProps;
+use App\Queries\Workflow\CaseShowSelection;
 use App\Support\AccessContext;
 use Carbon\CarbonImmutable;
 use Database\Seeders\WorkflowSeeder;
@@ -30,13 +31,11 @@ use Tests\Support\TransactionalTestCase;
 
 /**
  * ワークフローの初期データ(docs の 設計/ワークフロー/ルートの深さ/初期データ.md 7 節の検査。見せるもの = 設計/ワークフロー/初期データ.md 4 節を追従させたもの): 定義の件数・版の期間と状態・
- * 一本道 A の版の中身、案件の見本 19 の状態・現在のノード・履歴、再申請の差分、つながる申請、未完了の案件のレコードの持ち主。
+ * 一本道 A の版の中身、案件の見本 19 の状態・現在のノード・履歴、再申請の版の変化、つながる申請、未完了の案件のレコードの持ち主。
  * ルートのリソースは {@see WorkflowSeederRouteResourcesTest}、版 3(分岐 B)の中身と足した見本の細部は {@see WorkflowSeederRouteDepthTest}、案件の運用の見本は {@see WorkflowSeederOperationSamplesTest}、
  * 利用者ごとのタブは {@see WorkflowSeederTabsTest}、申請書の業務モジュールは {@see WorkflowSeederApplicationModulesTest}、
  * 見本の申請対象(つながる申請の前提 = 課題が指すプロジェクトを含む)は {@see WorkflowSeederApplicationTargetsTest}。
  * 初期データは DatabaseSeeder が 1 回入れたもの(流し直さない)。
- *
- * @phpstan-import-type Detail from CaseDetailQuery
  */
 final class WorkflowSeederTest extends TransactionalTestCase
 {
@@ -140,17 +139,23 @@ final class WorkflowSeederTest extends TransactionalTestCase
     }
 
     /**
-     * WF-000005 の再申請の履歴の差分は予算と終了日(モックの例)。
+     * WF-000005 の再申請の版の変化は予算と終了日(モックの例。申請の詳細のサイドパネルの更新履歴)。
      */
     public function test_the_reapplication_of_the_fifth_case_changes_the_budget_and_the_end_date(): void
     {
-        $histories = $this->show('u0001', 'WF-000005')['histories'];
-        $reapplied = array_values(array_filter($histories, fn (array $history) => $history['action'] === 'reapply'));
+        $selection = new CaseShowSelection(true, ['panelContent'], panel: 'revisions');
+        $props = app(CaseShowProps::class)->of($this->contextOf('u0001'), $this->caseOf('WF-000005')->id, $selection);
+        $rows = $props['panelContent']['rows'] ?? [];
+        $isReapply = fn (array $row) => ($row['origin']['operation'] ?? null) === '再申請';
+        $reapplied = array_values(array_filter($rows, $isReapply));
 
         $this->assertCount(1, $reapplied);
         $this->assertSame(
             [['end_date', '2027-03-31', '2027-04-30'], ['budget', 300, 350]],
-            array_map(fn (array $field) => [$field['code'], $field['before'], $field['after']], $reapplied[0]['diff']['fields'] ?? []),
+            array_map(
+                fn (array $field) => [$field['code'], $field['before'], $field['after']],
+                $reapplied[0]['changes']['fields'] ?? [],
+            ),
         );
     }
 
@@ -242,24 +247,18 @@ final class WorkflowSeederTest extends TransactionalTestCase
     }
 
     /**
-     * @return Detail
-     */
-    private function show(string $userCode, string $number): array
-    {
-        return app(CaseDetailQuery::class)->show($this->contextOf($userCode), $this->caseOf($number)->id);
-    }
-
-    /**
      * 詳細の related を (群の見出し, 申請番号の並び) の配列にしたもの。
      *
      * @return list<array{string, list<string|null>}>
      */
     private function relatedOf(string $userCode, string $number): array
     {
-        return array_map(
-            fn (array $group) => [$group['heading'], array_column($group['cases'], 'number')],
-            $this->show($userCode, $number)['related'],
-        );
+        $selection = new CaseShowSelection(true, ['related']);
+        $props = app(CaseShowProps::class)->of($this->contextOf($userCode), $this->caseOf($number)->id, $selection);
+        /** @var list<array{heading: string, cases: list<array{number: string|null}>}> $related */
+        $related = $props['related'];
+
+        return array_map(fn (array $group) => [$group['heading'], array_column($group['cases'], 'number')], $related);
     }
 
     private function caseOf(string $number): WorkflowCase

@@ -133,7 +133,7 @@ const PROGRESS_ITEMS: Record<
 };
 
 /**
- * 進み具合: 現在のステップの後に、未完了は期限・到達日・経過日数、完了は完了日。
+ * 進み具合(未完了と完了で出す項目が違う。並びと出し分けは {@link progressItemKeysOf})。
  */
 function ProgressItems({ data }: { data: CaseData }) {
     return (
@@ -148,14 +148,13 @@ function ProgressItems({ data }: { data: CaseData }) {
 }
 
 /**
- * 申請情報の面(docs の 設計/ワークフロー/案件の運用/画面/案件の画面.md の 4 節): 状態の札(現在のステップがすべて保留中なら「保留中」)と、
- * 現在のステップの後に、未完了は期限・到達日・経過日数、完了は完了日。
+ * 申請情報の面(正本 = 設計/ワークフロー/案件の運用/画面/案件の画面.md の 4 節)。
  */
 export function CaseBasicInfo({ data }: { data: CaseData }) {
     return (
         <section
             aria-labelledby="case-basic-heading"
-            className="flex flex-col gap-4 rounded-xl border bg-card p-5 text-card-foreground"
+            className="flex flex-col gap-4"
         >
             <h2 id="case-basic-heading" className="text-[15px] font-semibold">
                 申請情報

@@ -22,7 +22,8 @@ use LogicException;
 
 /**
  * 会議の音声から文字起こしを依頼し、会議と実行の対応(段 = 文字起こし)を書く 1 か所(作成と再作成が呼ぶ。docs の 設計/業務ツール/会議/処理.md の 3.2・3.7・3.9)。
- * 依頼の前に、依頼者が会議を閲覧できることと、音声が会議の今の添付であることを確かめる(AI の公開の口の「呼び手が守ること」の (1) =
+ * 依頼の前に、依頼者が会議を閲覧できること(業務モジュールの read と行の判定。申請の経路を含めない)と、音声が会議の今の添付であることを確かめる
+ * (AI の公開の口の「呼び手が守ること」の (1) =
  * 設計/AI/公開の口.md の 3 節)。続けて出す議事録の区分を鍵を取らずに先に確かめ、受けられなければ 422 で断る。呼び手のトランザクションの中で呼ぶ。
  */
 class MeetingAudioRequest
@@ -57,7 +58,7 @@ class MeetingAudioRequest
     ): int {
         $requester = Requester::fromAccessContext($context);
 
-        if (! $this->access->canView($requester, Meeting::CODE, $recordId, $context->date)) {
+        if (! $this->access->canViewInModule($requester, Meeting::CODE, $recordId, $context->date)) {
             throw new ModelNotFoundException("会議 {$recordId} が無いか、閲覧できない");
         }
 

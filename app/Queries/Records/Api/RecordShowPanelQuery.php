@@ -17,7 +17,7 @@ use LogicException;
 /**
  * レコードの詳細と申請の詳細が共有するサイドパネルの読み取り(docs の 設計/業務データの入れ物/レコードの共通機能/詳細の画面/README.md の
  * 2 節・6.2 節): 帯の項目と業務ツールの節の名札と件数、開いた欄の中身。どちらも閲覧の判定({@see RecordViewAccess})が偽なら null
- * (明細の行の id・ほかの業務モジュールのレコードも偽)。ダウンロード・プレビューの URL は持たない(ルートの名前は入口が持つ)。
+ * (明細の行の id・ほかの業務モジュールのレコードも偽)。
  *
  * @phpstan-import-type AttachmentItem from RecordAttachmentQuery
  * @phpstan-import-type ReferenceValue from RecordValueReader
@@ -30,7 +30,8 @@ use LogicException;
  * @phpstan-type PanelItem array{key: string, name: string, shortName: string, count: int|null,
  *     kind: 'attachments'|'comments'|'revisions'|'section'}
  * @phpstan-type AttachmentRow array{id: int, uploadId: int, name: string, size: int, mime: string, previewable: bool,
- *     attachedBy: ReferenceValue|null, attachedAt: string|null, purgeDueOn: string|null}
+ *     attachedBy: ReferenceValue|null, attachedAt: string|null, purgeDueOn: string|null,
+ *     downloadUrl: string|null, previewUrl: string|null}
  * @phpstan-type AttachmentsContent array{kind: 'attachments', rows: list<AttachmentRow>, hasMore: bool,
  *     notice: string|null, guide: string}
  * @phpstan-type RevisionsContent array{kind: 'revisions', rows: list<RevisionRow>, hasMore: bool}
@@ -135,14 +136,7 @@ class RecordShowPanelQuery
         return match ($key) {
             'attachments' => $this->attachmentsContent($context, $moduleCode, $recordId, $beforeId),
             'comments' => $this->comments->content($context, $recordId, self::PAGE_SIZE, $beforeId),
-            'revisions' => ['kind' => 'revisions', ...$this->revisions->page(
-                Requester::fromAccessContext($context),
-                $recordId,
-                self::PAGE_SIZE,
-                $beforeId,
-                $context->date,
-                $context->localeCode,
-            )],
+            'revisions' => $this->revisionsContent($context, $moduleCode, $recordId, $beforeId),
             default => $this->sectionContent($context, $moduleCode, $recordId, $key),
         };
     }
@@ -165,10 +159,11 @@ class RecordShowPanelQuery
         $page = $this->attachments->forRecord($recordId, self::PAGE_SIZE, $beforeId);
         $userIds = array_values(array_unique(array_filter(array_column($page['items'], 'userId'), 'is_int')));
         $users = $this->reader->users($userIds, $context->date, $context->localeCode);
+        $route = ['module' => $moduleCode, 'record' => $recordId];
 
         return [
             'kind' => 'attachments',
-            'rows' => array_map(fn (array $item) => $this->attachmentRow($item, $users), $page['items']),
+            'rows' => array_map(fn (array $item) => $this->attachmentRow($item, $users, $route), $page['items']),
             'hasMore' => $page['hasMore'],
             'notice' => match (true) {
                 ! $enabled => self::UNUSED_NOTICE,
@@ -180,16 +175,72 @@ class RecordShowPanelQuery
     }
 
     /**
+     * 添付の行。期限で実体を消した行はダウンロードできない(設計/業務データの入れ物/レコードの共通機能/添付ファイル/レコードの添付.md の 9 節)。
+     *
      * @param  AttachmentItem  $item
      * @param  array<int, ReferenceValue>  $users
+     * @param  array{module: string, record: int}  $route
      * @return AttachmentRow
      */
-    private function attachmentRow(array $item, array $users): array
+    private function attachmentRow(array $item, array $users, array $route): array
     {
         $userId = $item['userId'];
         unset($item['userId']);
+        $parameters = [...$route, 'attachment' => $item['id']];
 
-        return [...$item, 'attachedBy' => $userId === null ? null : $users[$userId] ?? null];
+        return [
+            ...$item,
+            'attachedBy' => $userId === null ? null : $users[$userId] ?? null,
+            'downloadUrl' => $item['purgeDueOn'] === null ? route('records.data.attachments.show', $parameters) : null,
+            'previewUrl' => $item['previewable'] ? route('records.data.attachments.preview', $parameters) : null,
+        ];
+    }
+
+    /**
+     * 更新履歴の欄。添付の削除の行から外した時点のファイルを開く URL を足す(開けない行は uploadId が null =
+     * 設計/業務データの入れ物/レコードの共通機能/更新履歴.md の 5.2 節)。
+     *
+     * @return RevisionsContent
+     */
+    private function revisionsContent(AccessContext $context, string $moduleCode, int $recordId, ?int $beforeId): array
+    {
+        $requester = Requester::fromAccessContext($context);
+        $page = $this->revisions
+            ->page($requester, $recordId, self::PAGE_SIZE, $beforeId, $context->date, $context->localeCode);
+        $route = ['module' => $moduleCode, 'record' => $recordId];
+
+        return [
+            'kind' => 'revisions',
+            'rows' => array_map(fn (array $row) => self::withRevisionFileLinks($row, $route), $page['rows']),
+            'hasMore' => $page['hasMore'],
+        ];
+    }
+
+    /**
+     * @param  RevisionRow  $row
+     * @param  array{module: string, record: int}  $route
+     * @return RevisionRow
+     */
+    private static function withRevisionFileLinks(array $row, array $route): array
+    {
+        if ($row['changes'] === null) {
+            return $row;
+        }
+
+        $row['changes']['attachments'] = array_map(function (array $change) use ($route) {
+            $parameters = [...$route, 'upload' => $change['uploadId']];
+            $opens = $change['uploadId'] !== null;
+
+            return [
+                ...$change,
+                'downloadUrl' => $opens ? route('records.data.revision-files.show', $parameters) : null,
+                'previewUrl' => $opens && $change['previewable']
+                    ? route('records.data.revision-files.preview', $parameters)
+                    : null,
+            ];
+        }, $row['changes']['attachments']);
+
+        return $row;
     }
 
     /**

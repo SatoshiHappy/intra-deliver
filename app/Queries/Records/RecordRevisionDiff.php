@@ -3,14 +3,16 @@
 namespace App\Queries\Records;
 
 use App\Enums\Records\RecordFieldType;
+use App\Models\Records\RecordRevision;
 use App\Queries\Authz\Api\Requester;
-use App\Queries\Records\Api\RecordRevisionQuery;
 use DateTimeInterface;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 /**
  * 更新履歴の版の写し 2 つの差分を画面の値で返す 1 か所(docs の 設計/業務データの入れ物/レコードの共通機能/更新履歴.md の 5.2 節)。
  * 比べ方は {@see RecordRevisionComparison} に任せ、ここは名前と参照の表示名(設計/業務データの入れ物/認可とメニュー/README.md の
- * 2.4 節)だけを足す。業務モジュールの read は呼び手が判定する。
+ * 2.4 節)だけを足す。業務モジュールの read は呼び手が判定する。版 1 つの写しの値({@see RecordRevisionViews})も同じ値の作り方を使う
+ * (差分と写しで値の形が食い違わないため)。
  *
  * @phpstan-import-type ReferenceTarget from RecordValueReader
  * @phpstan-import-type ReferenceValue from RecordValueReader
@@ -19,7 +21,14 @@ use DateTimeInterface;
  * @phpstan-import-type RawRow from RecordRevisionComparison
  * @phpstan-import-type Changes from RecordRevisionComparison
  * @phpstan-import-type RawAttachmentChange from RecordRevisionComparison
- * @phpstan-import-type Diff from RecordRevisionQuery
+ * @phpstan-import-type ShownRowAccessChange from RecordRevisionRowAccess
+ *
+ * @phpstan-type RowChange array{change: 'added'|'removed'|'changed', rowId: int, before: array<string, mixed>|null,
+ *     after: array<string, mixed>|null, changedCodes: list<string>}
+ * @phpstan-type AttachmentChange array{change: 'added'|'removed', id: int, uploadId: int|null, name: string}
+ * @phpstan-type Diff array{fields: list<array{code: string, name: string, before: mixed, after: mixed}>,
+ *     details: list<array{code: string, name: string, rows: list<RowChange>}>, attachments: list<AttachmentChange>,
+ *     rowAccess: ShownRowAccessChange|null}
  */
 class RecordRevisionDiff
 {
@@ -28,6 +37,30 @@ class RecordRevisionDiff
         private RecordValueReader $reader,
         private RecordRevisionRowAccess $rowAccess,
     ) {}
+
+    /**
+     * 同じレコードの版 2 つの差分。業務モジュールの read を見ない(呼び手が閲覧を判定してから呼ぶ)。参照の相手の表示名だけ、判定を求める者で出し分ける。
+     *
+     * @return Diff 前の版から後の版への差分
+     *
+     * @throws ModelNotFoundException<RecordRevision> 版が無い・2 つの版が別のレコードの版のとき
+     */
+    public function between(
+        Requester $requester,
+        int $beforeRevisionId,
+        int $afterRevisionId,
+        DateTimeInterface $date,
+        string $localeCode,
+    ): array {
+        $before = RecordRevision::query()->findOrFail($beforeRevisionId);
+        $after = RecordRevision::query()->findOrFail($afterRevisionId);
+
+        if ($before->record_id !== $after->record_id) {
+            throw (new ModelNotFoundException)->setModel(RecordRevision::class, [$beforeRevisionId]);
+        }
+
+        return $this->diff(self::snapshotOf($before), self::snapshotOf($after), $requester, $date, $localeCode);
+    }
 
     /**
      * @param  RevisionCopy  $before
@@ -42,26 +75,6 @@ class RecordRevisionDiff
         string $localeCode,
     ): array {
         $changes = $this->comparison->compare($before, $after);
-
-        return $this->shown($changes, $before, $after, $requester, $date, $localeCode);
-    }
-
-    /**
-     * 比べた結果({@see RecordRevisionComparison::compare()})を画面の値にする。
-     *
-     * @param  Changes  $changes
-     * @param  RevisionCopy  $before
-     * @param  RevisionCopy  $after
-     * @return Diff
-     */
-    public function shown(
-        array $changes,
-        array $before,
-        array $after,
-        Requester $requester,
-        DateTimeInterface $date,
-        string $localeCode,
-    ): array {
         $targets = $this->reader->targetValues($this->targetsOf($changes), $requester, $date, $localeCode);
         $beforeOptions = $this->optionsOf($before);
         $afterOptions = $this->optionsOf($after);
@@ -98,7 +111,7 @@ class RecordRevisionDiff
      * @param  array<string, ReferenceValue>  $targets
      * @return array<string, mixed>|null
      */
-    private function row(array $entries, ?array $raw, array $options, array $targets): ?array
+    public function row(array $entries, ?array $raw, array $options, array $targets): ?array
     {
         if ($raw === null) {
             return null;
@@ -220,7 +233,7 @@ class RecordRevisionDiff
      * @param  RawRow  $raw
      * @return list<ReferenceTarget>
      */
-    private function rowTargets(array $entries, array $raw): array
+    public function rowTargets(array $entries, array $raw): array
     {
         $targets = [];
 
@@ -237,7 +250,7 @@ class RecordRevisionDiff
      * @param  RevisionCopy  $copy
      * @return array<int, array<string, string>>
      */
-    private function optionsOf(array $copy): array
+    public function optionsOf(array $copy): array
     {
         $options = is_array($copy['labels']['options'] ?? null) ? $copy['labels']['options'] : [];
 
@@ -245,6 +258,16 @@ class RecordRevisionDiff
             fn (mixed $names) => is_array($names) ? array_filter($names, 'is_string') : [],
             array_filter($options, fn (mixed $names, int|string $id) => is_int($id), ARRAY_FILTER_USE_BOTH),
         );
+    }
+
+    /**
+     * 版の写し(snapshot と labels。無ければ空)。
+     *
+     * @return RevisionCopy
+     */
+    public static function snapshotOf(RecordRevision $revision): array
+    {
+        return ['snapshot' => $revision->snapshot ?? [], 'labels' => $revision->labels ?? []];
     }
 
     /**
