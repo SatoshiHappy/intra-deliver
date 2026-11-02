@@ -165,7 +165,7 @@ final class CaseProcessorInputTest extends TransactionalTestCase
         $this->actingAsUser('u0003');
 
         $this->postJson("/workflow/cases/{$case}/transfer", [...$this->input($case), 'to_user_id' => 'abc'])
-            ->assertUnprocessable()->assertJsonValidationErrors(['to_user_id' => '担当変更先の指定が正しくありません']);
+            ->assertUnprocessable()->assertJsonValidationErrors(['to_user_id' => '変更後の承認者の指定が正しくありません']);
     }
 
     /**

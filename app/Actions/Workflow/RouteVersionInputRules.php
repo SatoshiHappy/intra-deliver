@@ -59,7 +59,7 @@ class RouteVersionInputRules
             $errors["nodes.{$index}.name"] = $this->textError($node->name, '名前');
             $errors["nodes.{$index}.designator_code"] = $this->unknownCode($node->designatorCode, $codes);
             $errors["nodes.{$index}.closing_code"] = $this->unknownCode($node->closingCode, $codes);
-            $errors = [...$errors, ...$this->translationErrors($node->targetTranslations, "nodes.{$index}.target_translations", '処理対象者の表示名')];
+            $errors = [...$errors, ...$this->translationErrors($node->targetTranslations, "nodes.{$index}.target_translations", '対象者の表示名')];
 
             foreach ($node->sendBackCodes as $position => $sendBackCode) {
                 $errors["nodes.{$index}.send_back_codes.{$position}"] = $this->unknownCode($sendBackCode, $codes);

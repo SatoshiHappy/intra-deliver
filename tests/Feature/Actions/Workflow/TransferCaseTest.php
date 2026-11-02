@@ -46,14 +46,14 @@ final class TransferCaseTest extends TransactionalTestCase
         $before = $this->snapshot($case);
 
         $this->assertSame([
-            ['to_user_id' => '担当変更先を選択してください'],
-            ['to_user_id' => '申請基準日に有効でないユーザーは指定できません'],
-            ['to_user_id' => '申請基準日に有効でないユーザーは指定できません'],
-            ['to_user_id' => '申請基準日に有効でないユーザーは指定できません'],
-            ['to_user_id' => '自分自身と代理元は担当変更先に指定できません'],
-            ['to_user_id' => '自分自身と代理元は担当変更先に指定できません'],
-            ['to_user_id' => '自分自身と代理元は担当変更先に指定できません'],
-            ['to_user_id' => 'このユーザーは、すでにこのステップの処理担当者です'],
+            ['to_user_id' => '変更後の承認者を選択してください'],
+            ['to_user_id' => '申請基準日に有効でないユーザーは選択できません'],
+            ['to_user_id' => '申請基準日に有効でないユーザーは選択できません'],
+            ['to_user_id' => '申請基準日に有効でないユーザーは選択できません'],
+            ['to_user_id' => '自分自身と代理元は、変更後の承認者に選択できません'],
+            ['to_user_id' => '自分自身と代理元は、変更後の承認者に選択できません'],
+            ['to_user_id' => '自分自身と代理元は、変更後の承認者に選択できません'],
+            ['to_user_id' => 'このユーザーは、すでにこのステップの承認者です'],
         ], [
             $by('u0002', null),
             $by('u0002', $missing),
@@ -83,7 +83,7 @@ final class TransferCaseTest extends TransactionalTestCase
             $this->attemptOf(fn () => $this->transferOn($case, 'family.1', 'u0005', $this->idOf('u0011'))),
         ];
 
-        $this->assertSame(array_fill(0, 2, ['to_user_id' => 'このステップのほかの承認者と同じユーザーは指定できません']), $errors);
+        $this->assertSame(array_fill(0, 2, ['to_user_id' => 'このステップのほかの承認者と同じユーザーは選択できません']), $errors);
         $this->assertSame($before, $this->snapshot($case));
     }
 
@@ -103,7 +103,7 @@ final class TransferCaseTest extends TransactionalTestCase
             $this->attemptOf(fn () => $this->transferOn($case, 'family.2', 'u0009', $this->idOf('u0011'))),
         ];
 
-        $this->assertSame(array_fill(0, 2, ['to_user_id' => 'このステップのほかの承認者と同じユーザーは指定できません']), $errors);
+        $this->assertSame(array_fill(0, 2, ['to_user_id' => 'このステップのほかの承認者と同じユーザーは選択できません']), $errors);
         $this->assertSame($before, $this->snapshot($case));
     }
 

@@ -16,7 +16,7 @@ final class OtherChildPeopleTest extends TransactionalTestCase
 {
     use OperatesAsCaseManager;
 
-    private const OTHER_CHILD = 'このステップのほかの承認者と同じユーザーは指定できません';
+    private const OTHER_CHILD = 'このステップのほかの承認者と同じユーザーは選択できません';
 
     protected function setUp(): void
     {

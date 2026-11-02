@@ -11,7 +11,7 @@ use Illuminate\Support\Facades\Schema;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * 行の権限(関係者の印と row_access_scope)を足したマイグレーション(docs の 設計/業務データの入れ物/データモデル/表.md 2.6 の最後、制約の分担と検査.md 7 節): down は足した列と
+ * 行の権限(関係者の印と row_access_scope)を足したマイグレーション(docs の 設計/業務データの入れ物/データモデル/表.md 2.2、制約の分担と検査.md 7 節): down は足した列と
  * 検査制約を消し、その後の up は今の業務モジュールをどれも all に、今の項目をどれも関係者の印なしにする。後のマイグレーション(参照制限の形への移し =
  * {@see self::LATER})を先に戻してから流す。DDL もテストの TX の中で行い、終わりに巻き戻る。
  */

@@ -91,9 +91,9 @@ final class RetargetCaseNodeTest extends TransactionalTestCase
         $this->assertSame([
             ['user_ids' => '承認者を 1 人から 20 人まで選択してください'],
             ['user_ids' => '承認者を 1 人から 20 人まで選択してください'],
-            ['user_ids' => '申請基準日に有効でないユーザーは指定できません'],
-            ['user_ids' => '申請基準日に有効でないユーザーは指定できません'],
-            ['user_ids' => '同じユーザーを重複して指定できません'],
+            ['user_ids' => '申請基準日に有効でないユーザーは選択できません'],
+            ['user_ids' => '申請基準日に有効でないユーザーは選択できません'],
+            ['user_ids' => '同じユーザーを重複して選択できません'],
             ['user_ids' => '自分自身は承認者に選択できません'],
             ['user_ids' => '申請者本人は、このステップの承認者に選択できません'],
             ['user_ids' => '申請者の代理先は、このステップの承認者に選択できません'],
@@ -129,8 +129,8 @@ final class RetargetCaseNodeTest extends TransactionalTestCase
 
         $this->assertSame([
             ['user_ids' => 'このステップの承認者は 1 人を選択してください'],
-            ['user_ids' => 'このステップのほかの承認者と同じユーザーは指定できません'],
-            ['user_ids' => 'このステップのほかの承認者と同じユーザーは指定できません'],
+            ['user_ids' => 'このステップのほかの承認者と同じユーザーは選択できません'],
+            ['user_ids' => 'このステップのほかの承認者と同じユーザーは選択できません'],
         ], $errors);
         $this->assertSame($before, $this->snapshot($case));
         $this->retargetOn($case, 'family.1', ['u0006']);

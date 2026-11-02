@@ -12,22 +12,24 @@ use LogicException;
 
 /**
  * 振替先の規則(docs の 設計/ワークフロー/案件の運用/案件の操作/操作.md の 10.3 節、文言 = 同時実行と検査.md の 13 節)。鍵を取らない(案件の行の鍵の下で呼ぶ)。
+ * 担当変更は承認のステップだけに出るので、文の人は「承認者」で書く(docs の 設計/画面の意匠/文言.md の 11.2)。
  */
 class TransferRules
 {
     /** 入力のキー */
     public const KEY = 'to_user_id';
 
-    public const REQUIRED = '担当変更先を選択してください';
+    public const REQUIRED = '変更後の承認者を選択してください';
 
     /** 存在しない・申請基準日に有効でない(処理の時の指定と同じ文) */
     public const NOT_EFFECTIVE = CaseOperationErrors::ASSIGNMENTS_NOT_EFFECTIVE;
 
-    public const SELF_OR_PRINCIPAL = '自分自身と代理元は担当変更先に指定できません';
+    public const SELF_OR_PRINCIPAL = '自分自身と代理元は、変更後の承認者に選択できません';
 
-    public const ALREADY_TARGET = 'このユーザーは、すでにこのステップの処理担当者です';
+    public const ALREADY_TARGET = 'このユーザーは、すでにこのステップの承認者です';
 
-    public const OTHER_CHILD = 'このステップのほかの承認者と同じユーザーは指定できません';
+    /** 選んだ人が、合議のほかの子の承認者と重なる(人を選ぶ操作の文。docs の 設計/ワークフロー/案件の運用/案件の操作/同時実行と検査.md の 13 節) */
+    public const OTHER_CHILD = 'このステップのほかの承認者と同じユーザーは選択できません';
 
     /** 申請者本人(指定と同じ文。承認のステップだけに出るので「承認者」= 画面の意匠/文言.md 11.2) */
     public const APPLICANT = CaseOperationErrors::ASSIGNMENTS_APPLICANT;

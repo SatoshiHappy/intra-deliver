@@ -20,7 +20,7 @@ import type {
 } from '@/types';
 
 /**
- * 複数行の文字列の場所ごとの見え方(docs の 設計/業務データの入れ物/画面/README.md 1.4)。null なら下の今の表示。
+ * 複数行の文字列の場所ごとの見え方(docs の 設計/業務データの入れ物/画面/リッチテキスト.md 1.4)。null なら下の今の表示。
  * 表のセルは折り返さない置き場(whitespace-nowrap の表)でも 2 行で切れるよう、折り返しを戻す。
  */
 function multilineValue(

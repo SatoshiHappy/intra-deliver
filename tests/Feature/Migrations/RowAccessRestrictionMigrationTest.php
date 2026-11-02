@@ -13,7 +13,7 @@ use Tests\Support\BuildsRecordModules;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * 参照制限の形への移しのマイグレーション(docs の 設計/業務データの入れ物/データモデル/表.md 2.1 の「参照制限の列と今ある行」・2.8、
+ * 参照制限の形への移しのマイグレーション(docs の 設計/業務データの入れ物/データモデル/表.md 2.1・2.8、ADR 0026 の影響、
  * レコードの共通機能/データモデル/表.md 2.1.1 の「移行の例外」): all → 既定 偽・チェック 外れ、related → 既定 真・親の無いレコードのチェック 付き
  * (明細の行は外れ)。最新の版だけに row_access(参照者は空)が入り、前の版は変わらない。参照者の行は無い。up の後の最初の保存でチェックだけを変えると
  * 版ができる。down は row_access_scope を戻し(既定が真なら related)、版の row_access は残す。DDL もテストの TX の中で行い、終わりに巻き戻る。

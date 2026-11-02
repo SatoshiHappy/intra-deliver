@@ -6,7 +6,7 @@ import remarkBreaks from 'remark-breaks';
 import remarkGfm from 'remark-gfm';
 
 /**
- * リッチテキスト(文字列(複数行)の Markdown の表示 = docs の 設計/業務データの入れ物/画面/README.md 1.4)の、描く部品 RichText と
+ * リッチテキスト(文字列(複数行)の Markdown の表示 = docs の 設計/業務データの入れ物/画面/リッチテキスト.md 1.4)の、描く部品 RichText と
  * 平文の先頭 plainTextExcerpt が共有する設定と、リンクの判定。
  */
 
@@ -84,7 +84,7 @@ const ALLOWED_ELEMENTS = [
 ];
 
 /**
- * react-markdown に渡す設定(記法の範囲 = docs の 設計/業務データの入れ物/画面/README.md 1.4)。remark-gfm はタスクリスト・脚注も作るので、
+ * react-markdown に渡す設定(記法の範囲 = docs の 設計/業務データの入れ物/画面/リッチテキスト.md 1.4)。remark-gfm はタスクリスト・脚注も作るので、
  * 上の脚注の差し替えと RichText の input の差し替えで文字に戻す。
  */
 export const markdownOptions: Options = {
@@ -209,7 +209,7 @@ function textOf(node: ReactNode): string {
 }
 
 /**
- * 表のセルに出す平文の先頭(docs の 設計/業務データの入れ物/画面/README.md 1.4「場所ごとの見え方」)。記法の解釈を 2 か所に持たないよう、
+ * 表のセルに出す平文の先頭(docs の 設計/業務データの入れ物/画面/リッチテキスト.md 1.4「場所ごとの見え方」)。記法の解釈を 2 か所に持たないよう、
  * RichText と同じ設定で要素の木を作り、描かずに文字だけを集める。リンクは文字だけ残す(リンク先は出さない)ので、通らないリンクも
  * 詳細(原文のまま)と違って文字だけになる。長さでは切らない(切るのは CSS)。
  */
