@@ -86,7 +86,7 @@ final class AdminFlowDefinitionControllerTest extends TransactionalTestCase
             'is_attachment_enabled' => 'x',
         ];
         $missing = $this->definitionRoutes('missing_flow');
-        unset($missing['workflow.admin.flows.index'], $missing['workflow.admin.subject-candidates']);
+        unset($missing['workflow.admin.flows.index'], $missing['workflow.admin.flows.subject-candidates']);
         $issue = '/workflow/admin/flows/issue_resolution/versions';
         $plan = '/workflow/admin/flows/'.self::PLAN.'/versions';
         $notFound = [
@@ -141,15 +141,17 @@ final class AdminFlowDefinitionControllerTest extends TransactionalTestCase
         $show = '/workflow/admin/flows/'.self::PLAN;
 
         return [
-            'referrers' => ['workflow.admin.flows.referrers.update', "{$show}?tab=settings", '参照者を保存しました'],
+            'referrers' => ['workflow.admin.flows.update-referrers', "{$show}?tab=settings", '参照者を保存しました'],
             'settings' => [
-                'workflow.admin.flows.settings.update', "{$show}?tab=settings", '添付ファイルの設定を保存しました',
+                'workflow.admin.flows.update-settings', "{$show}?tab=settings", '添付ファイルの設定を保存しました',
             ],
-            'store' => ['workflow.admin.versions.store', "{$show}?tab=versions&version=4", '版を追加しました'],
-            'disable' => ['workflow.admin.versions.disable', "{$show}?tab=versions&version=2", '版を無効にしました'],
-            'enable' => ['workflow.admin.versions.enable', "{$show}?tab=versions&version=1", '版を有効にしました'],
+            'store' => ['workflow.admin.flows.store-version', "{$show}?tab=versions&version=4", '版を追加しました'],
+            'disable' => ['workflow.admin.flows.disable-version', "{$show}?tab=versions&version=2", '版を無効にしました'],
+            'enable' => ['workflow.admin.flows.enable-version', "{$show}?tab=versions&version=1", '版を有効にしました'],
             'nodes' => [
-                'workflow.admin.nodes.update', "{$show}?tab=diagram&version=3&node=section_chief", 'ステップの設定を保存しました',
+                'workflow.admin.flows.update-node',
+                "{$show}?tab=diagram&version=3&node=section_chief",
+                'ステップの設定を保存しました',
             ],
         ];
     }
@@ -186,18 +188,18 @@ final class AdminFlowDefinitionControllerTest extends TransactionalTestCase
         $groupId = (int) $flow->authz_subject_group_id;
         $referrers = app(SubjectRows::class)->of([$groupId], CarbonImmutable::today(), 'ja');
         $written = match ($name) {
-            'workflow.admin.flows.referrers.update' => array_column($referrers[$groupId], 'type'),
-            'workflow.admin.flows.settings.update' => $flow->is_attachment_enabled,
-            'workflow.admin.nodes.update' => $this->planNode(3, 'section_chief')->prevents_applicant_approval,
+            'workflow.admin.flows.update-referrers' => array_column($referrers[$groupId], 'type'),
+            'workflow.admin.flows.update-settings' => $flow->is_attachment_enabled,
+            'workflow.admin.flows.update-node' => $this->planNode(3, 'section_chief')->prevents_applicant_approval,
             default => $numbers,
         };
         $expected = [
-            'workflow.admin.flows.referrers.update' => ['department', 'role'],
-            'workflow.admin.flows.settings.update' => false,
-            'workflow.admin.versions.store' => [[1, true], [2, false], [3, false], [4, false]],
-            'workflow.admin.versions.disable' => [[1, true], [2, true], [3, false]],
-            'workflow.admin.versions.enable' => [[1, false], [2, false], [3, false]],
-            'workflow.admin.nodes.update' => false,
+            'workflow.admin.flows.update-referrers' => ['department', 'role'],
+            'workflow.admin.flows.update-settings' => false,
+            'workflow.admin.flows.store-version' => [[1, true], [2, false], [3, false], [4, false]],
+            'workflow.admin.flows.disable-version' => [[1, true], [2, true], [3, false]],
+            'workflow.admin.flows.enable-version' => [[1, false], [2, false], [3, false]],
+            'workflow.admin.flows.update-node' => false,
         ];
 
         $this->assertSame($expected[$name], $written);

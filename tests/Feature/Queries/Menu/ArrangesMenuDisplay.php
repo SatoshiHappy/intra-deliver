@@ -14,6 +14,7 @@ use App\Actions\Menu\MenuFolderInput;
 use App\Actions\Menu\MenuItemInput;
 use App\Enums\Authz\MetaSubject;
 use App\Enums\Authz\PolicyEffect;
+use App\Enums\Authz\ServiceAction;
 use App\Enums\Menu\MenuMethod;
 use App\Models\Authz\AuthzResource;
 use App\Models\Menu\Menu;
@@ -49,7 +50,7 @@ trait ArrangesMenuDisplay
     {
         app(CreateMenuGroupCategory::class)->execute(self::GLOBAL_NAVIGATION, []);
         app(CreateMenuGroupCategory::class)->execute(self::SITEMAP, []);
-        app(CreateRoutePrefixResourceGroup::class)->execute('test', []);
+        app(CreateRoutePrefixResourceGroup::class)->execute('test', ServiceAction::SET_CODE, []);
 
         foreach (['test.permitted' => true, 'test.forbidden' => false, 'test.posted' => true] as $routeName => $isPermitted) {
             $resource = app(CreateRouteResource::class)->execute($routeName, []);

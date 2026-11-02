@@ -10,26 +10,27 @@ use App\Models\Authz\AuthzSubjectCategory;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * 認可設定の編集の初期データ(docs の 設計/ワークフロー/申請の周辺/初期データ.md 3 節): AuthzSeeder の接頭辞のリソースグループ 3 つとルートのリソース 4 つ
- * (ポリシーは置かない)と、対象者のカテゴリの並び(認証 → ロール → ユーザー → 組織 → 役職)。
+ * 認可設定の画面と編集の初期データ(docs の 設計/ワークフロー/申請の周辺/初期データ.md 3 節、設計/共通マスタ/ロールと認可/認可の確認/認可設定の画面.md 1.3):
+ * AuthzSeeder の接頭辞のリソースグループ http-services.authz と、その下のルートの束 http-services.authz.settings と、その直下のルートのリソース 5 つ
+ * (ポリシーは置かない。URI は名前から決まり、URL は今のまま)と、対象者のカテゴリの並び(認証 → ロール → ユーザー → 組織 → 役職)。
  */
 final class AuthzEditorSeederTest extends TransactionalTestCase
 {
-    public function test_seeds_the_prefixes_and_the_route_resources_of_the_editor_without_policies(): void
+    public function test_seeds_the_bundle_and_the_route_resources_of_the_screen_and_the_editor_without_policies(): void
     {
-        $groups = AuthzResourceGroup::query()->where('code', 'like', 'http-services.authz.editor%')
+        $groups = AuthzResourceGroup::query()->where('code', 'like', 'http-services.authz%')
             ->with(['parent', 'authzResourceGroupTranslations.locale', 'authzResource'])->get()
             ->sortBy('code', SORT_STRING)->values();
 
-        $prefix = 'http-services.authz.editor';
+        $bundle = 'http-services.authz.settings';
         $this->assertSame([
-            $prefix => ['http-services.authz', ['en Authorization editing', 'ja 認可設定の編集']],
-            "{$prefix}.cells" => [$prefix, ['en Cells', 'ja セル']],
-            "{$prefix}.cells.update" => ["{$prefix}.cells", ['en Change a cell', 'ja セルの切替']],
-            "{$prefix}.subject-candidates" => [$prefix, ['en Column candidates', 'ja 列を追加の候補']],
-            "{$prefix}.subjects" => [$prefix, ['en Columns', 'ja 列']],
-            "{$prefix}.subjects.destroy" => ["{$prefix}.subjects", ['en Delete a column', 'ja 列を削除']],
-            "{$prefix}.subjects.store" => ["{$prefix}.subjects", ['en Add a column', 'ja 列を追加']],
+            'http-services.authz' => ['http-services', ['en Authorization', 'ja 認可']],
+            $bundle => ['http-services.authz', ['en Authorization settings', 'ja 認可設定']],
+            "{$bundle}.destroy-subject" => [$bundle, ['en Delete a column', 'ja 列を削除']],
+            "{$bundle}.show" => [$bundle, ['en Authorization screen', 'ja 認可設定の画面']],
+            "{$bundle}.store-subject" => [$bundle, ['en Add a column', 'ja 列を追加']],
+            "{$bundle}.subject-candidates" => [$bundle, ['en Column candidates', 'ja 列を追加の候補']],
+            "{$bundle}.update-cell" => [$bundle, ['en Change a cell', 'ja セルの切替']],
         ], $groups->mapWithKeys(fn (AuthzResourceGroup $group) => [$group->code => [
             $group->parent?->code,
             $group->authzResourceGroupTranslations
@@ -37,10 +38,11 @@ final class AuthzEditorSeederTest extends TransactionalTestCase
                 ->sort()->values()->all(),
         ]])->all());
         $this->assertSame([
-            'http-services.authz.editor.cells.update' => 'service://authz/editor/cells/update',
-            'http-services.authz.editor.subject-candidates' => 'service://authz/editor/subject-candidates',
-            'http-services.authz.editor.subjects.destroy' => 'service://authz/editor/subjects/destroy',
-            'http-services.authz.editor.subjects.store' => 'service://authz/editor/subjects/store',
+            "{$bundle}.destroy-subject" => 'service://authz/settings/destroy-subject',
+            "{$bundle}.show" => 'service://authz/settings/show',
+            "{$bundle}.store-subject" => 'service://authz/settings/store-subject',
+            "{$bundle}.subject-candidates" => 'service://authz/settings/subject-candidates',
+            "{$bundle}.update-cell" => 'service://authz/settings/update-cell',
         ], $groups->filter(fn (AuthzResourceGroup $group) => $group->authzResource !== null)
             ->mapWithKeys(fn (AuthzResourceGroup $group) => [$group->code => $group->authzResource?->uri])->all());
         $this->assertSame(0, AuthzPolicy::query()->whereIn('authz_resource_group_id', $groups->modelKeys())->count());

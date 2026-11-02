@@ -3,7 +3,7 @@ import type { FormEvent } from 'react';
 import { clearRowErrors, clearServerErrors } from '@/lib/formErrors';
 import { errorKeysOf, formOf, payloadOf } from '@/lib/Workflow/stepForm';
 import type { StepForm } from '@/lib/Workflow/stepForm';
-import { update } from '@/routes/workflow/admin/nodes';
+import { updateNode } from '@/routes/workflow/admin/flows';
 import type { WorkflowStepSettings } from '@/types';
 
 /**
@@ -36,9 +36,12 @@ export function useStepForm(
         submit: (event: FormEvent) => {
             event.preventDefault();
             form.transform((data) => payloadOf(data, step));
-            form.submit(update({ flow: flowCode, version, node: step.code }), {
-                preserveScroll: true,
-            });
+            form.submit(
+                updateNode({ flow: flowCode, version, node: step.code }),
+                {
+                    preserveScroll: true,
+                },
+            );
         },
     };
 }

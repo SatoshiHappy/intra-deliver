@@ -1,7 +1,7 @@
 import { useForm } from '@inertiajs/react';
 import type { FormEvent } from 'react';
 import { flowSettingsFormOf } from '@/lib/Workflow/flowSettingsForm';
-import { update } from '@/routes/workflow/admin/flows/settings';
+import { updateSettings } from '@/routes/workflow/admin/flows';
 
 /**
  * タブ「設定」の面「添付ファイル」の入力と送信(docs の 設計/ワークフロー/申請の周辺/画面.md の 4 節)。
@@ -24,7 +24,7 @@ export function useFlowSettingsForm(flow: string, saved: boolean) {
         },
         submit: (event: FormEvent) => {
             event.preventDefault();
-            form.submit(update(flow), { preserveScroll: true });
+            form.submit(updateSettings(flow), { preserveScroll: true });
         },
     };
 }

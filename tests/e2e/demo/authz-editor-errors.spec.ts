@@ -18,13 +18,13 @@ const GUARD =
     'この変更を行うと認可設定を使用できなくなるため、変更できません。';
 const STALE = 'ほかの利用者が変更しました。画面を再読み込みしてください。';
 
-// 保存の口(セルの切替)を、システム管理者の列で禁止にしようとすると守りに外れる。継承のセルを 1 回押すと直接の許可、もう 1 回で禁止の要求。
+// ルートの束「認可設定」(開く・保存の口を含む)を、システム管理者の列で禁止にしようとすると守りに外れる。継承のセルを 1 回押すと直接の許可、もう 1 回で禁止の要求。
 // 禁止へは進めないので、直接の許可(効く設定は継承のときと同じ)が残る。
 test('守りに外れる変更はトーストが出て、セルは元のまま', async ({ page }) => {
     await openOverviewAs(page, ADMINISTRATOR);
     await startEditing(page);
 
-    const row = resourceRow(page, 'セルの切替');
+    const row = resourceRow(page, '認可設定');
     const cell = await subjectCell(page, row, 'システム管理者');
     await expect(cell).toContainText('許可(画面・処理から継承)');
     await press(page, cell);
@@ -50,12 +50,12 @@ test('2 つの画面で同じセルを変えると、後の画面はトースト
 
     const cell = await subjectCell(
         page,
-        resourceRow(page, '組織図'),
+        resourceRow(page, '共通マスタ'),
         'システム管理者',
     );
     const stale = await subjectCell(
         other,
-        resourceRow(other, '組織図'),
+        resourceRow(other, '共通マスタ'),
         'システム管理者',
     );
     await press(page, cell);

@@ -10,6 +10,7 @@ use Illuminate\Routing\Route;
 use Illuminate\Routing\Router;
 use Illuminate\Routing\ViewController;
 use Inertia\Controller as InertiaController;
+use LogicException;
 use ReflectionClass;
 use ReflectionFunction;
 use Symfony\Component\HttpFoundation\Exception\BadRequestException;
@@ -27,13 +28,26 @@ use Symfony\Component\HttpFoundation\Exception\BadRequestException;
  * アプリのルートにホストの条件(Route::domain)とスキームの条件(http・https だけ)を付けない(照合はホストとスキームを見ないため)。
  * この 3 つは付け忘れの検査(tests/Feature/Routing/AppRoutesTest.php)が確かめる。
  *
- * ルートのリソース(名前から 1 通りに決まる): リソースグループ ID = http-services. + 名前、URI = service:// + 名前の . を / に換えたもの。
- * 名前の接頭辞(. で切った先頭から末端の 1 つ手前まで)はすべてリソースグループ http-services. + 接頭辞 になり、最も短い接頭辞の親はセット http-services。
+ * 置き場(ルートのリソースを置くセット): ルートの定義(routes/)の宣言 {@see self::UNMANAGED} を付けたルートは設定不可のセット
+ * http-services-unmanaged、宣言の無いルートは http-services。宣言を読むのは {@see self::setOf()} の 1 か所。
+ *
+ * ルートのリソース(置き場と名前から 1 通りに決まる): リソースグループ ID = <セット>. + 名前、URI = service:// + 名前の . を / に換えたもの
+ * (置き場によらない)。名前の接頭辞(. で切った先頭から末端の 1 つ手前まで)はすべてリソースグループ <セット>. + 接頭辞 になり、
+ * 最も短い接頭辞の親はセット。
  */
 class RouteResources
 {
-    /** ルートの名前の上限の文字数(リソースグループ ID が 255 文字に収まる長さ) */
-    public const MAX_NAME_LENGTH = 241;
+    /** ルートの名前の上限の文字数(長い方のセットの頭 http-services-unmanaged. を付けても、リソースグループ ID が 255 文字に収まる長さ) */
+    public const MAX_NAME_LENGTH = 231;
+
+    /**
+     * 設定不可のセットに置くルートに付ける置き場の宣言(ルートの metadata。routes/ で Route::metadata(RouteResources::UNMANAGED)->group(...))。
+     * ルートのキャッシュの後も、ルートの action に入って残る。
+     */
+    public const UNMANAGED = ['authz' => ['set' => ServiceAction::UNMANAGED_SET_CODE]];
+
+    /** 置き場の宣言を読む鍵(ルートの metadata の中の道) */
+    private const SET_METADATA_KEY = 'authz.set';
 
     /** アプリがルートの書き方で使う、フレームワークの汎用の処理 */
     private const FRAMEWORK_CONTROLLERS = [InertiaController::class, RedirectController::class, ViewController::class];
@@ -86,7 +100,7 @@ class RouteResources
     }
 
     /**
-     * 名前がアプリのルートの名前の規則に合うか: <モジュール名の小文字>.<区切り>(.<区切り>…) の形(区切りは [a-z0-9_-]+)で 241 文字以内、
+     * 名前がアプリのルートの名前の規則に合うか: <モジュール名の小文字>.<区切り>(.<区切り>…) の形(区切りは [a-z0-9_-]+)で 231 文字以内、
      * かつ、ほかのアプリのルートの名前の接頭辞(. の区切りで切った先頭の部分)にならない。名前がアプリのルートの中で一意か(業務処理は登録済みの名前を
      * 受けるので、ここでは確かめない)と、先頭の区切りがそのルートの処理が属するモジュール(コントローラは名前空間の <M>、Route::inertia はページ名の
      * <M>。Route::redirect・Route::view は宣言したモジュールのどれか)かは、名前からは決まらず、付け忘れを止める検査(Feature テスト)が確かめる。
@@ -98,6 +112,56 @@ class RouteResources
     }
 
     /**
+     * 置き場が http-services のルートの名前が、ルートとより長い名前の接頭辞が直下に混ざった接頭辞の下にあるか(名前の規則の 1 つ。
+     * フォルダの子はフォルダだけか、ルートだけにする = ルートの束)。混ざった接頭辞の下のルートは、直下のルートも、より長い接頭辞の下のルートも
+     * 当たる。比べるのは置き場が http-services のアプリのルートどうしだけで、置き場が設定不可のセットのルートは当たらない(格子に出ないので
+     * 束が要らない)。付け忘れを止める検査が確かめる(業務処理は確かめない = docs の 設計/メニュー/認可との結び付け.md 2.4)。
+     */
+    public function isUnderMixedPrefix(string $name): bool
+    {
+        if ($this->setOf($name) !== ServiceAction::SET_CODE) {
+            return false;
+        }
+
+        $segments = explode('.', $name);
+        $managedNames = $this->appRouteNamesIn(ServiceAction::SET_CODE);
+
+        for ($depth = 1; $depth < count($segments); $depth++) {
+            $prefix = implode('.', array_slice($segments, 0, $depth));
+            $childDepths = array_map(
+                fn (string $other) => substr_count($other, '.') + 1 - $depth,
+                array_filter($managedNames, fn (string $other) => str_starts_with($other, "{$prefix}.")),
+            );
+            $hasRoutes = in_array(1, $childDepths, true);
+            $hasLongerPrefixes = array_filter($childDepths, fn (int $childDepth) => $childDepth > 1) !== [];
+
+            if ($hasRoutes && $hasLongerPrefixes) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * ルートの置き場(リソースを置くセットの ID)。その名前のアプリのルートの定義に宣言 {@see self::UNMANAGED} があれば設定不可のセット、
+     * 宣言が無いか、その名前のアプリのルートが無ければ http-services(設定できる側。既定で禁止のまま)。名前はルートを登録した後に付くので、
+     * ルータの名前の索引(更新の時機がある)でなく、アプリのルートを今の名前でたどる。
+     *
+     * @throws LogicException 宣言の値が 2 つのセットのどちらでもないとき(ルートの定義の誤り)
+     */
+    public function setOf(string $routeName): string
+    {
+        foreach ($this->appRoutes() as $route) {
+            if ($route->getName() === $routeName) {
+                return $this->declaredSetOf($route);
+            }
+        }
+
+        return ServiceAction::SET_CODE;
+    }
+
+    /**
      * 接頭辞の形(区切りを . でつないだ 1 つ以上)か。
      */
     public function isPrefixForm(string $prefix): bool
@@ -106,21 +170,21 @@ class RouteResources
     }
 
     /**
-     * ルートの名前(か接頭辞)のリソースグループ ID。
+     * 置き場 $set に置くルートの名前(か接頭辞)のリソースグループ ID。
      */
-    public function resourceGroupCodeOf(string $nameOrPrefix): string
+    public function resourceGroupCodeOf(string $set, string $nameOrPrefix): string
     {
-        return ServiceAction::SET_CODE.'.'.$nameOrPrefix;
+        return $set.'.'.$nameOrPrefix;
     }
 
     /**
-     * ルートの名前(か接頭辞)の親のリソースグループ ID(末端の区切りを除いた接頭辞のもの。区切りが 1 つならセット)。
+     * 置き場 $set に置くルートの名前(か接頭辞)の親のリソースグループ ID(末端の区切りを除いた接頭辞のもの。区切りが 1 つならセット)。
      */
-    public function parentResourceGroupCodeOf(string $nameOrPrefix): string
+    public function parentResourceGroupCodeOf(string $set, string $nameOrPrefix): string
     {
         $lastDot = strrpos($nameOrPrefix, '.');
 
-        return $lastDot === false ? ServiceAction::SET_CODE : $this->resourceGroupCodeOf(substr($nameOrPrefix, 0, $lastDot));
+        return $lastDot === false ? $set : $this->resourceGroupCodeOf($set, substr($nameOrPrefix, 0, $lastDot));
     }
 
     /**
@@ -201,6 +265,35 @@ class RouteResources
     private function appRouteNames(): array
     {
         return array_values(array_filter(array_map(fn (Route $route) => $route->getName(), $this->appRoutes())));
+    }
+
+    /**
+     * 置き場が $set のアプリのルートの名前。
+     *
+     * @return list<string>
+     */
+    private function appRouteNamesIn(string $set): array
+    {
+        return array_values(array_filter(array_map(
+            fn (Route $route) => $this->declaredSetOf($route) === $set ? $route->getName() : null,
+            $this->appRoutes(),
+        )));
+    }
+
+    /**
+     * ルートの定義の置き場の宣言(無ければ http-services)。
+     *
+     * @throws LogicException 宣言の値が 2 つのセットのどちらでもないとき
+     */
+    private function declaredSetOf(Route $route): string
+    {
+        $set = $route->getMetadata(self::SET_METADATA_KEY, ServiceAction::SET_CODE);
+
+        if (! is_string($set) || ! in_array($set, ServiceAction::SET_CODES, true)) {
+            throw new LogicException("ルートの置き場の宣言が 2 つのセットのどちらでもありません: {$route->uri()}");
+        }
+
+        return $set;
     }
 
     private function hasNameForm(string $name): bool

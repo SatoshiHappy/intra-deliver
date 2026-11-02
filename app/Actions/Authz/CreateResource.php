@@ -27,10 +27,11 @@ class CreateResource
 
     /**
      * @param  array<string, array{display_name: string, description?: string|null}>  $translations  リソースグループの、ロケールのコード → 表示名・説明
+     * @param  int|null  $sortKey  リソースグループの並び順(null = 兄弟の最大 + 1 = {@see CreateResourceGroup})
      *
      * @throws ValidationException 規則に反するとき
      */
-    public function execute(string $code, ?int $parentId, string $resourceType, string $uri, array $translations, int $sortKey = 0): AuthzResource
+    public function execute(string $code, ?int $parentId, string $resourceType, string $uri, array $translations, ?int $sortKey = null): AuthzResource
     {
         $this->validate($resourceType, $uri);
 

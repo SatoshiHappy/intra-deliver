@@ -9,7 +9,7 @@ type Props = {
     depth: number;
     /** 子のある行(名前を太字にする) */
     hasChildren: boolean;
-    /** 開閉の記号。null なら記号を出さず、字下げ揃えの空白を置く(子の無い行・検索中) */
+    /** 開閉の記号。null なら記号を出さず、字下げ揃えの空白を置く(子の無い行・検索中・機能で選んだ行の祖先) */
     toggle: { isOpen: boolean; onToggle: () => void } | null;
     /** 判定が閉塞のアクション(空 = 閉塞の行ではない) */
     blocked: string[];

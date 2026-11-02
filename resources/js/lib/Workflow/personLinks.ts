@@ -1,5 +1,5 @@
 import { departmentChartUrl, userChartUrl } from '@/lib/organizationChart';
-import { overview } from '@/routes/authz';
+import { show as overview } from '@/routes/authz/settings';
 import type { WorkflowLinkedPerson, WorkflowPersonLinks } from '@/types';
 
 /** 名前の札の「…」の 1 項目(新しいタブで開く) */

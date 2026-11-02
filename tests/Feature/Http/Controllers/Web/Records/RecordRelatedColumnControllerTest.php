@@ -10,7 +10,7 @@ use PHPUnit\Framework\Attributes\TestWith;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * 管理の関連レコードの列 records.admin.related-columns.update と、定義の画面の props relatedColumns(docs の
+ * 管理の関連レコードの列 records.admin.modules.update-related-columns と、定義の画面の props relatedColumns(docs の
  * 設計/業務データの入れ物/レコードの共通機能/業務モジュールの管理.md の 4〜7 節): ゲストとシステム管理者のロールを持たない人は 403、成功は定義の画面へ
  * 303 とトースト、404 は 422 より先、明細のモジュールはキー module、列の誤りはキー columns。初期データの「課題」(プロジェクトを参照する project)を使う。
  */

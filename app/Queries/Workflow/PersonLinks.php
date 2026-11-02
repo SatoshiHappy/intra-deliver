@@ -26,7 +26,7 @@ class PersonLinks
 
         return [
             'organizationChart' => $this->routes->allows($requester, 'master.organization-chart', $context->date),
-            'authz' => $this->routes->allows($requester, 'authz.overview', $context->date),
+            'authz' => $this->routes->allows($requester, 'authz.settings.show', $context->date),
         ];
     }
 

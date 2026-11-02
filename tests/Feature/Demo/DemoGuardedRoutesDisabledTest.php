@@ -18,8 +18,9 @@ use PHPUnit\Framework\Attributes\TestWith;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * オフのとき(守るルートの口を登録しないとき)、{@see DemoGuardedRoutesTest} で巻き戻る変更が通る(docs の 設計/ワークフロー/申請の周辺/認可設定の編集.md
- * 4 節の「取り外されている」と 8 節の守りの 2)。切替のルートのリソースとポリシーは、オンで作ったルートのキャッシュが残った状態に当てて入れる
+ * オフのとき(守るルートの口を登録しないとき。docs の 設計/ワークフロー/申請の周辺/認可設定の編集.md 4 節の「取り外されている」と 8 節の守りの 2)も、
+ * ホームと切替のリソースは設定不可のセットにあり、そのグループのセルの切替は格子の行でないので 422 で、ゲストの許可が残る
+ * ({@see DemoGuardedRoutesTest} と同じ)。切替のルートのリソースとポリシーは、オンで作ったルートのキャッシュが残った状態に当てて入れる
  * ({@see DemoDisabledTest} と同じ作り方)。既定の起動のまま、今日を 2026-10-10 に固定して u0004 で送る。
  */
 final class DemoGuardedRoutesDisabledTest extends TransactionalTestCase
@@ -39,9 +40,9 @@ final class DemoGuardedRoutesDisabledTest extends TransactionalTestCase
         )));
     }
 
-    #[TestWith(['http-services.menu.home'])]
-    #[TestWith(['http-services.demo.switch-user'])]
-    public function test_taking_the_execute_from_the_guest_passes(string $groupCode): void
+    #[TestWith(['http-services-unmanaged.menu.home'])]
+    #[TestWith(['http-services-unmanaged.demo.switch-user'])]
+    public function test_the_guest_cell_of_the_home_or_the_switch_is_not_a_row(string $groupCode): void
     {
         $this->seedSwitchRouteAsIfCached();
         $guest = app(FindOrCreateSingleConditionSubjectGroup::class)
@@ -55,11 +56,11 @@ final class DemoGuardedRoutesDisabledTest extends TransactionalTestCase
             'action' => 'execute',
             'from' => 'permit',
             'to' => 'none',
-        ])->assertSessionHasNoErrors();
+        ])->assertSessionHasErrors('resource_group_id');
 
         $remaining = AuthzPolicy::query()
             ->where(['authz_resource_group_id' => $groupId, 'authz_subject_group_id' => $guest]);
-        $this->assertFalse($remaining->exists());
+        $this->assertTrue($remaining->exists());
     }
 
     /**

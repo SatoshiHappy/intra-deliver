@@ -5,6 +5,7 @@ use App\Http\Middleware\Account\ShareCurrentAccount;
 use App\Http\Middleware\Authz\AuthorizeRoute;
 use App\Http\Middleware\HandleAppearance;
 use App\Http\Middleware\HandleInertiaRequests;
+use App\Http\Middleware\Master\ShareMasterSearch;
 use App\Http\Middleware\Menu\ShareAppNavigation;
 use App\Http\Middleware\Notice\ShareNotices;
 use Illuminate\Foundation\Application;
@@ -23,7 +24,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // ルートの認可を付けた 1 つのグループで読み込む(web: に渡すと認可の無いグループで読み込まれるので渡さない)。
         // 骨格の共有はルートの認可の後に付ける(docs の 設計/メニュー/表示.md 3.2)。今の利用者と利用者メニューの節の共有は
         // 骨格の共有の後(docs の 設計/デモユーザー切替/今の利用者.md 5.7)。通知の共有はそれらの後
-        // (設計/ワークフロー/案件の運用/通知.md の 7 節)
+        // (設計/ワークフロー/案件の運用/通知.md の 7 節)。見出しの検索欄を出すかの共有は最後(設計/共通マスタ/検索と組織図.md の 3.2)
         then: function (): void {
             Route::middleware([
                 'web',
@@ -31,6 +32,7 @@ return Application::configure(basePath: dirname(__DIR__))
                 ShareAppNavigation::class,
                 ShareCurrentAccount::class,
                 ShareNotices::class,
+                ShareMasterSearch::class,
             ])->group(__DIR__.'/../routes/web.php');
         },
     )

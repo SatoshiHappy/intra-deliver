@@ -7,7 +7,7 @@ use Carbon\CarbonImmutable;
 use LogicException;
 
 /**
- * 版の追加 workflow.admin.versions.store の入力 { start_date }(docs の 設計/ワークフロー/ルートの深さ/定義の管理.md 4 節)。
+ * 版の追加 workflow.admin.flows.store-version の入力 { start_date }(docs の 設計/ワークフロー/ルートの深さ/定義の管理.md 4 節)。
  * 入口は在るかと日付の形(Y-m-d)を見て、範囲は業務処理が 422 start_date にする(文言 = 6 節)。
  */
 class FlowVersionRequest extends FlowDefinitionRequest

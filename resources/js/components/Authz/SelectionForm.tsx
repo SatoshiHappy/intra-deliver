@@ -1,3 +1,5 @@
+import { FeatureField } from '@/components/Authz/FeatureField';
+import { JudgeField } from '@/components/Authz/JudgeField';
 import { FieldHelp, invalidProps } from '@/components/FormBlock';
 import { Label } from '@/components/ui/label';
 import {
@@ -9,14 +11,9 @@ import {
 } from '@/components/ui/select';
 import { useOverviewVisit } from '@/hooks/Authz/useOverviewVisit';
 import { actionLabel, resourceTypeLabel } from '@/lib/Authz/labels';
-import { nameOrCode } from '@/lib/nameOrCode';
 import type { AuthzGrid, AuthzJudge, AuthzJudgeUser } from '@/types';
 
-/** 判定する人の選択でゲストを表す値(クエリ user の値) */
-const GUEST = 'guest';
-
 const TYPE_ID = 'authz-type';
-const JUDGE_ID = 'authz-judge';
 
 type Props = {
     resourceTypes: string[];
@@ -26,9 +23,9 @@ type Props = {
 };
 
 /**
- * 選択の 2 行(ラベルは左で幅を揃える。docs の 認可設定の画面.md 2.3)。
+ * 選択の 3 行(ラベルは左で幅を揃える。docs の 認可設定の画面.md 2.3)。
  * 1 行目 = リソースの種類。アクションが 1 つの種類は、ラベルの横の「?」(FieldHelp)にそのアクションを書く(アクションの段を出さないため)。
- * 2 行目 = この人として判定(選択の横に判定した人の主所属)。
+ * 2 行目 = 機能({@link FeatureField})。3 行目 = この人として判定({@link JudgeField})。
  */
 export function SelectionForm({
     resourceTypes,
@@ -36,7 +33,7 @@ export function SelectionForm({
     candidates,
     judge,
 }: Props) {
-    const { chooseType, chooseUser } = useOverviewVisit();
+    const { chooseType } = useOverviewVisit();
     const onlyAction = grid.actions.length === 1 ? grid.actions[0] : undefined;
 
     return (
@@ -69,37 +66,8 @@ export function SelectionForm({
                     </SelectContent>
                 </Select>
             </div>
-            <div className="flex min-h-9 items-center gap-2.5">
-                <div className="w-32 flex-none">
-                    <Label htmlFor={JUDGE_ID}>この人として判定</Label>
-                </div>
-                <Select
-                    value={judge.user === null ? GUEST : String(judge.user.id)}
-                    onValueChange={chooseUser}
-                >
-                    <SelectTrigger id={JUDGE_ID} className="min-w-48">
-                        <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                        <SelectItem value={GUEST}>
-                            ゲスト(ログインしていない状態)
-                        </SelectItem>
-                        {candidates.map((candidate) => (
-                            <SelectItem
-                                key={candidate.id}
-                                value={String(candidate.id)}
-                            >
-                                {nameOrCode(candidate)}
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-                <span className="text-sm whitespace-nowrap text-muted-foreground">
-                    {judge.department === null
-                        ? '主所属なし'
-                        : nameOrCode(judge.department)}
-                </span>
-            </div>
+            <FeatureField rows={grid.rows} />
+            <JudgeField candidates={candidates} judge={judge} />
         </div>
     );
 }

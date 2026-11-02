@@ -10,6 +10,7 @@ use App\Actions\Authz\SubjectConditionInput;
 use App\Enums\Authz\MetaSubject;
 use App\Enums\Authz\PolicyEffect;
 use App\Enums\Authz\ResourceGroupAttributeKey;
+use App\Enums\Authz\ServiceAction;
 use App\Http\Middleware\Authz\AuthorizeRoute;
 use App\Models\Authz\AuthzResource;
 use App\Models\Authz\AuthzResourceGroupAttribute;
@@ -129,7 +130,7 @@ final class AuthorizeRouteTest extends TransactionalTestCase
 
     private function resourceOf(string $routeName): AuthzResource
     {
-        app(CreateRoutePrefixResourceGroup::class)->execute('test', []);
+        app(CreateRoutePrefixResourceGroup::class)->execute('test', ServiceAction::SET_CODE, []);
 
         return app(CreateRouteResource::class)->execute($routeName, []);
     }

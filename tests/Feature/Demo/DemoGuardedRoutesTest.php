@@ -11,7 +11,6 @@ use App\Models\Authz\AuthzResourceGroup;
 use App\Models\Master\User;
 use App\Queries\Authz\Api\GuardedRoute;
 use App\Queries\Authz\Api\GuardedRoutes;
-use App\Queries\Authz\AuthzEditGuard;
 use App\Queries\Demo\DemoGuardedRoutes;
 use Carbon\CarbonImmutable;
 use Database\Seeders\DemoSeeder;
@@ -21,9 +20,10 @@ use Symfony\Component\HttpFoundation\Response;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * オンのとき、認可の編集の守るルート(docs の 設計/ワークフロー/申請の周辺/認可設定の編集.md 4 節・8 節の守りの 2): ゲストの列から、
- * ホーム(menu.home)か切替(demo.switch-user)の execute を外す変更は 422 で巻き戻る。登録しないときに同じ変更が通ることは
- * {@see DemoGuardedRoutesDisabledTest}。オンで起動し、初期データと DemoSeeder を入れ、今日を 2026-10-10 に固定して u0004 で送る。
+ * オンのとき、認可の編集の守るルート(docs の 設計/ワークフロー/申請の周辺/認可設定の編集.md 4 節・8 節の守りの 2): ホーム(menu.home)と
+ * 切替(demo.switch-user)を守るルートに登録する。2 つのリソースは設定不可のセットにあり、そのグループのセルの切替は格子の行でないので 422
+ * (守りの口の評価そのものは Authz の AuthzEditGuardTest が偽物の実装で確かめる)。登録しないときは {@see DemoGuardedRoutesDisabledTest}。
+ * オンで起動し、初期データと DemoSeeder を入れ、今日を 2026-10-10 に固定して u0004 で送る。
  */
 final class DemoGuardedRoutesTest extends TransactionalTestCase
 {
@@ -49,14 +49,16 @@ final class DemoGuardedRoutesTest extends TransactionalTestCase
         $this->assertSame(['menu.home', 'demo.switch-user'], $names);
     }
 
-    #[TestWith(['http-services.menu.home', 'none'])]
-    #[TestWith(['http-services.menu.home', 'deny'])]
-    #[TestWith(['http-services.demo.switch-user', 'none'])]
-    #[TestWith(['http-services.demo.switch-user', 'deny'])]
-    public function test_taking_the_execute_from_the_guest_is_rolled_back(string $groupCode, string $to): void
+    /**
+     * ホームと切替のリソースは設定不可のセットにあり、そのグループのセルの切替は格子の行でないので 422(守りの前に拒む)で、ゲストの許可が残る。
+     */
+    #[TestWith(['http-services-unmanaged.menu.home', 'none'])]
+    #[TestWith(['http-services-unmanaged.menu.home', 'deny'])]
+    #[TestWith(['http-services-unmanaged.demo.switch-user', 'none'])]
+    #[TestWith(['http-services-unmanaged.demo.switch-user', 'deny'])]
+    public function test_the_guest_cell_of_the_home_or_the_switch_is_not_a_row(string $groupCode, string $to): void
     {
-        $this->changeGuestCell($groupCode, 'permit', $to)
-            ->assertSessionHasErrors(['cell' => AuthzEditGuard::VIOLATION_MESSAGE]);
+        $this->changeGuestCell($groupCode, 'permit', $to)->assertSessionHasErrors('resource_group_id');
 
         $this->assertSame(PolicyEffect::Permit, AuthzPolicy::query()->where([
             'authz_resource_group_id' => AuthzResourceGroup::query()->where('code', $groupCode)->sole()->id,
@@ -64,9 +66,12 @@ final class DemoGuardedRoutesTest extends TransactionalTestCase
         ])->sole()->effect);
     }
 
+    /**
+     * 守るルートを登録していても、ゲストがホームと切替を実行できたままの変更(束「共通マスタ」のゲストの許可を外す)は通る。
+     */
     public function test_changing_another_cell_of_the_guest_passes(): void
     {
-        $this->changeGuestCell('http-services.menu.sitemap', 'permit', 'none')->assertSessionHasNoErrors();
+        $this->changeGuestCell('http-services.master', 'permit', 'none')->assertSessionHasNoErrors();
     }
 
     /**

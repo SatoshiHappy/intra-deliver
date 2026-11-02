@@ -21,7 +21,7 @@ import {
     itemId,
 } from '@/lib/Records/adminItems';
 import { putOrder } from '@/lib/Records/sortOrder';
-import { reorder } from '@/routes/records/admin/fields';
+import { reorderFields } from '@/routes/records/admin/modules';
 import type {
     RecordAdminHeading,
     RecordAdminItem,
@@ -81,7 +81,7 @@ function useFieldOrder(module: RecordAdminModule, items: RecordAdminItem[]) {
         const next = arrayMove(shown, ...move);
         setPending(next);
         putOrder(
-            reorder(module.code).url,
+            reorderFields(module.code).url,
             { items: next },
             ['module', 'fieldUsage', 'headings', 'items'],
             () => setPending(null),

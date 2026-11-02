@@ -46,7 +46,7 @@ final class OverviewEditPropsTest extends TransactionalTestCase
     public function test_someone_who_may_only_open_can_do_nothing_and_gets_no_fingerprints(): void
     {
         $column = $this->userColumn('u0001');
-        $this->place('http-services.authz.overview', $column, PolicyEffect::Permit);
+        $this->place('http-services.authz.settings.show', $column, PolicyEffect::Permit);
 
         $props = $this->propsAs('u0001');
 
@@ -59,8 +59,8 @@ final class OverviewEditPropsTest extends TransactionalTestCase
     public function test_someone_who_may_open_and_save_cells_can_only_edit_cells(): void
     {
         $column = $this->userColumn('u0001');
-        $this->place('http-services.authz.overview', $column, PolicyEffect::Permit);
-        $this->place('http-services.authz.editor.cells.update', $column, PolicyEffect::Permit);
+        $this->place('http-services.authz.settings.show', $column, PolicyEffect::Permit);
+        $this->place('http-services.authz.settings.update-cell', $column, PolicyEffect::Permit);
 
         $this->assertSame(
             ['editCells' => true, 'addSubject' => false, 'deleteSubject' => false],
@@ -71,16 +71,15 @@ final class OverviewEditPropsTest extends TransactionalTestCase
     public function test_adding_needs_the_candidates_and_deleting_needs_saving_cells(): void
     {
         $column = $this->userColumn('u0001');
-        $this->place('http-services.authz.overview', $column, PolicyEffect::Permit);
-        $this->place('http-services.authz.editor', $column, PolicyEffect::Permit);
-        $this->place('http-services.authz.editor.subject-candidates', $column, PolicyEffect::Deny);
+        $this->place('http-services.authz.settings', $column, PolicyEffect::Permit);
+        $this->place('http-services.authz.settings.subject-candidates', $column, PolicyEffect::Deny);
 
         $this->assertSame(
             ['editCells' => true, 'addSubject' => false, 'deleteSubject' => true],
             $this->propsAs('u0001')['can'],
         );
 
-        $this->place('http-services.authz.editor.cells.update', $column, PolicyEffect::Deny);
+        $this->place('http-services.authz.settings.update-cell', $column, PolicyEffect::Deny);
         $props = $this->propsAs('u0001');
 
         $this->assertSame(['editCells' => false, 'addSubject' => false, 'deleteSubject' => false], $props['can']);
@@ -93,7 +92,7 @@ final class OverviewEditPropsTest extends TransactionalTestCase
     public function test_a_partial_reload_after_a_cell_change_rebuilds_can(): void
     {
         $this->actingAs($this->user('u0004'));
-        $this->changeCell('http-services.master.search', $this->userColumn('u0001'), 'none', 'permit')
+        $this->changeCell('http-services.master', $this->userColumn('u0001'), 'none', 'permit')
             ->assertSessionHasNoErrors();
 
         $this->get(self::OVERVIEW_URL)->assertInertia(fn (Assert $page) => $page
@@ -109,7 +108,7 @@ final class OverviewEditPropsTest extends TransactionalTestCase
     public function test_the_fingerprint_in_the_props_is_accepted_by_the_deletion(): void
     {
         $column = $this->userColumn('u0001');
-        $this->place('http-services.master.search', $column, PolicyEffect::Deny);
+        $this->place('http-services-unmanaged.master.search', $column, PolicyEffect::Deny);
         $subjects = $this->propsAs('u0004')['grid']['subjects'];
         $subject = $subjects[array_search($column, array_column($subjects, 'id'), true)];
         $seen = ['count' => $subject['policyCount'], 'fingerprint' => $subject['fingerprint']];

@@ -20,7 +20,7 @@ import {
     movedColumns,
     toggledColumns,
 } from '@/lib/recordRelated';
-import { update } from '@/routes/records/admin/related-columns';
+import { updateRelatedColumns } from '@/routes/records/admin/modules';
 import type { RecordRelatedColumnSetting } from '@/types';
 
 type Props = {
@@ -141,7 +141,7 @@ function ColumnsForm({
     const change = (columns: string[]) => form.setData('columns', columns);
     const submit = (event: FormEvent) => {
         event.preventDefault();
-        form.submit(update(moduleCode), {
+        form.submit(updateRelatedColumns(moduleCode), {
             preserveScroll: true,
             onSuccess: onDone,
         });

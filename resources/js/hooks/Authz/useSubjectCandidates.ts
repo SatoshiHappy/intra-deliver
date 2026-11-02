@@ -5,7 +5,7 @@ import {
     INITIAL_SUBJECT_CANDIDATES,
     waitingFor,
 } from '@/lib/Authz/subjectCandidates';
-import { subjectCandidates } from '@/routes/authz/editor';
+import { subjectCandidates } from '@/routes/authz/settings';
 import type { AuthzSubjectCandidates, AuthzSubjectKind } from '@/types';
 
 /** 語の最大の文字数(サーバーの AuthzSubjectCandidatesRequest::MAX_LENGTH と同じ値) */

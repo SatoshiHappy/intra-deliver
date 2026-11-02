@@ -36,7 +36,7 @@ export function GridRow({ row, actions, tree, children }: Props) {
                 depth={row.depth}
                 hasChildren={hasChildren}
                 toggle={
-                    hasChildren && !tree.isSearching
+                    tree.toggleable.has(row.resourceGroupId)
                         ? {
                               isOpen: tree.isOpen(row.resourceGroupId),
                               onToggle: () => tree.toggle(row.resourceGroupId),

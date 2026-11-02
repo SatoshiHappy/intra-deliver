@@ -10,11 +10,7 @@ import type { HeadingGrouping } from '@/lib/Records/adminItems';
 import { fieldAttributeBadges } from '@/lib/Records/fieldAttributeBadges';
 import { fieldTypeLabel } from '@/lib/Records/recordDefinitions';
 import { cn } from '@/lib/utils';
-import {
-    destroy as destroyField,
-    edit as editField,
-} from '@/routes/records/admin/fields';
-import { show } from '@/routes/records/admin/modules';
+import { destroyField, editField, show } from '@/routes/records/admin/modules';
 import type {
     RecordAdminFieldDefinition,
     RecordAdminHeading,

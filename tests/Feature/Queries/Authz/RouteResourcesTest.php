@@ -6,13 +6,14 @@ use App\Queries\Authz\RouteResources;
 use Illuminate\Routing\Route as RoutingRoute;
 use Illuminate\Support\Facades\Route;
 use Inertia\DevTools\Http\EntriesController;
+use LogicException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Support\TransactionalTestCase;
 
 /**
  * アプリのルートと、ルートの画面・処理のリソース(docs の 設計/メニュー/認可との結び付け.md 2.3: アプリのルート = 処理が vendor/ の外にあるものと
- * Route::inertia・redirect・view のもの。名前の規則、名前から決まるリソースグループ ID・URI、メソッドとアプリの中のパスでの照合と、
- * アプリの中のパスの形 = 表.md 1.7)。
+ * Route::inertia・redirect・view のもの。名前の規則、置き場の宣言、置き場と名前から決まるリソースグループ ID・URI、メソッドとアプリの中のパスでの
+ * 照合と、アプリの中のパスの形 = 表.md 1.7)。
  *
  * テストのルートはこのファイルのクロージャ(vendor/ の外)で足す。
  */
@@ -74,7 +75,7 @@ final class RouteResourcesTest extends TransactionalTestCase
             '空の区切り' => ['menu..items'],
             '末尾の .' => ['menu.items.'],
             '区切りに使えない文字' => ['menu.items/show'],
-            '242 文字' => ['menu.'.str_repeat('a', 237)],
+            '232 文字(上限 231 の 1 つ上)' => ['menu.'.str_repeat('a', 227)],
             'ほかのルートの名前の接頭辞' => ['test.admin'],
         ];
     }
@@ -115,7 +116,8 @@ final class RouteResourcesTest extends TransactionalTestCase
         $this->registerRoutes();
 
         $this->assertTrue($this->routeResources()->followsNameRules('test.items.show'));
-        $this->assertTrue($this->routeResources()->followsNameRules('menu.'.str_repeat('a', 236)));
+        $this->assertTrue($this->routeResources()->followsNameRules('menu.'.str_repeat('a', 226)), '231 文字(上限)');
+        $this->assertTrue($this->routeResources()->followsNameRules('menu.'.str_repeat('a', 225)), '230 文字');
         $this->assertTrue($this->routeResources()->followsNameRules('test.admin_users-2'));
     }
 
@@ -127,14 +129,64 @@ final class RouteResourcesTest extends TransactionalTestCase
         $this->assertFalse($this->routeResources()->followsNameRules($name));
     }
 
-    public function test_builds_the_resource_group_ids_and_the_uri_from_the_name(): void
+    /**
+     * 置き場ごとに、リソースグループ ID = <セット>. + 名前、親 = 末端を除いた接頭辞のリソースグループ(最も短い接頭辞の親 = セット)。
+     * URI は置き場によらない(service:// + 名前の . を / に換えたもの)。
+     *
+     * @return array<string, array{string}>
+     */
+    public static function sets(): array
+    {
+        return ['http-services' => ['http-services'], '設定不可のセット' => ['http-services-unmanaged']];
+    }
+
+    #[DataProvider('sets')]
+    public function test_builds_the_resource_group_ids_from_the_set_and_the_name(string $set): void
     {
         $routeResources = $this->routeResources();
 
-        $this->assertSame('http-services.menu.admin.users', $routeResources->resourceGroupCodeOf('menu.admin.users'));
-        $this->assertSame('http-services.menu.admin', $routeResources->parentResourceGroupCodeOf('menu.admin.users'));
-        $this->assertSame('http-services', $routeResources->parentResourceGroupCodeOf('menu'));
-        $this->assertSame('service://menu/admin/users', $routeResources->uriOf('menu.admin.users'));
+        $this->assertSame("{$set}.menu.admin.users", $routeResources->resourceGroupCodeOf($set, 'menu.admin.users'));
+        $this->assertSame("{$set}.menu.admin", $routeResources->parentResourceGroupCodeOf($set, 'menu.admin.users'));
+        $this->assertSame("{$set}.menu", $routeResources->parentResourceGroupCodeOf($set, 'menu.admin'));
+        $this->assertSame($set, $routeResources->parentResourceGroupCodeOf($set, 'menu'));
+    }
+
+    public function test_builds_the_uri_from_the_name_alone(): void
+    {
+        Route::get('/test/managed', fn () => 'ok')->name('test.managed.show');
+        Route::metadata(RouteResources::UNMANAGED)->get('/test/unmanaged', fn () => 'ok')->name('test.unmanaged.show');
+
+        $this->assertSame('service://test/managed/show', $this->routeResources()->uriOf('test.managed.show'));
+        $this->assertSame('service://test/unmanaged/show', $this->routeResources()->uriOf('test.unmanaged.show'));
+    }
+
+    /**
+     * 置き場の宣言: 宣言を付けたルート(1 本ずつでも、グループでも)は設定不可のセット、宣言の無いルートと、その名前のルートが無い名前は http-services。
+     */
+    public function test_reads_the_set_from_the_declaration_of_the_route(): void
+    {
+        Route::get('/test/managed', fn () => 'ok')->name('test.managed');
+        Route::get('/test/single', fn () => 'ok')->name('test.single')->metadata(RouteResources::UNMANAGED);
+        Route::metadata(RouteResources::UNMANAGED)->group(function (): void {
+            Route::get('/test/grouped', fn () => 'ok')->name('test.grouped');
+        });
+
+        $this->assertSame(
+            ['http-services', 'http-services-unmanaged', 'http-services-unmanaged', 'http-services'],
+            array_map(
+                fn (string $name) => $this->routeResources()->setOf($name),
+                ['test.managed', 'test.single', 'test.grouped', 'test.missing'],
+            ),
+        );
+    }
+
+    public function test_rejects_a_declaration_of_a_set_other_than_the_two(): void
+    {
+        Route::get('/test/other', fn () => 'ok')->name('test.other')->metadata(['authz' => ['set' => 'im-menu-group']]);
+
+        $this->expectException(LogicException::class);
+
+        $this->routeResources()->setOf('test.other');
     }
 
     public function test_matches_an_app_route_by_method_and_path(): void

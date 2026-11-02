@@ -10,7 +10,8 @@ use DateTimeInterface;
 /**
  * 認可設定の画面の格子(docs の 設計/共通マスタ/ロールと認可/認可の確認/認可設定の画面.md 2 節): 1 格子 = 1 リソースタイプ。
  * 行 = {@see OverviewTree}、列 = {@see OverviewSubjects} × タイプのアクション(ResourceTypeCatalog の並び)、セル = {@see OverviewSettings}。
- * 判定 = タイプのリソースを持つ行について、アクションごとの判定の口 {@see AuthorizationQuery::explain()} の結果(リソースを持たない行は null)。
+ * 判定 = タイプのリソースを持つ行について、アクションごとの判定の口 {@see AuthorizationQuery::explain()} の結果(ルートの束は配下のルートの先頭の結果。
+ * ほかのリソースを持たない行は null)。
  * 行 × アクションの判定は {@see AuthorizationQuery::explainEach()} でまとめて求める(問い合わせの数を行の数に比例させない)。
  * 閉塞の値は読み直さない(判定の結果だけ)。返す形の画面の型は resources/js/types/authz.ts の AuthzGrid。
  *
@@ -62,9 +63,9 @@ class OverviewQuery
         $subjectGroupIds = array_column($subjects, 'id');
         $nodes = $this->tree->nodesOf($resourceType, $localeCode);
         $settings = $this->settings->settingsOf($resourceType, $nodes, $subjectGroupIds, $actions);
-        $judgedIds = array_map(fn (OverviewTreeNode $node) => $node->resourceGroupId, array_values(array_filter(
-            $nodes,
-            fn (OverviewTreeNode $node) => $node->holdsResource,
+        $judgedIds = array_values(array_unique(array_filter(
+            array_map(fn (OverviewTreeNode $node) => $node->judgedResourceGroupId, $nodes),
+            fn (?int $id) => $id !== null,
         )));
         $explanations = $this->authorization->explainEach($requester, $judgedIds, $actions, $date);
 
@@ -79,9 +80,9 @@ class OverviewQuery
                 'code' => $node->code,
                 'name' => $node->name,
                 'settings' => $settings[$node->resourceGroupId] ?? [],
-                'judgements' => $node->holdsResource
-                    ? $this->judgements($actions, $explanations[$node->resourceGroupId], $subjectGroupIds)
-                    : null,
+                'judgements' => $node->judgedResourceGroupId === null
+                    ? null
+                    : $this->judgements($actions, $explanations[$node->judgedResourceGroupId], $subjectGroupIds),
             ], $nodes),
         ];
     }

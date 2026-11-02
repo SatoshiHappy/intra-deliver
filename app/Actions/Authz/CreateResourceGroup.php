@@ -15,6 +15,8 @@ use Illuminate\Validation\ValidationException;
  * 親があれば親の閉塞を写す(ロールと認可/リソース.md の閉塞の項: 足したリソースグループに、新しい親の閉塞を同じ操作で写す。新しい行は閉塞を持たないので、
  * 親の値をそのまま持つ。親の値は祖先の閉塞を写したものなので、祖先はたどらない)。
  * 循環は作るときには起きない(新しい行は誰の親でもない)。ID の長さ・一意・空文字と、親の実在は DB が止める。
+ * 並び順を渡されなければ、同じ親の兄弟(親が無ければ親の無い行)の並び順の最大 + 1(兄弟が無ければ 0)を入れる
+ * (ロールと認可/リソース.md の「並び順の入れ方」。兄弟の最大は共通マスタの書き込みのロックの中で読む。範囲を超える値は検査制約が止める)。
  * ロケール別の行は渡されたロケールごとに作る(どのロケールを必ず置くかは多言語の設計で決めるので、ここでは求めない)。
  */
 class CreateResourceGroup
@@ -24,15 +26,20 @@ class CreateResourceGroup
 
     /**
      * @param  array<string, array{display_name: string, description?: string|null}>  $translations  ロケールのコード → 表示名・説明
+     * @param  int|null  $sortKey  並び順(null = 兄弟の最大 + 1)
      *
      * @throws ValidationException 無いロケールのコードがあるとき
      */
-    public function execute(string $code, ?int $parentId, array $translations, int $sortKey = 0): AuthzResourceGroup
+    public function execute(string $code, ?int $parentId, array $translations, ?int $sortKey = null): AuthzResourceGroup
     {
         $localeIds = $this->localeIds($translations);
 
         return $this->writeCommonMaster(function () use ($code, $parentId, $translations, $sortKey, $localeIds) {
-            $group = AuthzResourceGroup::query()->create(['code' => $code, 'parent_id' => $parentId, 'sort_key' => $sortKey]);
+            $group = AuthzResourceGroup::query()->create([
+                'code' => $code,
+                'parent_id' => $parentId,
+                'sort_key' => $sortKey ?? $this->nextSortKey($parentId),
+            ]);
 
             foreach ($translations as $localeCode => $values) {
                 $group->authzResourceGroupTranslations()->create([
@@ -48,6 +55,17 @@ class CreateResourceGroup
 
             return $group;
         });
+    }
+
+    /**
+     * 同じ親の兄弟(親が無ければ親の無い行)の並び順の最大 + 1。兄弟が無ければ 0。
+     */
+    private function nextSortKey(?int $parentId): int
+    {
+        // where に null を渡すと IS NULL になる(親の無い行どうし)
+        $max = AuthzResourceGroup::query()->where('parent_id', $parentId)->max('sort_key');
+
+        return $max === null ? 0 : (int) $max + 1;
     }
 
     private function copyBlockedFromParent(AuthzResourceGroup $group, int $parentId): void

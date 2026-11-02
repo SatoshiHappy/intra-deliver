@@ -11,7 +11,7 @@ use Tests\Support\SendsFlowDefinitionRequests;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * フローの機能設定の保存 workflow.admin.flows.settings.update(docs の 設計/ワークフロー/申請の周辺/画面.md の 4 節): システム管理者が
+ * フローの機能設定の保存 workflow.admin.flows.update-settings(docs の 設計/ワークフロー/申請の周辺/画面.md の 4 節): システム管理者が
  * 添付ファイルの「使用しない」「使用する」を保存でき、詳細のタブ「設定」へ 303 とトースト。型の誤りは 422、無いフローは 404、
  * ルートの認可(ゲスト・一般の利用者の 403 と 404 の順)は AdminFlowDefinitionControllerTest の 8 ルートの組が見る。効き目 = 保存の後の新しい申請の
  * 画面は添付の面を出さず、申請中の案件は申請した時の値のまま(読み取りの規則は CaseAttachabilityTest・ApplyAttachmentsTest)。

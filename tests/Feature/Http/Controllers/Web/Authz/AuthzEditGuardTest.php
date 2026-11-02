@@ -18,6 +18,12 @@ final class AuthzEditGuardTest extends TransactionalTestCase
 {
     use EditsAuthz;
 
+    /** ルートの束「認可設定」(開く・保存するのルートを含む) */
+    private const AUTHZ_SETTINGS = 'http-services.authz.settings';
+
+    /** ルートの束「共通マスタ」(組織図。ゲストユーザ・認証済みユーザに直接の許可) */
+    private const MASTER = 'http-services.master';
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -34,57 +40,56 @@ final class AuthzEditGuardTest extends TransactionalTestCase
     }
 
     /**
-     * 開く(authz.overview)と保存する(authz.editor.cells.update)の両方を求める(片方だけを禁止しても 422)。
+     * 開く(authz.settings.show)と保存する(authz.settings.update-cell)のルートは同じ束「認可設定」にあり、束を禁止にすると 422(8 節の守りの 1)。
      */
-    public function test_denying_either_opening_or_saving_is_rolled_back(): void
+    public function test_denying_the_bundle_of_the_authz_settings_is_rolled_back(): void
     {
-        foreach (['http-services.authz.overview', 'http-services.authz.editor.cells.update'] as $code) {
-            $this->changeCell($code, $this->administratorColumn(), 'none', 'deny')
-                ->assertSessionHasErrors(['cell' => AuthzEditGuard::VIOLATION_MESSAGE]);
+        $this->changeCell(self::AUTHZ_SETTINGS, $this->administratorColumn(), 'none', 'deny')
+            ->assertSessionHasErrors(['cell' => AuthzEditGuard::VIOLATION_MESSAGE]);
 
-            $this->assertSame('none', $this->directSetting($code, $this->administratorColumn()));
-        }
+        $this->assertSame('none', $this->directSetting(self::AUTHZ_SETTINGS, $this->administratorColumn()));
     }
 
     public function test_changing_the_column_of_someone_else_passes(): void
     {
-        $this->changeCell('http-services.authz.overview', $this->authenticatedColumn(), 'none', 'deny')
+        $this->changeCell(self::AUTHZ_SETTINGS, $this->authenticatedColumn(), 'none', 'deny')
             ->assertSessionHasNoErrors();
-        $this->changeCell('http-services.authz.editor', $this->userColumn('u0001'), 'none', 'permit')
+        $this->changeCell(self::AUTHZ_SETTINGS, $this->userColumn('u0001'), 'none', 'permit')
             ->assertSessionHasNoErrors();
 
-        $this->assertSame('deny', $this->directSetting('http-services.authz.overview', $this->authenticatedColumn()));
+        $this->assertSame('deny', $this->directSetting(self::AUTHZ_SETTINGS, $this->authenticatedColumn()));
     }
 
+    /**
+     * 守るルートの口は、画面・処理のルート(組織図。ゲストの許可は束「共通マスタ」)を返す偽物で確かめる(8 節の守りの 2)。
+     */
     public function test_a_registered_guarded_route_must_stay_executable_by_the_guest(): void
     {
-        $this->registerGuardedRoute('menu.sitemap');
+        $this->registerGuardedRoute('master.organization-chart');
 
-        $this->changeCell('http-services.menu.sitemap', $this->guestColumn(), 'permit', 'none')
+        $this->changeCell(self::MASTER, $this->guestColumn(), 'permit', 'none')
             ->assertSessionHasErrors(['cell' => AuthzEditGuard::VIOLATION_MESSAGE]);
-        $this->changeCell('http-services.menu.sitemap', $this->guestColumn(), 'permit', 'deny')
+        $this->changeCell(self::MASTER, $this->guestColumn(), 'permit', 'deny')
             ->assertSessionHasErrors(['cell' => AuthzEditGuard::VIOLATION_MESSAGE]);
 
-        $this->assertSame('permit', $this->directSetting('http-services.menu.sitemap', $this->guestColumn()));
+        $this->assertSame('permit', $this->directSetting(self::MASTER, $this->guestColumn()));
     }
 
     public function test_without_a_guarded_route_the_same_change_passes(): void
     {
-        $this->changeCell('http-services.menu.sitemap', $this->guestColumn(), 'permit', 'none')
-            ->assertSessionHasNoErrors();
+        $this->changeCell(self::MASTER, $this->guestColumn(), 'permit', 'none')->assertSessionHasNoErrors();
 
-        $this->assertSame('none', $this->directSetting('http-services.menu.sitemap', $this->guestColumn()));
+        $this->assertSame('none', $this->directSetting(self::MASTER, $this->guestColumn()));
     }
 
     public function test_the_guarded_route_is_judged_for_the_guest_not_for_the_operator(): void
     {
-        $this->registerGuardedRoute('authz.overview');
+        $this->registerGuardedRoute('authz.settings.show');
 
-        $this->changeCell('http-services.master.search', $this->guestColumn(), 'permit', 'none')
+        $this->changeCell(self::MASTER, $this->guestColumn(), 'permit', 'none')
             ->assertSessionHasErrors(['cell' => AuthzEditGuard::VIOLATION_MESSAGE]);
-        $this->place('http-services.authz.overview', $this->guestColumn(), PolicyEffect::Permit);
-        $this->changeCell('http-services.master.search', $this->guestColumn(), 'permit', 'none')
-            ->assertSessionHasNoErrors();
+        $this->place(self::AUTHZ_SETTINGS, $this->guestColumn(), PolicyEffect::Permit);
+        $this->changeCell(self::MASTER, $this->guestColumn(), 'permit', 'none')->assertSessionHasNoErrors();
     }
 
     /**

@@ -36,7 +36,7 @@ import { currentDraft } from '@/lib/recordForm';
 import { payloadValue } from '@/lib/recordPayload';
 import { clearRowErrors } from '@/lib/formErrors';
 import { conditionFields, conditionOperatorsOf } from '@/lib/recordRules';
-import { store, update } from '@/routes/records/admin/rules';
+import { storeRule, updateRule } from '@/routes/records/admin/modules';
 import type {
     RecordComparisonOperator,
     RecordConditionExpression,
@@ -462,8 +462,8 @@ export function RecordRuleDialog({
         form.transform((data) => toPayload(module, data));
         form.submit(
             rule === null
-                ? store(module.code)
-                : update({ module: module.code, rule: rule.id }),
+                ? storeRule(module.code)
+                : updateRule({ module: module.code, rule: rule.id }),
             {
                 preserveScroll: true,
                 onSuccess: () => setOpen(false),

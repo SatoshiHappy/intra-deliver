@@ -4,7 +4,7 @@ import { toast } from 'sonner';
 import type { CellTarget } from '@/lib/Authz/cellEdit';
 import { cellKey, cellPayload, isStaleCellMessage } from '@/lib/Authz/cellEdit';
 import { EDITED_PROPS } from '@/lib/Authz/editMode';
-import { update } from '@/routes/authz/editor/cells';
+import { updateCell } from '@/routes/authz/settings';
 
 /** セルを押す口(押せる形のセルが受け取る)。保存中のセルは押せない */
 export type CellEditor = {
@@ -64,7 +64,7 @@ export function useCellEdit(resourceType: string): CellEditor {
             return;
         }
 
-        router.put(update().url, cellPayload(resourceType, target), {
+        router.put(updateCell().url, cellPayload(resourceType, target), {
             only: EDITED_PROPS,
             preserveScroll: true,
             preserveState: true,

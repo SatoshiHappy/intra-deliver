@@ -39,16 +39,16 @@ trait SendsFlowDefinitionRequests
         return [
             'workflow.admin.flows.index' => ['get', '/workflow/admin/flows', []],
             'workflow.admin.flows.show' => ['get', $base, []],
-            'workflow.admin.flows.settings.update' => ['put', "{$base}/settings", ['is_attachment_enabled' => false]],
-            'workflow.admin.flows.referrers.update' => ['put', "{$base}/referrers", $this->referrersInput()],
-            'workflow.admin.versions.store' => ['post', "{$base}/versions", ['start_date' => $this->tomorrow()]],
-            'workflow.admin.versions.disable' => ['post', "{$base}/versions/2/disable", []],
-            'workflow.admin.versions.enable' => ['post', "{$base}/versions/1/enable", []],
-            'workflow.admin.nodes.update' => [
+            'workflow.admin.flows.update-settings' => ['put', "{$base}/settings", ['is_attachment_enabled' => false]],
+            'workflow.admin.flows.update-referrers' => ['put', "{$base}/referrers", $this->referrersInput()],
+            'workflow.admin.flows.store-version' => ['post', "{$base}/versions", ['start_date' => $this->tomorrow()]],
+            'workflow.admin.flows.disable-version' => ['post', "{$base}/versions/2/disable", []],
+            'workflow.admin.flows.enable-version' => ['post', "{$base}/versions/1/enable", []],
+            'workflow.admin.flows.update-node' => [
                 'put', "{$base}/versions/3/nodes/section_chief",
                 $this->nodeInput(3, 'section_chief', ['prevents_applicant_approval' => false]),
             ],
-            'workflow.admin.subject-candidates' => ['get', '/workflow/admin/subject-candidates?q=u000', []],
+            'workflow.admin.flows.subject-candidates' => ['get', '/workflow/admin/subject-candidates?q=u000', []],
         ];
     }
 

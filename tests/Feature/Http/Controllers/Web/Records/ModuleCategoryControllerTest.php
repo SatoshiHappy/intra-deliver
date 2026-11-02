@@ -239,7 +239,7 @@ final class ModuleCategoryControllerTest extends TransactionalTestCase
         $this->actingAs($this->user('u0004'))->call($method, $url, $input)->assertNotFound();
     }
 
-    #[TestWith(['/records/admin/modules/reorder', 'records.admin.modules.reorder'])]
+    #[TestWith(['/records/admin/modules/reorder', 'records.admin.categories.reorder-uncategorized'])]
     #[TestWith(['/records/admin/categories/reorder', 'records.admin.categories.reorder'])]
     public function test_the_reorder_routes_are_not_taken_by_the_routes_with_an_argument(string $url, string $name): void
     {

@@ -1,6 +1,6 @@
 import { useForm } from '@inertiajs/react';
 import { EDITED_PROPS } from '@/lib/Authz/editMode';
-import { destroy } from '@/routes/authz/editor/subjects';
+import { destroySubject } from '@/routes/authz/settings';
 import type { AuthzGridSubject } from '@/types';
 
 /**
@@ -19,7 +19,7 @@ export function useDeleteColumn(subject: AuthzGridSubject, onDone: () => void) {
         clearErrors: () => form.clearErrors(),
         remove: () => {
             form.transform(() => ({ count: policyCount, fingerprint }));
-            form.submit(destroy(subject.id), {
+            form.submit(destroySubject(subject.id), {
                 only: EDITED_PROPS,
                 preserveScroll: true,
                 preserveState: true,

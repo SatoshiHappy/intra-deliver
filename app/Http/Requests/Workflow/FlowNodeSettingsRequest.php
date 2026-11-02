@@ -13,7 +13,7 @@ use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Enum;
 
 /**
- * ステップの設定の保存 workflow.admin.nodes.update の入力(欄 = {@see NodeSettingsInput} の snake_case。docs の
+ * ステップの設定の保存 workflow.admin.flows.update-node の入力(欄 = {@see NodeSettingsInput} の snake_case。docs の
  * 設計/ワークフロー/ルートの深さ/定義の管理.md 5.1 節)。入口は型だけを見て(欠けた欄と null は空)、種類で決まる必須・禁止と値の規則は業務処理が
  * 422 にする。型の誤りは、その欄の 6 節の文(選択の欄は「選択してください」の文)で返す。
  */

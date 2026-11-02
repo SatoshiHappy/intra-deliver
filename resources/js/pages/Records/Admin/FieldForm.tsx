@@ -40,8 +40,7 @@ import {
     toFieldPayload,
     withTypeChoice,
 } from '@/lib/Records/recordFieldForm';
-import { create, edit, store, update } from '@/routes/records/admin/fields';
-import { index, show } from '@/routes/records/admin/modules';
+import moduleRoutes, { index, show } from '@/routes/records/admin/modules';
 import type {
     DefinitionTextMaxLengths,
     RecordAdminField,
@@ -166,8 +165,8 @@ export default function FieldForm({
         form.transform((current) => toFieldPayload(current, isNew));
         form.submit(
             isNew
-                ? store(module.code)
-                : update({ module: module.code, field: field.code }),
+                ? moduleRoutes.storeField(module.code)
+                : moduleRoutes.updateField([module.code, field.code]),
             { onError: () => setFocusRequest((count) => count + 1) },
         );
     };
@@ -470,8 +469,8 @@ FieldForm.layout = (props: Props) => ({
             title: headingOf(props.field),
             href:
                 props.field === null
-                    ? create(props.module.code)
-                    : edit({
+                    ? moduleRoutes.createField(props.module.code)
+                    : moduleRoutes.editField({
                           module: props.module.code,
                           field: props.field.code,
                       }),

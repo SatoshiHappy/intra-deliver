@@ -9,6 +9,7 @@ use App\Actions\Authz\FindOrCreateSingleConditionSubjectGroup;
 use App\Actions\Authz\SubjectConditionInput;
 use App\Enums\Authz\MetaSubject;
 use App\Enums\Authz\PolicyEffect;
+use App\Enums\Authz\ServiceAction;
 use App\Http\Middleware\Authz\AuthorizeRoute;
 use App\Support\AccessContext;
 use Carbon\CarbonImmutable;
@@ -109,7 +110,7 @@ final class AccessContextRequestTest extends TransactionalTestCase
      */
     private function permitEveryoneOn(array $routeNames): void
     {
-        app(CreateRoutePrefixResourceGroup::class)->execute('test', []);
+        app(CreateRoutePrefixResourceGroup::class)->execute('test', ServiceAction::SET_CODE, []);
         $subjectGroups = array_map(
             fn (MetaSubject $metaSubject) => app(FindOrCreateSingleConditionSubjectGroup::class)->execute(new SubjectConditionInput(metaSubject: $metaSubject), []),
             [MetaSubject::Anonymous, MetaSubject::Authenticated],

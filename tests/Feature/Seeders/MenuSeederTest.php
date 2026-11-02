@@ -113,7 +113,7 @@ final class MenuSeederTest extends TransactionalTestCase
                 "{$forms}/{$workflow}-records-data-index-issue-resolution-application",
             ], $this->treeOf($workflow));
             $this->assertSame(array_map(fn (string $suffix) => "{$prefix}-admin-{$suffix}", [
-                'authz-overview', 'master-organization-chart',
+                'authz-settings-show', 'master-organization-chart',
                 'records-admin-modules-index', 'records-admin-categories-index',
                 'workflow-admin-flows-index', 'workflow-admin-cases-index', 'workflow-admin-proxies-index',
             ]), $this->treeOf("{$prefix}-admin"));

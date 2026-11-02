@@ -69,7 +69,7 @@ export type AuthzCan = {
 /** 「列を追加」の対象者の種類(認可設定の編集.md 3.1) */
 export type AuthzSubjectKind = 'user' | 'role' | 'department' | 'post';
 
-/** 「列を追加」の候補(authz.editor.subject-candidates の 1 件。主所属の名前はユーザーだけ) */
+/** 「列を追加」の候補(authz.settings.subject-candidates の 1 件。主所属の名前はユーザーだけ) */
 export type AuthzSubjectCandidate = {
     id: number;
     code: string;
@@ -77,7 +77,7 @@ export type AuthzSubjectCandidate = {
     mainDepartmentName: string | null;
 };
 
-/** 候補の口 authz.editor.subject-candidates の応答 */
+/** 候補の口 authz.settings.subject-candidates の応答 */
 export type AuthzSubjectCandidates = {
     candidates: AuthzSubjectCandidate[];
 };

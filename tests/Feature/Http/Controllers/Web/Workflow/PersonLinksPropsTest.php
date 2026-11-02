@@ -14,7 +14,7 @@ use Tests\Support\TransactionalTestCase;
  * 移り先のルートの execute を今日で判定した値を持つ。条件は 2 つの独立した判定で、表の行 = 2 × 2 の全部。
  * 合う設定に許可が 1 つでもあれば許可なので、許さない形はそのリソースグループの設定を消して作る。
  *
- * | 組織図(master.organization-chart)の execute | 認可設定(authz.overview)の execute | links |
+ * | 組織図(master.organization-chart)の execute | 認可設定(authz.settings.show)の execute | links |
  * |---|---|---|
  * | 許す | 許さない | 組織図だけ真(一般ユーザーの初期) |
  * | 許す | 許す | 両方が真(管理者・ポリシーを足した一般ユーザー) |
@@ -29,9 +29,10 @@ final class PersonLinksPropsTest extends TransactionalTestCase
     use EditsAuthz;
     use UsesSeededCases;
 
-    private const ORGANIZATION_CHART = 'http-services.master.organization-chart';
+    /** 組織図の許可はルートの束「共通マスタ」に置く(ルートには置かない) */
+    private const ORGANIZATION_CHART = 'http-services.master';
 
-    private const AUTHZ = 'http-services.authz.overview';
+    private const AUTHZ = 'http-services.authz.settings.show';
 
     private const ADMIN_PROXIES = 'http-services.workflow.admin.proxies';
 

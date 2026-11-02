@@ -55,10 +55,11 @@ use Illuminate\Database\Seeder;
  * 申請の案件名は空で渡して既定にする(docs の 設計/ワークフロー/初期データ.md 4 節)。定義の前に申請書の業務モジュール 2 つを作る({@see WorkflowApplicationModules})。
  * 見本の申請は申請対象のレコードをデータハブ(プロジェクト・課題)に作り、それを申請対象にした申請書で申請する({@see BuildsWorkflowSampleRecords})。
  *
- * 先頭に、接頭辞のリソースグループ 15・ルートのリソース 50 と、ROUTES の 32 本のゲストユーザ・認証済みユーザへの execute の許可
+ * 先頭に、接頭辞のリソースグループ 12(設定不可のセットに 7・http-services に 5)・ルートのリソース 50 と、ROUTES の 32 本(設定不可のセット)の
+ * ゲストユーザ・認証済みユーザへの execute の許可
  * (64 = 設計/ワークフロー/ルートの深さ/初期データ.md 5 節の 38 と、案件の運用・申請の周辺で足したルートの分 =
  * 設計/ワークフロー/案件の運用/認可と一覧.md の 4 節と、ワークフローのホームの 2 = 設計/ワークフロー/認可と一覧.md 4 節)を入れる(設計/ワークフロー/ルートの深さ/初期データ.md 1 節。
- * 接頭辞のリソースグループと、システム管理者だけの ADMIN_ROUTES の 18 本には許可を置かない)。メニューのグループ「ワークフロー」は MenuSeeder が入れる。
+ * 接頭辞のリソースグループと、システム管理者だけの ADMIN_ROUTES の 18 本(http-services のルートの束の直下)には許可を置かない)。メニューのグループ「ワークフロー」は MenuSeeder が入れる。
  * 定義の前に workflow-flow のセットとシステム管理者の許可 2 を入れ、フローを作るたびにフローのリソースを足す({@see WorkflowFlowResources}。
  * 設計/ワークフロー/案件の運用/認可と一覧.md の 3 節)。
  *
@@ -89,7 +90,7 @@ class WorkflowSeeder extends Seeder
         'stage2_plan_base_date' => '2026-09-01',
     ];
 
-    /** 接頭辞のリソースグループ: 接頭辞 => [表示名(ja), 表示名(en)] */
+    /** 設定不可のセットの接頭辞のリソースグループ(利用者側のルートの上): 接頭辞 => [表示名(ja), 表示名(en)] */
     private const PREFIXES = [
         'workflow' => ['ワークフロー', 'Workflow'],
         'workflow.flows' => ['申請できるフロー', 'Applicable flows'],
@@ -98,14 +99,15 @@ class WorkflowSeeder extends Seeder
         'workflow.cases' => ['申請', 'Applications'],
         'workflow.reapplications' => ['再申請', 'Reapplications'],
         'workflow.proxies' => ['代理の設定', 'Proxy settings'],
+    ];
+
+    /** http-services の接頭辞のリソースグループ(管理のルートの上のフォルダとルートの束): 接頭辞 => [表示名(ja), 表示名(en)] */
+    private const ADMIN_PREFIXES = [
+        'workflow' => ['ワークフロー', 'Workflow'],
         'workflow.admin' => ['ワークフローの管理', 'Workflow administration'],
         'workflow.admin.cases' => ['申請操作', 'Application operations'],
         'workflow.admin.proxies' => ['代理の管理', 'Proxy administration'],
         'workflow.admin.flows' => ['フロー定義', 'Flow definitions'],
-        'workflow.admin.flows.referrers' => ['参照者', 'Referrers'],
-        'workflow.admin.flows.settings' => ['添付ファイル', 'Attachments'],
-        'workflow.admin.versions' => ['フロー定義の版', 'Flow definition versions'],
-        'workflow.admin.nodes' => ['ステップの設定', 'Step settings'],
     ];
 
     /** ルート: 名前 => [表示名(ja), 表示名(en)](どれもゲストユーザと認証済みユーザに execute を許す) */
@@ -161,13 +163,13 @@ class WorkflowSeeder extends Seeder
         'workflow.admin.proxies.destroy' => ['代理の削除(管理)', 'Delete proxy (admin)'],
         'workflow.admin.flows.index' => ['フロー定義の一覧', 'Flow definition list'],
         'workflow.admin.flows.show' => ['フロー定義の詳細', 'Flow definition detail'],
-        'workflow.admin.flows.referrers.update' => ['参照者の保存', 'Save referrers'],
-        'workflow.admin.flows.settings.update' => ['添付ファイルの設定の保存', 'Save attachment settings'],
-        'workflow.admin.versions.store' => ['版の追加', 'Add version'],
-        'workflow.admin.versions.disable' => ['版の無効化', 'Disable version'],
-        'workflow.admin.versions.enable' => ['版の有効化', 'Enable version'],
-        'workflow.admin.nodes.update' => ['ステップの設定の保存', 'Save step settings'],
-        'workflow.admin.subject-candidates' => ['対象者の候補', 'Subject candidates'],
+        'workflow.admin.flows.update-referrers' => ['参照者の保存', 'Save referrers'],
+        'workflow.admin.flows.update-settings' => ['添付ファイルの設定の保存', 'Save attachment settings'],
+        'workflow.admin.flows.store-version' => ['版の追加', 'Add version'],
+        'workflow.admin.flows.disable-version' => ['版の無効化', 'Disable version'],
+        'workflow.admin.flows.enable-version' => ['版の有効化', 'Enable version'],
+        'workflow.admin.flows.update-node' => ['ステップの設定の保存', 'Save step settings'],
+        'workflow.admin.flows.subject-candidates' => ['対象者の候補', 'Subject candidates'],
     ];
 
     /** コンテンツ: コード => [申請書の業務モジュールのコード, 名前](申請対象の項目 = 申請書の業務モジュールの申請対象の項目 = {@see WorkflowApplicationModules}) */
@@ -241,8 +243,16 @@ class WorkflowSeeder extends Seeder
      */
     private function createRoutes(): void
     {
-        foreach (self::PREFIXES as $prefix => [$ja, $en]) {
-            $this->createPrefix->execute($prefix, ['ja' => ['display_name' => $ja], 'en' => ['display_name' => $en]]);
+        $prefixesOfSets = [
+            ServiceAction::UNMANAGED_SET_CODE => self::PREFIXES,
+            ServiceAction::SET_CODE => self::ADMIN_PREFIXES,
+        ];
+
+        foreach ($prefixesOfSets as $set => $prefixes) {
+            foreach ($prefixes as $prefix => [$ja, $en]) {
+                $names = ['ja' => ['display_name' => $ja], 'en' => ['display_name' => $en]];
+                $this->createPrefix->execute($prefix, $set, $names);
+            }
         }
 
         $everyone = [$this->guestSubjectGroupId($this->findOrCreate), $this->authenticatedSubjectGroupId($this->findOrCreate)];

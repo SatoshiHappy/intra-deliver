@@ -74,11 +74,11 @@ async function expectEditing(page: Page) {
 }
 
 /**
- * システム管理者の列の「組織図」のセルを 許可 → 禁止 → 未設定 と循環させ、元の継承の表示に戻す。
+ * システム管理者の列の束「共通マスタ」のセルを 許可 → 禁止 → 未設定 と循環させ、元の継承の表示に戻す。
  * 継承のセルは未設定として扱い、押すと直接の許可。成功のトーストは出さない(セルの表示が結果)。
  */
 async function cycleAdministratorCell(page: Page) {
-    const row = resourceRow(page, '組織図');
+    const row = resourceRow(page, '共通マスタ');
     const cell = await subjectCell(page, row, 'システム管理者');
     await expect(cell).toContainText('許可(画面・処理から継承)');
     await pressWhileHeld(page, cell);
@@ -108,6 +108,29 @@ test('開始してセルを押すと 許可 → 禁止 → 未設定 と循環�
     await expectReadOnly(page);
 });
 
+test('機能で絞ったままセルを切り替えても、戻り先は URL の feature のままで、絞り込みが残る', async ({
+    page,
+}) => {
+    await openOverviewAs(page, ADMINISTRATOR);
+    await startEditing(page);
+    const feature = page.getByRole('combobox', { name: '機能' });
+    await feature.click();
+    await page.getByRole('option', { name: '共通マスタ', exact: true }).click();
+    await expect(page).toHaveURL(/\?feature=http-services\.master$/);
+    const filtered = async () => {
+        await expect(page).toHaveURL(/\?feature=http-services\.master$/);
+        await expect(feature).toHaveText('共通マスタ');
+        await expect(
+            page.getByRole('rowheader', { name: '認可設定', exact: true }),
+        ).toHaveCount(0);
+    };
+
+    // 編集の応答は back() なので、要求を送らずに替えた URL(Referer)が戻り先になる。押した分は元の継承に戻す
+    await cycleAdministratorCell(page);
+    await filtered();
+    await expectEditing(page);
+});
+
 test('列を追加すると全セルが未設定で、同じ条件の列は追加できず、削除の確かめに件数が出て、削除で列が消える', async ({
     page,
 }) => {
@@ -120,7 +143,7 @@ test('列を追加すると全セルが未設定で、同じ条件の列は追�
     await expect(header).toBeVisible();
     const cell = await subjectCell(
         page,
-        resourceRow(page, '組織図'),
+        resourceRow(page, '共通マスタ'),
         '山田 恵',
     );
     await expect(cell).toContainText('設定なし');

@@ -36,11 +36,10 @@ import {
 import type { ModuleParent } from '@/lib/Records/moduleCategories';
 import { putOrder } from '@/lib/Records/sortOrder';
 import { cn } from '@/lib/utils';
-import { reorder, reorderModules } from '@/routes/records/admin/categories';
-import {
-    categories as updateModuleCategories,
-    reorder as reorderUncategorized,
-} from '@/routes/records/admin/modules';
+import categoryRoutes, {
+    reorder,
+    reorderModules,
+} from '@/routes/records/admin/categories';
 import type {
     ModuleCategoryRow,
     RecordModuleSummary,
@@ -354,9 +353,9 @@ function DragCopy({
  * (表示中は取っ手と名前、続けて非表示は取っ手なしで札「非表示」と薄い字)。木の全体が 1 つの外枠で、並びごと(分類の並び・分類の中・「分類なし」の表示中)に
  * 並びを置く。取っ手のドラッグで:
  * - 分類は分類どうしで動き、records.admin.categories.reorder へ { ids }。
- * - 業務モジュールは同じ親の中で並べ替え(分類の中は records.admin.categories.reorder-modules、「分類なし」は records.admin.modules.reorder へ { codes }。
+ * - 業務モジュールは同じ親の中で並べ替え(分類の中は reorder-modules、「分類なし」は reorder-uncategorized へ { codes }。
  *   自分の親の見出しに落としても何もしない)、別の親(その見出しか中の行)へ落とすと所属を変える(Ctrl なし = 移動、Ctrl あり = コピー。目標が今と同じなら
- *   送らない。records.admin.modules.categories へ { categories }。先の親の末尾に入る)。キーボード(Space → 矢印 → Space)は同じ親の中だけ。
+ *   送らない。update-module-categories へ { categories }。先の親の末尾に入る。ルートはどれも records.admin.categories.*)。キーボードは同じ親の中だけ。
  * 落とすと手元の並びを先に変え(親をまたぐときは目標から作る)、要求が終わったら(成否に依らず)props に戻る。送っている間は次のドラッグを受けない。
  * ドラッグの間は写しがポインタに付き、落とすと所属が変わる親を破線で囲む。業務モジュールの行をマウスで候補を囲む矩形の外(木の外)へ出して落とすと
  * 何もしない(当たり無し。{@link treeCollisionDetection})。
@@ -482,7 +481,7 @@ export function ModuleCategoryTree({
                         ...hidden,
                     ],
                 },
-                reorderUncategorized().url,
+                categoryRoutes.reorderUncategorized().url,
                 codes,
             );
 
@@ -578,7 +577,7 @@ export function ModuleCategoryTree({
                 change.current,
                 change.target,
             ),
-            updateModuleCategories(change.module).url,
+            categoryRoutes.updateModuleCategories(change.module).url,
             { categories: change.target },
             MOVE_NETWORK_ERROR_MESSAGE,
         );

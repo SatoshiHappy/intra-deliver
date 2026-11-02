@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { TableCell, TableRow } from '@/components/ui/table';
 import { itemId } from '@/lib/Records/adminItems';
 import { HEAD_GROUP_NAME } from '@/lib/recordHeadingGroups';
-import { destroy } from '@/routes/records/admin/headings';
+import { destroyHeading } from '@/routes/records/admin/modules';
 import { cn } from '@/lib/utils';
 import type { RecordAdminHeading } from '@/types';
 
@@ -46,7 +46,10 @@ function HeadingActions({
                 triggerLabel={`見出し「${heading.name}」を削除`}
                 title="見出しの削除"
                 description={`見出し「${heading.name}」を削除しますか。見出しの中の項目は削除されず、前の見出しのまとまりに入ります。`}
-                action={destroy({ module: moduleCode, heading: heading.id })}
+                action={destroyHeading({
+                    module: moduleCode,
+                    heading: heading.id,
+                })}
             />
         </div>
     );

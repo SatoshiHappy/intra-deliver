@@ -12,9 +12,9 @@ use Illuminate\Database\Seeder;
 use RuntimeException;
 
 /**
- * デモユーザー切替の初期データ(docs の 設計/デモユーザー切替/デモの取り付け.md 6.3): 接頭辞のリソースグループ http-services.demo と、
+ * デモユーザー切替の初期データ(docs の 設計/デモユーザー切替/デモの取り付け.md 6.3): 設定不可のセットに、接頭辞のリソースグループ http-services-unmanaged.demo と、
  * ルート demo.switch-user のリソースと、ゲストユーザ・認証済みユーザへの execute の許可(選ぶ前のゲストも、選んだ後の利用者も切り替えられる)。
- * システム管理者は http-services の先頭の許可を継承する(足さない)。すべて業務処理を通す。
+ * システム管理者は設定不可のセットの先頭の許可を継承する(足さない)。すべて業務処理を通す。
  *
  * DatabaseSeeder からは呼ばない。設定がオンの環境で、DatabaseSeeder の後に php artisan db:seed --class=DemoSeeder で 1 回流す。
  * オフなら何も書かずに失敗する(オフでは切替のルートが無く、接頭辞のリソースグループだけを作った後でルートのリソースを作る業務処理が拒み、
@@ -40,7 +40,10 @@ class DemoSeeder extends Seeder
             throw new RuntimeException('デモユーザー切替がオフ(DEMO_ENABLED が true でない)なので、切替のルートの初期データを入れない');
         }
 
-        $this->createPrefix->execute('demo', ['ja' => ['display_name' => 'デモ'], 'en' => ['display_name' => 'Demo']]);
+        $this->createPrefix->execute('demo', ServiceAction::UNMANAGED_SET_CODE, [
+            'ja' => ['display_name' => 'デモ'],
+            'en' => ['display_name' => 'Demo'],
+        ]);
         $switchUser = $this->createRouteResource->execute('demo.switch-user', ['ja' => ['display_name' => '利用者の切替'], 'en' => ['display_name' => 'Switch user']]);
 
         foreach ([$this->guestSubjectGroupId($this->findOrCreate), $this->authenticatedSubjectGroupId($this->findOrCreate)] as $subjectGroupId) {

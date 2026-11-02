@@ -16,10 +16,10 @@ use Illuminate\Validation\ValidationException;
 class AuthzEditGuard
 {
     /** 認可設定を開くルート */
-    public const OVERVIEW_ROUTE = 'authz.overview';
+    public const OVERVIEW_ROUTE = 'authz.settings.show';
 
     /** 認可設定を保存する(セルを切り替える)ルート */
-    public const CELLS_ROUTE = 'authz.editor.cells.update';
+    public const CELLS_ROUTE = 'authz.settings.update-cell';
 
     /** 守りに外れたときの文(認可設定の編集.md 2.3 の 6) */
     public const VIOLATION_MESSAGE = 'この変更を行うと認可設定を使用できなくなるため、変更できません。';
