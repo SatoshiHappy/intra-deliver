@@ -34,9 +34,3 @@ export type MasterSearchResult = {
     }[];
     departments: NamedDepartment[];
 };
-
-/**
- * 見出しの共通マスタの検索欄を出すか(共有プロパティ masterSearch。サーバーの App\Http\Middleware\Master\ShareMasterSearch。
- * docs の 設計/共通マスタ/検索と組織図.md 3.1・3.2)。visible = 組織図(master.organization-chart)の execute を許されるか。
- */
-export type MasterSearchVisibility = { visible: boolean };

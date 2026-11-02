@@ -5,7 +5,7 @@ namespace Tests\Feature\Actions\Authz;
 use App\Actions\Authz\CreateRouteResource;
 use App\Models\Authz\AuthzResource;
 use App\Models\Authz\AuthzResourceGroup;
-use App\Queries\Authz\RouteResources;
+use App\Support\RoutePlacement;
 use Illuminate\Support\Facades\Route;
 use Tests\Support\AssertsRejectedByRule;
 use Tests\Support\TransactionalTestCase;
@@ -34,7 +34,7 @@ final class CreateRouteResourceTest extends TransactionalTestCase
 
     public function test_creates_the_resource_of_a_route_declared_unmanaged_in_the_unmanaged_set(): void
     {
-        Route::metadata(RouteResources::UNMANAGED)->get('/test/items', fn () => 'items')->name('test.items.index');
+        Route::metadata(RoutePlacement::UNMANAGED)->get('/test/items', fn () => 'items')->name('test.items.index');
         $prefix = $this->prefixGroups('test', 'test.items', 'http-services-unmanaged');
 
         $resource = $this->create('test.items.index');
@@ -49,7 +49,7 @@ final class CreateRouteResourceTest extends TransactionalTestCase
      */
     public function test_rejects_a_route_whose_prefix_is_only_in_the_other_set(): void
     {
-        Route::metadata(RouteResources::UNMANAGED)->get('/test/unmanaged', fn () => 'ok')->name('test.unmanaged');
+        Route::metadata(RoutePlacement::UNMANAGED)->get('/test/unmanaged', fn () => 'ok')->name('test.unmanaged');
         Route::get('/test/managed', fn () => 'ok')->name('test.managed');
         $this->prefixGroups('test');
         $resources = AuthzResource::query()->count();

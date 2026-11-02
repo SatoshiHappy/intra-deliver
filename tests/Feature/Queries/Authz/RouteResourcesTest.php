@@ -3,6 +3,7 @@
 namespace Tests\Feature\Queries\Authz;
 
 use App\Queries\Authz\RouteResources;
+use App\Support\RoutePlacement;
 use Illuminate\Routing\Route as RoutingRoute;
 use Illuminate\Support\Facades\Route;
 use Inertia\DevTools\Http\EntriesController;
@@ -154,7 +155,7 @@ final class RouteResourcesTest extends TransactionalTestCase
     public function test_builds_the_uri_from_the_name_alone(): void
     {
         Route::get('/test/managed', fn () => 'ok')->name('test.managed.show');
-        Route::metadata(RouteResources::UNMANAGED)->get('/test/unmanaged', fn () => 'ok')->name('test.unmanaged.show');
+        Route::metadata(RoutePlacement::UNMANAGED)->get('/test/unmanaged', fn () => 'ok')->name('test.unmanaged.show');
 
         $this->assertSame('service://test/managed/show', $this->routeResources()->uriOf('test.managed.show'));
         $this->assertSame('service://test/unmanaged/show', $this->routeResources()->uriOf('test.unmanaged.show'));
@@ -166,8 +167,8 @@ final class RouteResourcesTest extends TransactionalTestCase
     public function test_reads_the_set_from_the_declaration_of_the_route(): void
     {
         Route::get('/test/managed', fn () => 'ok')->name('test.managed');
-        Route::get('/test/single', fn () => 'ok')->name('test.single')->metadata(RouteResources::UNMANAGED);
-        Route::metadata(RouteResources::UNMANAGED)->group(function (): void {
+        Route::get('/test/single', fn () => 'ok')->name('test.single')->metadata(RoutePlacement::UNMANAGED);
+        Route::metadata(RoutePlacement::UNMANAGED)->group(function (): void {
             Route::get('/test/grouped', fn () => 'ok')->name('test.grouped');
         });
 

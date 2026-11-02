@@ -166,8 +166,9 @@ test('画面・処理の格子にルートの行が無く、束に開閉の記�
             exact: true,
         });
 
-    // ルートの行は無く(組織図は束「共通マスタ」の配下)、ルートの束は子を持たないので開閉の記号が無い
+    // ルートの行は無く(組織図は束「共通マスタ」の配下、レコードの削除は設定不可のセット)、ルートの束は子を持たないので開閉の記号が無い
     await expect(rowheader('組織図')).toHaveCount(0);
+    await expect(rowheader('レコードの削除')).toHaveCount(0);
     for (const bundle of ['共通マスタ', '認可設定', '申請操作']) {
         await expect(rowheader(bundle)).toBeVisible();
         await expect(

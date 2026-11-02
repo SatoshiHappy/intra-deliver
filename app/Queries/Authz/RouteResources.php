@@ -3,6 +3,7 @@
 namespace App\Queries\Authz;
 
 use App\Enums\Authz\ServiceAction;
+use App\Support\RoutePlacement;
 use Closure;
 use Illuminate\Http\Request;
 use Illuminate\Routing\RedirectController;
@@ -28,7 +29,7 @@ use Symfony\Component\HttpFoundation\Exception\BadRequestException;
  * アプリのルートにホストの条件(Route::domain)とスキームの条件(http・https だけ)を付けない(照合はホストとスキームを見ないため)。
  * この 3 つは付け忘れの検査(tests/Feature/Routing/AppRoutesTest.php)が確かめる。
  *
- * 置き場(ルートのリソースを置くセット): ルートの定義(routes/)の宣言 {@see self::UNMANAGED} を付けたルートは設定不可のセット
+ * 置き場(ルートのリソースを置くセット): ルートの定義(routes/)の宣言 {@see RoutePlacement::UNMANAGED} を付けたルートは設定不可のセット
  * http-services-unmanaged、宣言の無いルートは http-services。宣言を読むのは {@see self::setOf()} の 1 か所。
  *
  * ルートのリソース(置き場と名前から 1 通りに決まる): リソースグループ ID = <セット>. + 名前、URI = service:// + 名前の . を / に換えたもの
@@ -39,15 +40,6 @@ class RouteResources
 {
     /** ルートの名前の上限の文字数(長い方のセットの頭 http-services-unmanaged. を付けても、リソースグループ ID が 255 文字に収まる長さ) */
     public const MAX_NAME_LENGTH = 231;
-
-    /**
-     * 設定不可のセットに置くルートに付ける置き場の宣言(ルートの metadata。routes/ で Route::metadata(RouteResources::UNMANAGED)->group(...))。
-     * ルートのキャッシュの後も、ルートの action に入って残る。
-     */
-    public const UNMANAGED = ['authz' => ['set' => ServiceAction::UNMANAGED_SET_CODE]];
-
-    /** 置き場の宣言を読む鍵(ルートの metadata の中の道) */
-    private const SET_METADATA_KEY = 'authz.set';
 
     /** アプリがルートの書き方で使う、フレームワークの汎用の処理 */
     private const FRAMEWORK_CONTROLLERS = [InertiaController::class, RedirectController::class, ViewController::class];
@@ -144,7 +136,7 @@ class RouteResources
     }
 
     /**
-     * ルートの置き場(リソースを置くセットの ID)。その名前のアプリのルートの定義に宣言 {@see self::UNMANAGED} があれば設定不可のセット、
+     * ルートの置き場(リソースを置くセットの ID)。その名前のアプリのルートの定義に宣言 {@see RoutePlacement::UNMANAGED} があれば設定不可のセット、
      * 宣言が無いか、その名前のアプリのルートが無ければ http-services(設定できる側。既定で禁止のまま)。名前はルートを登録した後に付くので、
      * ルータの名前の索引(更新の時機がある)でなく、アプリのルートを今の名前でたどる。
      *
@@ -287,7 +279,7 @@ class RouteResources
      */
     private function declaredSetOf(Route $route): string
     {
-        $set = $route->getMetadata(self::SET_METADATA_KEY, ServiceAction::SET_CODE);
+        $set = $route->getMetadata(RoutePlacement::METADATA_KEY, ServiceAction::SET_CODE);
 
         if (! is_string($set) || ! in_array($set, ServiceAction::SET_CODES, true)) {
             throw new LogicException("ルートの置き場の宣言が 2 つのセットのどちらでもありません: {$route->uri()}");

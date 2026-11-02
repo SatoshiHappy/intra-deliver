@@ -44,7 +44,7 @@ export type MenuGroupNode = {
  * 骨格の共有プロパティ appNavigation(サーバーの App\Http\Middleware\Menu\ShareAppNavigation。docs の 設計/メニュー/表示.md 3.2 の「置き場」・3.3)。
  * launcher = ランチャーのアプリ(im_global_nav_pc の表示するグループ)、adminMenu = 歯車のアプリ(admin_menu_pc の表示するグループ)、
  * currentApp = 今のアプリのグループの code(3.3.2。無ければ null)、currentItemPath = 現在地の強調のパス(区分を / でつないだ形。無ければ null)、
- * showSitemap = サイトマップのルートの execute を許されるか。
+ * showSitemap = サイトマップのルートの execute を許されるか、showSearch = 組織図のルートの execute を許されるか(見出しの検索欄を出すか)。
  */
 export type AppNavigation = {
     launcher: MenuGroupNode[];
@@ -52,6 +52,7 @@ export type AppNavigation = {
     currentApp: string | null;
     currentItemPath: string | null;
     showSitemap: boolean;
+    showSearch: boolean;
 };
 
 /**

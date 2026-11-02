@@ -27,7 +27,7 @@ type Props = {
  */
 export function AppHeader({ breadcrumbs = [] }: Props) {
     const { open, openMobile, isMobile, toggleSidebar } = useSidebar();
-    const { appNavigation, masterSearch } = usePage().props;
+    const { appNavigation } = usePage().props;
     const crumbs = appBreadcrumbs(appNavigation, breadcrumbs);
 
     return (
@@ -55,7 +55,7 @@ export function AppHeader({ breadcrumbs = [] }: Props) {
                 </div>
             )}
 
-            <HeaderMasterSearch visible={masterSearch.visible} />
+            <HeaderMasterSearch visible={appNavigation.showSearch} />
 
             <div className="ml-auto flex items-center gap-1">
                 <NoticeBell />

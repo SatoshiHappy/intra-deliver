@@ -45,7 +45,7 @@ use App\Http\Controllers\Web\Workflow\ReapplicationController;
 use App\Http\Controllers\Web\Workflow\RecordCandidateController;
 use App\Http\Controllers\Web\Workflow\TargetValueController;
 use App\Http\Controllers\Web\Workflow\UserCandidateController;
-use App\Queries\Authz\RouteResources;
+use App\Support\RoutePlacement;
 use Illuminate\Support\Facades\Route;
 
 // ルートの名前 = <モジュール名の小文字>.<区切り>(.<区切り>…)、231 文字以内、ほかのルートの名前の接頭辞にしない、アプリのルートの中で一意。
@@ -53,10 +53,10 @@ use Illuminate\Support\Facades\Route;
 // 名前の規則・一意・持ち主のモジュール・条件は検査が確かめる(tests/Feature/Routing/AppRoutesTest.php)。
 // ルートの処理にクロージャを使わない(コントローラか Route::inertia・redirect・view。ルートのキャッシュの後は定義のファイルが分からない)。
 // ルートを足したら、そのモジュールの seeder にリソースとポリシーを足す(docs の 設計/メニュー/認可との結び付け.md 2.3)。
-// 置き場: 可否を別の判定が決める入口とユーザーが受け入れた入口は、宣言 RouteResources::UNMANAGED を付けたグループに置く
+// 置き場: 可否を別の判定が決める入口とユーザーが受け入れた入口は、宣言 RoutePlacement::UNMANAGED を付けたグループに置く
 // (設定不可のセット http-services-unmanaged。2.3 の置き場の表)。宣言の無いルートは http-services(設定できる側)で、
 // ルートの束(子がルートだけの接頭辞)の直下に置き、同じ接頭辞の直下にルートとより長い接頭辞を混ぜない。
-Route::metadata(RouteResources::UNMANAGED)->group(function (): void {
+Route::metadata(RoutePlacement::UNMANAGED)->group(function (): void {
     Route::get('/', HomeController::class)->name('menu.home');
     Route::get('/menu/sitemap', SitemapController::class)->name('menu.sitemap');
     Route::post('/account/logout', LogoutController::class)->name('account.logout');
@@ -74,13 +74,14 @@ Route::get('/authz/editor/subject-candidates', AuthzSubjectCandidateController::
     ->name('authz.settings.subject-candidates');
 
 // 共通マスタ(docs の 設計/共通マスタ/検索と組織図.md 4 節)。組織図はルートの束「共通マスタ」、検索の口は設定不可のセット。
-Route::get('/master/organization-chart', OrganizationChartController::class)->name('master.organization-chart');
-Route::metadata(RouteResources::UNMANAGED)->group(function (): void {
+Route::get('/master/organization-chart', OrganizationChartController::class)
+    ->name(OrganizationChartController::ROUTE_NAME);
+Route::metadata(RoutePlacement::UNMANAGED)->group(function (): void {
     Route::get('/master/search', SearchController::class)->name('master.search');
 });
 
 // 通知(docs の 設計/ワークフロー/案件の運用/通知.md の 7 節)。{notice} = 通知の id(数字だけ。read-all は {notice} に合わない)。
-Route::metadata(RouteResources::UNMANAGED)->group(function (): void {
+Route::metadata(RoutePlacement::UNMANAGED)->group(function (): void {
     Route::get('/notices', [NoticeController::class, 'index'])->name('notice.index');
     Route::get('/notices/latest', [NoticeController::class, 'latest'])->name('notice.latest');
     Route::post('/notices/read-all', [NoticeController::class, 'readAll'])->name('notice.read-all');
@@ -116,7 +117,7 @@ $recordFile = [
     'comment' => '[0-9]{1,18}',
 ];
 $recordPath = '/records/data/{module}/{record}';
-Route::metadata(RouteResources::UNMANAGED)->group(function () use ($recordFile, $recordPath): void {
+Route::metadata(RoutePlacement::UNMANAGED)->group(function () use ($recordFile, $recordPath): void {
     Route::post("{$recordPath}/attachments", [RecordAttachmentController::class, 'store'])
         ->name('records.data.attachments.store')->where($recordFile);
     Route::delete("{$recordPath}/attachments/{attachment}", [RecordAttachmentController::class, 'destroy'])
@@ -186,7 +187,7 @@ Route::put('/records/admin/categories/{category}/modules', [ModuleCategoryContro
 // ワークフローの画面(docs の 設計/ワークフロー/画面/README.md 1.1)。{flow} = フローのコード、{case} = 案件の id(数字だけ。一時保存も同じ形で指す)。
 // 入口の判定は FormRequest の authorize と読み取りが持つ(設計/ワークフロー/案件の操作/操作.md の 3.1 節の 1)。
 // ワークフローのホーム(設計/メニュー/ホーム.md 6.7)。
-Route::metadata(RouteResources::UNMANAGED)->group(function (): void {
+Route::metadata(RoutePlacement::UNMANAGED)->group(function (): void {
     Route::get('/workflow', WorkflowHomeController::class)->name('workflow.home');
     Route::get('/workflow/flows', [FlowController::class, 'index'])->name('workflow.flows.index');
     Route::get('/workflow/flows/{flow}/apply', [ApplicationController::class, 'create'])->name('workflow.applications.create')->where('flow', '[a-z][a-z0-9_]{0,49}');

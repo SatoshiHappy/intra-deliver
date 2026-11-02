@@ -17,6 +17,9 @@ use Inertia\Response;
  */
 class OrganizationChartController extends Controller
 {
+    /** ルートの名前(ルートの定義と、組織図へ移れるかの判定 = 見出しの検索欄の出し分けが使う) */
+    public const ROUTE_NAME = 'master.organization-chart';
+
     public function __construct(private OrganizationChartQuery $chart) {}
 
     public function __invoke(Request $request): Response

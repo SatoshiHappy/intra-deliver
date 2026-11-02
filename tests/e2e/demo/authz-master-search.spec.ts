@@ -1,5 +1,6 @@
 import { expect, test } from '../support/test';
 import type { Page } from '@playwright/test';
+import { pickReference } from '../support/workflow-operations';
 import { pickUser } from '../support/workflow-proxies';
 import {
     ADMINISTRATOR,
@@ -13,8 +14,8 @@ import {
 } from './authz-editor-support';
 
 // 組織図を許されない人の見出しの検索欄(docs の 設計/共通マスタ/検索と組織図.md 3.2 と 5 節の E2E の最後の項): システム管理者に切り替えて
-// 束「共通マスタ」の認証済みユーザの許可を禁止にすると、申請者(u0001)の見出しに検索欄が無く、業務の画面(代理の設定)の人を選ぶ欄では
-// 候補が出る。ゲストだけでは作れないので demo の持ち物に置く。筋の最後に認証済みユーザの許可へ戻す(同じ組のほかの spec の前提を変えない)。
+// 束「共通マスタ」の認証済みユーザの許可を禁止にすると、申請者(u0001)の見出しに検索欄が無く、業務の画面の人を選ぶ欄(代理の設定と、
+// 共通マスタの検索の口を使う業務データの登録のユーザー・組織の欄)では候補が出る。ゲストだけでは作れないので demo の持ち物に置く。筋の最後に認証済みユーザの許可へ戻す(同じ組のほかの spec の前提を変えない)。
 test.use({ viewport: { width: 1280, height: 720 } });
 
 const AUTHENTICATED = '認証済みユーザ';
@@ -52,6 +53,12 @@ test('束「共通マスタ」を禁止にした人には見出しの検索欄�
         .click();
     await expect(dialog).toBeHidden();
     await expect(headerSearch(page)).toHaveCount(0);
+
+    // 業務データの登録(プロジェクト)のユーザー・組織の欄は、見出しと同じ共通マスタの検索の口で候補を引ける。登録はしない
+    await page.goto('/records/data/project/create');
+    await expect(headerSearch(page)).toHaveCount(0);
+    await pickReference(page, '担当部署', '東京営業', '東京営業課');
+    await pickReference(page, '責任者', '中村', '中村 美咲');
 
     // 元に戻す(禁止 → 未設定 → 許可)
     await switchTo(page, APPLICANT.label, ADMINISTRATOR);

@@ -32,6 +32,7 @@ final class ShareAppNavigationTest extends TransactionalTestCase
                 'currentApp' => null,
                 'currentItemPath' => null,
                 'showSitemap' => true,
+                'showSearch' => true,
             ])
         );
     }

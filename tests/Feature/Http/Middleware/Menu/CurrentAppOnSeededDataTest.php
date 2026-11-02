@@ -24,7 +24,7 @@ use Tests\Support\TransactionalTestCase;
  * @phpstan-type App array{code: string, entry: array{href: string, isExternal: bool}, children: list<mixed>}
  * @phpstan-type Navigation array{
  *     launcher: list<App>, adminMenu: list<App>,
- *     currentApp: string|null, currentItemPath: string|null, showSitemap: bool,
+ *     currentApp: string|null, currentItemPath: string|null, showSitemap: bool, showSearch: bool,
  * }
  */
 final class CurrentAppOnSeededDataTest extends TransactionalTestCase

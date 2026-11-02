@@ -118,24 +118,34 @@ class OverviewTree
         $isHidden = array_fill_keys($hiddenIds, true);
         $judgedIds = [];
 
-        foreach ($resourceHolderIds as $resourceGroupId) {
-            if (! isset($isHidden[$resourceGroupId])) {
-                $judgedIds[$resourceGroupId] = $resourceGroupId;
-            }
+        foreach (array_diff($resourceHolderIds, $hiddenIds) as $resourceGroupId) {
+            $judgedIds[$resourceGroupId] = $resourceGroupId;
         }
 
         $holdsResource = array_fill_keys($resourceHolderIds, true);
 
-        foreach ($groups as $group) {
-            $parentId = $group->parent_id;
+        return $judgedIds + $this->firstHiddenHolderOfParents($groups, $isHidden, $holdsResource);
+    }
 
-            if ($parentId !== null && isset($isHidden[$group->id]) && isset($holdsResource[$group->id])
-                && ! isset($judgedIds[$parentId])) {
-                $judgedIds[$parentId] = $group->id;
+    /**
+     * 親の id → 行にしない子のうち格子のタイプのリソースを持つもので、sort_key・code の順で先の 1 つ(ルートの束の判定の相手)。
+     *
+     * @param  Collection<int, AuthzResourceGroup>  $groups  sort_key・code の並び
+     * @param  array<int, true>  $isHidden
+     * @param  array<int, true>  $holdsResource
+     * @return array<int, int>
+     */
+    private function firstHiddenHolderOfParents(Collection $groups, array $isHidden, array $holdsResource): array
+    {
+        $firsts = [];
+
+        foreach ($groups as $group) {
+            if ($group->parent_id !== null && isset($isHidden[$group->id], $holdsResource[$group->id])) {
+                $firsts[$group->parent_id] ??= $group->id;
             }
         }
 
-        return $judgedIds;
+        return $firsts;
     }
 
     /**

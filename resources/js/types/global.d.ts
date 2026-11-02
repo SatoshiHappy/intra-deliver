@@ -1,5 +1,4 @@
 import type { CurrentAccount, UserMenuSection } from './account';
-import type { MasterSearchVisibility } from './master';
 import type { AppNavigation } from './menu';
 import type { NoticeSummary } from './notice';
 
@@ -25,7 +24,6 @@ declare module '@inertiajs/core' {
             account: CurrentAccount;
             userMenuSections: UserMenuSection[];
             noticeSummary: NoticeSummary | null;
-            masterSearch: MasterSearchVisibility;
             [key: string]: unknown;
         };
     }

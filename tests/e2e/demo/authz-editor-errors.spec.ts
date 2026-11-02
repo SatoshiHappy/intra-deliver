@@ -18,9 +18,26 @@ const GUARD =
     'この変更を行うと認可設定を使用できなくなるため、変更できません。';
 const STALE = 'ほかの利用者が変更しました。画面を再読み込みしてください。';
 
+/** 束「認可設定」のシステム管理者の列の直接の設定を、業務処理で消す tinker の文 */
+const DELETE_ADMINISTRATOR_PERMIT_ON_AUTHZ = [
+    '$group = App\\Models\\Authz\\AuthzResourceGroup::query()',
+    '->where("code", "http-services.authz.settings")->sole();',
+    '$subject = App\\Models\\Authz\\AuthzSubjectGroup::query()',
+    '->where("purpose", App\\Enums\\Authz\\SubjectGroupPurpose::Policy)',
+    '->has("authzSubjectConditions", "=", 1)',
+    '->whereRelation("authzSubjectConditions.role", "code", "system_admin")->sole();',
+    '$policy = App\\Models\\Authz\\AuthzPolicy::query()',
+    '->where(["authz_resource_group_id" => $group->id, "authz_subject_group_id" => $subject->id])->sole();',
+    'app(App\\Actions\\Authz\\DeletePolicy::class)->execute($policy->id);',
+].join('');
+
 // ルートの束「認可設定」(開く・保存の口を含む)を、システム管理者の列で禁止にしようとすると守りに外れる。継承のセルを 1 回押すと直接の許可、もう 1 回で禁止の要求。
-// 禁止へは進めないので、直接の許可(効く設定は継承のときと同じ)が残る。
-test('守りに外れる変更はトーストが出て、セルは元のまま', async ({ page }) => {
+// 禁止へは進めないので、直接の許可(効く設定は継承のときと同じ)が残る。画面からは未設定に戻せないので、筋の終わりに業務処理で消す
+// (同じ組のほかの spec が束「認可設定」のシステム管理者の継承を前提にできるように)。
+test('守りに外れる変更はトーストが出て、セルは元のまま', async ({
+    page,
+    artisan,
+}) => {
     await openOverviewAs(page, ADMINISTRATOR);
     await startEditing(page);
 
@@ -36,6 +53,10 @@ test('守りに外れる変更はトーストが出て、セルは元のまま',
     await expect(page.getByRole('button', { name: '再読み込み' })).toHaveCount(
         0,
     );
+
+    artisan(['tinker', '--execute', DELETE_ADMINISTRATOR_PERMIT_ON_AUTHZ]);
+    await page.reload();
+    await expect(cell).toContainText('許可(画面・処理から継承)');
 });
 
 test('2 つの画面で同じセルを変えると、後の画面はトーストに「再読み込み」が付き、押すと最新になる', async ({

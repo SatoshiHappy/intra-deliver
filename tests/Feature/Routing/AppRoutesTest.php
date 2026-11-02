@@ -5,8 +5,9 @@ namespace Tests\Feature\Routing;
 use App\Enums\Authz\ServiceAction;
 use App\Http\Controllers\Web\Menu\SitemapController;
 use App\Http\Middleware\Authz\AuthorizeRoute;
-use App\Queries\Authz\RouteResources;
+use App\Support\RoutePlacement;
 use Illuminate\Routing\Route as RoutingRoute;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Route;
 use Tests\Support\FindsAppRouteViolations;
 use Tests\Support\TransactionalTestCase;
@@ -119,7 +120,7 @@ final class AppRoutesTest extends TransactionalTestCase
             Route::get('/test/bundle', SitemapController::class)->name('menu.test_bundle.show'),
             Route::get('/test/bundle/edit', SitemapController::class)->name('menu.test_bundle.edit'),
         ];
-        Route::metadata(RouteResources::UNMANAGED)->group(function () use (&$routes): void {
+        Route::metadata(RoutePlacement::UNMANAGED)->group(function () use (&$routes): void {
             $routes[] = Route::get('/test/free', SitemapController::class)->name('menu.test_free.show');
             $routes[] = Route::get('/test/free/child', SitemapController::class)->name('menu.test_free.child.show');
             $routes[] = Route::get('/test/bundle/child', SitemapController::class)->name('menu.test_bundle.child.show');
@@ -148,7 +149,7 @@ final class AppRoutesTest extends TransactionalTestCase
 
         try {
             $this->assertSame($path, $this->app->getCachedRoutesPath());
-            $this->artisan('route:cache')->assertSuccessful();
+            $this->assertSame(0, Artisan::call('route:cache'));
             require $path;
 
             $this->assertSame($this->expectedSets(), $this->setsOfAppRoutes());
