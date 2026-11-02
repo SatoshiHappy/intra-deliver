@@ -27,6 +27,8 @@ type Props = {
     placeholder?: string;
     /** 入力を押せなくする(送っている間。札は切り替えられる) */
     disabled?: boolean;
+    /** 誤りの文言のほかに入力へ読ませる説明の要素の id(空にした理由の 1 行など) */
+    describedIds?: string[];
 };
 
 /**
@@ -144,6 +146,7 @@ function EditPanel({
                     invalid ? '' : undefined,
                     false,
                     max !== null,
+                    field.describedIds,
                 )}
                 value={value}
                 onChange={(event) => onChange(event.target.value)}

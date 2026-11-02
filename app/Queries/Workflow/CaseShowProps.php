@@ -33,7 +33,7 @@ class CaseShowProps
     ];
 
     /**
-     * 申請の層(つながる申請と、ボタン「複製して申請」を出すか = 設計/ワークフロー/申請の周辺/既存のデータからの申請/案件からの複製/README.md の 12.2 節を含む)。
+     * 申請の層(つながる申請と、ボタン「複製」を出すか = 設計/ワークフロー/申請の周辺/既存のデータからの申請/案件からの複製/README.md の 12.2 節を含む)。
      */
     public const CASE_LAYER = [...self::DETAIL_LAYER, 'related', 'canCopy'];
 

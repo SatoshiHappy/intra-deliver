@@ -1,4 +1,9 @@
-import { FormBlock, formErrorId, invalidProps } from '@/components/FormBlock';
+import {
+    FormBlock,
+    clearedReasonId,
+    formErrorId,
+    invalidProps,
+} from '@/components/FormBlock';
 import { RecordMultipleReferencePicker } from '@/components/RecordMultipleReferencePicker';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
@@ -100,7 +105,15 @@ function ViewersField({
                     onClearErrors,
                 )}
                 describedBy={
-                    invalidProps(VIEWERS_ID, error)['aria-describedby']
+                    invalidProps(
+                        VIEWERS_ID,
+                        error,
+                        false,
+                        false,
+                        cleared === undefined
+                            ? []
+                            : [clearedReasonId(VIEWERS_ID)],
+                    )['aria-describedby']
                 }
             />
         </FormBlock>

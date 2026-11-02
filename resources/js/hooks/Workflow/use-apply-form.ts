@@ -10,11 +10,14 @@ import {
 } from '@/hooks/Workflow/use-apply-opened';
 import { useApplyReload } from '@/hooks/Workflow/use-apply-reload';
 import { useApplicationTarget } from '@/hooks/Workflow/use-application-target';
+import { useClearedMarks } from '@/hooks/use-cleared-marks';
 import { clearFileErrors } from '@/lib/Workflow/applyAttachment';
 import { NEXT_FAILED_MESSAGE } from '@/lib/Workflow/applyReload';
 import type { ApplyReloadStatus } from '@/lib/Workflow/applyReload';
 import type { ApplyForm, ApplySendKind } from '@/lib/Workflow/applyForm';
 import { openedFormOf, rememberKeyOf } from '@/lib/Workflow/applyOpened';
+import type { RememberedCleared } from '@/lib/Workflow/applyOpened';
+import type { ClearedMark } from '@/lib/clearedFields';
 import type { WorkflowApplyProps } from '@/types';
 import type { RouteDefinition } from '@/wayfinder';
 
@@ -39,13 +42,33 @@ function useOpenedForm(props: WorkflowApplyProps) {
 }
 
 /**
+ * 空にした欄の印(元の申請の値・申請対象の値の写しの 2 組。docs の 設計/ワークフロー/申請の周辺/画面.md の 5 節の表 1)。
+ * 消えたかを含めて戻る・進むのために履歴の項目に覚える。
+ */
+function useApplyClearedMarks(
+    { rememberKey, opened, form }: ReturnType<typeof useOpenedForm>,
+    applicationTarget: { dialog: { cleared: ClearedMark[] } },
+) {
+    const [copy, target] = useClearedMarks(
+        [opened.copyMarks, applicationTarget.dialog.cleared],
+        { record: form.data.record },
+    );
+
+    useEffect(() => {
+        const remembered: RememberedCleared = { copy, target };
+        router.remember(remembered, `${rememberKey}:cleared`);
+    }, [copy, target]);
+
+    return [copy, target];
+}
+
+/**
  * 申請者・申請基準日の読み直しと、その間と失敗の状態(失敗はトースト = 画面.md の 8 節)。
  */
 function useReloadWithStatus(
-    form: InertiaFormProps<ApplyForm>,
+    { form, opened }: ReturnType<typeof useOpenedForm>,
     props: WorkflowApplyProps,
-    onReselected: () => void,
-    restored: boolean,
+    applicationTarget: { reselected: () => void },
 ) {
     const [status, setStatus] = useState<ApplyReloadStatus>({
         busy: false,
@@ -55,11 +78,11 @@ function useReloadWithStatus(
         form,
         props,
         {
-            onReselected,
+            onReselected: applicationTarget.reselected,
             onStatus: setStatus,
             onFailed: () => toast.error(NEXT_FAILED_MESSAGE),
         },
-        restored,
+        opened.restored,
     );
 
     return { ...reload, status };
@@ -89,8 +112,9 @@ function useSend(
  * focusRequest は送信の失敗ごとに増え、呼ぶ側が誤りのある欄へフォーカスを移す合図に使う。
  */
 export function useApplyForm(rawProps: WorkflowApplyProps) {
-    const { props, copyMarks } = useApplyOpened(rawProps);
-    const { rememberKey, opened, form } = useOpenedForm(props);
+    const props = useApplyOpened(rawProps);
+    const base = useOpenedForm(props);
+    const { rememberKey, opened, form } = base;
     const errors = form.errors as Record<string, string | undefined>;
     const applicationTarget = useApplicationTarget(
         form,
@@ -98,26 +122,22 @@ export function useApplyForm(rawProps: WorkflowApplyProps) {
         opened.opening,
         rememberKey,
     );
-    const reload = useReloadWithStatus(
-        form,
-        props,
-        applicationTarget.reselected,
-        opened.restored,
-    );
+    const reload = useReloadWithStatus(base, props, applicationTarget);
     const isBusy = applicationTarget.dialog.isBusy || reload.status.busy;
     const attachment = useApplyAttachment(props.attachment, () =>
         clearFileErrors(form),
     );
 
     const { send, focusRequest } = useSend(form, props, attachment, isBusy);
+    const clearedMarks = useApplyClearedMarks(base, applicationTarget);
     // 覚える effect(開いた時の props・入力・申請対象の写し)のすべての後に置く。部品の子は覚えない
     useStripCopyQueries();
 
     return {
         /** 開いた時の props を保った props */
         props,
-        /** 元の申請の値で空にした欄の印(案件からの複製で開いた画面だけ) */
-        copyMarks,
+        /** 空にした欄の印(元の申請の値・申請対象の値の写しの順。消えたかを含む) */
+        clearedMarks,
         form,
         errors,
         attachment,

@@ -7,6 +7,7 @@ import { FormActions, FormSurface } from '@/components/FormLayout';
 import { RecordFields } from '@/components/RecordFields';
 import { RecordRowAccessSection } from '@/components/RecordRowAccessSection';
 import { Button } from '@/components/ui/button';
+import { useClearedMarks } from '@/hooks/use-cleared-marks';
 import { useFocusFirstInvalid } from '@/hooks/use-focus-first-invalid';
 import {
     CLEARED_REASON_TEXTS,
@@ -14,7 +15,6 @@ import {
     clearedNoticeOf,
     fieldMarksOf,
     shownMarksOf,
-    viewersMarkedOf,
 } from '@/lib/clearedFields';
 import type { RecordFormData } from '@/lib/recordForm';
 import { toPayload } from '@/lib/recordPayload';
@@ -58,26 +58,35 @@ type Props = {
 };
 
 /**
- * 複製で空にした欄の印と、見出しの下の件数の注意(docs の 設計/ワークフロー/申請の周辺/画面.md の 5 節の「空にした項目の知らせ」。
- * 参照制限の欄があるので、参照者を外したことも欄のそばに書き、件数に数える)。
+ * 複製で空にした欄の印と、見出しの下の件数の注意(docs の 設計/ワークフロー/申請の周辺/画面.md の 5 節の「空にした項目の知らせ」の
+ * 表 1・表 2)。参照制限の欄があるので、参照者を外したことも欄のそばに書き、チェックが付いている間だけ件数に数える。
  */
-function useClearedMarks(
+function useRecordClearedMarks(
     { cleared = [], initialData, initialRowAccess }: Props,
-    data: RecordFormData,
-    viewers: RowAccessDraft['viewers'],
+    record: RecordFormData,
+    rowAccess: RowAccessDraft,
 ) {
-    const [opened] = useState(() => ({
-        marks: clearedMarksOf(cleared, 'record', initialData),
-        viewers: rowAccessDraft(initialRowAccess).viewers,
-    }));
-    const shown = shownMarksOf([opened.marks], data);
-    const viewersMarked = viewersMarkedOf(cleared, opened.viewers, viewers);
+    const [opened] = useState(() =>
+        clearedMarksOf(cleared, 'record', {
+            record: initialData,
+            viewers: rowAccessDraft(initialRowAccess).viewers,
+        }),
+    );
+    const groups = useClearedMarks([opened], {
+        record,
+        viewers: rowAccess.viewers,
+    });
+    const shown = shownMarksOf(groups, rowAccess.restricted);
+    const marks = fieldMarksOf(shown);
 
     return {
-        fields: fieldMarksOf(shown),
+        fields: marks,
         /** 参照制限の欄のそばの理由(印が無ければ undefined) */
-        viewers: viewersMarked ? CLEARED_REASON_TEXTS.record : undefined,
-        notice: clearedNoticeOf(shown.length + (viewersMarked ? 1 : 0)),
+        viewers:
+            marks.viewers === undefined
+                ? undefined
+                : CLEARED_REASON_TEXTS[marks.viewers],
+        notice: clearedNoticeOf(shown.length),
     };
 }
 
@@ -159,7 +168,7 @@ export function RecordForm(props: Props) {
     const { module, headings, recordId, submitLabel, cancelHref } = props;
     const { form, rowAccess, setRowAccess, formRef, focusRequest, submit } =
         useRecordSubmit(props);
-    const cleared = useClearedMarks(props, form.data, rowAccess.viewers);
+    const cleared = useRecordClearedMarks(props, form.data, rowAccess);
     const errors = form.errors as Record<string, string | undefined>;
     const clearErrors = (prefix: string) => clearRowErrors(form, prefix);
 

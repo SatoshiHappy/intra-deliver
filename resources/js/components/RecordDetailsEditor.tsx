@@ -1,7 +1,10 @@
 import { ArrowDown, ArrowUp, Trash2 } from 'lucide-react';
 import { ClearedReasonLine } from '@/components/ClearedNotice';
 import { formErrorId } from '@/components/FormBlock';
-import { DetailCell } from '@/components/RecordDetailCell';
+import {
+    DetailCell,
+    detailClearedReasonId,
+} from '@/components/RecordDetailCell';
 import { RecordColumnHeads } from '@/components/RecordFieldBadges';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -43,9 +46,11 @@ type Props = {
  * 表の上の、今の行にある空にしたセルの理由(1 度ずつ、行の順)。
  */
 function ClearedReasonLines({
+    field,
     rows,
     cleared,
 }: {
+    field: RecordFieldDefinition;
     rows: RecordRowDraft[];
     cleared: Props['cleared'];
 }) {
@@ -54,7 +59,10 @@ function ClearedReasonLines({
     );
 
     return [...new Set(reasons)].map((reason) => (
-        <ClearedReasonLine key={reason}>
+        <ClearedReasonLine
+            key={reason}
+            id={detailClearedReasonId(field.code, reason)}
+        >
             {CLEARED_REASON_TEXTS[reason]}
         </ClearedReasonLine>
     ));
@@ -136,7 +144,7 @@ export function RecordDetailsEditor({
                     {tableError}
                 </p>
             )}
-            <ClearedReasonLines rows={rows} cleared={cleared} />
+            <ClearedReasonLines field={field} rows={rows} cleared={cleared} />
             <Table>
                 <TableHeader>
                     <TableRow>

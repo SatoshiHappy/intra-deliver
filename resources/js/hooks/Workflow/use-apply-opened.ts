@@ -1,32 +1,23 @@
 import { router, useRemember } from '@inertiajs/react';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import {
     openedOf,
     rememberKeyOf,
     strippedUrlOf,
     withOpened,
 } from '@/lib/Workflow/applyOpened';
-import type { ClearedMark } from '@/lib/clearedFields';
 import type { WorkflowApplyProps } from '@/types';
 
 /**
  * 申請の画面の開いた時の props を保つ(docs の 設計/ワークフロー/申請の周辺/画面.md の 5 節の「写しのためだけのクエリ」)。
  * 戻る・進むでも戻るよう、履歴の項目に覚える(Inertia の remember。再読み込みでは消える)。
  */
-export function useApplyOpened(props: WorkflowApplyProps): {
-    props: WorkflowApplyProps;
-    copyMarks: ClearedMark[];
-} {
-    const [opened] = useRemember(
-        openedOf(props),
-        `${rememberKeyOf(props)}:opened`,
-    );
-    const shown = withOpened(props, opened);
+export function useApplyOpened(props: WorkflowApplyProps): WorkflowApplyProps {
+    // 覚える既定値は初めの描画で 1 回だけ作る
+    const [initial] = useState(() => openedOf(props));
+    const [opened] = useRemember(initial, `${rememberKeyOf(props)}:opened`);
 
-    return {
-        props: shown,
-        copyMarks: shown.copy === null ? [] : (opened.copyMarks ?? []),
-    };
+    return withOpened(props, opened);
 }
 
 /**

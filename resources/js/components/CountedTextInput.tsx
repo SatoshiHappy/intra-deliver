@@ -17,6 +17,8 @@ type OwnProps = {
     hasHelp?: boolean;
     /** 文字数の要素の追加の class(間隔を持たない置き場 = 表のセルの余白など) */
     countClassName?: string;
+    /** 誤りの文言のほかに読ませる説明の要素の id(空にした理由の 1 行など) */
+    describedIds?: string[];
 };
 
 /** 部品が組み立てる属性(使い手は渡せない) */
@@ -77,12 +79,19 @@ export function CountedTextInput(props: Props) {
         invalid = false,
         hasHelp = false,
         countClassName,
+        describedIds = [],
     } = props;
     // invalidProps は誤りの文言の有無だけを見る(文言は使い手が描く)
     const built = {
         id,
         value,
-        ...invalidProps(id, invalid ? '' : undefined, hasHelp, true),
+        ...invalidProps(
+            id,
+            invalid ? '' : undefined,
+            hasHelp,
+            true,
+            describedIds,
+        ),
     };
 
     return (
@@ -116,6 +125,7 @@ function inputAttributes<T extends Props>(
         hasHelp: _hasHelp,
         countClassName: _countClassName,
         isMultiline: _isMultiline,
+        describedIds: _describedIds,
         ...attributes
     } = props;
 

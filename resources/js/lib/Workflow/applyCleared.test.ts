@@ -43,9 +43,7 @@ const sourceOf = (
     targetMarks: ClearedMark[],
 ) => ({
     props: { copy },
-    copyMarks,
-    applicationTarget: { cleared: targetMarks },
-    form: { data: { record } },
+    clearedMarks: [copyMarks, targetMarks],
 });
 
 describe('申請の画面の知らせ', () => {
@@ -54,8 +52,10 @@ describe('申請の画面の知らせ', () => {
         const cleared = applyClearedOf(
             sourceOf(
                 copy,
-                clearedMarksOf(copy?.clearedFields ?? [], 'copy', record),
-                clearedMarksOf([field('budget')], 'applicationTarget', record),
+                clearedMarksOf(copy?.clearedFields ?? [], 'copy', { record }),
+                clearedMarksOf([field('budget')], 'applicationTarget', {
+                    record,
+                }),
             ),
         );
 

@@ -8,7 +8,7 @@ import type {
 } from '@/types';
 
 /**
- * 処理のダイアログの対象と、見出しの右のボタンの並び(docs の 設計/ワークフロー/案件の運用/画面/案件の画面.md の 4 節・5 節)。
+ * 処理のダイアログの対象と、画面の下に固定した処理のボタンの帯の並び(docs の 設計/ワークフロー/案件の運用/画面/案件の画面.md の 4 節・5 節)。
  */
 
 /** ダイアログで行う処理(ステップごとの 7 つと、案件に 1 つの引戻し・取止め。再申請は再申請の画面へのリンク、確認は押すと送る) */
@@ -206,7 +206,7 @@ type DetailActions = Pick<
 > & { caseId: number; caseName: string; revision: number };
 
 /**
- * 詳細の見出しの右のボタンが開くダイアログの対象(引戻し = 引戻せるステップ、取止め = ステップなしで申請者を処理者に、ほか = nodeActions)。
+ * 処理のボタンの帯のボタンが開くダイアログの対象(引戻し = 引戻せるステップ、取止め = ステップなしで申請者を処理者に、ほか = nodeActions)。
  */
 export function caseActionTargetOf(
     operation: CaseOperation,

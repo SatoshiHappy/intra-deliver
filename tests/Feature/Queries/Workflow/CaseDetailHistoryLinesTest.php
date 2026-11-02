@@ -105,7 +105,7 @@ final class CaseDetailHistoryLinesTest extends TransactionalTestCase
     }
 
     /**
-     * 見本の詳細の問い合わせの数(代理元の分も読む)が、全体の応答で足すボタン「複製して申請」の判定(自分と代理元の人数分 =
+     * 見本の詳細の問い合わせの数(代理元の分も読む)が、全体の応答で足すボタン「複製」の判定(自分と代理元の人数分 =
      * 設計/ワークフロー/申請の周辺/既存のデータからの申請/案件からの複製/README.md の 12.2 節)を含めて上限の中。
      */
     public function test_the_seeded_detail_stays_within_the_query_limit(): void

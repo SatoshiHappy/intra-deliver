@@ -47,3 +47,17 @@ export function reloadStepOf(
 ): { reload: boolean; reloaded: boolean } {
     return { reload: stale && !reloaded, reloaded: stale };
 }
+
+/**
+ * 申請の詳細に描くもの: 左右の枠(中身がそろったときだけ)と、処理のボタンの帯の置き場(どの mode でも出す。読み直しの間も
+ * 処理のボタンを押せるように。枠があれば詳細のカードの下、無ければ見出しの下 = どちらも画面の下に固定する同じ帯)。
+ */
+export type CaseLayout =
+    | { frame: ShownCaseRecordMode; actionBar: 'frameFooter' }
+    | { frame: null; actionBar: 'belowHeading' };
+
+export function caseLayoutOf(mode: CaseRecordMode): CaseLayout {
+    return mode.kind === 'reload'
+        ? { frame: null, actionBar: 'belowHeading' }
+        : { frame: mode, actionBar: 'frameFooter' };
+}

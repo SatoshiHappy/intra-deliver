@@ -37,7 +37,10 @@ export function caseStateOf(artisan: Artisan, id: string): string {
 }
 
 export type OpenedProps = {
-    initial: { values: Record<string, unknown> };
+    initial: {
+        values: Record<string, unknown>;
+        details: Record<string, { values: Record<string, unknown> }[]>;
+    };
     targetField: string | null;
     targetValues: {
         values: Record<string, unknown>;

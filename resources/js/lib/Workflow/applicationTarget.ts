@@ -199,9 +199,7 @@ export function targetMarksOf(
     snapshot: ApplicationTargetSnapshot,
     snapshotted: RecordFormData,
 ): ClearedMark[] {
-    return clearedMarksOf(
-        snapshot.clearedFields,
-        'applicationTarget',
-        snapshotted,
-    );
+    return clearedMarksOf(snapshot.clearedFields, 'applicationTarget', {
+        record: snapshotted,
+    });
 }

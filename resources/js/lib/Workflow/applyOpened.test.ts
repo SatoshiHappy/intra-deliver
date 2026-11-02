@@ -99,8 +99,9 @@ describe('戻る・進むで来た時(申請対象からの申請.md の 10.2 �
     it('欄は離れた時の値のまま、申請対象は最後に決まったものに戻り、確かめのダイアログは出さず、1 行は離れた時のまま', () => {
         const restored = restoredOf(
             left,
-            { settled: picked(5, '決まった'), cleared: [markOf('担当者')] },
+            { settled: picked(5, '決まった') },
             'project',
+            { copy: [], target: [markOf('担当者')] },
         );
 
         expect(restored.data.record.values.name).toBe('打ち直した');
@@ -115,37 +116,31 @@ describe('戻る・進むで来た時(申請対象からの申請.md の 10.2 �
         });
     });
 
-    it('印の形の前に覚えた 1 行(空にした項目の名前の並び)は捨てる', () => {
-        const older = {
-            settled: null,
-            cleared: ['担当者'],
-        } as unknown as Parameters<typeof restoredOf>[1];
-
-        expect(restoredOf(left, older, 'project').opening.cleared).toEqual([]);
-    });
-
     it('申請対象の項目が無い画面と、写しの状態を覚えていないときは欄をそのまま戻す', () => {
-        expect(restoredOf(left, undefined, 'project').data).toEqual(left);
-        expect(
-            restoredOf(left, { settled: null, cleared: [] }, null).data,
-        ).toEqual(left);
+        const none = { copy: [], target: [] };
+
+        expect(restoredOf(left, undefined, 'project', none).data).toEqual(left);
+        expect(restoredOf(left, { settled: null }, null, none).data).toEqual(
+            left,
+        );
     });
 });
 
-describe('開いた時のフォームの値(戻る・進むで来たか)', () => {
-    const fromRecord = props({
-        module: planModule,
-        initial: null,
-        baseDate: '2026-10-13',
-        applicant: null,
-        targetValues: snapshotOf(
-            { project: reference(5, 'P5'), name: '写した名前' },
-            {},
-            ['担当者'],
-        ),
-        targetEntry: { module: 'project', record: 5 },
-    });
+/** 業務レコードの詳細から開いた申請の画面(開いた時に写す) */
+const fromRecord = props({
+    module: planModule,
+    initial: null,
+    baseDate: '2026-10-13',
+    applicant: null,
+    targetValues: snapshotOf(
+        { project: reference(5, 'P5'), name: '写した名前' },
+        {},
+        ['担当者'],
+    ),
+    targetEntry: { module: 'project', record: 5 },
+});
 
+describe('開いた時のフォームの値(戻る・進むで来たか)', () => {
     it('初めて開いた: 開いた時の写しを当て、1 行を出す', () => {
         const opened = openedFormOf(fromRecord, 'k', () => undefined);
 
@@ -164,10 +159,8 @@ describe('開いた時のフォームの値(戻る・進むで来たか)', () =>
                     name: '打ち直した',
                 }),
             },
-            'k:target': {
-                settled: picked(5, 'P5'),
-                cleared: [markOf('担当者')],
-            },
+            'k:target': { settled: picked(5, 'P5') },
+            'k:cleared': { copy: [], target: [markOf('担当者')] },
         };
 
         const opened = openedFormOf(fromRecord, 'k', (key) => remembered[key]);
@@ -177,5 +170,21 @@ describe('開いた時のフォームの値(戻る・進むで来たか)', () =>
         expect(opened.data.record.values.project).toEqual(picked(5, 'P5'));
         expect(opened.opening.confirm).toBeNull();
         expect(markedOf(opened.opening.cleared)).toEqual(['担当者']);
+    });
+});
+
+describe('印の形の前の履歴の項目から戻る', () => {
+    it('覚えた入力があり印の形の前の履歴の項目(印を覚えていない)は、印を新しく作り、申請対象の写しの印は無い', () => {
+        const left = openedFormOf(fromRecord, 'k', () => undefined).data;
+        const remembered: Record<string, unknown> = {
+            'k:data': left,
+            'k:target': { settled: picked(5, 'P5'), cleared: ['担当者'] },
+        };
+
+        const opened = openedFormOf(fromRecord, 'k', (key) => remembered[key]);
+
+        expect(opened.restored).toBe(true);
+        expect(opened.opening.cleared).toEqual([]);
+        expect(opened.copyMarks).toEqual([]);
     });
 });

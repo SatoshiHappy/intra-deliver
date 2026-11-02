@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vite-plus/test';
-import { caseRecordModeOf, reloadStepOf } from './caseRecordMode';
+import { caseLayoutOf, caseRecordModeOf, reloadStepOf } from './caseRecordMode';
 import type { CaseRecordContent, CaseSubmittedRecord } from './caseRecordMode';
 
 const content = { id: 'content' } as unknown as CaseRecordContent;
@@ -81,5 +81,28 @@ describe('reloadStepOf', () => {
         const aligned = reloadStepOf(false, first.reloaded);
 
         expect(reloadStepOf(true, aligned.reloaded).reload).toBe(true);
+    });
+});
+
+describe('caseLayoutOf(処理のボタンの帯はどの形でも出す)', () => {
+    it('中身がそろった形は左右の枠を描き、帯は詳細のカードの下', () => {
+        const live = { kind: 'live', content } as const;
+        const snapshot = {
+            kind: 'snapshot',
+            submittedRecord: submitted,
+        } as const;
+
+        expect(caseLayoutOf(live)).toEqual({
+            frame: live,
+            actionBar: 'frameFooter',
+        });
+        expect(caseLayoutOf(snapshot).actionBar).toBe('frameFooter');
+    });
+
+    it('読み直しの形(reload)は枠を描かず、帯は見出しの下に出す', () => {
+        expect(caseLayoutOf({ kind: 'reload' })).toEqual({
+            frame: null,
+            actionBar: 'belowHeading',
+        });
     });
 });

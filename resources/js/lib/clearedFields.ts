@@ -3,7 +3,7 @@ import type { ClearedField } from '@/types';
 
 /**
  * 写す時に今は使えない値を空にした欄の知らせ(値を写す 3 つの仕組みで同じ形 = docs の 設計/ワークフロー/申請の周辺/画面.md の 5 節の
- * 「空にした項目の知らせ」。文は同じ文書の 8 節)。理由は空にした欄のそばに書き、見出しの下には件数だけを出す。
+ * 「空にした項目の知らせ」。印が消えるかは同じ節の表 1、出すか・数えるかは表 2。文は同じ文書の 8 節)。
  */
 
 /** 空にした仕組み(理由の文を分ける) */
@@ -21,95 +21,210 @@ export const VIEWERS_CLEARED_NOTICE =
     '引き継ぐ参照制限の参照者のうち、今は使えない人・組織を外しました。';
 
 /**
- * 空にした欄の印 1 つ。baseline = 空にした直後の欄の値(JSON)。欄に値を入れたら印を消すため、今の値と比べる。
- * 明細のセルは行の key で引く(行を並べ替えても同じ行を指す)。
+ * 空にした欄の印 1 つ。baseline = 空にした直後の値(JSON)、gone = 消えた(表 1。一度消えたら出し直さない)。
+ * 明細のセルは行の key で引く(行を並べ替えても同じ行を指す)。参照者(viewers)は業務データの画面の複製だけが持つ。
  */
 export type ClearedMark = {
-    kind: 'field' | 'cell';
-    field: string;
+    kind: 'field' | 'cell' | 'viewers';
+    field: string | null;
     detail: string | null;
     rowKey: string | null;
     reason: ClearedReason;
     baseline: string;
+    gone: boolean;
 };
 
-/** 欄の印(親の欄 = コード → 理由、明細のセル = 明細のコード → 行の key → 列のコード → 理由) */
+/** 印を比べる今の値(viewers = 参照制限の参照者の欄。欄の無い申請の画面は持たない) */
+export type ClearedValues = {
+    record: RecordFormData;
+    viewers?: unknown[];
+};
+
+/** 欄の印(親の欄 = コード → 理由、明細のセル = 明細のコード → 行の key → 列のコード → 理由、参照制限の欄の理由) */
 export type FieldMarks = {
     fields: Record<string, ClearedReason>;
     cells: Record<string, Record<string, Record<string, ClearedReason>>>;
+    viewers?: ClearedReason;
 };
 
-function draftOf(
-    data: RecordFormData,
-    mark: Pick<ClearedMark, 'field' | 'detail' | 'rowKey'>,
-): RecordFieldDraft {
-    if (mark.detail === null) {
-        return data.values[mark.field] ?? null;
+type Position = Pick<ClearedMark, 'kind' | 'field' | 'detail' | 'rowKey'>;
+
+/** 印の位置の今の値(明細の行が無くなったら undefined) */
+function valueOf(
+    current: ClearedValues,
+    mark: Position,
+): RecordFieldDraft | unknown[] | undefined {
+    if (mark.kind === 'viewers') {
+        return current.viewers ?? [];
     }
 
-    const row = (data.details[mark.detail] ?? []).find(
+    if (mark.kind === 'field') {
+        return current.record.values[mark.field ?? ''] ?? null;
+    }
+
+    const row = (current.record.details[mark.detail ?? ''] ?? []).find(
         (candidate) => candidate.key === mark.rowKey,
     );
 
-    return row?.values[mark.field] ?? null;
+    return row === undefined
+        ? undefined
+        : (row.values[mark.field ?? ''] ?? null);
+}
+
+/** サーバーの 1 件を印の位置にする(明細の行の添字は行の key に。行が無ければ null = 印にしない) */
+function positionOf(
+    entry: ClearedField,
+    current: ClearedValues,
+): Position | null {
+    if (entry.kind === 'viewers') {
+        return current.viewers === undefined
+            ? null
+            : { kind: 'viewers', field: null, detail: null, rowKey: null };
+    }
+
+    if (entry.kind === 'field') {
+        return {
+            kind: 'field',
+            field: entry.field,
+            detail: null,
+            rowKey: null,
+        };
+    }
+
+    const rowKey =
+        current.record.details[entry.detail ?? '']?.[entry.row ?? -1]?.key;
+
+    return rowKey === undefined
+        ? null
+        : { kind: 'cell', field: entry.field, detail: entry.detail, rowKey };
 }
 
 /**
- * サーバーが返した空にした欄に、空にした直後の値を添えた印(参照者 = viewers は欄の印にしない。画面ごとに出し方が違う)。
- * data = 空にした値を当てた直後のフォームの値。
+ * サーバーが返した空にした欄に、空にした直後の値を添えた印(消えていない で始まる)。current = 空にした値を当てた直後の値。
+ * 参照者は参照者の欄がある画面(current.viewers がある)だけ印にする(申請の画面は見出しの下の 1 行 = 表 2 の最後の行)。
  */
 export function clearedMarksOf(
     cleared: ClearedField[],
     reason: ClearedReason,
-    data: RecordFormData,
+    current: ClearedValues,
 ): ClearedMark[] {
     return cleared.flatMap((entry): ClearedMark[] => {
-        if (entry.kind === 'viewers' || entry.field === null) {
-            return [];
-        }
+        const position = positionOf(entry, current);
 
-        const detail = entry.kind === 'cell' ? entry.detail : null;
-        const rowKey =
-            detail === null
-                ? null
-                : (data.details[detail]?.[entry.row ?? -1]?.key ?? null);
-        const position = { field: entry.field, detail, rowKey };
-
-        if (detail !== null && rowKey === null) {
-            return [];
-        }
-
-        return [
-            {
-                kind: entry.kind,
-                ...position,
-                reason,
-                baseline: JSON.stringify(draftOf(data, position)),
-            },
-        ];
+        return position === null
+            ? []
+            : [
+                  {
+                      ...position,
+                      reason,
+                      baseline: JSON.stringify(valueOf(current, position)),
+                      gone: false,
+                  },
+              ];
     });
 }
 
-function keyOf(mark: ClearedMark): string {
-    return [mark.detail ?? '', mark.rowKey ?? '', mark.field].join('\u0000');
+/**
+ * 今の値で消えた印を決める(表 1。開いた時・戻った時の初めの 1 回と、値が変わるたびに当てる)。値が空にした直後と違う印と、
+ * 明細の行が無くなった印は消えた。消えた印は値が戻っても消えたまま。何も変わらなければ同じ配列を返す。
+ */
+export function settledMarksOf(
+    marks: ClearedMark[],
+    current: ClearedValues,
+): ClearedMark[] {
+    let changed = false;
+    const next = marks.map((mark) => {
+        if (mark.gone) {
+            return mark;
+        }
+
+        const value = valueOf(current, mark);
+
+        if (value !== undefined && JSON.stringify(value) === mark.baseline) {
+            return mark;
+        }
+
+        changed = true;
+
+        return { ...mark, gone: true };
+    });
+
+    return changed ? next : marks;
+}
+
+/** 印の組と、組を作った元・比べた値(画面ごとの状態) */
+export type ClearedState = {
+    sources: ClearedMark[][];
+    current: ClearedValues;
+    groups: ClearedMark[][];
+};
+
+/** 開いた時・戻った時の状態(初めの 1 回の確かめを当てる) */
+export function clearedStateOf(
+    sources: ClearedMark[][],
+    current: ClearedValues,
+): ClearedState {
+    return {
+        sources,
+        current,
+        groups: sources.map((marks) => settledMarksOf(marks, current)),
+    };
 }
 
 /**
- * 今出す印(後に渡した仕組みの印が同じ欄の前の印に勝つ = 後から写した値の理由。欄の値が空にした直後から変わった欄は出さない)。
+ * 次の状態(元が替わった組 = 申請対象を写し直した印は、新しい印で置き換える。値が変わったら、すべての組に表 1 を当てる)。
+ * 何も変わらなければ同じ状態を返す。
+ */
+export function nextClearedStateOf(
+    state: ClearedState,
+    sources: ClearedMark[][],
+    current: ClearedValues,
+): ClearedState {
+    const replaced = sources.some((marks, i) => marks !== state.sources[i]);
+    const changed =
+        current.record !== state.current.record ||
+        current.viewers !== state.current.viewers;
+
+    if (!replaced && !changed) {
+        return state;
+    }
+
+    const groups = sources.map((marks, i) =>
+        marks === state.sources[i] ? state.groups[i] : marks,
+    );
+
+    return {
+        sources,
+        current,
+        groups: changed
+            ? groups.map((marks) => settledMarksOf(marks, current))
+            : groups,
+    };
+}
+
+function keyOf(mark: ClearedMark): string {
+    return [mark.kind, mark.detail ?? '', mark.rowKey ?? '', mark.field].join(
+        '\u0000',
+    );
+}
+
+/**
+ * 今出す印(表 2): 消えた印は出さない。参照者の印は参照制限のチェックが付いているときだけ(viewersShown)。同じ欄・セルに 2 つあれば、
+ * 後の組(後から写した仕組み)の 1 つにまとめる。件数 = 返した印の数。
  */
 export function shownMarksOf(
     groups: ClearedMark[][],
-    data: RecordFormData,
+    viewersShown = false,
 ): ClearedMark[] {
     const merged = new Map<string, ClearedMark>();
 
     for (const mark of groups.flat()) {
-        merged.set(keyOf(mark), mark);
+        if (!mark.gone && (mark.kind !== 'viewers' || viewersShown)) {
+            merged.set(keyOf(mark), mark);
+        }
     }
 
-    return [...merged.values()].filter(
-        (mark) => JSON.stringify(draftOf(data, mark)) === mark.baseline,
-    );
+    return [...merged.values()];
 }
 
 /** 欄とセルへ渡す形 */
@@ -117,11 +232,13 @@ export function fieldMarksOf(marks: ClearedMark[]): FieldMarks {
     const result: FieldMarks = { fields: {}, cells: {} };
 
     for (const mark of marks) {
-        if (mark.detail === null || mark.rowKey === null) {
-            result.fields[mark.field] = mark.reason;
+        if (mark.kind === 'viewers') {
+            result.viewers = mark.reason;
+        } else if (mark.kind === 'field') {
+            result.fields[mark.field ?? ''] = mark.reason;
         } else {
-            const rows = (result.cells[mark.detail] ??= {});
-            (rows[mark.rowKey] ??= {})[mark.field] = mark.reason;
+            const rows = (result.cells[mark.detail ?? ''] ??= {});
+            (rows[mark.rowKey ?? ''] ??= {})[mark.field ?? ''] = mark.reason;
         }
     }
 
@@ -138,18 +255,4 @@ export function clearedNoticeOf(count: number): string | null {
 /** 参照制限の参照者を外したか */
 export function hasClearedViewers(cleared: ClearedField[]): boolean {
     return cleared.some((entry) => entry.kind === 'viewers');
-}
-
-/**
- * 業務データの画面の複製の、参照制限の欄の印(参照者を外していて、参照者の欄が開いた時のまま = 入力していない)。
- */
-export function viewersMarkedOf(
-    cleared: ClearedField[],
-    initialViewers: unknown[],
-    currentViewers: unknown[],
-): boolean {
-    return (
-        hasClearedViewers(cleared) &&
-        JSON.stringify(currentViewers) === JSON.stringify(initialViewers)
-    );
 }

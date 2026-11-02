@@ -32,15 +32,24 @@ export type DetailCellProps = {
     clearedColumns: Record<string, ClearedReason> | undefined;
 };
 
-/** 空にしたセルの ⚠(理由は表の上の 1 行) */
+/** 空にしたセルの ⚠(読み上げない。理由は表の上の 1 行を入力の aria-describedby で読ませる) */
 function ClearedCellIcon() {
     return (
         <TriangleAlert
-            role="img"
-            aria-label="今は使えないため空にした値"
+            aria-hidden="true"
             className="mt-2 size-4 shrink-0 text-status-returned-foreground"
         />
     );
+}
+
+/**
+ * 明細の表の上の、空にした理由の 1 行の id(明細の項目のコードと理由の組ごと。セルの入力の aria-describedby に使う)。
+ */
+export function detailClearedReasonId(
+    detailsCode: string,
+    reason: ClearedReason,
+): string {
+    return `record-field-${detailsCode}-cleared-${reason}`;
 }
 
 /** セルの誤りの文言(入力の aria-describedby が指す id) */
@@ -52,6 +61,15 @@ function CellError({ id, error }: { id: string; error: string }) {
         >
             {error}
         </p>
+    );
+}
+
+/** 「必須」の札(文字数の出る列は入力の行の高さに揃える) */
+function RequiredBadge({ counted }: { counted: boolean }) {
+    return (
+        <Badge variant="secondary" className={counted ? 'mt-2' : undefined}>
+            必須
+        </Badge>
     );
 }
 
@@ -67,7 +85,8 @@ export function DetailCell(props: DetailCellProps) {
     const counted = hasCharacterCount(column);
     // 文字数は入力の下に出るので、数のある列だけ札を入力の行の高さに揃える
     const align = counted ? 'items-start' : 'items-center';
-    const cleared = props.clearedColumns?.[column.code] !== undefined;
+    const reason = props.clearedColumns?.[column.code];
+    const cleared = reason !== undefined;
 
     return (
         <TableCell className="align-top">
@@ -93,15 +112,12 @@ export function DetailCell(props: DetailCellProps) {
                         props.onClearErrors,
                     )}
                     ariaLabel={`${column.name}(${index + 1} 行目)`}
+                    clearedId={
+                        reason &&
+                        detailClearedReasonId(props.detailsCode, reason)
+                    }
                 />
-                {required && (
-                    <Badge
-                        variant="secondary"
-                        className={counted ? 'mt-2' : undefined}
-                    >
-                        必須
-                    </Badge>
-                )}
+                {required && <RequiredBadge counted={counted} />}
             </div>
             {error !== undefined && <CellError id={id} error={error} />}
         </TableCell>

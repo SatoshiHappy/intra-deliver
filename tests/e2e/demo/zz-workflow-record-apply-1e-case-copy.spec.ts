@@ -1,6 +1,6 @@
 import { expect, test } from '../support/test';
 import type { Artisan } from '../support/test';
-import type { Page } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
 import { fillVersionTwoBaseDate } from '../support/seed-dates';
 import {
     caseIdOf,
@@ -29,7 +29,7 @@ test.use({ viewport: { width: 1280, height: 720 } });
 const HEADING =
     'プロジェクト計画の承認 新製品の発売計画(申請番号 WF-000013)を複製して申請します。';
 const CLEARED_LINE =
-    '今は使えない値を空にした項目が 1 件あります。⚠ の付いた欄を入力してください。';
+    '今は使えない値を空にした項目が 2 件あります。⚠ の付いた欄を入力してください。';
 const CLEARED_REASON = '元の申請の値は、今は使えないため空にしました。';
 
 /** 見本の案件 WF-000013 の id */
@@ -37,7 +37,7 @@ function sourceIdOf(artisan: Artisan): string {
     return caseIdOf(artisan, 13);
 }
 
-/** 申請対象の写しを出さず、元の申請の値を空にした欄(責任者)の知らせを出す形で開く */
+/** 申請対象の写しを出さず、元の申請の値を空にした欄(責任者)と明細のセル(マイルストーンの 1 行目の工数)の知らせを出す形で開く */
 async function openCopy(page: Page, artisan: Artisan) {
     const id = sourceIdOf(artisan);
     await rewriteOpened(page, (props) => {
@@ -45,6 +45,7 @@ async function openCopy(page: Page, artisan: Artisan) {
 
         if (props.copy !== null) {
             props.initial.values.manager = null;
+            props.initial.details.milestones[0].values.effort = null;
             props.copy.clearedFields = [
                 {
                     kind: 'field',
@@ -52,6 +53,13 @@ async function openCopy(page: Page, artisan: Artisan) {
                     detail: null,
                     row: null,
                     name: '責任者',
+                },
+                {
+                    kind: 'cell',
+                    field: 'effort',
+                    detail: 'milestones',
+                    row: 0,
+                    name: 'マイルストーンの工数(人日)',
                 },
             ];
         }
@@ -63,6 +71,22 @@ async function openCopy(page: Page, artisan: Artisan) {
     return id;
 }
 
+/**
+ * 空にした理由は欄の下と明細の表の上に 1 行ずつ出て、入力の説明として読まれる(セルの ⚠ は読ませない = 画面.md の 5 節の
+ * 「空にした項目の知らせ」)。
+ */
+async function expectClearedReasons(page: Page, form: Locator) {
+    await expect(page.getByText(CLEARED_REASON, { exact: true })).toHaveCount(
+        2,
+    );
+    await expect(
+        form.getByRole('combobox', { name: '責任者', exact: true }),
+    ).toHaveAccessibleDescription(CLEARED_REASON);
+    await expect(
+        form.getByRole('textbox', { name: '工数(人日)(1 行目)', exact: true }),
+    ).toHaveAccessibleDescription(CLEARED_REASON);
+}
+
 test('開いた直後に URL から copy が外れ、申請名・値と、見出しの下の 1 行と空にした欄の知らせが入る。申請基準日を変えた後も残り、再読み込みで消える', async ({
     page,
     artisan,
@@ -71,6 +95,7 @@ test('開いた直後に URL から copy が外れ、申請名・値と、見出
     const form = applyForm(page);
     const line = page.getByText(CLEARED_LINE, { exact: true });
     await expect(line).toBeVisible();
+    await expectClearedReasons(page, form);
     await expect(
         form.getByRole('textbox', { name: '申請名', exact: true }),
     ).toHaveValue('プロジェクト計画の承認 新製品の発売計画');
@@ -140,7 +165,9 @@ test('入力の誤りで戻った後に別のページへ移り、戻るで来�
     await expect(budgetField(form)).toHaveValue('1500');
     await expect(page.getByText(HEADING, { exact: false })).toBeVisible();
     await expect(page.getByText(CLEARED_LINE, { exact: true })).toBeVisible();
-    await expect(page.getByText(CLEARED_REASON, { exact: true })).toBeVisible();
+    await expect(page.getByText(CLEARED_REASON, { exact: true })).toHaveCount(
+        2,
+    );
     await expect(page.getByRole('dialog', { name: CONFIRM_TITLE })).toHaveCount(
         0,
     );

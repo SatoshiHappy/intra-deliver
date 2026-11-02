@@ -10,7 +10,11 @@ import { CaseRecordFrame } from '@/components/Workflow/CaseRecordFrame';
 import { useRecordSidePanel } from '@/hooks/use-record-side-panel';
 import { PersonLinksContext } from '@/hooks/Workflow/use-person-links';
 import { showAttachOf } from '@/lib/Workflow/caseActionAttach';
-import { caseRecordModeOf, reloadStepOf } from '@/lib/Workflow/caseRecordMode';
+import {
+    caseLayoutOf,
+    caseRecordModeOf,
+    reloadStepOf,
+} from '@/lib/Workflow/caseRecordMode';
 import { index, show } from '@/routes/workflow/cases';
 import type { WorkflowCaseShowProps } from '@/types';
 
@@ -35,8 +39,8 @@ function useReloadWhenStale(stale: boolean) {
 
 /**
  * 申請の詳細(設計/業務データの入れ物/レコードの共通機能/詳細の画面/申請の詳細.md)。見出しの下の左のタブとサイドパネルは
- * {@link CaseRecordFrame}。処理のダイアログは描き分けの外に 1 つ(誤りの後に can が偽になっても閉じない = CaseActionDialog)。
- * 名前の札の「…」のリンクは props の links をページ全体(ダイアログを含む)へ渡す。
+ * {@link CaseRecordFrame}、処理のボタンの帯はどの形でも出す({@link caseLayoutOf})。処理のダイアログは描き分けの外に 1 つ
+ * (誤りの後に can が偽になっても閉じない = CaseActionDialog)。名前の札の「…」のリンクは props の links をページ全体(ダイアログを含む)へ渡す。
  */
 export default function CaseShow(props: Props) {
     const { openAction, dialogProps } = useCaseActionDialog();
@@ -46,24 +50,27 @@ export default function CaseShow(props: Props) {
         props.panelContent,
     );
     useReloadWhenStale(mode.kind === 'reload');
+    const layout = caseLayoutOf(mode);
+    const actionBar = <CaseActionBar {...props} onOpen={openAction} />;
 
     return (
         <PersonLinksContext value={props.links}>
             <Head title={props.case.name} />
 
             <div className="flex h-full flex-1 flex-col gap-6 p-4">
-                {mode.kind === 'reload' ? (
-                    <CaseHeading {...props} />
+                {layout.frame === null ? (
+                    <>
+                        <CaseHeading {...props} />
+                        {actionBar}
+                    </>
                 ) : (
                     <CaseRecordFrame
                         show={props}
-                        mode={mode}
+                        mode={layout.frame}
                         panel={panel}
                         onOpenAction={openAction}
                         heading={<CaseHeading {...props} />}
-                        footer={
-                            <CaseActionBar {...props} onOpen={openAction} />
-                        }
+                        footer={actionBar}
                     />
                 )}
             </div>

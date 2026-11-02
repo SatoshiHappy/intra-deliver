@@ -1,4 +1,8 @@
-import { FormBlock, UnshownErrors } from '@/components/FormBlock';
+import {
+    FormBlock,
+    UnshownErrors,
+    clearedReasonId,
+} from '@/components/FormBlock';
 import { RecordDetailsEditor } from '@/components/RecordDetailsEditor';
 import { RecordFieldBadges } from '@/components/RecordFieldBadges';
 import { RecordFieldInput } from '@/components/RecordFieldInput';
@@ -119,6 +123,9 @@ function FieldRow({
                     isRequiredNow={required}
                     invalid={error !== undefined}
                     itemErrors={referenceItemErrors(errors, key, onClearErrors)}
+                    clearedId={
+                        cleared === undefined ? undefined : clearedReasonId(id)
+                    }
                 />
             ) : (
                 <Input id={id} value={fixed.text} disabled readOnly />

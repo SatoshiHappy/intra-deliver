@@ -23,7 +23,7 @@ use Tests\Support\RunsWorkflowOperations;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * ボタン「複製して申請」の出し方(docs の 設計/ワークフロー/申請の周辺/既存のデータからの申請/案件からの複製/README.md の 12.2 節の表、
+ * ボタン「複製」の出し方(docs の 設計/ワークフロー/申請の周辺/既存のデータからの申請/案件からの複製/README.md の 12.2 節の表、
  * 検査.md の 14 節の 12.1・12.2): 表の各行と認可の展開(申請のノードの対象者・create・今日の版・今日に有効でない代理・ルートの認可)を、
  * 移り先の GET が 403 にならないことと同じ組で比べる(申請の詳細の props は CaseShowCopyButtonTest)。
  */
