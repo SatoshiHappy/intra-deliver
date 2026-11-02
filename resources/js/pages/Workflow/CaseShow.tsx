@@ -4,6 +4,7 @@ import {
     CaseActionDialog,
     useCaseActionDialog,
 } from '@/components/Workflow/CaseActionDialog';
+import { CaseActionBar } from '@/components/Workflow/CaseActionBar';
 import { CaseHeading } from '@/components/Workflow/CaseHeading';
 import { CaseRecordFrame } from '@/components/Workflow/CaseRecordFrame';
 import { useRecordSidePanel } from '@/hooks/use-record-side-panel';
@@ -51,13 +52,18 @@ export default function CaseShow(props: Props) {
             <Head title={props.case.name} />
 
             <div className="flex h-full flex-1 flex-col gap-6 p-4">
-                <CaseHeading {...props} onOpen={openAction} />
-                {mode.kind !== 'reload' && (
+                {mode.kind === 'reload' ? (
+                    <CaseHeading {...props} />
+                ) : (
                     <CaseRecordFrame
                         show={props}
                         mode={mode}
                         panel={panel}
                         onOpenAction={openAction}
+                        heading={<CaseHeading {...props} />}
+                        footer={
+                            <CaseActionBar {...props} onOpen={openAction} />
+                        }
                     />
                 )}
             </div>

@@ -130,7 +130,7 @@ trait BuildsApplicationTargetCopies
 
     /**
      * 渡したレコードの、u0001 から見た写しの値(10.1 節の規則の結果。並びは比べない = {@see self::sorted()} で比べる)。
-     * $refLabel が null = 参照先を読めない(写す時の確かめで空になり、clearedFields に名前が出る)。
+     * $refLabel が null = 参照先を読めない(写す時の確かめで空になり、clearedFields に空にした欄が出る)。
      *
      * @param  array{hub: int, ref: int}  $ids
      * @return array<string, mixed>
@@ -153,7 +153,9 @@ trait BuildsApplicationTargetCopies
             'details' => [
                 'lines' => [['values' => ['item' => 'A', 'qty' => 1]], ['values' => ['item' => 'B', 'qty' => 2]]],
             ],
-            'clearedFields' => $refLabel === null ? ['ref'] : [],
+            'clearedFields' => $refLabel === null
+                ? [['detail' => null, 'field' => 'ref', 'kind' => 'field', 'name' => 'ref', 'row' => null]]
+                : [],
         ]);
     }
 

@@ -87,7 +87,7 @@ final class HoldTransferOnRoutesTest extends TransactionalTestCase
         $error = $this->attemptOf(fn () => $this->transferOn($case, 'council.1', 'u0005', $sibling));
         $this->transferOn($case, 'council.1', 'u0005', $this->seededUser('u0008')->id);
 
-        $this->assertSame(['to_user_id' => 'このステップのほかの承認者と同じユーザーは指定できません'], $error);
+        $this->assertSame(['to_user_id' => 'このステップのほかの承認者と同じユーザーは選択できません'], $error);
         $this->assertSame(
             ['running', 'waiting[u0008]', 'hold[u0009]', 'waiting[u0011]'],
             array_values($this->pick($case, 'council', 'council.1', 'council.2', 'council.3')),

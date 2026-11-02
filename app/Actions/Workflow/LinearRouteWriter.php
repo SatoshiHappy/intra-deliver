@@ -98,7 +98,7 @@ class LinearRouteWriter
             $errors["nodes.{$index}.code"] = $this->codeError($nodeCodes[$index], fn (string $code) => in_array($code, $earlierCodes, true), 'このコードはルートの中で既に使用されています');
             $errors["nodes.{$index}.name"] = $this->textError($nodeNames[$index], '名前');
             $errors["nodes.{$index}.kind"] = $this->kindError($index, $node->kind);
-            $errors = [...$errors, ...$this->translationErrors($node->targetTranslations, "nodes.{$index}.target_translations", '処理対象者の表示名')];
+            $errors = [...$errors, ...$this->translationErrors($node->targetTranslations, "nodes.{$index}.target_translations", '対象者の表示名')];
         }
 
         return $errors;

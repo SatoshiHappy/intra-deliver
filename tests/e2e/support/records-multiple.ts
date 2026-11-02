@@ -3,7 +3,7 @@ import { expect } from './test';
 import { submitAndExpectUrl } from './submit';
 
 // 複数選べる参照の E2E(records-multiple.spec.ts)の手助け。業務モジュール「備品」(コード equipment)は records-admin.spec.ts の
-// 筋が作る。型「ユーザーと組織(複数)」の筋の段(docs の 設計/業務データの入れ物/画面/README.md 6 節の型「ユーザーと組織」の行)を
+// 筋が作る。型「ユーザーと組織(複数)」の筋の段(docs の 設計/業務データの入れ物/画面/E2Eと目視.md 6 節の型「ユーザーと組織」の行)を
 // 名前つきの手助けにして、spec のテストの関数を短く保つ。
 
 /** 型「ユーザーと組織(複数)」の項目(一覧に表示・検索条件にする)と、2 件のレコードの品名 */

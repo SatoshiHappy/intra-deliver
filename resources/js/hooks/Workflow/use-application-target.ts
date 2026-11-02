@@ -26,6 +26,7 @@ import type {
     ApplicationTargetFetch,
     ApplicationTargetView,
 } from '@/lib/Workflow/applicationTargetFlow';
+import type { ClearedMark } from '@/lib/clearedFields';
 import type { RecordFormData } from '@/lib/recordForm';
 import type { ApplicationTargetSnapshot } from '@/types/workflowApplyTarget';
 import type { WorkflowApplyProps } from '@/types';
@@ -85,7 +86,7 @@ function portsOf(
  */
 function rememberTarget(
     applicationTarget: ApplicationTargetFlow,
-    cleared: string[],
+    cleared: ClearedMark[],
     rememberKey: string,
 ) {
     const remembered: RememberedTarget = {
@@ -113,7 +114,7 @@ export function useApplicationTarget(
         confirm: opening.confirm,
         cleared: opening.cleared,
     });
-    const remember = (cleared: string[]) =>
+    const remember = (cleared: ClearedMark[]) =>
         rememberTarget(applicationTarget, cleared, rememberKey);
     const ports = portsOf(form, props, {
         fetch: useApplicationTargetFetch(),
@@ -126,7 +127,7 @@ export function useApplicationTarget(
     useEffect(() => remember(opening.cleared), []);
 
     return {
-        /** 写す前の確かめのダイアログと、取っている間の印と、空にした項目の 1 行の名前 */
+        /** 写す前の確かめのダイアログと、取っている間の印と、申請対象の値の写しで空にした欄の印 */
         dialog: {
             isBusy: view.busy,
             confirm: view.confirm,

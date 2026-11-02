@@ -234,14 +234,13 @@ export function caseActionTargetOf(
     };
 }
 
-/** 見出しの右のボタン 1 つ(ダイアログを開く・再申請の画面へのリンク・押すと送る確認) */
-export type HeaderButton =
+/** 処理のボタン 1 つ(ダイアログを開く・再申請の画面へのリンク・押すと送る確認) */
+export type ProcessButton =
     | { kind: 'dialog'; operation: CaseOperation }
     | { kind: 'reapply' }
-    | { kind: 'confirm' }
-    | { kind: 'copy' };
+    | { kind: 'confirm' };
 
-/** ステップごとに許される操作の並び(見出しの右のボタンの並びの前半。並び = docs の 設計/ワークフロー/案件の運用/画面/案件の画面.md の 4 節) */
+/** ステップごとに許される操作の並び(処理のボタンの並びの前半。並び = docs の 設計/ワークフロー/案件の運用/画面/案件の画面.md の 4 節) */
 const NODE_OPERATIONS: WorkflowNodeOperation[] = [
     'approve',
     'approveEarly',
@@ -253,18 +252,17 @@ const NODE_OPERATIONS: WorkflowNodeOperation[] = [
 ];
 
 /**
- * 見出しの右のボタンの並び(どれかのステップで許される操作だけ。並び = docs の 設計/ワークフロー/案件の運用/画面/案件の画面.md の 4 節。
- * 前半は {@link NODE_OPERATIONS})。
+ * 画面の下の帯の処理のボタンの並び(どれかのステップで許される操作だけ)。案件の画面.md の 4 節の並びを、申請の画面の下のボタンと同じく
+ * 主の操作(承認)が右端に来る向きに置く(前半は {@link NODE_OPERATIONS})。
  */
-export function headerButtonsOf(
+export function processButtonsOf(
     show: Pick<WorkflowCaseShowProps, 'nodeActions' | 'can'>,
-): HeaderButton[] {
-    const dialog = (operation: CaseOperation): HeaderButton => ({
+): ProcessButton[] {
+    const dialog = (operation: CaseOperation): ProcessButton => ({
         kind: 'dialog',
         operation,
     });
-
-    return [
+    const ordered: ProcessButton[] = [
         ...NODE_OPERATIONS.filter((operation) =>
             show.nodeActions.some((row) => row[operation]),
         ).map(dialog),
@@ -273,17 +271,6 @@ export function headerButtonsOf(
         ...(show.can.withdraw ? [dialog('withdraw')] : []),
         ...(show.can.confirm ? [{ kind: 'confirm' } as const] : []),
     ];
-}
 
-/**
- * 見出しの右のボタンの並びの全体。「複製して申請」はこの申請を処理せず元を変えないので、処理のボタンの後ろに分けて置く
- * (docs の 設計/ワークフロー/案件の運用/画面/案件の画面.md の 4 節)。
- */
-export function headerBarOf(
-    show: Pick<WorkflowCaseShowProps, 'nodeActions' | 'can' | 'canCopy'>,
-): HeaderButton[] {
-    return [
-        ...headerButtonsOf(show),
-        ...(show.canCopy ? [{ kind: 'copy' } as const] : []),
-    ];
+    return ordered.reverse();
 }

@@ -4,7 +4,7 @@ import {
     OPERATION_TEXTS,
     actionNodesOf,
     caseActionTargetOf,
-    headerButtonsOf,
+    processButtonsOf,
     pullBackNodesOf,
 } from './caseActions';
 import type { CaseOperation } from './caseActions';
@@ -49,9 +49,9 @@ function can(overrides: Partial<Can> = {}): Can {
     };
 }
 
-describe('headerButtonsOf: 見出しの右のボタンの並び', () => {
-    it('許される操作だけが、承認 → 承認終了 → 否認 → 差戻し → 保留 → 担当変更 → 引戻し → 再申請 → 取止め → 確認の順に出る', () => {
-        const buttons = headerButtonsOf({
+describe('processButtonsOf: 画面の下の帯の処理のボタンの並び', () => {
+    it('許される操作だけが、確認 → 取止め → 再申請 → 引戻し → 担当変更 → 保留 → 差戻し → 否認 → 承認終了 → 承認の順(承認が右端)に出る', () => {
+        const buttons = processButtonsOf({
             nodeActions: [
                 nodeAction({
                     transfer: true,
@@ -71,36 +71,36 @@ describe('headerButtonsOf: 見出しの右のボタンの並び', () => {
         });
 
         expect(buttons).toEqual([
-            { kind: 'dialog', operation: 'approve' },
-            { kind: 'dialog', operation: 'approveEarly' },
-            { kind: 'dialog', operation: 'reject' },
-            { kind: 'dialog', operation: 'sendBack' },
-            { kind: 'dialog', operation: 'hold' },
-            { kind: 'dialog', operation: 'transfer' },
-            { kind: 'dialog', operation: 'pullBack' },
-            { kind: 'reapply' },
-            { kind: 'dialog', operation: 'withdraw' },
             { kind: 'confirm' },
+            { kind: 'dialog', operation: 'withdraw' },
+            { kind: 'reapply' },
+            { kind: 'dialog', operation: 'pullBack' },
+            { kind: 'dialog', operation: 'transfer' },
+            { kind: 'dialog', operation: 'hold' },
+            { kind: 'dialog', operation: 'sendBack' },
+            { kind: 'dialog', operation: 'reject' },
+            { kind: 'dialog', operation: 'approveEarly' },
+            { kind: 'dialog', operation: 'approve' },
         ]);
     });
 });
 
-describe('headerButtonsOf: 保留・保留解除と、出ない操作', () => {
+describe('processButtonsOf: 保留・保留解除と、出ない操作', () => {
     it('保留中のステップは保留でなく保留解除が出る', () => {
-        const buttons = headerButtonsOf({
+        const buttons = processButtonsOf({
             nodeActions: [nodeAction({ release: true, transfer: true })],
             can: can(),
         });
 
         expect(buttons).toEqual([
-            { kind: 'dialog', operation: 'release' },
             { kind: 'dialog', operation: 'transfer' },
+            { kind: 'dialog', operation: 'release' },
         ]);
     });
 
     it('どのステップでも許されない操作と、can が偽の操作は出ない', () => {
         expect(
-            headerButtonsOf({
+            processButtonsOf({
                 nodeActions: [nodeAction(), nodeAction({ nodeId: 12 })],
                 can: can(),
             }),
@@ -108,14 +108,14 @@ describe('headerButtonsOf: 保留・保留解除と、出ない操作', () => {
     });
 
     it('どれかのステップで許されれば出る(別のステップで許されなくても)', () => {
-        const buttons = headerButtonsOf({
+        const buttons = processButtonsOf({
             nodeActions: [nodeAction(), nodeAction({ nodeId: 12, hold: true })],
             can: can({ confirm: true }),
         });
 
         expect(buttons).toEqual([
-            { kind: 'dialog', operation: 'hold' },
             { kind: 'confirm' },
+            { kind: 'dialog', operation: 'hold' },
         ]);
     });
 });

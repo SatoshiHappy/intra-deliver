@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vite-plus/test';
 import {
     APPLICATION_TARGET_FIELD,
+    clearedOf,
     planModule,
     planModuleWithDefaults,
     reference,
@@ -12,7 +13,6 @@ import { openedFormOf, openedOf, withOpened } from './applyOpened';
 import { backHrefOf } from './applyRoutes';
 import { applyViewOf, toastedErrorsOf, unshownKeysOf } from './applyScreen';
 import { segmentsText } from './nameSegments';
-import { clearedFieldsLineOf } from '@/lib/clearedFields';
 import type { WorkflowApplyProps } from '@/types';
 
 // 案件からの複製で開いた申請の画面(docs の 設計/ワークフロー/申請の周辺/画面.md の 5 節・8 節、
@@ -22,7 +22,16 @@ const copy = {
     caseId: 12,
     caseNumber: 'WF-000012',
     name: '出張申請',
-    clearedFields: ['担当者', '参照制限の参照者'],
+    clearedFields: [
+        ...clearedOf(['manager']),
+        {
+            kind: 'viewers' as const,
+            field: null,
+            detail: null,
+            row: null,
+            name: '参照制限の参照者',
+        },
+    ],
     rowAccess: 'sealed-value',
 };
 
@@ -106,7 +115,7 @@ function form(): ApplyForm {
     };
 }
 
-describe('見出しの下の 1 行(画面.md の 8 節)', () => {
+describe('見出しの下の頭の文(画面.md の 8 節)', () => {
     it('頭の文は案件からの複製の文で、申請対象が空になっても変えない', () => {
         const view = applyViewOf(later, { values: {}, details: {} }, '');
         const kept = applyViewOf(
@@ -121,13 +130,6 @@ describe('見出しの下の 1 行(画面.md の 8 節)', () => {
         expect(segmentsText(kept.headingLine)).toBe(
             '出張申請(申請番号 WF-000012)を複製して申請します。',
         );
-    });
-
-    it('2 行目は元の申請の値を空にした 1 行(参照者を外したときは項目の後に「参照制限の参照者」)。無ければ出さない', () => {
-        expect(clearedFieldsLineOf('元の申請', copy.clearedFields)).toBe(
-            '元の申請の値のうち、担当者、参照制限の参照者は、現在使用できない値を外しました。',
-        );
-        expect(clearedFieldsLineOf('元の申請', [])).toBeNull();
     });
 });
 
@@ -212,7 +214,7 @@ describe('開いた時の申請対象の写しで確かめない行(入力済み
                 },
                 details: {},
             },
-            copy: { ...copy, clearedFields: ['name'] },
+            copy: { ...copy, clearedFields: clearedOf(['name']) },
             targetValues: snapshotOf(
                 { project: reference(5, 'P5'), name: '今の名前' },
                 {},

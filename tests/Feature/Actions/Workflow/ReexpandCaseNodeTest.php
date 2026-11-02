@@ -174,7 +174,7 @@ final class ReexpandCaseNodeTest extends TransactionalTestCase
         $error = $this->attemptOf(fn () => $this->reexpandOn($case, 'family.1'));
 
         $this->assertSame('waiting[u0005]', $returned);
-        $this->assertSame(['case' => 'このステップのほかの承認者と同じユーザーは指定できません'], $error);
+        $this->assertSame(['case' => 'このステップのほかの承認者と同じユーザーが含まれるため、再展開できません'], $error);
         $this->assertSame($before, $this->snapshot($case));
     }
 

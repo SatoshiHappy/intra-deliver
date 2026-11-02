@@ -137,7 +137,7 @@ async function fillPlan(page: Page, budget: string) {
 }
 
 /**
- * 案件の詳細の見出しの右のボタンで処理のダイアログを開く。
+ * 案件の詳細の画面の下の帯の処理のボタンで処理のダイアログを開く。
  */
 async function openActionDialog(page: Page, trigger: string, title: string) {
     await page

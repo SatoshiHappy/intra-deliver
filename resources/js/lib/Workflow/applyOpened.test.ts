@@ -8,6 +8,8 @@ import {
     withOpened,
 } from './applyOpened';
 import {
+    markOf,
+    markedOf,
     picked,
     planModule,
     recordOf,
@@ -97,7 +99,7 @@ describe('戻る・進むで来た時(申請対象からの申請.md の 10.2 �
     it('欄は離れた時の値のまま、申請対象は最後に決まったものに戻り、確かめのダイアログは出さず、1 行は離れた時のまま', () => {
         const restored = restoredOf(
             left,
-            { settled: picked(5, '決まった'), cleared: ['担当者'] },
+            { settled: picked(5, '決まった'), cleared: [markOf('担当者')] },
             'project',
         );
 
@@ -109,8 +111,17 @@ describe('戻る・進むで来た時(申請対象からの申請.md の 10.2 �
         expect(restored.opening).toEqual({
             record: restored.data.record,
             confirm: null,
-            cleared: ['担当者'],
+            cleared: [markOf('担当者')],
         });
+    });
+
+    it('印の形の前に覚えた 1 行(空にした項目の名前の並び)は捨てる', () => {
+        const older = {
+            settled: null,
+            cleared: ['担当者'],
+        } as unknown as Parameters<typeof restoredOf>[1];
+
+        expect(restoredOf(left, older, 'project').opening.cleared).toEqual([]);
     });
 
     it('申請対象の項目が無い画面と、写しの状態を覚えていないときは欄をそのまま戻す', () => {
@@ -140,7 +151,7 @@ describe('開いた時のフォームの値(戻る・進むで来たか)', () =>
 
         expect(opened.restored).toBe(false);
         expect(opened.data.record.values.name).toBe('写した名前');
-        expect(opened.opening.cleared).toEqual(['担当者']);
+        expect(markedOf(opened.opening.cleared)).toEqual(['担当者']);
     });
 
     it('① 打ち直して離れて戻る: 写しが再び当たらず打ち直した値のまま。④ 確かめの途中で離れて戻る: 申請対象は最後に決まったもの、ダイアログなし', () => {
@@ -153,7 +164,10 @@ describe('開いた時のフォームの値(戻る・進むで来たか)', () =>
                     name: '打ち直した',
                 }),
             },
-            'k:target': { settled: picked(5, 'P5'), cleared: ['担当者'] },
+            'k:target': {
+                settled: picked(5, 'P5'),
+                cleared: [markOf('担当者')],
+            },
         };
 
         const opened = openedFormOf(fromRecord, 'k', (key) => remembered[key]);
@@ -162,6 +176,6 @@ describe('開いた時のフォームの値(戻る・進むで来たか)', () =>
         expect(opened.data.record.values.name).toBe('打ち直した');
         expect(opened.data.record.values.project).toEqual(picked(5, 'P5'));
         expect(opened.opening.confirm).toBeNull();
-        expect(opened.opening.cleared).toEqual(['担当者']);
+        expect(markedOf(opened.opening.cleared)).toEqual(['担当者']);
     });
 });

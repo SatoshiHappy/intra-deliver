@@ -79,7 +79,7 @@ class CaseActionRequest extends FormRequest
             ...$this->revisionMessages(),
             ...$this->principalAndContactMessages(),
             'comment.string' => 'コメントの形が正しくありません',
-            'to_user_id.integer' => '担当変更先の指定が正しくありません',
+            'to_user_id.integer' => '変更後の承認者の指定が正しくありません',
             'send_back_node_id.required' => '差戻し先を選択してください',
             'send_back_node_id.integer' => '差戻し先の指定が正しくありません',
             'node_id.required' => '処理するステップを選択してください',

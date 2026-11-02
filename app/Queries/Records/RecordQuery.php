@@ -18,6 +18,7 @@ use LogicException;
  *
  * @phpstan-import-type ReferenceValue from RecordValueReader
  * @phpstan-import-type ShownRowAccess from RecordRowAccessValues
+ * @phpstan-import-type ClearedField from RecordCopyValues
  *
  * @phpstan-type DetailRow array{id: int, values: array<string, mixed>}
  */
@@ -94,12 +95,12 @@ class RecordQuery
     /**
      * 複製の登録の画面の初期値(設計/業務データの入れ物/レコードの共通機能/複製.md の 1 節・2 節): 写すのはレコードの値(項目と明細)と参照制限の
      * チェックと参照者(業務モジュールの参照制限の既定は使わない)だけで、明細の行は id を持たない。今は使えない値・参照者は空にして、
-     * 空にした項目の名前を clearedFields に返す(写しの初期値の内部の 1 か所 {@see RecordCopyValues::fromRecord()})。参照の表示名は編集の画面の
+     * 空にした欄を clearedFields に返す(写しの初期値の内部の 1 か所 {@see RecordCopyValues::fromRecord()})。参照の表示名は編集の画面の
      * 初期値と同じ形。判定(create と元の read・行の判定)は呼び手の責任。引数と例外は {@see self::show()} と同じ。
      *
      * @param  RecordModule  $module  定義を読み込んだ業務モジュール(判定は呼び手の責任)
      * @return array{id: int, values: array<string, mixed>,
-     *     details: array<string, list<array{values: array<string, mixed>}>>, clearedFields: list<string>,
+     *     details: array<string, list<array{values: array<string, mixed>}>>, clearedFields: list<ClearedField>,
      *     rowAccess: ShownRowAccess}
      *
      * @throws ModelNotFoundException<Record> レコードがその業務モジュールに無いとき(判定の後に見る)

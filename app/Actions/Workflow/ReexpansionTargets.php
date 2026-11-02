@@ -16,6 +16,12 @@ use LogicException;
  */
 class ReexpansionTargets
 {
+    /**
+     * 展開し直す人が、合議のほかの子の承認者と重なる。再展開は人を選ばないので「選択」と言わない(docs の 設計/画面の意匠/文言.md の 11.2、
+     * 文 = 設計/ワークフロー/案件の運用/案件の操作/同時実行と検査.md の 13 節)
+     */
+    public const OTHER_CHILD = 'このステップのほかの承認者と同じユーザーが含まれるため、再展開できません';
+
     public function __construct(
         private ReexpandedTargets $reexpanded,
         private ApplicantApprovalGuard $applicantGuard,
@@ -43,7 +49,7 @@ class ReexpansionTargets
         }
 
         if (array_intersect($userIds, $this->otherChildPeople->of($node)) !== []) {
-            throw CaseOperationErrors::ofCase(TransferRules::OTHER_CHILD);
+            throw CaseOperationErrors::ofCase(self::OTHER_CHILD);
         }
 
         return $userIds;

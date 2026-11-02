@@ -21,12 +21,6 @@ class ReassignValidator
     /** 入力のキー */
     public const KEY = 'user_ids';
 
-    /** %1$s = ステップの名前、%2$d = 最小、%3$d = 最大 */
-    public const COUNT = '%1$sの承認者は %2$d 人から %3$d 人まで選択してください';
-
-    /** 人数の下限 = 上限のとき。%1$s = ステップの名前、%2$d = 人数 */
-    public const EXACT_COUNT = '%1$sの承認者は %2$d 人を選択してください';
-
     public function __construct(
         private EffectiveUsers $effectiveUsers,
         private ApplicantApprovalGuard $applicantGuard,
@@ -80,8 +74,8 @@ class ReassignValidator
 
         return match (true) {
             $count < $min || $count > $max => $min === $max
-                ? sprintf(self::EXACT_COUNT, $node->displayName(), $min)
-                : sprintf(self::COUNT, $node->displayName(), $min, $max),
+                ? sprintf(CaseOperationErrors::ASSIGNMENTS_EXACT_COUNT, $node->displayName(), $min)
+                : sprintf(CaseOperationErrors::ASSIGNMENTS_COUNT, $node->displayName(), $min, $max),
             ! $allEffective() => CaseOperationErrors::ASSIGNMENTS_NOT_EFFECTIVE,
             count($unique) !== $count => CaseOperationErrors::ASSIGNMENTS_DUPLICATE,
             $prevents && in_array($case->user_id, $userIds, true) => TransferRules::APPLICANT,

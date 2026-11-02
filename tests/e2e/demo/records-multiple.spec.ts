@@ -14,7 +14,7 @@ import {
 import { openAsAdministrator } from '../support/records-headings';
 import { submitAndExpectUrl } from '../support/submit';
 
-// 業務データの入れ物の複数選べる参照(docs の 設計/業務データの入れ物/画面/README.md 6 節の管理の分の「複数選べる参照」、
+// 業務データの入れ物の複数選べる参照(docs の 設計/業務データの入れ物/画面/E2Eと目視.md 6 節の管理の分の「複数選べる参照」、
 // 画面/業務の画面.md 2.2 の「複数の参照の欄」)。システム管理者に切り替えて項目を足すので demo の持ち物。業務モジュール「備品」(コード equipment)は
 // records-admin.spec.ts の筋が作る(名前の順で先に走る。名前は後の筋が変えるので、コードと URL で引く)。
 // 足した項目とレコードは同じ筋の中で消して戻す(ほかの筋の件数を変えない)。
@@ -161,7 +161,7 @@ test('「ユーザー(複数)」の項目で 3 人を選ぶとチップが 3 つ
 test('「ユーザーと組織(複数)」の項目は候補を群で出してチップに種類の印を付け、一覧は先頭の 2 つと「ほか 1 件」、検索は人と組織の両方を持つレコードだけ', async ({
     page,
 }) => {
-    // docs の 設計/業務データの入れ物/画面/README.md 6 節の型「ユーザーと組織」の行
+    // docs の 設計/業務データの入れ物/画面/E2Eと目視.md 6 節の型「ユーザーと組織」の行
     await openAsAdministrator(page, '/records/admin/modules/equipment');
     await addPartyField(page);
 

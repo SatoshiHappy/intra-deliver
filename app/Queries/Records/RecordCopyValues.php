@@ -8,11 +8,12 @@ use App\Models\Records\RecordModule;
 use App\Models\Records\RecordRevision;
 use App\Queries\Authz\Api\Requester;
 use DateTimeInterface;
+use Illuminate\Support\Collection;
 use LogicException;
 
 /**
- * 写しの初期値の内部の 1 か所(docs の 設計/業務データの入れ物/レコードの共通機能/複製.md の 2 節、
- * 設計/ワークフロー/申請の周辺/既存のデータからの申請/案件からの複製/写す値.md の 13.3)。写す元の種類で入口を分け(レコードから・版から・値から)、
+ * 写しの初期値の内部の 1 か所(docs の 設計/業務データの入れ物/レコードの共通機能/複製.md の 2 節の「内部の写しの口」)。
+ * 写す元の種類で入口を分け(レコードから・版から・値から)、
  * 確かめは {@see RecordCopyCheck} に寄せる(保存と写しが同じ 1 か所を呼ぶため)。
  *
  * @phpstan-import-type RawValues from RecordValueReader
@@ -21,13 +22,15 @@ use LogicException;
  * @phpstan-import-type StoredRowAccess from RecordRowAccessValues
  * @phpstan-import-type CopySource from RecordCopySources
  *
+ * @phpstan-type ClearedField array{kind: 'field'|'cell'|'viewers', field: string|null, detail: string|null,
+ *     row: int|null, name: string}
  * @phpstan-type CopiedValues array{values: array<string, mixed>,
- *     details: array<string, list<array{values: array<string, mixed>}>>, clearedFields: list<string>,
+ *     details: array<string, list<array{values: array<string, mixed>}>>, clearedFields: list<ClearedField>,
  *     rowAccess: StoredRowAccess|null}
  */
 class RecordCopyValues
 {
-    /** 参照者を外したときに空にした項目の並びの最後に置く名前(写す値.md の 13.3 の空にした項目の 1 行) */
+    /** 参照者を外したときに空にした欄の並びの最後に置く名前(複製.md の 2 節の「空にしたものの並べ方」) */
     public const VIEWERS_NAME = '参照制限の参照者';
 
     public function __construct(
@@ -120,9 +123,9 @@ class RecordCopyValues
         $clearedRows = [];
 
         foreach ($source['details'] as $code => $detail) {
-            foreach ($detail['rows'] as $row) {
-                [$rows[$code][], $codes] = $this->checks->kept($detail['fields'], $row, $check, null, $selfId);
-                $clearedRows[$code] = [...$clearedRows[$code] ?? [], ...$codes];
+            foreach ($detail['rows'] as $index => $row) {
+                [$rows[$code][], $clearedRows[$code][$index]] = $this->checks
+                    ->kept($detail['fields'], $row, $check, null, $selfId);
             }
         }
 
@@ -141,8 +144,8 @@ class RecordCopyValues
             'values' => $this->reader->shown($source['fields'], $raw, $labels),
             'details' => $details,
             'clearedFields' => [
-                ...$this->clearedNames($module, $source, $clearedCodes, $clearedRows),
-                ...($viewersCleared ? [self::VIEWERS_NAME] : []),
+                ...$this->clearedFieldsOf($module, $source, $clearedCodes, $clearedRows),
+                ...($viewersCleared ? [self::cleared('viewers', null, null, null, self::VIEWERS_NAME)] : []),
             ],
             'rowAccess' => $rowAccess,
         ];
@@ -174,31 +177,75 @@ class RecordCopyValues
     }
 
     /**
-     * 空にした項目の名前を画面の欄の順で 1 度ずつ(見出しのまとまりの項目 → 明細の項目の並び。明細の行の項目は「{明細の項目の名前}の{項目の名前}」)。
+     * 空にした欄を画面の欄の順で(見出しのまとまりの項目 → 明細の項目ごとに行の順・行の中は項目の順)。画面が空にした欄そのものに印を付けるため、
+     * 明細は行の添字まで持つ(名前の明細の行の項目は「{明細の項目の名前}の{項目の名前}」)。
      *
      * @param  CopySource  $source
      * @param  list<string>  $clearedCodes
-     * @param  array<string, list<string>>  $clearedRows  明細の項目のコード → 空にした行の項目のコード
-     * @return list<string>
+     * @param  array<string, array<int, list<string>>>  $clearedRows  明細の項目のコード → 行の添字 → 空にした行の項目のコード
+     * @return list<ClearedField>
      */
-    private function clearedNames(RecordModule $module, array $source, array $clearedCodes, array $clearedRows): array
-    {
+    private function clearedFieldsOf(
+        RecordModule $module,
+        array $source,
+        array $clearedCodes,
+        array $clearedRows,
+    ): array {
         $order = $clearedCodes === []
             ? []
             : array_merge([], ...array_column($this->headings->groups($module->id), 'fieldCodes'));
-        $names = array_map(
-            fn (string $code) => in_array($code, $clearedCodes, true)
-                ? $source['fields']->firstWhere('code', $code)?->name : null,
-            $order,
+        $nameOf = fn (string $code) => $source['fields']->firstWhere('code', $code)?->name;
+        $cleared = array_map(
+            fn (string $code) => self::cleared('field', $code, null, null, $nameOf($code)),
+            array_values(array_filter($order, fn (string $code) => in_array($code, $clearedCodes, true))),
         );
 
         foreach ($source['details'] as $code => $detail) {
-            $names = [...$names, ...$detail['fields']->map(
-                fn (RecordField $field) => in_array($field->code, $clearedRows[$code] ?? [], true)
-                    ? "{$detail['field']->name}の{$field->name}" : null,
-            )->all()];
+            foreach ($clearedRows[$code] ?? [] as $index => $codes) {
+                $cells = $this->clearedCellsOf($code, $detail['field'], $detail['fields'], $index, $codes);
+                array_push($cleared, ...$cells);
+            }
         }
 
-        return array_values(array_filter($names, fn (?string $name) => $name !== null));
+        return $cleared;
+    }
+
+    /**
+     * 明細の 1 行の空にしたセル(行の中は項目の順)。
+     *
+     * @param  Collection<int, RecordField>  $fields  明細の項目
+     * @param  list<string>  $codes  空にした行の項目のコード
+     * @return list<ClearedField>
+     */
+    private function clearedCellsOf(
+        string $detailCode,
+        RecordField $detail,
+        Collection $fields,
+        int $row,
+        array $codes,
+    ): array {
+        $cells = [];
+
+        foreach ($fields as $field) {
+            if (in_array($field->code, $codes, true)) {
+                $cells[] = self::cleared('cell', $field->code, $detailCode, $row, "{$detail->name}の{$field->name}");
+            }
+        }
+
+        return $cells;
+    }
+
+    /**
+     * @param  'field'|'cell'|'viewers'  $kind
+     * @return ClearedField
+     */
+    private static function cleared(
+        string $kind,
+        ?string $field,
+        ?string $detail,
+        ?int $row,
+        ?string $name,
+    ): array {
+        return ['kind' => $kind, 'field' => $field, 'detail' => $detail, 'row' => $row, 'name' => (string) $name];
     }
 }

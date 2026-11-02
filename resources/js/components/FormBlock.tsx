@@ -1,4 +1,8 @@
 import type { ReactNode } from 'react';
+import {
+    CLEARED_FRAME_CLASS,
+    ClearedReasonLine,
+} from '@/components/ClearedNotice';
 import { TipButton } from '@/components/TipButton';
 import { Label } from '@/components/ui/label';
 import { unshownErrorKeys } from '@/lib/formErrors';
@@ -18,6 +22,8 @@ type Props = {
     hint?: string;
     /** 入力の下のエラーの文言(text-destructive) */
     error?: string;
+    /** 今は使えない値を空にした理由(入力に注意の色の枠と、入力の下の 1 行 = {@link ClearedReasonLine}) */
+    cleared?: string;
     /** 欄の外側の追加の class(格子の中で 2 列分にするときなど) */
     className?: string;
     children: ReactNode;
@@ -143,6 +149,7 @@ export function FormBlock({
     help,
     hint,
     error,
+    cleared,
     className,
     children,
 }: Props) {
@@ -164,7 +171,14 @@ export function FormBlock({
                 )}
                 {labelAddon}
             </div>
-            {children}
+            {cleared === undefined ? (
+                children
+            ) : (
+                <div className={CLEARED_FRAME_CLASS}>{children}</div>
+            )}
+            {cleared !== undefined && (
+                <ClearedReasonLine>{cleared}</ClearedReasonLine>
+            )}
             {hint !== undefined && (
                 <p className="text-xs text-muted-foreground">{hint}</p>
             )}

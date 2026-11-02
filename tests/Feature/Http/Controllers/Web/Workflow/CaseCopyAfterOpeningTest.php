@@ -19,6 +19,7 @@ use Tests\Support\BuildsApplicationTargetCopies;
 use Tests\Support\BuildsUploads;
 use Tests\Support\CopiesCases;
 use Tests\Support\InterposesAfterRevisionCopy;
+use Tests\Support\RegistersProxies;
 use Tests\Support\RunsWorkflowOperations;
 use Tests\Support\TransactionalTestCase;
 
@@ -33,6 +34,7 @@ final class CaseCopyAfterOpeningTest extends TransactionalTestCase
     use BuildsApplicationTargetCopies;
     use BuildsUploads;
     use CopiesCases;
+    use RegistersProxies;
     use RunsWorkflowOperations;
 
     protected function setUp(): void

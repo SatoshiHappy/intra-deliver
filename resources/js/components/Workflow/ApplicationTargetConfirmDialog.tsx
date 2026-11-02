@@ -1,4 +1,4 @@
-import { ChevronRight } from 'lucide-react';
+import { ArrowRight, ChevronRight } from 'lucide-react';
 import { useState } from 'react';
 import { RecordValue } from '@/components/RecordValue';
 import { Button } from '@/components/ui/button';
@@ -30,6 +30,10 @@ import type {
 import { valueFields } from '@/lib/recordForm';
 import { EMPTY_VALUE } from '@/lib/recordValues';
 import { cn } from '@/lib/utils';
+import {
+    CURRENT_VALUE_CLASS,
+    NEXT_VALUE_CLASS,
+} from '@/lib/Workflow/applicationTargetConfirmMarks';
 import type { RecordModuleDefinition } from '@/types';
 
 /** 明細の行を開閉する見出しの見た目(明細の表の開閉と同じ作り) */
@@ -40,55 +44,79 @@ const TRIGGER_CLASS = cn(
 
 type DetailsChange = Extract<ApplicationTargetChange, { kind: 'details' }>;
 
+/** 今の値と反映する値の間の → */
+function ArrowCell() {
+    return (
+        <TableCell className="w-6 px-0 align-top text-muted-foreground">
+            <ArrowRight aria-hidden="true" className="size-4" />
+        </TableCell>
+    );
+}
+
 /** 明細の行の表(列 = 明細の項目)。行が無ければ空の印だけを出す */
 function RowsTable({
     title,
     child,
     rows,
+    cellClass,
 }: {
     title: string;
     child: RecordModuleDefinition;
     rows: ShownRow[];
+    /** 今の行か反映する行かの見分け */
+    cellClass: string;
 }) {
-    const fields = valueFields(child);
-
     return (
         <div className="flex flex-col gap-1">
             <p className="text-xs text-muted-foreground">{title}</p>
             {rows.length === 0 ? (
                 <p className="text-sm">{EMPTY_VALUE}</p>
             ) : (
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            {fields.map((field) => (
-                                <TableHead key={field.code}>
-                                    {field.name}
-                                </TableHead>
-                            ))}
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {rows.map((row, index) => (
-                            <TableRow key={index}>
-                                {fields.map((field) => (
-                                    <TableCell
-                                        key={field.code}
-                                        className="wrap-anywhere whitespace-normal"
-                                    >
-                                        <RecordValue
-                                            field={field}
-                                            value={row[field.code] ?? null}
-                                            place="diff"
-                                        />
-                                    </TableCell>
-                                ))}
-                            </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
+                <ValuesTable
+                    fields={valueFields(child)}
+                    rows={rows}
+                    cellClass={cellClass}
+                />
             )}
         </div>
+    );
+}
+
+/** 明細の行の値の表(列 = 値の項目) */
+function ValuesTable({
+    fields,
+    rows,
+    cellClass,
+}: {
+    fields: ReturnType<typeof valueFields>;
+    rows: ShownRow[];
+    cellClass: string;
+}) {
+    return (
+        <Table>
+            <TableHeader>
+                <TableRow>
+                    {fields.map((field) => (
+                        <TableHead key={field.code}>{field.name}</TableHead>
+                    ))}
+                </TableRow>
+            </TableHeader>
+            <TableBody>
+                {rows.map((row, index) => (
+                    <TableRow key={index}>
+                        {fields.map((field) => (
+                            <TableCell key={field.code} className={cellClass}>
+                                <RecordValue
+                                    field={field}
+                                    value={row[field.code] ?? null}
+                                    place="diff"
+                                />
+                            </TableCell>
+                        ))}
+                    </TableRow>
+                ))}
+            </TableBody>
+        </Table>
     );
 }
 
@@ -99,7 +127,7 @@ function DetailsRow({ change }: { change: DetailsChange }) {
     return (
         <TableRow>
             <TableCell className="align-top">{change.field.name}</TableCell>
-            <TableCell colSpan={2} className="whitespace-normal">
+            <TableCell colSpan={3} className="whitespace-normal">
                 <Collapsible className="flex flex-col gap-2">
                     <CollapsibleTrigger className={TRIGGER_CLASS}>
                         <ChevronRight
@@ -113,11 +141,13 @@ function DetailsRow({ change }: { change: DetailsChange }) {
                             title="今の行"
                             child={change.child}
                             rows={change.current}
+                            cellClass={CURRENT_VALUE_CLASS}
                         />
                         <RowsTable
                             title="反映する行"
                             child={change.child}
                             rows={change.next}
+                            cellClass={NEXT_VALUE_CLASS}
                         />
                     </CollapsibleContent>
                 </Collapsible>
@@ -135,14 +165,15 @@ function ValueRow({ change }: { change: ApplicationTargetChange }) {
     return (
         <TableRow>
             <TableCell className="align-top">{change.field.name}</TableCell>
-            <TableCell className="align-top wrap-anywhere whitespace-normal">
+            <TableCell className={cn('align-top', CURRENT_VALUE_CLASS)}>
                 <RecordValue
                     field={change.field}
                     value={change.current}
                     place="diff"
                 />
             </TableCell>
-            <TableCell className="align-top wrap-anywhere whitespace-normal">
+            <ArrowCell />
+            <TableCell className={cn('align-top', NEXT_VALUE_CLASS)}>
                 <RecordValue
                     field={change.field}
                     value={change.next}
@@ -161,7 +192,10 @@ function ChangesTable({ changes }: { changes: ApplicationTargetChange[] }) {
                 <TableRow>
                     <TableHead>項目</TableHead>
                     <TableHead>今の値</TableHead>
-                    <TableHead>反映する値</TableHead>
+                    <TableHead aria-hidden="true" className="w-6 px-0" />
+                    <TableHead className="bg-secondary text-secondary-foreground">
+                        反映する値
+                    </TableHead>
                 </TableRow>
             </TableHeader>
             <TableBody>

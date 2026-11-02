@@ -2,7 +2,7 @@ import { expect, test } from './support/test';
 import type { Locator, Page } from '@playwright/test';
 import { submitAndExpectUrl } from './support/submit';
 
-// 業務データの入れ物のリッチテキスト(docs の 設計/業務データの入れ物/画面/README.md 6 節の main のリッチテキストの行、1.4)。
+// 業務データの入れ物のリッチテキスト(docs の 設計/業務データの入れ物/画面/E2Eと目視.md 6 節の main のリッチテキストの行、1.4)。
 // 初期データの課題の「解決内容」(文字列(複数行))を使い、ゲストだけで成り立つ。画面は PC の幅だけを前提にする。
 // ファイルの名前の順で records.spec.ts より前に走るので、作った課題は筋の最後に削除して戻す(後の spec の件数に依らせない)。
 test.use({ viewport: { width: 1280, height: 720 } });

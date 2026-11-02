@@ -46,7 +46,7 @@ async function openCase(
 }
 
 /**
- * 詳細の見出しの右のボタンで処理のダイアログを開く。
+ * 詳細の画面の下の帯の処理のボタンで処理のダイアログを開く。
  */
 async function openActionDialog(page: Page, trigger: string, title: string) {
     await page
@@ -136,7 +136,7 @@ test('代理元として開いた詳細: u0009 が保留中の申請を開くと
     );
 });
 
-test('保留と保留解除: u0009 が代理元として保留を解除してもう一度保留すると、状態の札と見出しの右のボタンが替わり、履歴に処理実行者が残る', async ({
+test('保留と保留解除: u0009 が代理元として保留を解除してもう一度保留すると、状態の札と画面の下の帯の処理のボタンが替わり、履歴に処理実行者が残る', async ({
     page,
 }) => {
     await openAs(page, 'concurrent', '/workflow/cases');

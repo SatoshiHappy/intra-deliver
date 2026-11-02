@@ -89,7 +89,7 @@ function useSend(
  * focusRequest は送信の失敗ごとに増え、呼ぶ側が誤りのある欄へフォーカスを移す合図に使う。
  */
 export function useApplyForm(rawProps: WorkflowApplyProps) {
-    const props = useApplyOpened(rawProps);
+    const { props, copyMarks } = useApplyOpened(rawProps);
     const { rememberKey, opened, form } = useOpenedForm(props);
     const errors = form.errors as Record<string, string | undefined>;
     const applicationTarget = useApplicationTarget(
@@ -116,6 +116,8 @@ export function useApplyForm(rawProps: WorkflowApplyProps) {
     return {
         /** 開いた時の props を保った props */
         props,
+        /** 元の申請の値で空にした欄の印(案件からの複製で開いた画面だけ) */
+        copyMarks,
         form,
         errors,
         attachment,

@@ -8,6 +8,7 @@ use App\Models\Records\Record;
 use App\Models\Records\RecordField;
 use App\Support\AccessContext;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\Support\BuildsCopyChecks;
@@ -49,6 +50,14 @@ final class RecordCopyClearingTest extends TransactionalTestCase
         $this->actingAs($fixture['me']);
         $party = [['type' => 'user', 'id' => $users['startsToday']->id]];
         $viewers = [['type' => 'user', 'id' => $users['endsTomorrow']->id]];
+        $field = fn (string $code) => [
+            'kind' => 'field', 'field' => $code, 'detail' => null, 'row' => null, 'name' => $code,
+        ];
+        $cleared = [
+            ...array_map($field, ['choice', 'user', 'party', 'ref']),
+            ['kind' => 'cell', 'field' => 'who', 'detail' => 'lines', 'row' => 0, 'name' => 'linesのwho'],
+            ['kind' => 'viewers', 'field' => null, 'detail' => null, 'row' => null, 'name' => '参照制限の参照者'],
+        ];
 
         $this->get("/records/data/m_src/create?copy={$record->id}")->assertOk()
             ->assertInertia(fn (Assert $page) => $page
@@ -60,7 +69,7 @@ final class RecordCopyClearingTest extends TransactionalTestCase
                 ->where('copySource.details.lines.0.values.who', null)
                 ->where('copySource.rowAccess.restricted', true)
                 ->where('copySource.rowAccess.viewers', fn ($value) => self::targetsOf($value) === $viewers)
-                ->where('copySource.clearedFields', ['choice', 'user', 'party', 'ref', 'linesのwho', '参照制限の参照者']));
+                ->where('copySource.clearedFields', fn (Collection $value) => $value->all() === $cleared));
     }
 
     public function test_a_copy_without_unusable_values_has_no_cleared_fields(): void

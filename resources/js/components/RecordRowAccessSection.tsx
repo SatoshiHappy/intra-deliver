@@ -28,6 +28,8 @@ type Props = {
     errors: Record<string, string | undefined>;
     /** prefix で始まるキーの誤りを消す(チップを外したとき) */
     onClearErrors: (prefix: string) => void;
+    /** 今は使えない参照者を外した理由(複製で開いた画面だけ。欄「参照者」のそばに出す) */
+    cleared?: string;
 };
 
 /**
@@ -69,7 +71,13 @@ function RestrictedCheck({
 /**
  * 欄「参照者」(複数の参照の欄と同じ部品。添字の誤りはチップの印、文言は欄の下)。
  */
-function ViewersField({ draft, onChange, errors, onClearErrors }: Props) {
+function ViewersField({
+    draft,
+    onChange,
+    errors,
+    onClearErrors,
+    cleared,
+}: Props) {
     const error = fieldErrorOf(errors, VIEWERS_KEY);
 
     return (
@@ -78,6 +86,7 @@ function ViewersField({ draft, onChange, errors, onClearErrors }: Props) {
             label={VIEWERS_FIELD.name}
             hint={VIEWERS_HINT}
             error={error}
+            cleared={cleared}
         >
             <RecordMultipleReferencePicker
                 id={VIEWERS_ID}

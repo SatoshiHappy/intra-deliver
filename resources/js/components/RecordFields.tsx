@@ -13,6 +13,8 @@ import {
     referenceItemErrors,
     shownRecordKeys,
 } from '@/lib/recordFormErrors';
+import { CLEARED_REASON_TEXTS } from '@/lib/clearedFields';
+import type { ClearedReason, FieldMarks } from '@/lib/clearedFields';
 import { isRequiredNow } from '@/lib/recordRules';
 import type {
     RecordFieldDefinition,
@@ -41,10 +43,17 @@ type Props = {
     errors: Record<string, string | undefined>;
     /** 変えられない欄(関連レコードの新規の入口の項目 = レコードの共通機能/関連レコード.md の 4.2 節)。text = 見せる値、hint = 下の 1 行 */
     fixedField?: FixedField;
+    /** 今は使えない値を空にした欄の印(写して開いた画面だけ) */
+    marks?: FieldMarks;
 };
 
 /** 変えられない欄 */
 type FixedField = { code: string; text: string; hint: string };
+
+/** 空にした理由の文(印が無ければ undefined) */
+function clearedTextOf(reason: ClearedReason | undefined): string | undefined {
+    return reason === undefined ? undefined : CLEARED_REASON_TEXTS[reason];
+}
 
 /**
  * 欄に結びつく値の誤り(欄に結びつかない誤りは入力欄の上に出す = 業務の画面.md 2.2「エラー」)。
@@ -67,6 +76,8 @@ type FieldRowProps = {
     onClearErrors: (prefix: string) => void;
     /** 変えられない欄なら、その値と下の 1 行 */
     fixed: FixedField | undefined;
+    /** 今は使えない値を空にした理由 */
+    cleared: string | undefined;
 };
 
 /**
@@ -81,6 +92,7 @@ function FieldRow({
     errors,
     onClearErrors,
     fixed,
+    cleared,
 }: FieldRowProps) {
     const id = `record-field-${field.code}`;
     const key = `values.${field.code}`;
@@ -93,6 +105,7 @@ function FieldRow({
             label={field.name}
             labelAddon={<RecordFieldBadges field={field} required={required} />}
             error={error}
+            cleared={cleared}
             hint={fixed?.hint}
             className={isWideField(field) ? 'md:col-span-2' : undefined}
         >
@@ -126,7 +139,11 @@ function FieldsGrid({
     errors,
     onClearErrors,
     fixedField,
-}: Pick<Props, 'module' | 'recordId' | 'data' | 'errors' | 'fixedField'> & {
+    marks,
+}: Pick<
+    Props,
+    'module' | 'recordId' | 'data' | 'errors' | 'fixedField' | 'marks'
+> & {
     codes: string[];
     onChange: (code: string, draft: RecordFieldDraft) => void;
     onClearErrors: (prefix: string) => void;
@@ -150,6 +167,7 @@ function FieldsGrid({
                     fixed={
                         fixedField?.code === field.code ? fixedField : undefined
                     }
+                    cleared={clearedTextOf(marks?.fields[field.code])}
                 />
             ))}
         </div>
@@ -166,9 +184,16 @@ function DetailsEditors({
     onChange,
     onRowsReordered,
     errors,
+    marks,
 }: Pick<
     Props,
-    'module' | 'recordId' | 'data' | 'onChange' | 'onRowsReordered' | 'errors'
+    | 'module'
+    | 'recordId'
+    | 'data'
+    | 'onChange'
+    | 'onRowsReordered'
+    | 'errors'
+    | 'marks'
 >) {
     return drawnDetailsFields(module).map((field) => (
         <RecordDetailsEditor
@@ -185,6 +210,7 @@ function DetailsEditors({
             onRowsReordered={onRowsReordered}
             isRequiredNow={isRequiredNow(module, field, data.values)}
             errors={errors}
+            cleared={marks?.cells[field.code] ?? {}}
         />
     ));
 }
@@ -193,17 +219,9 @@ function DetailsEditors({
  * 業務データの登録・編集の欄(業務の画面.md 2.2、見出しのまとまり = 見出し.md の 3 節)。値と誤りは props で受け、変更を上げる。
  * 送信は使い手(RecordForm と、ワークフローの申請の画面)が持つので、2 つの画面で同じ欄を使える。明細の表は全部の見出しの後に全幅で、畳めない。
  */
-export function RecordFields({
-    module,
-    headings,
-    revealRequest,
-    recordId,
-    data,
-    onChange,
-    onRowsReordered,
-    errors,
-    fixedField,
-}: Props) {
+export function RecordFields(props: Props) {
+    const { module, data, onChange, errors } = props;
+
     return (
         <>
             <UnshownErrors
@@ -211,39 +229,28 @@ export function RecordFields({
                 shownKeys={shownRecordKeys(module, data)}
             />
             <RecordHeadingGroups
-                groups={headings}
+                groups={props.headings}
                 idPrefix="record-fields"
                 reveal={{
-                    request: revealRequest,
+                    request: props.revealRequest,
                     codes: errorFieldCodes(errors),
                 }}
             >
                 {(group) => (
                     <FieldsGrid
+                        {...props}
                         codes={group.fieldCodes}
-                        module={module}
-                        recordId={recordId}
-                        data={data}
-                        errors={errors}
-                        fixedField={fixedField}
                         onChange={(code, draft) =>
                             onChange((current) => ({
                                 ...current,
                                 values: { ...current.values, [code]: draft },
                             }))
                         }
-                        onClearErrors={onRowsReordered}
+                        onClearErrors={props.onRowsReordered}
                     />
                 )}
             </RecordHeadingGroups>
-            <DetailsEditors
-                module={module}
-                recordId={recordId}
-                data={data}
-                onChange={onChange}
-                onRowsReordered={onRowsReordered}
-                errors={errors}
-            />
+            <DetailsEditors {...props} />
         </>
     );
 }

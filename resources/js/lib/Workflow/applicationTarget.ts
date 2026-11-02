@@ -5,6 +5,8 @@ import {
     applicationTargetOf,
 } from '@/lib/Workflow/applicationTargetSnapshot';
 import type { ApplicationTargetChange } from '@/lib/Workflow/applicationTargetSnapshot';
+import { clearedMarksOf } from '@/lib/clearedFields';
+import type { ClearedMark } from '@/lib/clearedFields';
 import type { RecordFormData } from '@/lib/recordForm';
 import type { ApplicationTargetSnapshot } from '@/types/workflowApplyTarget';
 import type { PickedReference, WorkflowApplyProps } from '@/types';
@@ -37,11 +39,11 @@ export type ApplicationTargetConfirm = {
     changes: ApplicationTargetChange[];
 };
 
-/** 開いた時のフォームの値と、開いた直後に確かめるものと、開いた時に写した値で空にした項目の名前 */
+/** 開いた時のフォームの値と、開いた直後に確かめるものと、開いた時に写した値で空にした欄の印 */
 export type ApplicationTargetOpening = {
     record: RecordFormData;
     confirm: ApplicationTargetConfirm | null;
-    cleared: string[];
+    cleared: ClearedMark[];
 };
 
 /**
@@ -177,11 +179,29 @@ export function openingOf(
               )
             : null;
 
-    return confirm === null
-        ? {
-              record: snapshotRecordOf(module, record, targetValues),
-              confirm,
-              cleared: targetValues.clearedFields,
-          }
-        : { record, confirm, cleared: [] };
+    if (confirm !== null) {
+        return { record, confirm, cleared: [] };
+    }
+
+    const snapshotted = snapshotRecordOf(module, record, targetValues);
+
+    return {
+        record: snapshotted,
+        confirm,
+        cleared: targetMarksOf(targetValues, snapshotted),
+    };
+}
+
+/**
+ * 申請対象の値を写した直後の、空にした欄の印(理由 = 申請対象の値の文。写すたびに置き換える)。
+ */
+export function targetMarksOf(
+    snapshot: ApplicationTargetSnapshot,
+    snapshotted: RecordFormData,
+): ClearedMark[] {
+    return clearedMarksOf(
+        snapshot.clearedFields,
+        'applicationTarget',
+        snapshotted,
+    );
 }

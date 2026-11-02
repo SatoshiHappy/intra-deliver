@@ -14,6 +14,7 @@ import { useApplyCandidateSource } from '@/hooks/Workflow/use-apply-candidate-so
 import { useApplyForm } from '@/hooks/Workflow/use-apply-form';
 import { PersonLinksContext } from '@/hooks/Workflow/use-person-links';
 import { useFocusFirstInvalid } from '@/hooks/use-focus-first-invalid';
+import { applyClearedOf } from '@/lib/Workflow/applyCleared';
 import { breadcrumbsOf } from '@/lib/Workflow/applyRoutes';
 import { applyViewOf } from '@/lib/Workflow/applyScreen';
 import type { WorkflowApplyProps } from '@/types';
@@ -31,6 +32,7 @@ export default function Apply(rawProps: Props) {
     const formRef = useRef<HTMLFormElement>(null);
     const view = applyViewOf(props, form.data.record, form.data.name);
     const source = useApplyCandidateSource(props, form.data.applicant);
+    const cleared = applyClearedOf(apply);
 
     useFocusFirstInvalid(formRef, apply.focusRequest);
 
@@ -39,7 +41,7 @@ export default function Apply(rawProps: Props) {
             <Head title={view.heading} />
 
             <div className="flex h-full flex-1 flex-col gap-6 p-4">
-                <ApplyFormHeading view={view} apply={apply} />
+                <ApplyFormHeading view={view} apply={apply} cleared={cleared} />
                 <form
                     ref={formRef}
                     noValidate
@@ -61,11 +63,9 @@ export default function Apply(rawProps: Props) {
                         />
                     </ApplyInfoSurface>
                     <ApplyRecordSurface
-                        props={props}
+                        apply={apply}
                         source={source}
-                        form={form}
-                        revealRequest={apply.focusRequest}
-                        onChange={apply.changeRecord}
+                        marks={cleared.fields}
                     />
                     <ApplyCommentSurface
                         form={form}

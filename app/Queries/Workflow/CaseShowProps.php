@@ -87,6 +87,11 @@ class CaseShowProps
             $props = [...$props, ...$this->layers(false, $scope)];
         }
 
+        // レコードの中身を持たず recordAccess によらないので、伏せ直しても組み直さない(判定は 1 回)
+        if ($selection->wants('canCopy')) {
+            $props['canCopy'] = $this->copyability->canCopy($context, (int) $case->workflow_flow_id);
+        }
+
         return [...$props, 'recordAccess' => $access];
     }
 
@@ -137,7 +142,6 @@ class CaseShowProps
             'submittedRecord' => fn () => null,
             'maskedRelatedTab' => fn () => null,
             'related' => fn () => $this->relatedOf(true, $scope),
-            'canCopy' => fn () => $this->canCopyOf($scope),
         ];
     }
 
@@ -154,7 +158,6 @@ class CaseShowProps
             'maskedRelatedTab' => fn () => $this->relatedRecords
                 ->maskedTab($scope->requester, $scope->recordId, $scope->context->date),
             'related' => fn () => $this->relatedOf(false, $scope),
-            'canCopy' => fn () => $this->canCopyOf($scope),
         ];
     }
 
@@ -170,14 +173,6 @@ class CaseShowProps
         [$date, $localeCode] = [$scope->context->date, $scope->context->localeCode];
 
         return $this->related->of($scope->requester, $date, $localeCode, $scope->case, $access, $values);
-    }
-
-    /**
-     * レコードの中身を持たず、フローの申請できる人だけで決まるので、recordAccess によらず同じ値。
-     */
-    private function canCopyOf(CaseShowScope $scope): bool
-    {
-        return $this->copyability->canCopy($scope->context, (int) $scope->case->workflow_flow_id);
     }
 
     private function canView(CaseShowScope $scope): bool

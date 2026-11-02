@@ -160,14 +160,3 @@ export function applicationTargetSnapshotUrlOf(
         { query: candidateQueryOf(scope, applicant) },
     );
 }
-
-/**
- * 申請の詳細の「複製して申請」の移り先(元の申請のフローの新規の申請の画面にクエリ copy。applicant は付けず、既定の申請者は
- * 申請の画面の規則で決まる = docs の 設計/ワークフロー/申請の周辺/既存のデータからの申請/案件からの複製/README.md の 12.2 節)。
- */
-export function copyHrefOf(source: { id: number; flow: { code: string } }) {
-    return applicationCreate.url(
-        { flow: source.flow.code },
-        { query: { copy: source.id } },
-    );
-}

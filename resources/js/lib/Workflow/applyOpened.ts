@@ -2,6 +2,8 @@ import { openingOf } from '@/lib/Workflow/applicationTarget';
 import type { ApplicationTargetOpening } from '@/lib/Workflow/applicationTarget';
 import { withApplicationTarget } from '@/lib/Workflow/applicationTargetSnapshot';
 import { initialApplyFormOf } from '@/lib/Workflow/applyForm';
+import { clearedMarksOf } from '@/lib/clearedFields';
+import type { ClearedMark } from '@/lib/clearedFields';
 import type { ApplyForm } from '@/lib/Workflow/applyForm';
 import type { PickedReference, WorkflowApplyProps } from '@/types';
 
@@ -17,6 +19,8 @@ export type ApplyOpened = {
     targetEntry: Props['targetEntry'];
     // 案件からの複製の前に覚えた履歴の項目には無い
     copy?: Props['copy'];
+    // 元の申請の値で空にした欄の印(開いた時の初期値を比べる元にする。印の前に覚えた履歴の項目には無い)
+    copyMarks?: ClearedMark[];
 };
 
 /**
@@ -46,6 +50,14 @@ export function openedOf(props: Props): ApplyOpened {
         caseId: props.case?.id ?? null,
         targetEntry: props.targetEntry,
         copy: props.copy,
+        copyMarks:
+            props.copy === null
+                ? []
+                : clearedMarksOf(
+                      props.copy.clearedFields,
+                      'copy',
+                      initialApplyFormOf(props).record,
+                  ),
     };
 }
 
@@ -74,11 +86,22 @@ export function rememberKeyOf(props: Props): string {
     return `WorkflowApply:${props.mode}:${props.case?.id ?? ''}`;
 }
 
-/** 戻る・進むで覚える申請対象の写しの状態(settled = 最後に決まった申請対象、cleared = 申請対象の値の 1 行の名前) */
+/** 戻る・進むで覚える申請対象の写しの状態(settled = 最後に決まった申請対象、cleared = 申請対象の値の写しで空にした欄の印) */
 export type RememberedTarget = {
     settled: PickedReference | null;
-    cleared: string[];
+    cleared: ClearedMark[];
 };
+
+/**
+ * 覚えた申請対象の写しの印(印の形の前に覚えた履歴の項目は、空にした項目の名前の並びを持つので捨てる)。
+ */
+function rememberedMarksOf(
+    target: RememberedTarget | undefined,
+): ClearedMark[] {
+    return (target?.cleared ?? []).filter(
+        (mark: unknown) => typeof mark === 'object' && mark !== null,
+    );
+}
 
 /**
  * 戻る・進むで来た時のフォームの値と開いた時の写し(docs の 設計/ワークフロー/申請の周辺/画面.md の 5 節の「戻る・進むと申請対象の写し」、
@@ -97,7 +120,7 @@ export function restoredOf(
 
     return {
         data: { ...data, record },
-        opening: { record, confirm: null, cleared: target?.cleared ?? [] },
+        opening: { record, confirm: null, cleared: rememberedMarksOf(target) },
     };
 }
 

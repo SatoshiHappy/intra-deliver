@@ -156,7 +156,9 @@ final class ApplicationCopyFormTest extends TransactionalTestCase
 
         $this->assertSame($principal->id, $props['applicant']);
         $this->assertSame($hub, $props['targetValues']['values'][self::TARGET_FIELD]['id'] ?? null);
-        $this->assertSame([['ref'], []], [$props['targetValues']['clearedFields'], $props['copy']['clearedFields']]);
+        $names = fn (array $cleared) => array_column($cleared, 'name');
+        $cleared = [$names($props['targetValues']['clearedFields']), $names($props['copy']['clearedFields'])];
+        $this->assertSame([['ref'], []], $cleared);
 
         $this->allowOnly(self::HUB, RecordModuleAction::Read, $u0002);
         $this->assertNull($this->copyPropsAs($u0002, $source->id)['targetValues']);

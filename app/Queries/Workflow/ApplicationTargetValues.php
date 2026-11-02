@@ -15,12 +15,14 @@ use LogicException;
 /**
  * 申請対象の写しの値を申請の画面の初期値の形で作る(docs の 設計/ワークフロー/申請の周辺/既存のデータからの申請/申請対象からの申請.md の 10.3 節)。
  * 申請の画面の GET と写しの値の入口が同じ口を通るので、主体の判定をしない値の口は閲覧の判定の後にしか呼ばれない。写した後の値には、写す先の
- * 項目の宣言で写す時の確かめ(写しの初期値の口の「値から」= 10.1 の写す時の確かめ)を当て、今は使えない値を空にして clearedFields に名前を返す。
+ * 項目の宣言で写す時の確かめ(写しの初期値の口の「値から」= 10.1 の写す時の確かめ)を当て、今は使えない値を空にして clearedFields に空にした欄を返す。
+ *
+ * @phpstan-import-type ClearedField from RecordFormQuery
  *
  * @phpstan-type ApplicationTarget array{field: string, module: string}
  * @phpstan-type ApplicationTargetRow array{values: array<string, mixed>}
  * @phpstan-type ApplicationTargetValueSet array{values: array<string, mixed>,
- *     details: array<string, list<ApplicationTargetRow>>, clearedFields: list<string>}
+ *     details: array<string, list<ApplicationTargetRow>>, clearedFields: list<ClearedField>}
  */
 class ApplicationTargetValues
 {

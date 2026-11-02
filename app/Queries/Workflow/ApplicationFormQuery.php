@@ -33,8 +33,9 @@ use LogicException;
  * @phpstan-import-type Applicant from ApplicationApplicants
  * @phpstan-import-type ApplicantProps from ApplicationApplicants
  * @phpstan-import-type Links from PersonLinks
+ * @phpstan-import-type ClearedField from RecordFormQuery
  *
- * @phpstan-type ApplyCopy array{caseId: int, caseNumber: string, name: string, clearedFields: list<string>,
+ * @phpstan-type ApplyCopy array{caseId: int, caseNumber: string, name: string, clearedFields: list<ClearedField>,
  *     rowAccess: string}
  * @phpstan-type ApplyForm array{mode: string, flow: array{code: string, name: string, description: string|null}, case: array{id: int, number: string|null, revision: int}|null, module: array<string, mixed>, headings: list<array{id: int|null, name: string|null, fieldCodes: list<string>}>, initial: array{name: string|null, comment: string|null, values: array<string, mixed>, details: array<string, list<array<string, mixed>>>}|null, titleField: string|null, recordId: int|null, baseDate: string, baseDateRange: array{min: string|null, max: string|null}, next: Next, nameMaxLength: int, commentMaxLength: int, attachment: ApplyAttachment,
  *     recordVersion: string|null, recordTitle: string|null, targetField: string|null,

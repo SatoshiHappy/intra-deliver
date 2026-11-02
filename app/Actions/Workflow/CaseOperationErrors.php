@@ -54,17 +54,17 @@ final class CaseOperationErrors
     public const BASE_DATE_NOT_APPLICABLE = '申請基準日 %s には、このフローを申請できません';
 
     /** 指定(422 assignments・assignments.<ノードの id>。同 13 節) */
-    public const ASSIGNMENTS_MISMATCH = '指定するステップの処理担当者を指定してください';
+    public const ASSIGNMENTS_MISMATCH = '指定するステップの承認者を選択してください';
 
     /** %1$s = ノードの表示名、%2$d = 最小、%3$d = 最大 */
-    public const ASSIGNMENTS_COUNT = '%1$sの処理担当者は %2$d 人から %3$d 人まで指定してください';
+    public const ASSIGNMENTS_COUNT = '%1$sの承認者は %2$d 人から %3$d 人まで選択してください';
 
     /** %1$s = ノードの表示名、%2$d = 人数(最小 = 最大) */
-    public const ASSIGNMENTS_EXACT_COUNT = '%1$sの処理担当者は %2$d 人を指定してください';
+    public const ASSIGNMENTS_EXACT_COUNT = '%1$sの承認者は %2$d 人を選択してください';
 
-    public const ASSIGNMENTS_DUPLICATE = '同じユーザーを重複して指定できません';
+    public const ASSIGNMENTS_DUPLICATE = '同じユーザーを重複して選択できません';
 
-    public const ASSIGNMENTS_NOT_EFFECTIVE = '申請基準日に有効でないユーザーは指定できません';
+    public const ASSIGNMENTS_NOT_EFFECTIVE = '申請基準日に有効でないユーザーは選択できません';
 
     /** 申請者承認防止のステップの指定に、申請者本人(承認のステップだけに出るので「承認者」= 画面の意匠/文言.md 11.2) */
     public const ASSIGNMENTS_APPLICANT = '申請者本人は、このステップの承認者に選択できません';

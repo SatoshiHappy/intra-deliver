@@ -13,8 +13,8 @@ use Illuminate\Database\Eloquent\Collection;
 
 /**
  * 写しの初期値の写す元(レコード・版・画面の初期値の形の値)を、確かめの前の同じ形(項目ごとの読んだ値 = {@see RecordValueReader::rawValues()})に読む
- * (docs の 設計/業務データの入れ物/レコードの共通機能/複製.md の 2 節、設計/ワークフロー/申請の周辺/既存のデータからの申請/案件からの複製/写す値.md の
- * 13.2・13.3)。今の定義の項目だけを読み、明細の行は id を持たない。確かめと表示名は {@see RecordCopyValues}。
+ * (docs の 設計/業務データの入れ物/レコードの共通機能/複製.md の 2 節の「内部の写しの口」、
+ * 設計/ワークフロー/申請の周辺/既存のデータからの申請/案件からの複製/写す値.md の 13.2)。今の定義の項目だけを読み、明細の行は id を持たない。確かめと表示名は {@see RecordCopyValues}。
  *
  * @phpstan-import-type RawValues from RecordValueReader
  * @phpstan-import-type ReferenceTarget from RecordValueReader

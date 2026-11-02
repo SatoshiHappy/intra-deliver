@@ -115,7 +115,7 @@ final class CaseCopyRowAccessTest extends TransactionalTestCase
         $source = $this->sourceCase($u0001, [], $rowAccess);
         $this->endToday($gone);
         $props = $this->copyPropsAs($u0001, $source->id);
-        $this->assertSame(['参照制限の参照者'], $props['copy']['clearedFields']);
+        $this->assertSame(['参照制限の参照者'], array_column($props['copy']['clearedFields'], 'name'));
         $draft = $this->postDraft($u0001, $this->sentFrom($props));
 
         $this->endToday($late);

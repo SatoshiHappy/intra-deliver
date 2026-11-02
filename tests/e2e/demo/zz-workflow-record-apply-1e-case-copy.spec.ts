@@ -1,7 +1,12 @@
 import { expect, test } from '../support/test';
 import type { Artisan } from '../support/test';
-import type { Page, Route } from '@playwright/test';
+import type { Page } from '@playwright/test';
 import { fillVersionTwoBaseDate } from '../support/seed-dates';
+import {
+    caseIdOf,
+    caseStateOf,
+    rewriteOpened,
+} from '../support/workflow-case-copy';
 import { pane, railButton } from '../support/workflow-case-show';
 import {
     openApplicationTab,
@@ -16,100 +21,39 @@ import {
 } from '../support/workflow-target-apply';
 
 // 案件からの複製で開いた申請の画面(クエリ copy)。筋の正本 = docs の 設計/ワークフロー/申請の周辺/画面.md の 9 節の「案件からの複製」。
-// 申請の詳細の「複製して申請」から開く筋は最後の 1 本で、ほかは移り先の URL を直に開く。
-// 見本の案件 WF-000013(新製品の発売計画。申請者 = u0001)を写す。使えない値の 1 行と申請対象の確かめは、開いた時の応答を書き換えて作る
+// 申請の詳細の「複製」から開く筋(フローの参照者 = 経理部の利用者が完了した WF-000001 を写す)は最後の 1 本で、ほかは移り先の URL を直に開く。
+// 見本の案件 WF-000013(新製品の発売計画。申請者 = u0001)を写す。空にした欄の知らせと申請対象の確かめは、開いた時の応答を書き換えて作る
 // (サーバーの確かめは Feature テスト)。プロジェクトを申請対象にするフローが 1 つのうちに流す(tests/e2e/demo/groups.ts の並び)。
 test.use({ viewport: { width: 1280, height: 720 } });
 
 const HEADING =
     'プロジェクト計画の承認 新製品の発売計画(申請番号 WF-000013)を複製して申請します。';
 const CLEARED_LINE =
-    '元の申請の値のうち、責任者は、現在使用できない値を外しました。';
+    '今は使えない値を空にした項目が 1 件あります。⚠ の付いた欄を入力してください。';
+const CLEARED_REASON = '元の申請の値は、今は使えないため空にしました。';
 
 /** 見本の案件 WF-000013 の id */
 function sourceIdOf(artisan: Artisan): string {
-    const output = artisan([
-        'tinker',
-        '--execute',
-        'echo App\\Models\\Workflow\\WorkflowCase::query()->where("case_number", 13)->value("id");',
-    ]);
-    const id = /(\d+)\s*$/.exec(output.trim())?.[1];
-
-    if (id === undefined) {
-        throw new Error(`WF-000013 の id を読めなかった: ${output}`);
-    }
-
-    return id;
+    return caseIdOf(artisan, 13);
 }
 
-type OpenedProps = {
-    initial: { values: Record<string, unknown> };
-    targetField: string | null;
-    targetValues: {
-        values: Record<string, unknown>;
-        details: Record<string, unknown>;
-        clearedFields: string[];
-    } | null;
-    copy: { clearedFields: string[] } | null;
-};
-
-/** 最初の読み込みの HTML がページの props を持つ要素 */
-const PAGE_DATA_OPEN = '<script data-page="app" type="application/json">';
-
-/** サーバーと同じく、HTML に埋める JSON の < と > を逃がす(JSON_HEX_TAG) */
-function hexTagged(json: string): string {
-    return json.replaceAll('<', '\\u003C').replaceAll('>', '\\u003E');
-}
-
-/** 最初の読み込みの HTML の、ページの props を書き換える */
-function rewrittenHtml(html: string, change: (props: OpenedProps) => void) {
-    const start = html.indexOf(PAGE_DATA_OPEN) + PAGE_DATA_OPEN.length;
-    const end = html.indexOf('</script>', start);
-
-    if (start < PAGE_DATA_OPEN.length || end < 0) {
-        throw new Error('ページの props を HTML に見つけられなかった');
-    }
-
-    const page = JSON.parse(html.slice(start, end));
-    change(page.props as OpenedProps);
-
-    return (
-        html.slice(0, start) + hexTagged(JSON.stringify(page)) + html.slice(end)
-    );
-}
-
-/**
- * クエリ copy の付いた申請の画面の GET の応答を書き換える(開いた後の GET には copy が無いので当たらない)。
- * 直に開く最初の読み込みは HTML、Inertia の移動は JSON で返る。
- */
-async function rewriteOpened(page: Page, change: (props: OpenedProps) => void) {
-    await page.route(
-        (url) => url.pathname === APPLY_URL && url.searchParams.has('copy'),
-        async (route: Route) => {
-            const response = await route.fetch();
-
-            if (route.request().headers()['x-inertia'] !== undefined) {
-                const body = await response.json();
-                change(body.props as OpenedProps);
-                await route.fulfill({ response, json: body });
-
-                return;
-            }
-
-            const html = rewrittenHtml(await response.text(), change);
-            await route.fulfill({ response, body: html });
-        },
-    );
-}
-
-/** 申請対象の写しを出さず、元の申請の値を空にした 1 行を出す形で開く */
+/** 申請対象の写しを出さず、元の申請の値を空にした欄(責任者)の知らせを出す形で開く */
 async function openCopy(page: Page, artisan: Artisan) {
     const id = sourceIdOf(artisan);
     await rewriteOpened(page, (props) => {
         props.targetValues = null;
 
         if (props.copy !== null) {
-            props.copy.clearedFields = ['責任者'];
+            props.initial.values.manager = null;
+            props.copy.clearedFields = [
+                {
+                    kind: 'field',
+                    field: 'manager',
+                    detail: null,
+                    row: null,
+                    name: '責任者',
+                },
+            ];
         }
     });
     await openAs(page, 'applicant', `${APPLY_URL}?copy=${id}`);
@@ -119,7 +63,7 @@ async function openCopy(page: Page, artisan: Artisan) {
     return id;
 }
 
-test('開いた直後に URL から copy が外れ、申請名・値と 2 つの 1 行が入る。申請基準日を変えた後も残り、再読み込みで消える', async ({
+test('開いた直後に URL から copy が外れ、申請名・値と、見出しの下の 1 行と空にした欄の知らせが入る。申請基準日を変えた後も残り、再読み込みで消える', async ({
     page,
     artisan,
 }) => {
@@ -169,7 +113,7 @@ test('開いた直後に URL から copy が外れ、申請名・値と 2 つの
     await expect(budgetField(form)).toHaveValue('');
 });
 
-test('入力の誤りで戻った後に別のページへ移り、戻るで来ると、打ち直した値と 1 行が残り、申請の POST に暗号化した値が載る', async ({
+test('入力の誤りで戻った後に別のページへ移り、戻るで来ると、打ち直した値と空にした欄の知らせが残り、申請の POST に暗号化した値が載る', async ({
     page,
     artisan,
 }) => {
@@ -185,7 +129,7 @@ test('入力の誤りで戻った後に別のページへ移り、戻るで来�
         form.getByText('予算(万円)は整数で入力してください', { exact: true }),
     ).toBeVisible();
 
-    // キャンセルは元の申請の詳細へ。戻ると欄・1 行が残り、確かめのダイアログは出ない
+    // キャンセルは元の申請の詳細へ。戻ると欄・空にした欄の知らせが残り、確かめのダイアログは出ない
     const cancel = form.getByRole('link', { name: 'キャンセル', exact: true });
     await expect(cancel).toHaveAttribute('href', `/workflow/cases/${id}`);
     await budgetField(form).fill('1500');
@@ -196,6 +140,7 @@ test('入力の誤りで戻った後に別のページへ移り、戻るで来�
     await expect(budgetField(form)).toHaveValue('1500');
     await expect(page.getByText(HEADING, { exact: false })).toBeVisible();
     await expect(page.getByText(CLEARED_LINE, { exact: true })).toBeVisible();
+    await expect(page.getByText(CLEARED_REASON, { exact: true })).toBeVisible();
     await expect(page.getByRole('dialog', { name: CONFIRM_TITLE })).toHaveCount(
         0,
     );
@@ -244,31 +189,52 @@ test('申請対象の今の値が写した値と違うと、開いた時に確�
     await expect(budgetField(applyForm(page))).toHaveValue(copied);
 });
 
-test('申請の詳細の「複製して申請」から開く。サイドパネルを開いた後もボタンが残る', async ({
+test('申請の詳細のサイドパネルを開いた(部分の再読み込みの)後も「複製」が残る', async ({
     page,
     artisan,
 }) => {
-    const id = sourceIdOf(artisan);
-    await rewriteOpened(page, (props) => {
-        props.targetValues = null;
-    });
-    await openAs(page, 'applicant', `/workflow/cases/${id}`);
+    await openAs(page, 'applicant', `/workflow/cases/${sourceIdOf(artisan)}`);
     await openApplicationTab(page);
-    const button = page.getByRole('link', {
-        name: '複製して申請',
-        exact: true,
-    });
+    const button = page
+        .getByRole('main')
+        .getByRole('link', { name: '複製', exact: true });
     await expect(button).toBeVisible();
 
     await railButton(page, '更新履歴').click();
+
     await expect(pane(page, '更新履歴')).toBeVisible();
     await expect(button).toBeVisible();
+});
 
+test('フローの参照者が完了した申請の詳細の「複製」から開き、値を直して申請すると新しい申請の詳細が開き、元の申請は変わらない', async ({
+    page,
+    artisan,
+}) => {
+    const id = caseIdOf(artisan, 1);
+    const before = caseStateOf(artisan, id);
+    await openAs(page, 'accounting', `/workflow/cases/${id}`);
+    await openApplicationTab(page);
+    const button = page
+        .getByRole('main')
+        .getByRole('link', { name: '複製', exact: true });
     await button.click();
-
     await expect(page).toHaveURL(new RegExp(`${APPLY_URL}$`));
-    await expect(page.getByText(HEADING, { exact: false })).toBeVisible();
     await expect(
-        applyForm(page).getByRole('textbox', { name: '申請名', exact: true }),
-    ).toHaveValue('プロジェクト計画の承認 新製品の発売計画');
+        page.getByText('(申請番号 WF-000001)を複製して申請します。', {
+            exact: false,
+        }),
+    ).toBeVisible();
+    // 申請対象の今の値が写した値と違えば開いた時に確かめが出る(この筋では写した値のまま申請する)
+    const confirm = page.getByRole('dialog', { name: CONFIRM_TITLE });
+    if ((await confirm.count()) > 0) {
+        await confirm
+            .getByRole('button', { name: 'キャンセル', exact: true })
+            .click();
+    }
+    const form = applyForm(page);
+    await budgetField(form).fill('777');
+    await submitApplication(page, form);
+
+    await expect(page).not.toHaveURL(new RegExp(`/workflow/cases/${id}$`));
+    expect(caseStateOf(artisan, id)).toBe(before);
 });

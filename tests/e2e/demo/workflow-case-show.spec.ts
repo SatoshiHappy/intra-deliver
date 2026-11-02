@@ -103,7 +103,7 @@ test('処理担当者: 申請タブに面が決まった順で並び、タブ「
     await expect(page.getByRole('tooltip')).toContainText(VIEWERS_NOTE);
 });
 
-test('処理担当者: 見出しの右の「承認」で承認のダイアログが開く(決定しない)', async ({
+test('処理担当者: 画面の下の帯の「承認」で承認のダイアログが開く(決定しない)', async ({
     page,
 }) => {
     await openAsManager(page);

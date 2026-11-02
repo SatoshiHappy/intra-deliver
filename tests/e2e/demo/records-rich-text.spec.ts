@@ -2,7 +2,7 @@ import { expect, test } from '../support/test';
 import type { Page } from '@playwright/test';
 import { submitAndExpectUrl } from '../support/submit';
 
-// 業務データの入れ物のリッチテキストの表のセルの見え方(docs の 設計/業務データの入れ物/画面/README.md 6 節の管理の分の「複数選べる参照」の
+// 業務データの入れ物のリッチテキストの表のセルの見え方(docs の 設計/業務データの入れ物/画面/E2Eと目視.md 6 節の管理の分の「複数選べる参照」の
 // 最後の文、1.4 の表)。システム管理者に切り替えて項目を足すので demo の持ち物。業務モジュール「備品」(コード equipment)は
 // records-admin.spec.ts の筋が作る(名前の順で先に走る。名前は後の筋が変えるので、コードと URL で引く)。
 // 足した項目とレコードは同じ筋の中で消して戻す(ほかの筋の件数を変えない)。

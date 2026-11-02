@@ -83,7 +83,7 @@ class FieldValueParser
 
     /**
      * 選択の項目の選択肢にそのコードがあるか。保存と写しの初期値が同じ確かめを呼ぶ(docs の
-     * 設計/ワークフロー/申請の周辺/既存のデータからの申請/案件からの複製/写す値.md の 13.3)。
+     * 設計/業務データの入れ物/項目と規則/README.md の 2 節の「開く時の確かめ」)。
      */
     public function hasOption(RecordField $field, string $code): bool
     {

@@ -218,7 +218,7 @@ final class CaseCopyPageTest extends TransactionalTestCase
         $applicants = [array_column($props['applicants'], 'id'), $props['applicant']];
         $this->assertSame([[$principal->id], $principal->id], $applicants);
         $label = $props['initial']['values']['ref']['label'] ?? null;
-        $this->assertSame(['参照先', []], [$label, $props['copy']['clearedFields']]);
+        $this->assertSame(['参照先', []], [$label, array_column($props['copy']['clearedFields'], 'name')]);
     }
 
     /**

@@ -8,8 +8,8 @@ use Illuminate\Database\Eloquent\Collection;
 use LogicException;
 
 /**
- * 写しの初期値の確かめ({@see RecordCopyValues} の中身。docs の 設計/ワークフロー/申請の周辺/既存のデータからの申請/案件からの複製/写す値.md の
- * 13.3)。参照の相手・参照者({@see ReferenceTargets})と選択肢({@see FieldValueParser::hasOption()})は保存と同じ 1 か所を呼ぶ。
+ * 写しの初期値の確かめ({@see RecordCopyValues} の中身。docs の 設計/業務データの入れ物/項目と規則/README.md の 5 節・2 節の
+ * 「開く時の確かめ」)。参照の相手・参照者({@see ReferenceTargets})と選択肢({@see FieldValueParser::hasOption()})は保存と同じ 1 か所を呼ぶ。
  * 呼び手が {@see self::prepare()} で全部の相手をまとめて確かめてから、{@see self::kept()}・{@see self::keptRowAccess()} で引く。
  *
  * @phpstan-import-type RawValues from RecordValueReader

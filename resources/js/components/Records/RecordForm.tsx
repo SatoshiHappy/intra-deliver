@@ -1,12 +1,21 @@
 import { Link, useForm } from '@inertiajs/react';
 import { useRef, useState } from 'react';
 import type { FormEvent } from 'react';
+import { ClearedNotice } from '@/components/ClearedNotice';
 import { UnshownErrors } from '@/components/FormBlock';
 import { FormActions, FormSurface } from '@/components/FormLayout';
 import { RecordFields } from '@/components/RecordFields';
 import { RecordRowAccessSection } from '@/components/RecordRowAccessSection';
 import { Button } from '@/components/ui/button';
 import { useFocusFirstInvalid } from '@/hooks/use-focus-first-invalid';
+import {
+    CLEARED_REASON_TEXTS,
+    clearedMarksOf,
+    clearedNoticeOf,
+    fieldMarksOf,
+    shownMarksOf,
+    viewersMarkedOf,
+} from '@/lib/clearedFields';
 import type { RecordFormData } from '@/lib/recordForm';
 import { toPayload } from '@/lib/recordPayload';
 import { isRecordFieldKey } from '@/lib/recordFormErrors';
@@ -15,9 +24,11 @@ import {
     rowAccessDraft,
     rowAccessPayload,
 } from '@/lib/recordRowAccess';
+import type { RowAccessDraft } from '@/lib/recordRowAccess';
 import { clearRowErrors } from '@/lib/formErrors';
 import type { RouteDefinition } from '@/wayfinder';
 import type {
+    ClearedField,
     RecordHeadingGroup,
     RecordModuleDefinition,
     RowAccessInput,
@@ -42,7 +53,62 @@ type Props = {
     submitDisabled?: boolean;
     /** 「キャンセル」の移り先(登録 = 一覧、編集 = 詳細。null = 出さない = 登録だけを許され、一覧を開けない利用者) */
     cancelHref: RouteDefinition<'get'> | null;
+    /** 複製で今は使えない値を空にした欄の並び(複製のときだけ。欄の値は initialData の時点) */
+    cleared?: ClearedField[];
 };
+
+/**
+ * 複製で空にした欄の印と、見出しの下の件数の注意(docs の 設計/ワークフロー/申請の周辺/画面.md の 5 節の「空にした項目の知らせ」。
+ * 参照制限の欄があるので、参照者を外したことも欄のそばに書き、件数に数える)。
+ */
+function useClearedMarks(
+    { cleared = [], initialData, initialRowAccess }: Props,
+    data: RecordFormData,
+    viewers: RowAccessDraft['viewers'],
+) {
+    const [opened] = useState(() => ({
+        marks: clearedMarksOf(cleared, 'record', initialData),
+        viewers: rowAccessDraft(initialRowAccess).viewers,
+    }));
+    const shown = shownMarksOf([opened.marks], data);
+    const viewersMarked = viewersMarkedOf(cleared, opened.viewers, viewers);
+
+    return {
+        fields: fieldMarksOf(shown),
+        /** 参照制限の欄のそばの理由(印が無ければ undefined) */
+        viewers: viewersMarked ? CLEARED_REASON_TEXTS.record : undefined,
+        notice: clearedNoticeOf(shown.length + (viewersMarked ? 1 : 0)),
+    };
+}
+
+/** 業務の欄と参照制限の誤り以外(record・version ほか)。フォームの上に出す */
+function formErrorsOf(errors: Record<string, string | undefined>) {
+    return Object.fromEntries(
+        Object.entries(errors).filter(
+            ([key]) => !isRecordFieldKey(key) && !isRowAccessKey(key),
+        ),
+    );
+}
+
+/** 下のボタン(キャンセルの移り先が無ければ出さない) */
+function RecordFormActions({
+    cancelHref,
+    disabled,
+    submitLabel,
+}: Pick<Props, 'cancelHref' | 'submitLabel'> & { disabled: boolean }) {
+    return (
+        <FormActions>
+            {cancelHref !== null && (
+                <Button variant="outline" asChild>
+                    <Link href={cancelHref}>キャンセル</Link>
+                </Button>
+            )}
+            <Button type="submit" disabled={disabled}>
+                {submitLabel}
+            </Button>
+        </FormActions>
+    );
+}
 
 /**
  * フォームの値・参照制限の欄の値・送信(送る形 = toPayload の全項目に参照制限の 2 つのキーと、編集は開いたときの版を足す)。
@@ -93,13 +159,8 @@ export function RecordForm(props: Props) {
     const { module, headings, recordId, submitLabel, cancelHref } = props;
     const { form, rowAccess, setRowAccess, formRef, focusRequest, submit } =
         useRecordSubmit(props);
+    const cleared = useClearedMarks(props, form.data, rowAccess.viewers);
     const errors = form.errors as Record<string, string | undefined>;
-    // 業務の欄と参照制限の誤り以外(record・version ほか)はフォームの上に出す
-    const formErrors = Object.fromEntries(
-        Object.entries(errors).filter(
-            ([key]) => !isRecordFieldKey(key) && !isRowAccessKey(key),
-        ),
-    );
     const clearErrors = (prefix: string) => clearRowErrors(form, prefix);
 
     return (
@@ -110,7 +171,10 @@ export function RecordForm(props: Props) {
             aria-label={`${module.name}の入力`}
             className="flex flex-col gap-6"
         >
-            <UnshownErrors errors={formErrors} shownKeys={[]} />
+            {cleared.notice !== null && (
+                <ClearedNotice>{cleared.notice}</ClearedNotice>
+            )}
+            <UnshownErrors errors={formErrorsOf(errors)} shownKeys={[]} />
             <FormSurface inner="max-w-5xl">
                 <RecordFields
                     module={module}
@@ -121,6 +185,7 @@ export function RecordForm(props: Props) {
                     onChange={(update) => form.setData(update)}
                     onRowsReordered={clearErrors}
                     errors={errors}
+                    marks={cleared.fields}
                 />
             </FormSurface>
             <FormSurface inner="max-w-5xl">
@@ -129,21 +194,14 @@ export function RecordForm(props: Props) {
                     onChange={setRowAccess}
                     errors={errors}
                     onClearErrors={clearErrors}
+                    cleared={cleared.viewers}
                 />
             </FormSurface>
-            <FormActions>
-                {cancelHref !== null && (
-                    <Button variant="outline" asChild>
-                        <Link href={cancelHref}>キャンセル</Link>
-                    </Button>
-                )}
-                <Button
-                    type="submit"
-                    disabled={form.processing || props.submitDisabled === true}
-                >
-                    {submitLabel}
-                </Button>
-            </FormActions>
+            <RecordFormActions
+                cancelHref={cancelHref}
+                submitLabel={submitLabel}
+                disabled={form.processing || props.submitDisabled === true}
+            />
         </form>
     );
 }

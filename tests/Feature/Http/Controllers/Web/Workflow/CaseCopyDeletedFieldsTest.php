@@ -11,6 +11,7 @@ use Carbon\CarbonImmutable;
 use Tests\Support\AppliesToTargets;
 use Tests\Support\BuildsApplicationTargetCopies;
 use Tests\Support\CopiesCases;
+use Tests\Support\RegistersProxies;
 use Tests\Support\RunsWorkflowOperations;
 use Tests\Support\TransactionalTestCase;
 
@@ -23,6 +24,7 @@ final class CaseCopyDeletedFieldsTest extends TransactionalTestCase
     use AppliesToTargets;
     use BuildsApplicationTargetCopies;
     use CopiesCases;
+    use RegistersProxies;
     use RunsWorkflowOperations;
 
     protected function setUp(): void
@@ -52,7 +54,7 @@ final class CaseCopyDeletedFieldsTest extends TransactionalTestCase
         $rowValues = array_map(fn (array $row) => $row['values'], $props['initial']['details']['lines']);
         $expectedRows = [['item' => 'A', 'qty' => 1], ['item' => 'B', 'qty' => 2]];
         $this->assertSame($expectedRows, array_map(self::sorted(...), $rowValues));
-        $this->assertSame([], $props['copy']['clearedFields']);
+        $this->assertSame([], array_column($props['copy']['clearedFields'], 'name'));
         $sent = $this->sentFrom($props, ['details' => $props['initial']['details']]);
         $this->assertNotSame($source->record_id, $this->postApply($u0001, $sent)->record_id);
     }
