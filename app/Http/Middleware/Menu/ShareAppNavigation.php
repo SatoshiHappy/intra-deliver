@@ -2,9 +2,9 @@
 
 namespace App\Http\Middleware\Menu;
 
-use App\Http\Controllers\Web\Master\OrganizationChartController;
 use App\Queries\Authz\Api\Requester;
 use App\Queries\Authz\Api\RouteAuthorization;
+use App\Queries\Master\Api\OrganizationChartRoute;
 use App\Queries\Menu\CurrentApp;
 use App\Queries\Menu\MenuDisplayQuery;
 use App\Support\AccessContext;
@@ -50,7 +50,7 @@ class ShareAppNavigation
                 'adminMenu' => $adminMenu,
                 ...$this->currentApp->of($request->path(), [...$launcher, ...$adminMenu]),
                 'showSitemap' => $this->routes->allows($requester, 'menu.sitemap', $date),
-                'showSearch' => $this->routes->allows($requester, OrganizationChartController::ROUTE_NAME, $date),
+                'showSearch' => $this->routes->allows($requester, OrganizationChartRoute::NAME, $date),
             ];
         }));
 

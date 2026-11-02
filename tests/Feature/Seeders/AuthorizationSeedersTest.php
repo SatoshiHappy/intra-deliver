@@ -16,8 +16,9 @@ use Tests\Support\TransactionalTestCase;
 
 /**
  * 認可・メニュー・今の利用者の初期データ(docs の 設計/メニュー/初期データ.md 4 節、設計/デモユーザー切替/今の利用者.md 5.8)と、
- * 初期データ.md の全部を許すロールの検査。ルートのリソースの付け忘れ・置き場の検査(認可との結び付け.md 2.3 の検査 2・3・5)は
- * {@see RouteResourceSeedersTest}。ポリシーの件数は、ワークフローの申請書の業務モジュール 2 つ(設計/ワークフロー/初期データ.md の 3 節)の初期ポリシー 8 × 2 を含む。
+ * 設計/メニュー/初期データ.md の全部を許すロールの検査。ルートのリソースの付け忘れ・置き場の検査
+ * (設計/メニュー/認可との結び付け.md 2.3 の検査 2・3・5)は {@see RouteResourceSeedersTest}。ポリシーの件数は、
+ * ワークフローの申請書の業務モジュール 2 つ(設計/ワークフロー/初期データ.md の 3 節)の初期ポリシー 8 × 2 を含む。
  * メニューのカテゴリ・グループ・アイテムの中身は {@see MenuSeederTest}。
  */
 final class AuthorizationSeedersTest extends TransactionalTestCase

@@ -27,7 +27,7 @@ trait BuildsAuthzEditing
     public function changeAuthzCell(): void
     {
         $cell = new AuthzCellInput(
-            AuthzResourceGroup::query()->where('code', 'http-services-unmanaged.master.search')->sole()->id,
+            AuthzResourceGroup::query()->where('code', 'http-services.master')->sole()->id,
             AuthzSubjectGroup::factory()->create()->id,
             'service',
             'execute',
