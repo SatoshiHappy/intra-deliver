@@ -49,8 +49,7 @@ export function reloadStepOf(
 }
 
 /**
- * 申請の詳細に描く左右の枠と、処理のボタンの帯の置き場(docs の 設計/業務データの入れ物/レコードの共通機能/詳細の画面/申請の詳細.md の
- * 1 節)。帯はどの形でも出す(読み直しの間も処理のボタンを押せるように)。
+ * 申請の詳細に描く左右の枠と、処理のボタンの帯の置き場。帯はどの形でも出す(読み直しの間も処理のボタンを押せるように)。
  */
 export type CaseLayout =
     | { frame: ShownCaseRecordMode; actionBar: 'frameFooter' }

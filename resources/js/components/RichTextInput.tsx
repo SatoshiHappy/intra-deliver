@@ -84,8 +84,26 @@ const PREVIEW_CLASS = cn(
 );
 
 /**
- * 「プレビュー」の面(空なら「—」)。誤りがあり開いている間は、入力と同じ誤りの印と説明を持つ。印は送った後のフォーカスの移動
- * (use-focus-first-invalid の誤りの欄の判定)を面へ向けるため、説明は面に来た人に誤りの文言を読ませるため。
+ * 「プレビュー」の面の誤りの印と説明(入力と同じ並び)。印は送った後のフォーカスの移動(use-focus-first-invalid の誤りの欄の判定)を
+ * 面へ向けるため、説明は面に来た人に誤りの文言と空にした理由を読ませるため。
+ */
+export function previewPanelPropsOf(
+    id: string,
+    invalid: boolean,
+    max: number | null,
+    describedIds: string[] = [],
+) {
+    return invalidProps(
+        id,
+        invalid ? '' : undefined,
+        false,
+        max !== null,
+        describedIds,
+    );
+}
+
+/**
+ * 「プレビュー」の面(空なら「—」)。開いている間だけ誤りの印を持つ({@link previewPanelPropsOf})。
  */
 function PreviewPanel({
     id,
@@ -105,13 +123,7 @@ function PreviewPanel({
     return (
         <TabsContent
             value="preview"
-            {...invalidProps(
-                id,
-                invalid ? '' : undefined,
-                false,
-                max !== null,
-                describedIds,
-            )}
+            {...previewPanelPropsOf(id, invalid, max, describedIds)}
             onFocus={onFocus}
             className={PREVIEW_CLASS}
         >

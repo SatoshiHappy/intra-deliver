@@ -84,6 +84,8 @@ function ViewersField({
     cleared,
 }: Props) {
     const error = fieldErrorOf(errors, VIEWERS_KEY);
+    const clearedId =
+        cleared === undefined ? undefined : clearedReasonId(VIEWERS_ID);
 
     return (
         <FormBlock
@@ -110,11 +112,10 @@ function ViewersField({
                         error,
                         false,
                         false,
-                        cleared === undefined
-                            ? []
-                            : [clearedReasonId(VIEWERS_ID)],
+                        clearedId === undefined ? [] : [clearedId],
                     )['aria-describedby']
                 }
+                clearedId={clearedId}
             />
         </FormBlock>
     );

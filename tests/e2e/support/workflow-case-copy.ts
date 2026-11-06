@@ -1,4 +1,5 @@
 import type { Page, Route } from '@playwright/test';
+import { seededDate } from './seed-dates';
 import { expect } from './test';
 import type { Artisan } from './test';
 import { APPLY_URL, applyForm } from './workflow-target-apply';
@@ -109,7 +110,7 @@ export function copiedMilestones(): { values: Record<string, unknown> }[] {
         {
             values: {
                 name: '要件の確定',
-                due_date: '2026-12-25',
+                due_date: seededDate('2026-12-25'),
                 effort: '5',
                 is_done: false,
             },
@@ -117,7 +118,7 @@ export function copiedMilestones(): { values: Record<string, unknown> }[] {
         {
             values: {
                 name: '設計',
-                due_date: '2027-01-15',
+                due_date: seededDate('2027-01-15'),
                 effort: null,
                 is_done: false,
             },

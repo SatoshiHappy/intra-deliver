@@ -39,8 +39,11 @@ function RecordReferenceInput({
     invalid,
     itemErrors,
     describedBy,
+    clearedId,
+    // 必須の印は参照の部品が項目の定義から決める
+    isRequiredNow: _isRequiredNow,
     ...props
-}: Omit<Props, 'isRequiredNow' | 'clearedId'> & { describedBy?: string }) {
+}: Props & { describedBy?: string }) {
     if (props.field.isMultiple) {
         return (
             <RecordMultipleReferencePicker
@@ -49,6 +52,7 @@ function RecordReferenceInput({
                 invalid={invalid}
                 itemErrors={itemErrors}
                 describedBy={describedBy}
+                clearedId={clearedId}
             />
         );
     }
@@ -223,15 +227,8 @@ export function RecordFieldInput(props: Props) {
     if (isReferenceField(field)) {
         return (
             <RecordReferenceInput
-                id={id}
-                field={field}
-                recordId={props.recordId}
-                draft={draft}
-                onChange={onChange}
-                invalid={invalid}
-                itemErrors={props.itemErrors}
+                {...props}
                 describedBy={described['aria-describedby']}
-                ariaLabel={ariaLabel}
             />
         );
     }

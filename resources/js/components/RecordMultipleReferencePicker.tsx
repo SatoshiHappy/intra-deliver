@@ -32,6 +32,8 @@ type Props = {
     itemErrors?: ReferenceItemErrors;
     /** 欄の説明の要素の id の並び(誤りの文言・空にした理由の 1 行。aria-describedby) */
     describedBy?: string;
+    /** 空にした理由の 1 行の id(誤りの無いチップの外すボタンが指す) */
+    clearedId?: string;
     /** ラベルを持たない欄(明細の表のセル)の名前 */
     ariaLabel?: string;
 };
@@ -64,8 +66,20 @@ function ChipMark({
 }
 
 /**
+ * チップの外すボタンの説明の id(誤りのチップは欄の説明の並び、誤りの無いチップは空にした理由だけ。誤りの無いチップで誤りの文を
+ * 読ませないため)。
+ */
+export function chipDescribedByOf(
+    invalid: boolean,
+    describedBy: string | undefined,
+    clearedId: string | undefined,
+): string | undefined {
+    return invalid ? describedBy : clearedId;
+}
+
+/**
  * 選んだ相手のチップ 1 つ(頭の印・表示名・所属と、右に外す ×)。誤りがあれば赤の枠で、外すボタンに aria-invalid を付ける
- * (送った後のフォーカスの行き先にする)。外すボタンの説明は誤りの有無によらず欄の説明(空にした理由の 1 行を含む)を指す。
+ * (送った後のフォーカスの行き先にする)。
  */
 function ReferenceChip({
     field,
@@ -215,7 +229,7 @@ export function RecordMultipleReferencePicker({
     itemErrors,
     ...props
 }: Props) {
-    const { field, value, describedBy } = props;
+    const { field, value, describedBy, clearedId } = props;
     const remove = (index: number) => {
         onChange(value.filter((_, position) => position !== index));
         itemErrors?.onRemoved();
@@ -228,19 +242,25 @@ export function RecordMultipleReferencePicker({
                     className="flex flex-wrap gap-2"
                     aria-label={`${props.ariaLabel ?? field.name}の選択`}
                 >
-                    {value.map((picked, index) => (
-                        <ReferenceChip
-                            key={pickedKey(field, picked)}
-                            field={field}
-                            picked={picked}
-                            invalid={
-                                itemErrors?.invalidIndexes.includes(index) ??
-                                false
-                            }
-                            describedBy={describedBy}
-                            onRemove={() => remove(index)}
-                        />
-                    ))}
+                    {value.map((picked, index) => {
+                        const invalid =
+                            itemErrors?.invalidIndexes.includes(index) ?? false;
+
+                        return (
+                            <ReferenceChip
+                                key={pickedKey(field, picked)}
+                                field={field}
+                                picked={picked}
+                                invalid={invalid}
+                                describedBy={chipDescribedByOf(
+                                    invalid,
+                                    describedBy,
+                                    clearedId,
+                                )}
+                                onRemove={() => remove(index)}
+                            />
+                        );
+                    })}
                 </ul>
             )}
             <ReferenceSearch

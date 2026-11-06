@@ -21,8 +21,8 @@ export const VIEWERS_CLEARED_NOTICE =
     '引き継ぐ参照制限の参照者のうち、今は使えない人・組織を外しました。';
 
 /**
- * 空にした欄の印 1 つ。baseline = 空にした直後の値(JSON)、gone = 消えた(表 1。一度消えたら出し直さない)。
- * 明細のセルは行の key で引く(行を並べ替えても同じ行を指す)。参照者(viewers)は業務データの画面の複製だけが持つ。
+ * 空にした欄の印 1 つ(画面.md の 5 節の表 1)。baseline = 空にした直後の値(JSON)、gone = 消えた。明細のセルは行の key で引く
+ * (行を並べ替えても同じ行を指すため)。
  */
 export type ClearedMark = {
     kind: 'field' | 'cell' | 'viewers';
@@ -100,8 +100,8 @@ function positionOf(
 }
 
 /**
- * サーバーが返した空にした欄に、空にした直後の値を添えた印(消えていない で始まる)。current = 空にした値を当てた直後の値。
- * 参照者は参照者の欄がある画面(current.viewers がある)だけ印にする(申請の画面は見出しの下の 1 行 = 表 2 の最後の行)。
+ * サーバーが返した空にした欄の印(画面.md の 5 節の表 1・表 2)。current = 空にした値を当てた直後の値。参照者は欄のある画面
+ * (current.viewers がある)だけ印にする(欄の無い申請の画面には付ける所が無いため)。
  */
 export function clearedMarksOf(
     cleared: ClearedField[],
@@ -171,8 +171,7 @@ export function clearedStateOf(
 }
 
 /**
- * 次の状態(画面.md の 5 節の表 1。組の元の配列が替わったら、その組は写し直した新しい印)。何も変わらなければ同じ状態を返す
- * (描画の中で状態を更新し続けないため)。
+ * 次の状態(画面.md の 5 節の表 1)。何も変わらなければ同じ状態を返す(描画の中で状態を更新し続けないため)。
  */
 export function nextClearedStateOf(
     state: ClearedState,
