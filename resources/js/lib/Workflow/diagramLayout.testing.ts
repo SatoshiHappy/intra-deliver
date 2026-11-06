@@ -21,6 +21,7 @@ export function node(
         people: [],
         placeholders: [],
         consensus: null,
+        confirmBadge: null,
         ...overrides,
     };
 }

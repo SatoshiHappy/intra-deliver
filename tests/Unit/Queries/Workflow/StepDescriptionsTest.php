@@ -26,44 +26,74 @@ final class StepDescriptionsTest extends TestCase
     public static function rows(): array
     {
         $fixed = StepTarget::fixed([
-            ['type' => 'role', 'id' => 1, 'name' => '一般ユーザー'],
-            ['type' => 'user', 'id' => 7, 'name' => '#7'],
+            ['type' => 'role', 'id' => 1, 'name' => '一般ユーザー', 'affiliation' => null],
+            ['type' => 'user', 'id' => 7, 'name' => '#7', 'affiliation' => null],
         ]);
         $chief = fn (int $min, int $max) => StepTarget::designated('課長', $min, $max);
 
         return [
-            '申請・対象者' => [WorkflowNodeKind::Apply, $fixed, null, null, '一般ユーザー、#7が申請できます。', '一般ユーザー、#7'],
-            '承認・対象者' => [WorkflowNodeKind::Approve, $fixed, null, null, '一般ユーザー、#7が承認します。', '一般ユーザー、#7'],
+            '申請・対象者' => [WorkflowNodeKind::Apply, $fixed, null, null, '一般ユーザー、#7が申請できます。確認する人はいません。', '一般ユーザー、#7'],
+            '承認・対象者' => [
+                WorkflowNodeKind::Approve, $fixed, null, null,
+                '一般ユーザー、#7が承認します。期限はありません。確認する人はいません。', '一般ユーザー、#7',
+            ],
             '承認・基準にする人' => [
                 WorkflowNodeKind::Approve,
                 StepTarget::relative(WorkflowRelativeBase::Applicant, WorkflowRelativeScope::Parent, 3, '部長'),
-                null, null, '申請者の上位組織の部長が承認します。', '申請者の上位組織 + 部長',
+                null, null, '申請者の上位組織の部長が承認します。期限はありません。確認する人はいません。', '申請者の上位組織の部長',
             ],
             '承認・基準にする人・所属組織' => [
                 WorkflowNodeKind::Approve,
                 StepTarget::relative(WorkflowRelativeBase::Applicant, WorkflowRelativeScope::Own, 4, '課長'),
-                null, null, '申請者の所属組織の課長が承認します。', '申請者の所属組織 + 課長',
+                null, null, '申請者の所属組織の課長が承認します。期限はありません。確認する人はいません。', '申請者の所属組織の課長',
             ],
             '承認・基準にする人・役職なし' => [
                 WorkflowNodeKind::Approve,
                 StepTarget::relative(WorkflowRelativeBase::Previous, WorkflowRelativeScope::Ancestors, null, null),
-                null, null, '前の承認者の上位組織全ての所属の人が承認します。', '前の承認者の上位組織全て',
+                null, null, '前の承認者の上位組織全ての所属の人が承認します。期限はありません。確認する人はいません。', '前の承認者の上位組織全ての所属の人',
             ],
-            '動的承認' => [WorkflowNodeKind::Approve, $chief(0, 2), null, null, '課長が選択した 0 人から 2 人が承認します。', '課長が選択'],
-            '動的承認・最小 = 最大' => [WorkflowNodeKind::Approve, $chief(1, 1), null, null, '課長が選択した 1 人が承認します。', '課長が選択'],
-            '横配置' => [WorkflowNodeKind::Serial, $chief(1, 3), null, null, '課長が選択した 1 人から 3 人が、順に承認します。', '承認者は課長が選択'],
-            '横配置・最小 = 最大' => [WorkflowNodeKind::Serial, $chief(2, 2), null, null, '課長が選択した 2 人が、順に承認します。', '承認者は課長が選択'],
+            '動的承認' => [
+                WorkflowNodeKind::Approve, $chief(0, 2), null, null,
+                '課長が選択した 0 人から 2 人が承認します。期限はありません。確認する人はいません。', '課長が承認者を選択',
+            ],
+            '動的承認・最小 = 最大' => [
+                WorkflowNodeKind::Approve, $chief(1, 1), null, null,
+                '課長が選択した 1 人が承認します。期限はありません。確認する人はいません。', '課長が承認者を選択',
+            ],
+        ];
+    }
+
+    /**
+     * 横配置・縦配置と、分岐・同期の行(行の形は {@see self::rows()} と同じ)。
+     *
+     * @return array<string, array{
+     *     WorkflowNodeKind, StepTarget|null, WorkflowDecisionRule|null, int|null, string, string|null,
+     * }>
+     */
+    public static function arrangementRows(): array
+    {
+        $chief = fn (int $min, int $max) => StepTarget::designated('課長', $min, $max);
+
+        return [
+            '横配置' => [
+                WorkflowNodeKind::Serial, $chief(1, 3), null, null,
+                '課長が選択した 1 人から 3 人が、順に承認します。期限はありません。', '課長が承認者を選択',
+            ],
+            '横配置・最小 = 最大' => [
+                WorkflowNodeKind::Serial, $chief(2, 2), null, null,
+                '課長が選択した 2 人が、順に承認します。期限はありません。', '課長が承認者を選択',
+            ],
             '縦配置・人数' => [
                 WorkflowNodeKind::Parallel, $chief(2, 5), WorkflowDecisionRule::Count, 2,
-                '課長が選択した 2 人から 5 人のうち、2 人が承認すると次へ進みます。', '承認者は課長が選択',
+                '課長が選択した 2 人から 5 人のうち、2 人が承認すると次へ進みます。期限はありません。', '課長が承認者を選択',
             ],
             '縦配置・割合' => [
                 WorkflowNodeKind::Parallel, $chief(2, 5), WorkflowDecisionRule::Ratio, 50,
-                '課長が選択した 2 人から 5 人のうち、50% 以上が承認すると次へ進みます。', '承認者は課長が選択',
+                '課長が選択した 2 人から 5 人のうち、50% 以上が承認すると次へ進みます。期限はありません。', '課長が承認者を選択',
             ],
             '縦配置・全員・最小 = 最大' => [
                 WorkflowNodeKind::Parallel, $chief(3, 3), WorkflowDecisionRule::All, null,
-                '課長が選択した 3 人のうち、全員が承認すると次へ進みます。', '承認者は課長が選択',
+                '課長が選択した 3 人のうち、全員が承認すると次へ進みます。期限はありません。', '課長が承認者を選択',
             ],
             '分岐開始' => [WorkflowNodeKind::BranchStart, null, null, null, '分岐「予算」の条件に該当する先へ、すべて進みます。', null],
             '分岐終了' => [WorkflowNodeKind::BranchEnd, null, null, null, '分岐の枝がここで合流します。', null],
@@ -73,6 +103,7 @@ final class StepDescriptionsTest extends TestCase
     }
 
     #[DataProvider('rows')]
+    #[DataProvider('arrangementRows')]
     public function test_the_summary_and_the_subtitle_come_from_the_same_setting(
         WorkflowNodeKind $kind,
         ?StepTarget $target,
@@ -82,7 +113,9 @@ final class StepDescriptionsTest extends TestCase
         ?string $subtitle,
     ): void {
         $this->assertSame($summary, self::summaryText($kind, '予算', $target, $rule, $value));
-        $this->assertSame($subtitle, StepDescriptions::subtitle($kind, $target));
+        $parts = StepDescriptions::subtitle($target);
+        $text = fn (string|array $part) => is_string($part) ? $part : $part['text'];
+        $this->assertSame($subtitle, $parts === null ? null : implode('', array_map($text, $parts)));
     }
 
     /**
@@ -95,17 +128,20 @@ final class StepDescriptionsTest extends TestCase
             $kind, '部長', $chief, WorkflowDecisionRule::All, null, $prevents,
         );
 
-        $this->assertSame('課長が選択した 1 人から 2 人が承認します。', $summary(WorkflowNodeKind::Approve, false));
         $this->assertSame(
-            '課長が選択した 1 人から 2 人が承認します。添付ファイルを追加できません。',
+            '課長が選択した 1 人から 2 人が承認します。期限はありません。確認する人はいません。',
+            $summary(WorkflowNodeKind::Approve, false),
+        );
+        $this->assertSame(
+            '課長が選択した 1 人から 2 人が承認します。期限はありません。確認する人はいません。添付ファイルを追加できません。',
             $summary(WorkflowNodeKind::Approve, true),
         );
         $this->assertSame(
-            '課長が選択した 1 人から 2 人が、順に承認します。添付ファイルを追加できません。',
+            '課長が選択した 1 人から 2 人が、順に承認します。期限はありません。添付ファイルを追加できません。',
             $summary(WorkflowNodeKind::Serial, true),
         );
         $this->assertSame(
-            '課長が選択した 1 人から 2 人のうち、全員が承認すると次へ進みます。添付ファイルを追加できません。',
+            '課長が選択した 1 人から 2 人のうち、全員が承認すると次へ進みます。期限はありません。添付ファイルを追加できません。',
             $summary(WorkflowNodeKind::Parallel, true),
         );
     }
@@ -117,24 +153,27 @@ final class StepDescriptionsTest extends TestCase
     public function test_the_summary_parts_mark_only_the_department_names(): void
     {
         $fixed = StepTarget::fixed([
-            ['type' => 'role', 'id' => 1, 'name' => '一般ユーザー'],
-            ['type' => 'department', 'id' => 21, 'name' => '経理部'],
-            ['type' => 'user', 'id' => 7, 'name' => '山田 恵'],
-            ['type' => 'department', 'id' => 22, 'name' => '総務部'],
+            ['type' => 'role', 'id' => 1, 'name' => '一般ユーザー', 'affiliation' => null],
+            ['type' => 'department', 'id' => 21, 'name' => '経理部', 'affiliation' => null],
+            ['type' => 'user', 'id' => 7, 'name' => '山田 恵', 'affiliation' => '経理部'],
+            ['type' => 'department', 'id' => 22, 'name' => '総務部', 'affiliation' => null],
         ]);
         $parts = StepDescriptions::summaryParts(WorkflowNodeKind::Approve, '部長', $fixed, null, null, true);
 
         $this->assertSame([
             '一般ユーザー、', ['departmentId' => 21, 'text' => '経理部'], '、山田 恵、',
-            ['departmentId' => 22, 'text' => '総務部'], 'が承認します。添付ファイルを追加できません。',
+            ['departmentId' => 22, 'text' => '総務部'], 'が承認します。期限はありません。確認する人はいません。添付ファイルを追加できません。',
         ], $parts);
         $this->assertSame(
-            '一般ユーザー、経理部、山田 恵、総務部が承認します。添付ファイルを追加できません。',
+            '一般ユーザー、経理部、山田 恵、総務部が承認します。期限はありません。確認する人はいません。添付ファイルを追加できません。',
             self::summaryText(WorkflowNodeKind::Approve, '部長', $fixed, null, null, true),
         );
         $this->assertSame(
-            ['課長が選択した 1 人から 2 人が承認します。'],
-            StepDescriptions::summaryParts(WorkflowNodeKind::Approve, '部長', StepTarget::designated('課長', 1, 2)),
+            ['課長が選択した 1 人から 2 人が承認します。到達した日から 3 日以内に処理します。山田 恵が確認します。'],
+            StepDescriptions::summaryParts(
+                WorkflowNodeKind::Approve, '部長', StepTarget::designated('課長', 1, 2), deadlineDays: 3,
+                confirmerNames: ['山田 恵'],
+            ),
         );
         $this->assertSame(
             ['分岐「予算」の条件に該当する先へ、すべて進みます。'],
@@ -148,12 +187,12 @@ final class StepDescriptionsTest extends TestCase
     public function test_the_target_phrase_is_the_variable_part_of_the_summary(): void
     {
         $relative = StepTarget::relative(WorkflowRelativeBase::Applicant, WorkflowRelativeScope::Parent, 3, '部長');
-        $fixed = StepTarget::fixed([['type' => 'user', 'id' => 2, 'name' => '中村 美咲']]);
+        $fixed = StepTarget::fixed([['type' => 'user', 'id' => 2, 'name' => '中村 美咲', 'affiliation' => null]]);
 
         $this->assertSame('申請者の上位組織の部長', StepDescriptions::targetPhrase($relative));
         $this->assertSame('中村 美咲', StepDescriptions::targetPhrase($fixed));
         $this->assertSame('課長が選択した 1 人から 2 人', StepDescriptions::targetPhrase(StepTarget::designated('課長', 1, 2)));
-        $this->assertNull(StepDescriptions::designatorSubtitle(WorkflowNodeKind::Approve, null));
+        $this->assertNull(StepDescriptions::caseSubtitle(null, null));
     }
 
     /**

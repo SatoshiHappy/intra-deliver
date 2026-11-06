@@ -7,12 +7,15 @@ import type { WorkflowNodeKind } from '@/types';
 const CARD_ID = 'step-card-prevents';
 
 /**
- * カード 2「申請者本人の承認を防ぐ」: オン・オフ(Checkbox。見出しの下に置く。「?」の説明は、縦配置は合議の承認者に選択できない文)。
+ * カード「申請者本人の承認を防ぐ」: オン・オフ(Checkbox。見出しの下に置く。「?」の説明は、縦配置は合議の承認者に選択できない文)。
+ * number は呼び手が出すカードの並び(cardOrderOf)から振る。
  */
 export function StepPreventsCard({
+    number,
     kind,
     form,
 }: {
+    number: number;
     kind: WorkflowNodeKind;
     form: StepFormApi;
 }) {
@@ -22,7 +25,7 @@ export function StepPreventsCard({
     return (
         <StepCard
             id={CARD_ID}
-            number={2}
+            number={number}
             heading="申請者本人の承認を防ぐ"
             help={preventsLine(kind)}
         >

@@ -12,8 +12,9 @@ import {
 } from './subjectRows';
 
 const ROWS = [
-    { type: 'department', id: 5, name: '経理部' },
-    { type: 'role', id: 2, name: 'ワークフロー管理者' },
+    { type: 'department', id: 5, name: '経理部', affiliation: null },
+    { type: 'role', id: 2, name: 'ワークフロー管理者', affiliation: null },
+    { type: 'user', id: 10, name: '山田 恵', affiliation: '経理部' },
 ] as const;
 
 const candidate = (id: number, name: string | null, code = `c${id}`) => ({
@@ -35,15 +36,16 @@ describe('SUBJECT_TYPES', () => {
 });
 
 describe('draftsOf・rowsPayloadOf・rowsSignature', () => {
-    it('サーバーの行をそのまま入力にし、送る行は種類と id、識別は種類と id の並び', () => {
+    it('サーバーの行(ユーザーの主所属つき)をそのまま入力にし、送る行は種類と id、識別は種類と id の並び', () => {
         const drafts = draftsOf([...ROWS]);
 
         expect(drafts).toEqual([...ROWS]);
         expect(rowsPayloadOf(drafts)).toEqual([
             { type: 'department', id: 5 },
             { type: 'role', id: 2 },
+            { type: 'user', id: 10 },
         ]);
-        expect(rowsSignature([...ROWS])).toBe('department:5,role:2');
+        expect(rowsSignature([...ROWS])).toBe('department:5,role:2,user:10');
         expect(rowsPayloadOf(draftsOf([]))).toEqual([]);
     });
 });
@@ -69,7 +71,7 @@ describe('withPicked・withoutSubject', () => {
         ]);
         expect(
             withoutSubject(picked, subjectKey({ type: 'department', id: 5 })),
-        ).toEqual([ROWS[1], picked[2]]);
+        ).toEqual([ROWS[1], ROWS[2], picked[3]]);
     });
 });
 

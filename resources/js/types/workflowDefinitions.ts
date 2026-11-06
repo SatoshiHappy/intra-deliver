@@ -38,11 +38,15 @@ export type WorkflowAdminFlowIndexProps = {
     flows: WorkflowFlowDefinitionRow[];
 };
 
-/** 対象者・参照者の行(名前の無い相手は「#{id}」) */
+/**
+ * 対象者・参照者・確認する人の行(名前の無い相手は「#{id}」。affiliation = ユーザーの今日の主所属の組織の名前。札の名前の後ろに出す。
+ * 主所属が無い・ほかの種類の行は null)
+ */
 export type WorkflowSubjectRow = {
     type: WorkflowSubjectType;
     id: number;
     name: string;
+    affiliation: string | null;
 };
 
 /** 版の行(並び = 番号の降順。endDate = 表の終了日(次の版の開始日)、displayEndDate = その前日。isCurrent = 今日の版) */
@@ -74,7 +78,10 @@ export type WorkflowSummaryPart =
     | string
     | { departmentId: number; text: string };
 
-/** 図で選んだステップの設定(持たない設定は null。summary = 設定から作った要約の 1 文の区切りの並び) */
+/**
+ * 図で選んだステップの設定(持たない設定は null。summary = 設定から作った要約の 1 文の区切りの並び。処理期限と確認する人 =
+ * docs の 設計/ワークフロー/案件の運用/定義の管理.md の 1 節)
+ */
 export type WorkflowStepSettings = {
     code: string;
     name: string;
@@ -85,6 +92,8 @@ export type WorkflowStepSettings = {
     preventsAttachmentAdd: boolean | null; // 承認・横配置・縦配置だけ(真 = 添付ファイルを追加できない)
     sendBack: { candidates: WorkflowNodeChoice[]; selected: string[] } | null; // 承認・横配置・縦配置だけ
     decision: { rule: WorkflowDecisionRule; value: number | null } | null; // 縦配置だけ
+    deadline: { days: number | null } | null; // 承認・横配置・縦配置だけ(days = null は期限なし)
+    confirmers: WorkflowSubjectRow[] | null; // 申請・承認だけ(ユーザーの行。空は確認する人なし)
 };
 
 /** 詳細のタブ(settings = タブ「設定」。面「参照者」と面「添付ファイル」を持つ) */
@@ -122,7 +131,7 @@ export type WorkflowSubjectCandidate = {
 
 /**
  * 対象者の候補の応答 GET workflow.admin.subject-candidates?q=(1 つの語で 4 種類をまとめて引く。群の並び = ユーザー・組織・役職・ロール。
- * 上限は種類ごと。語が空なら 4 つの空の群)
+ * 上限は種類ごと。語が空なら 4 つの空の群。type を付けると、その種類の群だけ)
  */
 export type WorkflowSubjectCandidatesResponse = {
     groups: {

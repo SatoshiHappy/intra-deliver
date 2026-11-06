@@ -52,13 +52,16 @@ function DecisionValueField({
 }
 
 /**
- * カード 4「合議の人数と可決の条件」(縦配置だけ): 人数の最小・最大・可決の条件(切り替えボタン。全員・人数・割合)と、
+ * カード「合議の人数と可決の条件」(縦配置だけ): 人数の最小・最大・可決の条件(切り替えボタン。全員・人数・割合)と、
  * 選んだ条件の欄だけ(人数 = 必要な人数、割合 = 必要な割合、全員 = 欄なし)。出す欄は fields(定義の管理の画面.md の 3.3 節のデシジョン表)。
+ * number は呼び手が出すカードの並び(cardOrderOf)から振る。
  */
 export function StepDecisionCard({
+    number,
     fields,
     form,
 }: {
+    number: number;
     fields: DecisionField[];
     form: StepFormApi;
 }) {
@@ -68,7 +71,7 @@ export function StepDecisionCard({
     return (
         <StepCard
             id="step-card-decision"
-            number={4}
+            number={number}
             heading="合議の人数と可決の条件"
             help={DECISION_LINE}
         >

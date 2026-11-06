@@ -12,6 +12,8 @@ use LogicException;
 /**
  * 定義の管理の画面の「図で選んだステップ」の欄(docs の 設計/ワークフロー/ルートの深さ/画面/定義の管理の画面.md 3 節の StepSettings、3.3 節)と、
  * 選択の欄の指定するステップの候補。候補は定義の検査と同じ式({@see RouteNodeCandidates})。持たない設定は null。鍵を取らない。
+ * 処理期限と確認する人(設計/ワークフロー/案件の運用/定義の管理.md 1 節)は、持てる種類のノードだけ値を持つ(期限なし = days が null、
+ * 確認する人なし = 空の並び。並び = 対象者の条件の作った順)。
  *
  * @phpstan-import-type SubjectRow from StepTarget
  * @phpstan-import-type SummaryPart from StepDescriptions
@@ -23,11 +25,12 @@ use LogicException;
  * @phpstan-type StepSettings array{code: string, name: string, kind: string, summary: list<SummaryPart>,
  *     target: StepTargetSettings|null, preventsApplicantApproval: bool|null, preventsAttachmentAdd: bool|null,
  *     sendBack: array{candidates: list<NodeChoice>, selected: list<string>}|null,
- *     decision: array{rule: string, value: int|null}|null}
+ *     decision: array{rule: string, value: int|null}|null,
+ *     deadline: array{days: int|null}|null, confirmers: list<SubjectRow>|null}
  */
 class FlowStepSettings
 {
-    public function __construct(private StepTargets $targets) {}
+    public function __construct(private StepTargets $targets, private SubjectRows $subjectRows) {}
 
     /**
      * @return StepSettings
@@ -41,6 +44,9 @@ class FlowStepSettings
         $designatorNames = array_intersect_key($route->designatorNames(), [$node->id => true]);
         $target = $this->targets->of([$node], $designatorNames, $date, $localeCode)[$node->id];
         $isApproving = $node->kind->isIn(WorkflowNodeKind::approving());
+        $hasDeadline = $node->kind->isIn(WorkflowNodeKind::withDeadline());
+        $confirmers = $node->kind->isIn(WorkflowNodeKind::withConfirmers())
+            ? $this->confirmersOf($node, $date, $localeCode) : null;
 
         return [
             'code' => $node->code,
@@ -48,7 +54,8 @@ class FlowStepSettings
             'kind' => $node->kind->value,
             'summary' => StepDescriptions::summaryParts(
                 $node->kind, $node->name, $target, $node->decision_rule, $node->decision_value,
-                $node->prevents_attachment_add,
+                $node->prevents_attachment_add, $node->deadline_days,
+                array_map(fn (array $row) => $row['name'], $confirmers ?? []),
             ),
             'target' => $target === null ? null : $this->targetOf($route, $node, $target),
             'preventsApplicantApproval' => $isApproving ? $node->prevents_applicant_approval : null,
@@ -58,7 +65,25 @@ class FlowStepSettings
                 'rule' => $node->decision_rule->value ?? throw new LogicException("縦配置 {$node->id} に可決の条件が無い"),
                 'value' => $node->decision_value,
             ] : null,
+            'deadline' => $hasDeadline ? ['days' => $node->deadline_days] : null,
+            'confirmers' => $confirmers,
         ];
+    }
+
+    /**
+     * 確認する人の行(確認する人がいなければ空)。
+     *
+     * @return list<SubjectRow>
+     */
+    private function confirmersOf(WorkflowRouteNode $node, DateTimeInterface $date, string $localeCode): array
+    {
+        $groupId = $node->confirm_authz_subject_group_id;
+
+        if ($groupId === null) {
+            return [];
+        }
+
+        return $this->subjectRows->of([(int) $groupId], $date, $localeCode)[(int) $groupId] ?? [];
     }
 
     /**

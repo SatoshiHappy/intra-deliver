@@ -2,11 +2,14 @@
 
 namespace Tests\Feature\Actions\Workflow;
 
+use App\Actions\Authz\Api\CreateSelectionSubjectGroup;
+use App\Actions\Authz\Api\SelectionCondition;
 use App\Actions\Workflow\RouteDefinitionValidator;
 use App\Actions\Workflow\RouteDefinitionViolated;
 use App\Actions\Workflow\RouteEdgeInput;
 use App\Actions\Workflow\RouteNodeInput;
 use App\Actions\Workflow\RouteViolation;
+use App\Enums\Authz\SelectionConditionKind;
 use App\Enums\Authz\SubjectCombination;
 use App\Enums\Authz\SubjectGroupPurpose;
 use App\Enums\Workflow\WorkflowDecisionRule;
@@ -15,13 +18,15 @@ use App\Enums\Workflow\WorkflowRelativeBase;
 use App\Enums\Workflow\WorkflowRelativeScope;
 use App\Enums\Workflow\WorkflowTargetKind;
 use App\Models\Authz\AuthzSubjectGroup;
+use App\Models\Master\Department;
 use App\Models\Workflow\WorkflowFlowVersion;
 use App\Models\Workflow\WorkflowRouteEdge;
 use Tests\Support\BuildsRouteVersions;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * 定義の検査(docs の 設計/ワークフロー/ルートの深さ/定義の管理.md 3 節・8 節の「定義の検査のテスト」): 規則ごとに外れる最小の形を 1 つ以上。
+ * 定義の検査(docs の 設計/ワークフロー/ルートの深さ/定義の管理.md 3 節・8 節の「定義の検査のテスト」、G-13 = 設計/ワークフロー/案件の運用/定義の管理.md
+ * 3 節・5 節): 規則ごとに外れる最小の形を 1 つ以上。
  * 形は形つきの版を作る業務処理で書き、書いた後の検査の違反({@see RouteDefinitionViolated})で確かめる(書く前の入力の確かめが止める形 = 条件の JSON は、
  * 書いた行を変えてから検査を直に呼ぶ)。違反は「規則(関わるノードのコード)」の文字列で比べる。初期データの版とルートの見本 R1〜R3 は違反が無い。
  */
@@ -103,6 +108,31 @@ final class RouteDefinitionValidatorTest extends TransactionalTestCase
         $this->assertContains('G-7(a)', $this->violations([$this->applyNode(), $node], $this->chain(['apply', 'a'])));
     }
 
+    /**
+     * G-13: 確認する人の対象者は組み方 any・ユーザーの eq だけ・1〜10 件(組織の条件・組み方 all・11 件は違反、ユーザー 10 件は通る)。
+     */
+    public function test_g13_the_confirmers_are_a_selection_subject_of_one_to_ten_users_with_any_and_eq(): void
+    {
+        $create = app(CreateSelectionSubjectGroup::class);
+        $accounting = Department::query()->where('code', 'accounting')->sole()->id;
+        $users = array_map(fn (int $number) => $this->userCondition(sprintf('u%04d', $number)), range(1, 11));
+        $all = ['purpose' => SubjectGroupPurpose::Selection, 'combination' => SubjectCombination::All];
+        $outside = [
+            '組織の条件' => $create->execute(
+                [new SelectionCondition(SelectionConditionKind::Department, $accounting)], ['ja' => '組織'],
+            ),
+            '組み方 all' => AuthzSubjectGroup::factory()->createOne($all)->id,
+            '11 件' => $create->execute($users, ['ja' => '11 人']),
+        ];
+
+        foreach ($outside as $label => $groupId) {
+            $this->assertContains('G-13(a)', $this->violations(...$this->confirmedBy($groupId)), $label);
+        }
+
+        $ten = $create->execute(array_slice($users, 0, 10), ['ja' => '10 人']);
+        $this->assertSame([], $this->violations(...$this->confirmedBy($ten)));
+    }
+
     public function test_g9_the_previous_actor_base_is_not_placed_right_after_a_join(): void
     {
         [$nodes, $edges] = $this->branch(WorkflowNodeKind::BranchEnd);
@@ -160,6 +190,21 @@ final class RouteDefinitionValidatorTest extends TransactionalTestCase
             [$this->applyNode(), $this->routing('br', WorkflowNodeKind::BranchStart, 'e'), $this->approveNode('a', 'u0002'), $this->approveNode('b', 'u0003'), $this->routing('e', $closingKind)],
             [new RouteEdgeInput('apply', 'br'), $this->branchEdge('br', 'a', 1), $this->branchEdge('br', 'b', 2), new RouteEdgeInput('a', 'e'), new RouteEdgeInput('b', 'e')],
         ];
+    }
+
+    /**
+     * 申請 → 承認 a(確認する人 = 渡した対象者)。
+     *
+     * @return array{list<RouteNodeInput>, list<RouteEdgeInput>}
+     */
+    private function confirmedBy(int $groupId): array
+    {
+        $node = new RouteNodeInput(
+            'a', 'a', WorkflowNodeKind::Approve, WorkflowTargetKind::Fixed, [$this->userCondition('u0002')],
+            ['ja' => 'a'], confirmSubjectGroupId: $groupId,
+        );
+
+        return [[$this->applyNode(), $node], $this->chain(['apply', 'a'])];
     }
 
     private function routing(string $code, WorkflowNodeKind $kind, ?string $closingCode = null): RouteNodeInput

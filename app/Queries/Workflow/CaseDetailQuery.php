@@ -90,7 +90,7 @@ class CaseDetailQuery
         $historiesById = $histories->keyBy('id');
         $councils = $this->councils->of($case, $nodes, $historiesById, $assignments, $situation, $requester->userId, $context);
         $linked = $this->people->linked($people, $context->date, $context->localeCode);
-        $diagram = $this->diagram->of($case, $nodes, $historiesById, $assignments, $situation, $linked, $councils, $requester->userId);
+        $diagram = $this->diagram->of($case, $nodes, $historiesById, $assignments, $situation, $linked, $councils, $requester->userId, $context);
         $operation = $this->operationPanel->of($requester, $context, $situation, $nodes);
         $detail = [
             'case' => $this->caseOf($case, $situation, $people, $context),

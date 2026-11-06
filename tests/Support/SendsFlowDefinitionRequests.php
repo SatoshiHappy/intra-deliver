@@ -2,6 +2,7 @@
 
 namespace Tests\Support;
 
+use App\Enums\Workflow\WorkflowNodeKind;
 use App\Models\Authz\Role;
 use App\Models\Master\Department;
 use App\Models\Master\User;
@@ -94,6 +95,9 @@ trait SendsFlowDefinitionRequests
         $conditions = $group === 0 ? [] : app(SelectionSubjects::class)->conditionsOf([$group], $today, 'ja');
         $targets = $conditions[$group]['conditions'] ?? null;
         $row = fn (array $condition) => ['type' => $condition['kind']->value, 'id' => $condition['id']];
+        $confirm = (int) $node->confirm_authz_subject_group_id;
+        $confirmShape = $confirm === 0 ? [] : app(SelectionSubjects::class)->conditionsOf([$confirm], $today, 'ja');
+        $confirmers = array_map(fn (array $condition) => $condition['id'], $confirmShape[$confirm]['conditions'] ?? []);
 
         return [
             'target_kind' => $node->target_kind?->value,
@@ -106,6 +110,8 @@ trait SendsFlowDefinitionRequests
             'prevents_attachment_add' => $node->prevents_attachment_add,
             'send_back_node_codes' => array_values(array_map(fn (mixed $id) => $codes[$id], $sendBacks)),
             'decision_rule' => $node->decision_rule?->value, 'decision_value' => $node->decision_value,
+            'deadline_days' => $node->deadline_days,
+            'confirmers' => $node->kind->isIn(WorkflowNodeKind::withConfirmers()) ? $confirmers : null,
             ...$overrides,
         ];
     }

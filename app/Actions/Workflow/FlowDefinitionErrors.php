@@ -3,7 +3,8 @@
 namespace App\Actions\Workflow;
 
 /**
- * フローの定義の管理の 422 の文言の 1 か所(docs の 設計/ワークフロー/ルートの深さ/定義の管理.md の 6 節)。
+ * フローの定義の管理の 422 の文言の 1 か所(docs の 設計/ワークフロー/ルートの深さ/定義の管理.md の 6 節、
+ * 処理期限と確認する人 = 設計/ワークフロー/案件の運用/定義の管理.md の 5 節)。
  */
 final class FlowDefinitionErrors
 {
@@ -49,6 +50,18 @@ final class FlowDefinitionErrors
     public const DESIGNATING_MIN_ZERO = 'このステップはほかのステップの承認者を選択するため、人数の最小は 1 以上にしてください';
 
     public const PREVIOUS_BASE_BLOCKED = 'このステップの直前は合流か合議のため、前の承認者を基準にできません';
+
+    /** 申請者本人の承認を防ぐの型の誤り・欠け(6 節に文が無い欄。画面は必ず真偽を送るので、壊れた送りでしか出ない) */
+    public const PREVENTS_APPLICANT_APPROVAL_INVALID = '申請者本人の承認を防ぐ設定を選択してください';
+
+    /** 添付ファイルの追加の型の誤り・欠け(同上) */
+    public const PREVENTS_ATTACHMENT_ADD_INVALID = '添付ファイルの追加の設定を選択してください';
+
+    public const DEADLINE_RANGE = '処理期限は 0 から 99 までの日数を入力してください';
+
+    public const CONFIRMERS_TOO_MANY = '確認する人は 10 人まで選択できます';
+
+    public const CONFIRMER_MISSING = '確認する人を選択してください';
 
     public const SKIPPABLE_MIN_ZERO = 'このステップの後に前の承認者を基準にするステップがあるため、人数の最小は 1 以上にしてください';
 }

@@ -3,6 +3,7 @@
 namespace App\Actions\Workflow;
 
 use App\Enums\Authz\ConditionOperator;
+use App\Enums\Authz\SelectionConditionKind;
 use App\Enums\Authz\SubjectCombination;
 use App\Enums\Workflow\WorkflowNodeKind;
 use App\Enums\Workflow\WorkflowTargetKind;
@@ -14,11 +15,17 @@ use App\Support\AccessContext;
 use Carbon\CarbonImmutable;
 
 /**
- * 定義の検査のうち、分岐の辺・処理対象者の対象者の形・差戻しできる先(docs の 設計/ワークフロー/ルートの深さ/定義の管理.md 3 節の G-6・G-7・G-11)。
+ * 定義の検査のうち、分岐の辺・処理対象者の対象者の形・差戻しできる先(docs の 設計/ワークフロー/ルートの深さ/定義の管理.md 3 節の G-6・G-7・G-11)と、
+ * 確認する人の対象者の形(設計/ワークフロー/案件の運用/定義の管理.md 3 節の G-13)。
  * 対象者の形は認可の公開の口 {@see SelectionSubjects} で読む(認可の表を直接読まない。名前は使わないので日付とロケールは結果に効かない)。
+ *
+ * @phpstan-import-type SelectionConditionView from SelectionSubjects
  */
 class RouteSettingRules
 {
+    /** 確認する人の対象者の条件の数の上限(G-13) */
+    private const CONFIRMERS_MAX = 10;
+
     public function __construct(private SelectionSubjects $subjects, private RecordConditions $conditions) {}
 
     /**
@@ -26,7 +33,10 @@ class RouteSettingRules
      */
     public function violations(RouteDefinition $route): array
     {
-        return [...$this->branchEdges($route), ...$this->fixedTargets($route), ...$this->sendBacks($route)];
+        return [
+            ...$this->branchEdges($route), ...$this->fixedTargets($route), ...$this->sendBacks($route),
+            ...$this->confirmers($route),
+        ];
     }
 
     /**
@@ -78,6 +88,51 @@ class RouteSettingRules
         }
 
         return $violations;
+    }
+
+    /**
+     * G-13: 確認する人の対象者は用途 selection で、組み方 any・ユーザーの eq だけ・1〜10 件(G-7 と同じ読み方)。
+     *
+     * @return list<RouteViolation>
+     */
+    private function confirmers(RouteDefinition $route): array
+    {
+        $confirming = array_filter($route->nodes, fn ($node) => $node->confirm_authz_subject_group_id !== null);
+        $groupIds = array_values(array_unique(array_map(
+            fn ($node) => (int) $node->confirm_authz_subject_group_id,
+            $confirming,
+        )));
+        $shapes = $groupIds === []
+            ? [] : $this->subjects->conditionsOf($groupIds, CarbonImmutable::today(), AccessContext::LOCALE_CODE);
+        $violations = [];
+
+        foreach ($confirming as $node) {
+            $shape = $shapes[(int) $node->confirm_authz_subject_group_id] ?? null;
+
+            if ($shape === null || ! self::isConfirmersShape($shape)) {
+                $violations[] = new RouteViolation('G-13', [$node->code]);
+            }
+        }
+
+        return $violations;
+    }
+
+    /**
+     * 組み方 any・ユーザーの eq だけ・1〜10 件か(G-13)。
+     *
+     * @param  array{combination: SubjectCombination, conditions: list<SelectionConditionView>}  $shape
+     */
+    private static function isConfirmersShape(array $shape): bool
+    {
+        $count = count($shape['conditions']);
+        $others = array_filter(
+            $shape['conditions'],
+            fn (array $condition) => $condition['kind'] !== SelectionConditionKind::User
+                || $condition['comparison'] !== ConditionOperator::Equal,
+        );
+
+        return $shape['combination'] === SubjectCombination::Any && $count >= 1 && $count <= self::CONFIRMERS_MAX
+            && $others === [];
     }
 
     /**

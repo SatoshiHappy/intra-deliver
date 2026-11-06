@@ -10,7 +10,7 @@ const FIELD_ID = 'step-attachment-prevents';
 
 /**
  * カード「添付ファイル」(設計/ワークフロー/申請の周辺/画面.md の 4 節): ラジオ「追加できる」「追加できない」。
- * number は呼び手が出すカードの並びから振る。
+ * number は呼び手が出すカードの並び(cardOrderOf)から振る。
  */
 export function NodeAttachmentCard({
     number,

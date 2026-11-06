@@ -5,6 +5,7 @@ namespace Tests\Support;
 use App\Actions\Authz\Api\SelectionCondition;
 use App\Actions\Workflow\NodeSettingsInput;
 use App\Actions\Workflow\SaveNodeSettings;
+use App\Enums\Workflow\WorkflowNodeKind;
 use App\Models\Authz\AuthzSubjectGroup;
 use App\Models\Workflow\WorkflowFlowVersion;
 use App\Models\Workflow\WorkflowRouteNode;
@@ -41,6 +42,8 @@ trait SavesNodeSettings
             'preventsAttachmentAdd' => $node->prevents_attachment_add,
             'sendBackNodeCodes' => array_values(array_map(fn (mixed $id) => (string) $codes[$id], $sendBacks)),
             'decisionRule' => $node->decision_rule, 'decisionValue' => $node->decision_value,
+            'deadlineDays' => $node->deadline_days,
+            'confirmers' => $this->confirmersOf($node),
         ];
 
         return new NodeSettingsInput(...[...$current, ...$overrides]);
@@ -78,6 +81,23 @@ trait SavesNodeSettings
                 ->map(fn (WorkflowRouteSendBack $row) => $row->getAttributes())->all(),
             'subject_groups' => AuthzSubjectGroup::query()->count(),
         ];
+    }
+
+    /**
+     * 確認する人の対象者をユーザーの id の入力に戻したもの(作った順。持たない種類は null、確認する人なしは空)。
+     *
+     * @return list<int>|null
+     */
+    protected function confirmersOf(WorkflowRouteNode $node): ?array
+    {
+        if (! $node->kind->isIn(WorkflowNodeKind::withConfirmers())) {
+            return null;
+        }
+
+        $group = $node->confirm_authz_subject_group_id;
+
+        return $group === null
+            ? [] : array_map(fn (SelectionCondition $condition) => $condition->id, $this->targetsOf((int) $group));
     }
 
     /**

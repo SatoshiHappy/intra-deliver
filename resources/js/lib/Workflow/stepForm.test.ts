@@ -1,12 +1,7 @@
 import { describe, expect, it } from 'vite-plus/test';
 import type { WorkflowStepSettings, WorkflowStepTarget } from '@/types';
-import {
-    errorKeysOf,
-    formOf,
-    payloadOf,
-    shownErrorKeys,
-    stepSignature,
-} from './stepForm';
+import { formOf, payloadOf, stepSignature } from './stepForm';
+import { errorKeysOf, shownErrorKeys } from './stepFormErrors';
 import { stepFieldsOf } from './stepFields';
 
 const SEND_BACK = {
@@ -33,6 +28,8 @@ function step(overrides: Partial<WorkflowStepSettings>): WorkflowStepSettings {
         preventsAttachmentAdd: true,
         sendBack: SEND_BACK,
         decision: null,
+        deadline: { days: 5 },
+        confirmers: [],
         ...overrides,
     };
 }
@@ -91,7 +88,9 @@ describe('formOf(縦配置・対象者)', () => {
     it('対象者で指定は行を編集中の行にする', () => {
         const target: WorkflowStepTarget = {
             kind: 'fixed',
-            rows: [{ type: 'role', id: 3, name: '一般利用者' }],
+            rows: [
+                { type: 'role', id: 3, name: '一般利用者', affiliation: null },
+            ],
         };
         const form = formOf(
             step({
@@ -105,7 +104,7 @@ describe('formOf(縦配置・対象者)', () => {
 
         expect(form.targetKind).toBe('fixed');
         expect(form.rows).toEqual([
-            { type: 'role', id: 3, name: '一般利用者' },
+            { type: 'role', id: 3, name: '一般利用者', affiliation: null },
         ]);
         expect(form.prevents).toBe(false);
         expect(form.preventsAttachmentAdd).toBe(false);
@@ -129,6 +128,8 @@ describe('payloadOf(指定の種類で使わない欄を空で送る)', () => {
             send_back_node_codes: ['apply'],
             decision_rule: null,
             decision_value: null,
+            deadline_days: 5,
+            confirmers: [],
         });
     });
 });
@@ -139,7 +140,14 @@ describe('payloadOf(指定の種類を替える)', () => {
         const toFixed = {
             ...formOf(base),
             targetKind: 'fixed' as const,
-            rows: [{ type: 'user' as const, id: 9, name: '吉田 達也' }],
+            rows: [
+                {
+                    type: 'user' as const,
+                    id: 9,
+                    name: '吉田 達也',
+                    affiliation: '総務部',
+                },
+            ],
         };
         const toDesignated = {
             ...formOf(base),

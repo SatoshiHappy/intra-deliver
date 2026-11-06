@@ -11,8 +11,10 @@ use LogicException;
  * ノードの設定から作る文の 1 か所(docs の 設計/ワークフロー/ルートの深さ/画面/図と意匠とE2E.md 9.3 節): 要約の 1 文(区切りの並びの summaryParts)・その可変部・
  * 図の短い文(subtitle)・縦配置の完了の条件・配置の仮の札。要約と短い文は同じ {@see StepTarget} の名前から作る。値だけを扱い、DB を読まない。
  * 分岐終了・同期の要約と、横配置・縦配置の「{n} 人」は 9.3 節の表に無い行で、表の文の形に揃えた。
+ * 要約の処理期限と確認する人の文は 設計/ワークフロー/案件の運用/画面/管理と通知の画面.md 7.6 節(カードの並びの順に続ける)。
  *
  * @phpstan-type SummaryPart string|array{departmentId: int, text: string}
+ * @phpstan-type SubtitlePart string|array{text: string, emphasis: true}
  */
 final class StepDescriptions
 {
@@ -27,6 +29,8 @@ final class StepDescriptions
      * @param  string  $name  ノードの名前(分岐開始の文に使う)
      * @param  StepTarget|null  $target  処理対象者の指定(分岐・同期は null)
      * @param  bool  $preventsAttachmentAdd  真のときだけ「添付ファイルを追加できません。」を続ける(設計/ワークフロー/申請の周辺/画面.md の 4 節)
+     * @param  int|null  $deadlineDays  処理期限の日数(期限を持てる種類だけ文を続ける = 設計/ワークフロー/案件の運用/画面/管理と通知の画面.md 7.6)
+     * @param  list<string>  $confirmerNames  確認する人の名前(確認する人を持てる種類だけ文を続ける = 同じ節)
      * @return list<SummaryPart>
      */
     public static function summaryParts(
@@ -36,6 +40,8 @@ final class StepDescriptions
         ?WorkflowDecisionRule $rule = null,
         ?int $value = null,
         bool $preventsAttachmentAdd = false,
+        ?int $deadlineDays = null,
+        array $confirmerNames = [],
     ): array {
         $phrase = fn () => self::targetParts($target ?? throw new LogicException("ステップ {$name} に処理対象者の指定が無い"));
 
@@ -50,7 +56,30 @@ final class StepDescriptions
             WorkflowNodeKind::SyncEnd => ['並行したステップがすべて終わると次へ進みます。'],
         };
 
-        return self::merged($preventsAttachmentAdd ? [...$sentence, '添付ファイルを追加できません。'] : $sentence);
+        return self::merged([
+            ...$sentence,
+            ...($kind->isIn(WorkflowNodeKind::withDeadline()) ? [self::deadlineSentence($deadlineDays)] : []),
+            ...($kind->isIn(WorkflowNodeKind::withConfirmers()) ? [self::confirmersSentence($confirmerNames)] : []),
+            ...($preventsAttachmentAdd ? ['添付ファイルを追加できません。'] : []),
+        ]);
+    }
+
+    /**
+     * 要約の処理期限の文(期限なしも文にする)。
+     */
+    private static function deadlineSentence(?int $days): string
+    {
+        return $days === null ? '期限はありません。' : "到達した日から {$days} 日以内に処理します。";
+    }
+
+    /**
+     * 要約の確認する人の文(名前を「、」でつなぐ。いなければ、いないことを文にする)。
+     *
+     * @param  list<string>  $names
+     */
+    private static function confirmersSentence(array $names): string
+    {
+        return $names === [] ? '確認する人はいません。' : implode('、', $names).'が確認します。';
     }
 
     /**
@@ -60,7 +89,7 @@ final class StepDescriptions
     {
         return match ($target->kind) {
             WorkflowTargetKind::Fixed => self::names($target),
-            WorkflowTargetKind::Relative => self::relativeScope($target).'の'.($target->companyPostName ?? '所属の人'),
+            WorkflowTargetKind::Relative => self::plainText(self::relativeParts($target)),
             WorkflowTargetKind::Designated => "{$target->designatorName}が選択した ".self::count($target),
         };
     }
@@ -111,37 +140,100 @@ final class StepDescriptions
     }
 
     /**
-     * 図の短い文(分岐・同期は null)。
+     * 定義の図の短い文(区切りの並び。期限の日数があれば後ろに「　期限 {n} 日」。文が無ければ null = 図と意匠とE2E.md 9.3 節、
+     * 設計/ワークフロー/案件の運用/画面/管理と通知の画面.md 7.6 節)。基準にする人は要約の主語と同じ文で、起点と役職名(役職が無ければ
+     * 「所属の人」)だけを強調の区切りにする。処理の時に指定は、承認の箱も横配置・縦配置の枠の右も同じ文。
+     *
+     * @return list<SubtitlePart>|null
      */
-    public static function subtitle(WorkflowNodeKind $kind, ?StepTarget $target): ?string
+    public static function subtitle(?StepTarget $target, ?int $deadlineDays = null): ?array
     {
         if ($target === null) {
-            return null;
+            return self::withDeadline([], $deadlineDays);
         }
 
-        return match ($target->kind) {
-            WorkflowTargetKind::Fixed => self::names($target),
-            WorkflowTargetKind::Relative => self::relativeScope($target)
-                .($target->companyPostName === null ? '' : " + {$target->companyPostName}"),
-            WorkflowTargetKind::Designated => self::designatorSubtitle($kind, $target->designatorName),
+        $parts = match ($target->kind) {
+            WorkflowTargetKind::Fixed => [self::names($target)],
+            WorkflowTargetKind::Relative => self::relativeParts($target),
+            WorkflowTargetKind::Designated => [self::designatorPhrase((string) $target->designatorName)],
+        };
+
+        return self::withDeadline($parts, $deadlineDays);
+    }
+
+    /**
+     * 案件の図の短い文: 処理の時に指定するノードの文(指定するノードの名前が null なら無し = 図と意匠とE2E.md 8 節)と、写した期限の日数。
+     *
+     * @return list<SubtitlePart>|null
+     */
+    public static function caseSubtitle(?string $designatorName, ?int $deadlineDays): ?array
+    {
+        $parts = $designatorName === null ? [] : [self::designatorPhrase($designatorName)];
+
+        return self::withDeadline($parts, $deadlineDays);
+    }
+
+    /**
+     * 確認の札(確認する人が 1 人以上のとき。2 人以上は 1 人目と残りの人数。並び = 渡した並び)。いなければ null。
+     *
+     * @param  list<string>  $names
+     */
+    public static function confirmBadge(array $names): ?string
+    {
+        return match (count($names)) {
+            0 => null,
+            1 => "確認：{$names[0]}",
+            default => "確認：{$names[0]} ほか ".(count($names) - 1).' 人',
         };
     }
 
     /**
-     * 処理の時に指定するノードの図の短い文(承認 =「{指定するステップ}が選択」、
-     * 横配置・縦配置の枠の右 =「承認者は{指定するステップ}が選択」。
-     * 人を選ぶ操作は「選択」、承認のステップだけに出る文は「承認者」= 設計/画面の意匠/文言.md 11.2)。
-     * 指定するノードの名前が null なら null(案件の図は処理の時に指定するノードの文だけを出す = 図と意匠とE2E.md 8 節)。
+     * 処理の時に指定するノードの文(する人を「が」、選ぶ物を「を」で示す = 9.3 節。人を選ぶ操作は「選択」= 設計/画面の意匠/文言.md 11.2)。
      */
-    public static function designatorSubtitle(WorkflowNodeKind $kind, ?string $designatorName): ?string
+    private static function designatorPhrase(string $designatorName): string
     {
-        if ($designatorName === null) {
-            return null;
+        return "{$designatorName}が承認者を選択";
+    }
+
+    /**
+     * 基準にする人の短い文の区切り(つないだ文が要約の主語 {@see self::targetPhrase()})。
+     *
+     * @return list<SubtitlePart>
+     */
+    private static function relativeParts(StepTarget $target): array
+    {
+        $base = $target->base ?? throw new LogicException('基準にする人で指定に起点が無い');
+        $scope = $target->scope ?? throw new LogicException('基準にする人で指定に組織の範囲が無い');
+
+        return [
+            ['text' => self::BASES[$base->value], 'emphasis' => true],
+            'の'.self::SCOPES[$scope->value].'の',
+            ['text' => $target->companyPostName ?? '所属の人', 'emphasis' => true],
+        ];
+    }
+
+    /**
+     * 短い文の後ろに期限を続ける(最後の区切りが文字列ならつなぐ。文が無ければ期限だけ。期限も無ければ null)。
+     *
+     * @param  list<SubtitlePart>  $parts
+     * @return list<SubtitlePart>|null
+     */
+    private static function withDeadline(array $parts, ?int $deadlineDays): ?array
+    {
+        if ($deadlineDays === null) {
+            return $parts === [] ? null : $parts;
         }
 
-        $isFrame = in_array($kind, WorkflowNodeKind::expanding(), true);
+        $deadline = ($parts === [] ? '' : '　')."期限 {$deadlineDays} 日";
+        $last = array_key_last($parts);
 
-        return $isFrame ? "承認者は{$designatorName}が選択" : "{$designatorName}が選択";
+        if ($last !== null && is_string($parts[$last])) {
+            $parts[$last] .= $deadline;
+
+            return $parts;
+        }
+
+        return [...$parts, $deadline];
     }
 
     /**
@@ -191,12 +283,14 @@ final class StepDescriptions
         return implode('、', array_map(fn (array $row) => $row['name'], $target->rows));
     }
 
-    private static function relativeScope(StepTarget $target): string
+    /**
+     * 区切りをつないだ文(強調を外す)。
+     *
+     * @param  list<SubtitlePart>  $parts
+     */
+    private static function plainText(array $parts): string
     {
-        $base = $target->base ?? throw new LogicException('基準にする人で指定に起点が無い');
-        $scope = $target->scope ?? throw new LogicException('基準にする人で指定に組織の範囲が無い');
-
-        return self::BASES[$base->value].'の'.self::SCOPES[$scope->value];
+        return implode('', array_map(fn (string|array $part) => is_string($part) ? $part : $part['text'], $parts));
     }
 
     private static function count(StepTarget $target): string

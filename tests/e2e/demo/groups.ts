@@ -63,6 +63,7 @@ export const demoGroups = [
         // zz-workflow-admin.attachment(フローの添付の設定。元に戻す。見本の案件の処理のダイアログを開くだけ)と
         // zz-workflow-admin(版・参照者)と zz-workflow-admin.steps(ステップの設定。元に戻す)はフローの定義を変えるが、
         // この組のほかの spec はフローの定義を前提にしない(workflow-person-links が前提にするのは見本の案件の状態だけ)。
+        // zz-workflow-admin.deadline(処理期限の誤りの入力)は保存が 422 で終わり、定義を変えない。
         // 名前の順でこの組の最後に流れ、別の組は別の DB なので、定義を変えても申請の筋(demo-workflow)に効かない)。
         // 時間の長い demo のファイルを上の 2 つの組から分けて、組どうしの時間をそろえる
         name: 'demo-ほか',
@@ -81,6 +82,7 @@ export const demoGroups = [
             'tests/e2e/demo/workflow-home.spec.ts',
             'tests/e2e/demo/workflow-person-links.spec.ts',
             'tests/e2e/demo/zz-workflow-admin.attachment.spec.ts',
+            'tests/e2e/demo/zz-workflow-admin.deadline.spec.ts',
             'tests/e2e/demo/zz-workflow-admin.spec.ts',
             'tests/e2e/demo/zz-workflow-admin.steps.spec.ts',
         ],

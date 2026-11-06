@@ -10,7 +10,7 @@ use Illuminate\Http\JsonResponse;
 
 /**
  * 定義の管理の対象者の候補の口(docs の 設計/ワークフロー/ルートの深さ/画面/README.md 1.1 節、ADR 0006): ステップの設定と参照者の対象者の欄が、
- * ページ遷移なしに 4 種類の候補を種類ごとの群の JSON で 1 回に取る。基準日 = 今日。結果は基準日で変わるので、Cache-Control: private, no-store を付ける。
+ * ページ遷移なしに 4 種類(種類の指定があればその種類だけ)の候補を種類ごとの群の JSON で 1 回に取る。基準日 = 今日。結果は基準日で変わるので、Cache-Control: private, no-store を付ける。
  */
 class SubjectCandidateController extends Controller
 {
@@ -19,7 +19,7 @@ class SubjectCandidateController extends Controller
     public function __invoke(FlowSubjectCandidatesRequest $request): JsonResponse
     {
         $context = AccessContext::of($request);
-        $groups = $this->candidates->of($request->keyword(), $context->date, $context->localeCode);
+        $groups = $this->candidates->of($request->keyword(), $context->date, $context->localeCode, $request->type());
 
         return response()->json(['groups' => $groups])->header('Cache-Control', 'private, no-store');
     }

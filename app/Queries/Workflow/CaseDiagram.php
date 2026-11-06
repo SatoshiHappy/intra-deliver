@@ -10,6 +10,7 @@ use App\Models\Workflow\WorkflowCaseEdge;
 use App\Models\Workflow\WorkflowCaseHistory;
 use App\Models\Workflow\WorkflowCaseNode;
 use App\Queries\Records\Api\RecordConditions;
+use App\Support\AccessContext;
 use Illuminate\Database\Eloquent\Collection;
 use LogicException;
 
@@ -23,21 +24,26 @@ use LogicException;
  * フロー情報の表の処理担当者 targets(現在のノードの処理対象者)と処理実行者(processed の actor・executor)=
  * 設計/ワークフロー/案件の運用/画面/案件の画面.md の 4 節。
  *
+ * 短い文は処理の時に指定するノードの文と写した期限の日数(展開の行は枠が出すので持たない)、確認の札は写した確認する人(名前 = 今日の名前。
+ * 設計/ワークフロー/案件の運用/画面/管理と通知の画面.md 7.6 節)。
+ *
  * @phpstan-import-type LinkedPerson from WorkflowPeople
+ * @phpstan-import-type SubtitlePart from StepDescriptions
  * @phpstan-import-type Council from CaseCouncils
  *
  * @phpstan-type MarkedPerson array{id: int, code: string, name: string|null, mainDepartmentId: int|null, isMe: bool}
  * @phpstan-type Processed array{action: string, at: string|null, actor: LinkedPerson, executor: LinkedPerson|null}
  * @phpstan-type DiagramNode array{id: int, code: string|null, name: string, kind: string, parentId: int|null,
- *     sequence: int|null, subtitle: string|null, state: string, people: list<MarkedPerson>,
+ *     sequence: int|null, subtitle: list<SubtitlePart>|null, state: string, people: list<MarkedPerson>,
  *     targets: list<MarkedPerson>, placeholders: list<array{label: string, optional: bool}>,
  *     consensus: array{text: string}|null,
- *     stepState: array{state: string, label: string}, processed: Processed|null, awaitingDesignation: bool}
+ *     stepState: array{state: string, label: string}, processed: Processed|null, awaitingDesignation: bool,
+ *     confirmBadge: string|null}
  * @phpstan-type DiagramEdge array{from: int, to: int, label: string|null, conditionText: string|null, taken: bool|null}
  */
 class CaseDiagram
 {
-    public function __construct(private RecordConditions $conditions) {}
+    public function __construct(private RecordConditions $conditions, private SubjectRows $subjectRows) {}
 
     /**
      * @param  Collection<int, WorkflowCaseNode>  $nodes  写した並びのノード(展開の行は親を読み込んである)
@@ -48,19 +54,22 @@ class CaseDiagram
      * @param  int|null  $requesterUserId  判定を求める者のユーザー
      * @return array{nodes: list<DiagramNode>, edges: list<DiagramEdge>}
      */
-    public function of(WorkflowCase $case, Collection $nodes, Collection $histories, array $assignments, CaseSituation $situation, array $people, array $councils, ?int $requesterUserId): array
+    public function of(WorkflowCase $case, Collection $nodes, Collection $histories, array $assignments, CaseSituation $situation, array $people, array $councils, ?int $requesterUserId, AccessContext $context): array
     {
         $names = $nodes->mapWithKeys(fn (WorkflowCaseNode $node) => [$node->id => $node->displayName()])->all();
         $isActive = $case->state !== WorkflowCaseState::Completed;
         $awaiting = fn (WorkflowCaseNode $node) => $isActive && $node->designator_workflow_case_node_id !== null && $node->state === WorkflowNodeState::Unreached && ! array_key_exists($node->id, $assignments);
         $moduleId = self::moduleIdOf($case);
+        $confirmGroupIds = array_values($nodes->map(fn (WorkflowCaseNode $node) => $node->confirm_authz_subject_group_id === null
+            ? null : (int) $node->confirm_authz_subject_group_id)->all());
+        $confirmers = $this->subjectRows->namesOf($confirmGroupIds, $context->date, $context->localeCode);
         // 展開の行の今の指定の同じ番号の人(親の指定の sequence 番目。指定が無いか番号が指定の数を超えれば null)
         $plannedOf = fn (WorkflowCaseNode $node): ?int => $node->parent_workflow_case_node_id === null
             ? null
             : $assignments[(int) $node->parent_workflow_case_node_id][(int) $node->sequence - 1] ?? null;
 
         return [
-            'nodes' => array_values($nodes->map(fn (WorkflowCaseNode $node) => $this->nodeOf($node, $histories, $situation, $people, $names, $councils[$node->id] ?? null, $requesterUserId, $awaiting($node), $plannedOf($node)))->all()),
+            'nodes' => array_values($nodes->map(fn (WorkflowCaseNode $node) => $this->nodeOf($node, $histories, $situation, $people, $names, $councils[$node->id] ?? null, $requesterUserId, $awaiting($node), $plannedOf($node), $confirmers[(int) $node->confirm_authz_subject_group_id] ?? []))->all()),
             'edges' => array_values(WorkflowCaseEdge::query()->where('workflow_case_id', $case->id)->orderBy('id')->get()->map(fn (WorkflowCaseEdge $edge) => [
                 'from' => (int) $edge->from_workflow_case_node_id,
                 'to' => (int) $edge->to_workflow_case_node_id,
@@ -88,9 +97,10 @@ class CaseDiagram
      * @param  array<int, LinkedPerson>  $people
      * @param  array<int, string>  $names  ノードの id → 表示名
      * @param  Council|null  $council
+     * @param  list<string>  $confirmers  写した確認する人の名前(条件の作った順)
      * @return DiagramNode
      */
-    private function nodeOf(WorkflowCaseNode $node, Collection $histories, CaseSituation $situation, array $people, array $names, ?array $council, ?int $requesterUserId, bool $awaitingDesignation, ?int $plannedUserId): array
+    private function nodeOf(WorkflowCaseNode $node, Collection $histories, CaseSituation $situation, array $people, array $names, ?array $council, ?int $requesterUserId, bool $awaitingDesignation, ?int $plannedUserId, array $confirmers): array
     {
         $history = $node->state === WorkflowNodeState::Done ? $histories->get($node->workflow_case_history_id) : null;
         $designatorId = $node->designator_workflow_case_node_id;
@@ -103,7 +113,10 @@ class CaseDiagram
             'kind' => $node->kind->value,
             'parentId' => $node->parent_workflow_case_node_id === null ? null : (int) $node->parent_workflow_case_node_id,
             'sequence' => $node->sequence,
-            'subtitle' => StepDescriptions::designatorSubtitle($node->kind, $designatorId === null ? null : ($names[(int) $designatorId] ?? null)),
+            'subtitle' => StepDescriptions::caseSubtitle(
+                $designatorId === null ? null : ($names[(int) $designatorId] ?? null),
+                $node->parent_workflow_case_node_id === null ? $node->deadline_days : null,
+            ),
             'state' => $node->state->value,
             'people' => $this->peopleOf($node, $history, $situation, $people, $requesterUserId, $plannedUserId),
             'targets' => $this->targetsOf($node, $situation, $people, $requesterUserId),
@@ -112,6 +125,7 @@ class CaseDiagram
             'stepState' => ['state' => $state, 'label' => $label],
             'processed' => $history === null ? null : self::processedOf($history, $people),
             'awaitingDesignation' => $awaitingDesignation,
+            'confirmBadge' => StepDescriptions::confirmBadge($confirmers),
         ];
     }
 

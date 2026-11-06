@@ -36,13 +36,13 @@ describe('frameHeaderTexts(横配置・縦配置の枠の見出し)', () => {
     it('左は種類と名前、右は短い文だけで、状態の札(承認待ちの語)を含まない', () => {
         const council = node(5, 'parallel', {
             name: '関係部署の合議',
-            subtitle: '承認者は課長が選択',
+            subtitle: ['課長が承認者を選択　期限 3 日'],
             stepState: { state: 'current', label: '承認待ち' },
         });
 
         expect(frameHeaderTexts(council, '並列承認')).toEqual({
             title: '並列承認「関係部署の合議」',
-            subtitle: '承認者は課長が選択',
+            subtitle: ['課長が承認者を選択　期限 3 日'],
         });
     });
 

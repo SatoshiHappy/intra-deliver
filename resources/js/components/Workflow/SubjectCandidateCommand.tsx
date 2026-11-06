@@ -44,14 +44,16 @@ function noticeOf(
  */
 function CandidateGroups({
     query,
+    type,
     rows,
     onSelect,
 }: {
     query: string;
+    type: WorkflowSubjectType | undefined;
     rows: SubjectRowDraft[];
     onSelect: PickHandler;
 }) {
-    const result = useAdminSubjectCandidates(query);
+    const result = useAdminSubjectCandidates(query, type);
     const notice = noticeOf(query, result);
 
     if (notice !== null || result.users === null) {
@@ -89,15 +91,18 @@ function CandidateGroups({
 /**
  * 対象者の欄の検索の中身(語の入力と、1 つの語で 4 種類をまとめて引いた候補の一覧。docs の
  * 設計/ワークフロー/ルートの深さ/画面/定義の管理の画面.md の 3.4 節)。開いている間だけ口を引く(閉じると呼び手が語を空にする)。
+ * type があれば、その種類の候補だけを引く。
  */
 export function SubjectCandidateCommand({
     label,
+    type,
     rows,
     query,
     onQueryChange,
     onSelect,
 }: {
     label: string;
+    type: WorkflowSubjectType | undefined;
     rows: SubjectRowDraft[];
     query: string;
     onQueryChange: (query: string) => void;
@@ -114,6 +119,7 @@ export function SubjectCandidateCommand({
             <CommandList>
                 <CandidateGroups
                     query={query}
+                    type={type}
                     rows={rows}
                     onSelect={onSelect}
                 />

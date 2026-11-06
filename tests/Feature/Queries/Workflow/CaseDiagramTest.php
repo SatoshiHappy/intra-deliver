@@ -37,23 +37,23 @@ final class CaseDiagramTest extends TransactionalTestCase
 
     /**
      * WF-000009(合議の途中)を合議の子 2 の処理対象者 u0010 が見る: 部長を通った枝、合議の子 3 つ、責任者は到達していない。人は処理済み = 処理者・現在 = 処理対象者
-     * (自分 = u0010)。縦配置の短い文と完了の条件、指定されるノードの短い文。
+     * (自分 = u0010)。縦配置の完了の条件(短い文と確認の札は CaseDiagramMarksTest)。
      */
     public function test_the_nodes_of_a_council_in_progress_take_the_diagram_shape(): void
     {
         $detail = $this->detailOf(9, 'u0010');
 
         $this->assertSame([
-            ['申請', 'apply', null, null, 'done', ['u0001 0'], 'apply', null, null],
-            ['課長', 'approve', null, null, 'done', ['u0002 0'], 'approve', null, null],
-            ['予算', 'branch_start', null, null, 'passed', [], null, null, null],
-            ['部長', 'approve', null, null, 'done', ['u0003 0'], 'approve', null, null],
-            ['分岐終了', 'branch_end', null, null, 'passed', [], null, null, null],
-            ['関係部署の合議', 'parallel', null, null, 'running', [], null, '承認者は課長が選択', '承認 1 / 2 人'],
-            ['関係部署の合議 承認 1', 'approve', '関係部署の合議', 1, 'done', ['u0009 0'], 'approve', null, null],
-            ['関係部署の合議 承認 2', 'approve', '関係部署の合議', 2, 'waiting', ['u0010 1'], null, null, null],
-            ['関係部署の合議 承認 3', 'approve', '関係部署の合議', 3, 'waiting', ['u0016 0'], null, null, null],
-            ['責任者', 'approve', null, null, 'unreached', [], null, '課長が選択', null],
+            ['申請', 'apply', null, null, 'done', ['u0001 0'], 'apply', null],
+            ['課長', 'approve', null, null, 'done', ['u0002 0'], 'approve', null],
+            ['予算', 'branch_start', null, null, 'passed', [], null, null],
+            ['部長', 'approve', null, null, 'done', ['u0003 0'], 'approve', null],
+            ['分岐終了', 'branch_end', null, null, 'passed', [], null, null],
+            ['関係部署の合議', 'parallel', null, null, 'running', [], null, '承認 1 / 2 人'],
+            ['関係部署の合議 承認 1', 'approve', '関係部署の合議', 1, 'done', ['u0009 0'], 'approve', null],
+            ['関係部署の合議 承認 2', 'approve', '関係部署の合議', 2, 'waiting', ['u0010 1'], null, null],
+            ['関係部署の合議 承認 3', 'approve', '関係部署の合議', 3, 'waiting', ['u0016 0'], null, null],
+            ['責任者', 'approve', null, null, 'unreached', [], null, null],
         ], $this->compactNodes($detail['nodes']));
         $this->assertSame(['apply', 'section_chief', 'budget', 'manager', 'budget_end', 'council', null, null, null, 'owner'], array_column($detail['nodes'], 'code'));
         $this->assertSame([[]], array_values(array_unique(array_column($detail['nodes'], 'placeholders'), SORT_REGULAR)));
@@ -249,7 +249,7 @@ final class CaseDiagramTest extends TransactionalTestCase
     }
 
     /**
-     * ノードの [名前, 種類, 親の名前, 番号, 状態, 人の「コード 自分」, 処理の種別, 短い文, 完了の条件]。
+     * ノードの [名前, 種類, 親の名前, 番号, 状態, 人の「コード 自分」, 処理の種別, 完了の条件]。
      *
      * @param  list<array<string, mixed>>  $nodes
      * @return list<list<mixed>>
@@ -260,7 +260,7 @@ final class CaseDiagramTest extends TransactionalTestCase
 
         return array_map(fn (array $node) => [
             $node['name'], $node['kind'], $node['parentId'] === null ? null : $names[$node['parentId']], $node['sequence'], $node['state'],
-            array_map(fn (array $person) => $person['code'].' '.($person['isMe'] ? '1' : '0'), $node['people']), $node['processed']['action'] ?? null, $node['subtitle'], $node['consensus']['text'] ?? null,
+            array_map(fn (array $person) => $person['code'].' '.($person['isMe'] ? '1' : '0'), $node['people']), $node['processed']['action'] ?? null, $node['consensus']['text'] ?? null,
         ], $nodes);
     }
 

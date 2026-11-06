@@ -20,8 +20,11 @@ const stepButton = (page: Page, name: string) =>
         .getByRole('group', { name: 'ステップの選択' })
         .getByRole('button', { name, exact: true });
 
-/** 部長(初期データの版 3)は添付ファイルを追加できない。要約の 1 文の後にその文が続く */
-const MANAGER_SUMMARY = '承認します。添付ファイルを追加できません。';
+/**
+ * 部長(初期データの版 3)は期限 5 日・確認する人 山田 恵で、添付ファイルを追加できない。要約の 1 文の後に期限・確認する人・添付の文が続く
+ */
+const MANAGER_SUMMARY =
+    '承認します。到達した日から 5 日以内に処理します。山田 恵が確認します。添付ファイルを追加できません。';
 
 /** 要約の 1 文(緑の帯) */
 const summaryOf = (page: Page, text: string) =>
@@ -29,6 +32,14 @@ const summaryOf = (page: Page, text: string) =>
 
 const cardHeading = (page: Page, name: string) =>
     page.getByRole('heading', { level: 3, name, exact: true });
+
+/** カード「処理期限」の数の欄(欄の名前を出さないので、読み上げの名前は見出し) */
+const deadlineOf = (page: Page) =>
+    page.getByRole('textbox', { name: '処理期限', exact: true });
+
+/** カードの見出しの番号(読み上げない丸の中の数。並びの順) */
+const cardNumber = (page: Page, name: string) =>
+    cardHeading(page, name).locator('span[aria-hidden="true"]');
 
 /**
  * 「保存」を押して、トーストが出るのを待つ。
@@ -96,6 +107,28 @@ test('システム管理者: 図で「部長」を押すと右の欄が「部長
     ).toBeVisible();
 });
 
+test('システム管理者: 部長のカード 4〜6 は処理期限・確認する人・添付ファイルで、図の部長の箱には期限、課長と部長の箱の下には確認の札が出る', async ({
+    page,
+}) => {
+    await openAsAdministrator(page, `${PLAN}?node=manager`);
+    const box = diagramOf(page).getByRole('button', { name: /^部長/ });
+
+    // 処理期限・確認する人は欄の名前を出さず、読み上げの名前は見出し(確認する人の検索の欄は「確認する人を追加」)
+    await expect(cardNumber(page, '処理期限')).toHaveText('4');
+    await expect(cardNumber(page, '確認する人')).toHaveText('5');
+    await expect(cardNumber(page, '添付ファイル')).toHaveText('6');
+    await expect(deadlineOf(page)).toHaveValue('5');
+    await expect(
+        page.getByRole('list', { name: '確認する人の選択' }),
+    ).toContainText('山田 恵');
+    await expect(
+        page.getByRole('combobox', { name: '確認する人を追加', exact: true }),
+    ).toBeVisible();
+    // 定義の図: 基準にする人の短い文の後ろに期限、確認する人がいる箱の下に確認の札(課長・部長)
+    await expect(box).toContainText('申請者の上位組織の部長　期限 5 日');
+    await expect(diagramOf(page).getByText('確認：山田 恵')).toHaveCount(2);
+});
+
 test('システム管理者: 部長の組織を替えて保存するとトーストが出て要約と図が描き直され、元に戻して保存できる', async ({
     page,
 }) => {
@@ -109,7 +142,7 @@ test('システム管理者: 部長の組織を替えて保存するとトース
     await expect(
         summaryOf(page, `申請者の所属組織の部長が${MANAGER_SUMMARY}`),
     ).toBeVisible();
-    await expect(box).toContainText('申請者の所属組織 + 部長');
+    await expect(box).toContainText('申請者の所属組織の部長　期限 5 日');
 
     await scope.click();
     await page.getByRole('option', { name: '上位組織', exact: true }).click();
@@ -117,10 +150,10 @@ test('システム管理者: 部長の組織を替えて保存するとトース
     await expect(
         summaryOf(page, `申請者の上位組織の部長が${MANAGER_SUMMARY}`),
     ).toBeVisible();
-    await expect(box).toContainText('申請者の上位組織 + 部長');
+    await expect(box).toContainText('申請者の上位組織の部長　期限 5 日');
 });
 
-test('システム管理者: 並列承認「関係部署の合議」を選ぶとカード 4 が出て、指定の方法は出さず、人数の最小・最大はカード 4 にだけ出る', async ({
+test('システム管理者: 並列承認「関係部署の合議」を選ぶとカード 4「合議の人数と可決の条件」と 5「処理期限」が出て(確認する人は出ない)、指定の方法は出さず、人数の最小・最大はカード 4 にだけ出る', async ({
     page,
 }) => {
     await openAsAdministrator(page, PLAN);
@@ -133,7 +166,9 @@ test('システム管理者: 並列承認「関係部署の合議」を選ぶと
             name: '関係部署の合議 並列承認',
         }),
     ).toBeVisible();
-    await expect(cardHeading(page, '合議の人数と可決の条件')).toBeVisible();
+    await expect(cardNumber(page, '合議の人数と可決の条件')).toHaveText('4');
+    await expect(cardNumber(page, '処理期限')).toHaveText('5');
+    await expect(cardHeading(page, '確認する人')).toHaveCount(0);
     await page
         .getByRole('button', {
             name: '申請者本人の承認を防ぐの説明',

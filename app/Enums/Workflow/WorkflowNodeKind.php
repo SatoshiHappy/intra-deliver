@@ -64,6 +64,28 @@ enum WorkflowNodeKind: string
     }
 
     /**
+     * 処理期限の日数を持てる種類(承認・横配置・縦配置。横配置・縦配置は親に置き展開の行に写す = 案件の運用/定義の管理.md 1 節。
+     * DB の検査制約 workflow_route_nodes_deadline_days_kind_check と同じ集まり)。
+     *
+     * @return list<self>
+     */
+    public static function withDeadline(): array
+    {
+        return [self::Approve, self::Serial, self::Parallel];
+    }
+
+    /**
+     * 確認する人を持てる種類(申請・承認 = 展開の行を持たず処理済みになる種類。案件の運用/定義の管理.md 1 節。
+     * DB の検査制約 workflow_route_nodes_confirm_authz_subject_group_id_kind_check と同じ集まり)。
+     *
+     * @return list<self>
+     */
+    public static function withConfirmers(): array
+    {
+        return [self::Apply, self::Approve];
+    }
+
+    /**
      * 展開の行を持つ種類(横配置・縦配置。処理の時に指定だけ = 定義の表.md 2.3、案件の表.md 3.2)。
      *
      * @return list<self>

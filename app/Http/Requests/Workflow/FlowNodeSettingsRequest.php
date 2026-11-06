@@ -14,18 +14,13 @@ use Illuminate\Validation\Rules\Enum;
 
 /**
  * ステップの設定の保存 workflow.admin.nodes.update の入力(欄 = {@see NodeSettingsInput} の snake_case。docs の
- * 設計/ワークフロー/ルートの深さ/定義の管理.md 5.1 節)。入口は型だけを見て(欠けた欄と null は空)、種類で決まる必須・禁止と値の規則は業務処理が
- * 422 にする。型の誤りは、その欄の 6 節の文(選択の欄は「選択してください」の文)で返す。
+ * 設計/ワークフロー/ルートの深さ/定義の管理.md 5.1 節、処理期限と確認する人 = 設計/ワークフロー/案件の運用/定義の管理.md 2 節)。
+ * 入口は型だけを見て、送られた欄(null を含む)と送られなかった欄を分けて業務処理へ渡す。種類で決まる必須・任意・禁止(欠けた欄を含む)と
+ * 値の規則は業務処理が 422 にする。型の誤りは、その欄の 6 節の文(選択の欄は「選択してください」の文)で返す。
  */
 class FlowNodeSettingsRequest extends FlowDefinitionRequest
 {
     use ReadsSubjectRows;
-
-    /** 申請者本人の承認を防ぐの型の誤り(6 節に文が無い欄。画面は必ず真偽を送るので、壊れた送りでしか出ない) */
-    public const PREVENTS_APPLICANT_APPROVAL_INVALID = '申請者本人の承認を防ぐ設定を選択してください';
-
-    /** 添付ファイルの追加の型の誤り(同上) */
-    public const PREVENTS_ATTACHMENT_ADD_INVALID = '添付ファイルの追加の設定を選択してください';
 
     /**
      * @return array<string, list<string|Closure|Enum>>
@@ -49,6 +44,9 @@ class FlowNodeSettingsRequest extends FlowDefinitionRequest
             'send_back_node_codes' => ['bail', 'nullable', 'list', self::codesRule()],
             'decision_rule' => self::enumRules(WorkflowDecisionRule::class),
             'decision_value' => $integer,
+            'deadline_days' => $integer,
+            'confirmers' => ['bail', 'nullable', 'list'],
+            'confirmers.*' => ['bail', 'required', 'integer'],
         ];
     }
 
@@ -70,20 +68,26 @@ class FlowNodeSettingsRequest extends FlowDefinitionRequest
             'designator_node_code' => FlowDefinitionErrors::DESIGNATOR_INVALID,
             'min_assignees' => FlowDefinitionErrors::ASSIGNEES_RANGE,
             'max_assignees' => FlowDefinitionErrors::ASSIGNEES_RANGE,
-            'prevents_applicant_approval' => self::PREVENTS_APPLICANT_APPROVAL_INVALID,
-            'prevents_attachment_add' => self::PREVENTS_ATTACHMENT_ADD_INVALID,
+            'prevents_applicant_approval' => FlowDefinitionErrors::PREVENTS_APPLICANT_APPROVAL_INVALID,
+            'prevents_attachment_add' => FlowDefinitionErrors::PREVENTS_ATTACHMENT_ADD_INVALID,
             'send_back_node_codes' => FlowDefinitionErrors::SEND_BACK_INVALID,
             'decision_rule' => FlowDefinitionErrors::DECISION_RULE_REQUIRED,
             'decision_value' => $decisionValue,
+            'deadline_days' => FlowDefinitionErrors::DEADLINE_RANGE,
+            'confirmers' => FlowDefinitionErrors::CONFIRMER_MISSING,
+            'confirmers.*.required' => FlowDefinitionErrors::CONFIRMER_MISSING,
+            'confirmers.*.integer' => FlowDefinitionErrors::CONFIRMER_MISSING,
         ];
     }
 
     /**
-     * 業務処理に渡す入力(規則が型を確かめた後に呼ぶ。欠けた欄は null)。
+     * 業務処理に渡す入力(規則が型を確かめた後に呼ぶ。欠けた欄は null で、そのキーを missing に並べる)。
      */
     public function settings(): NodeSettingsInput
     {
         $codes = $this->input('send_back_node_codes');
+        $confirmers = $this->input('confirmers');
+        $fields = array_filter(array_keys($this->rules()), fn (string $key) => ! str_contains($key, '*'));
 
         return new NodeSettingsInput(
             targetKind: $this->enum('target_kind', WorkflowTargetKind::class),
@@ -101,6 +105,9 @@ class FlowNodeSettingsRequest extends FlowDefinitionRequest
             decisionValue: $this->nullableInteger('decision_value'),
             preventsAttachmentAdd: $this->input('prevents_attachment_add') === null
                 ? null : $this->boolean('prevents_attachment_add'),
+            deadlineDays: $this->nullableInteger('deadline_days'),
+            confirmers: is_array($confirmers) ? array_values(array_map('intval', $confirmers)) : null,
+            missing: array_values(array_filter($fields, fn (string $key) => ! $this->has($key))),
         );
     }
 

@@ -45,16 +45,19 @@ function TargetKindSelect({
 }
 
 /**
- * カード 1「誰が承認するか」(申請は「誰が申請できるか」): 指定の方法(Select)と、その方法の欄。見出しの横の「?」の説明は指定の方法で切り替わる(保存の前)。
+ * カード「誰が承認するか」(申請は「誰が申請できるか」): 指定の方法(Select)と、その方法の欄。見出しの横の「?」の説明は指定の方法で切り替わる(保存の前)。
  * 出す欄は fields(定義の管理の画面.md の 3.3 節のデシジョン表)。指定の方法は選べるのが 2 つ以上(承認)のときだけ出す
  * (申請は対象者で指定だけ、横配置・縦配置は処理の時に指定だけ)。
+ * number は呼び手が出すカードの並び(cardOrderOf)から振る。
  */
 export function StepTargetCard({
+    number,
     kind,
     fields,
     form,
     options,
 }: {
+    number: number;
     kind: WorkflowNodeKind;
     fields: TargetField[];
     form: StepFormApi;
@@ -65,7 +68,7 @@ export function StepTargetCard({
     return (
         <StepCard
             id="step-card-target"
-            number={1}
+            number={number}
             heading={targetHeading(kind)}
             help={targetLine(kind, form.values.targetKind)}
         >

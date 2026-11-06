@@ -1,5 +1,3 @@
-import { fieldErrorKeys } from '@/lib/Workflow/stepFields';
-import type { StepFields } from '@/lib/Workflow/stepFields';
 import { draftsOf, rowsPayloadOf } from '@/lib/Workflow/subjectRows';
 import type {
     SubjectRowDraft,
@@ -16,8 +14,9 @@ import type {
 
 /**
  * ステップの設定の入力と、送る値(docs の 設計/ワークフロー/ルートの深さ/定義の管理.md の 5.1 節・
- * 設計/ワークフロー/ルートの深さ/画面/定義の管理の画面.md の 3.3 節)。1 つのステップの全カードを 1 回で送る。
- * 指定の種類・ステップの種類で使わない欄は空(null)で送る(5.1 の「禁止」の欄)。
+ * 設計/ワークフロー/ルートの深さ/画面/定義の管理の画面.md の 3.3 節。処理期限と確認する人 =
+ * 設計/ワークフロー/案件の運用/定義の管理.md の 2 節)。1 つのステップの全カードを 1 回で送る。
+ * どの欄も必ず送る(送らない欄はサーバーが 422 にする)。指定の種類・ステップの種類で使わない欄は空(null)で送る(5.1 の「禁止」の欄)。
  */
 
 /** 入力。数の欄は打った文字のまま持つ(範囲の誤りはサーバーが欄の下に返す) */
@@ -36,6 +35,8 @@ export type StepForm = {
     decisionRule: WorkflowDecisionRule | '';
     countValue: string;
     ratioValue: string;
+    deadline: string;
+    confirmers: SubjectRowDraft[];
 };
 
 /** 送る値(欄の名前は 422 のキーと同じ) */
@@ -53,6 +54,8 @@ type StepPayload = {
     send_back_node_codes: string[] | null;
     decision_rule: WorkflowDecisionRule | null;
     decision_value: number | string | null;
+    deadline_days: number | string | null;
+    confirmers: number[] | null;
 };
 
 /** 指定の種類ごとの値を入れる前の入力(使わない欄の初期値) */
@@ -71,33 +74,8 @@ const EMPTY: StepForm = {
     decisionRule: '',
     countValue: '',
     ratioValue: '',
-};
-
-/** 欄ごとの誤りのキー(欄を変えたら、その欄の誤りを消す) */
-const ERROR_KEYS: Record<keyof StepForm, string[]> = {
-    targetKind: [
-        'target_kind',
-        'targets',
-        'relative_base',
-        'relative_scope',
-        'company_post_id',
-        'designator_node_code',
-        'min_assignees',
-        'max_assignees',
-    ],
-    rows: ['targets'],
-    relativeBase: ['relative_base'],
-    relativeScope: ['relative_scope'],
-    companyPostId: ['company_post_id'],
-    designatorCode: ['designator_node_code', 'min_assignees'],
-    min: ['min_assignees'],
-    max: ['min_assignees', 'max_assignees'],
-    prevents: ['prevents_applicant_approval'],
-    preventsAttachmentAdd: ['prevents_attachment_add'],
-    sendBack: ['send_back_node_codes'],
-    decisionRule: ['decision_rule', 'decision_value', 'min_assignees'],
-    countValue: ['decision_value'],
-    ratioValue: ['decision_value'],
+    deadline: '',
+    confirmers: [],
 };
 
 function targetValues(target: WorkflowStepTarget | null): Partial<StepForm> {
@@ -145,6 +123,8 @@ export function formOf(step: WorkflowStepSettings): StepForm {
             decision?.rule === 'count' ? String(decision.value ?? '') : '',
         ratioValue:
             decision?.rule === 'ratio' ? String(decision.value ?? '') : '',
+        deadline: String(step.deadline?.days ?? ''),
+        confirmers: draftsOf(step.confirmers ?? []),
     };
 }
 
@@ -216,14 +196,12 @@ export function payloadOf(
         ...(hasDecision
             ? decisionPayload(form)
             : { decision_rule: null, decision_value: null }),
+        deadline_days: step.deadline === null ? null : numberOf(form.deadline),
+        confirmers:
+            step.confirmers === null
+                ? null
+                : form.confirmers.map((row) => row.id),
     };
-}
-
-/**
- * 欄を変えたときに消す誤りのキー。
- */
-export function errorKeysOf(field: keyof StepForm): string[] {
-    return ERROR_KEYS[field];
 }
 
 /**
@@ -233,43 +211,20 @@ export function stepSignature(step: WorkflowStepSettings): string {
     return JSON.stringify(step);
 }
 
-/** カードの欄の下に出す誤りのキー(カードはノードが設定を持てば出る) */
-const CARD_KEYS = [
-    'prevents_applicant_approval',
-    'send_back_node_codes',
-    'prevents_attachment_add',
-];
-
-/**
- * 欄の下に出すキー(誤りのうち、欄の無いキーだけを先頭に出すための照合)。カード 1・カード 4 は出している欄のキーだけ
- * (出していない欄の誤りは先頭に出す)。行の誤り targets.<添字> は対象者の欄を出しているときだけ。
- */
-export function shownErrorKeys(
-    errorKeys: string[],
-    fields: StepFields,
-): string[] {
-    const hasSubjects = fields.target.includes('subjects');
-
-    return [
-        ...fieldErrorKeys(fields),
-        ...CARD_KEYS,
-        ...(hasSubjects
-            ? errorKeys.filter((key) => key.startsWith('targets.'))
-            : []),
-    ];
-}
-
 /** ステップの設定のカード(出す並び) */
 export type NodeCard =
     | 'target'
     | 'prevents'
     | 'sendBack'
     | 'decision'
+    | 'deadline'
+    | 'confirmers'
     | 'attachment';
 
 /**
- * ノードが持つ設定のカードを、出す並びで返す(番号は並びの順に 1 から振る。出す条件の 1 か所。
- * 設計/ワークフロー/ルートの深さ/画面/定義の管理の画面.md の 3.3 節、設計/ワークフロー/申請の周辺/画面.md の 4 節)。
+ * ノードが持つ設定のカードを、出す並びで返す(番号は並びの順に 1 から振る。出す条件と番号の 1 か所。
+ * 設計/ワークフロー/ルートの深さ/画面/定義の管理の画面.md の 3.3 節、設計/ワークフロー/申請の周辺/画面.md の 4 節、
+ * 設計/ワークフロー/案件の運用/画面/管理と通知の画面.md の 7.6 節)。カードは、ステップがその設定を持てば(null でなければ)出す。
  */
 export function cardOrderOf(node: WorkflowStepSettings): NodeCard[] {
     const cards: [NodeCard, boolean][] = [
@@ -277,6 +232,8 @@ export function cardOrderOf(node: WorkflowStepSettings): NodeCard[] {
         ['prevents', node.preventsApplicantApproval !== null],
         ['sendBack', node.sendBack !== null],
         ['decision', node.decision !== null],
+        ['deadline', node.deadline !== null],
+        ['confirmers', node.confirmers !== null],
         ['attachment', node.preventsAttachmentAdd !== null],
     ];
 

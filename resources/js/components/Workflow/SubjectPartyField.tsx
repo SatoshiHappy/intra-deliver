@@ -18,12 +18,15 @@ import {
     withoutSubject,
 } from '@/lib/Workflow/subjectRows';
 import type { SubjectRowDraft } from '@/lib/Workflow/subjectRows';
+import type { WorkflowSubjectType } from '@/types';
 
 type Props = {
     /** 検索の欄のボタンの id(誤りの文言の id もここから作る) */
     id: string;
-    /** 欄の名前(「参照者」「対象者」。検索の欄の「{名前}を追加」と読み上げの名前) */
+    /** 欄の名前(「参照者」「対象者」「確認する人」。検索の欄の「{名前}を追加」と読み上げの名前) */
     label: string;
+    /** 候補の種類を 1 つに絞る(確認する人 = ユーザーだけ)。無ければ 4 種類 */
+    type?: WorkflowSubjectType;
     rows: SubjectRowDraft[];
     errors: Record<string, string | undefined>;
     /** 誤りのキー(並び全体のキー。札は <キー>.<添字>) */
@@ -32,7 +35,8 @@ type Props = {
 };
 
 /**
- * 選んだ相手の札 1 つ(頭の印・名前・ユーザーの主所属と、右に外す ×)。誤りがあれば赤の縁で、外すボタンに aria-invalid を付ける。
+ * 選んだ相手の札 1 つ(頭の印・名前・ユーザーの主所属と、右に外す ×。主所属はサーバーの行の今日の主所属か、候補から選んだ候補の所属で、
+ * 長いときは切り title で全文)。誤りがあれば赤の縁で、外すボタンに aria-invalid を付ける。
  */
 function SubjectChip({
     row,
@@ -54,8 +58,11 @@ function SubjectChip({
         >
             <SubjectMark type={row.type} label={row.name} />
             <span className="truncate font-medium">{row.name}</span>
-            {(row.affiliation ?? null) !== null && (
-                <span className="truncate text-xs text-muted-foreground">
+            {row.affiliation !== null && (
+                <span
+                    className="truncate text-xs text-muted-foreground"
+                    title={row.affiliation}
+                >
                     {row.affiliation}
                 </span>
             )}
@@ -110,6 +117,7 @@ function SearchButton({
 type SearchProps = {
     id: string;
     label: string;
+    type: WorkflowSubjectType | undefined;
     rows: SubjectRowDraft[];
     invalid: boolean;
     describedBy: string | undefined;
@@ -117,11 +125,12 @@ type SearchProps = {
 };
 
 /**
- * 札の下の検索の欄(「{名前}を追加」。押すと 1 つの候補の一覧から 4 種類を選べ、選ぶと閉じる。閉じると語も空に戻る)。
+ * 札の下の検索の欄(「{名前}を追加」。押すと 1 つの候補の一覧から 4 種類(type があればその種類)を選べ、選ぶと閉じる。閉じると語も空に戻る)。
  */
 function SubjectSearch({
     id,
     label,
+    type,
     rows,
     invalid,
     describedBy,
@@ -151,6 +160,7 @@ function SubjectSearch({
             >
                 <SubjectCandidateCommand
                     label={label}
+                    type={type}
                     rows={rows}
                     query={open ? query : ''}
                     onQueryChange={setQuery}
@@ -180,24 +190,38 @@ function FieldErrors({ id, messages }: { id: string; messages: string[] }) {
 }
 
 /**
+ * 札ごとの誤り(<errorKey>.<添字>)と、欄の下に出す文(並び全体の誤りと札の誤り)。
+ */
+function fieldErrorsOf(
+    errors: Record<string, string | undefined>,
+    errorKey: string,
+    rows: SubjectRowDraft[],
+) {
+    const rowErrors = rows.map((_, index) => errors[`${errorKey}.${index}`]);
+    const messages = [errors[errorKey], ...rowErrors].filter(
+        (message): message is string => message !== undefined,
+    );
+
+    return { rowErrors, messages };
+}
+
+/**
  * 対象者の欄(docs の 設計/ワークフロー/ルートの深さ/画面/定義の管理の画面.md の 3.3 節・3.4 節。会議の関係者の欄と同じ形 =
  * 業務データの複数の参照の欄): 選んだ相手を札で並びの順に並べ、その下の検索の欄で 1 つの候補の一覧からユーザー・組織・役職・ロールを選ぶ。
- * 選んだ相手は候補から消え、札の × で外す。参照者の面とステップの設定の「対象者で指定」が使う。
+ * 選んだ相手は候補から消え、札の × で外す。参照者の面とステップの設定の「対象者で指定」「確認する人」(type = ユーザーだけ)が使う。
  * 誤りのキー = 並び全体は errorKey、札は <errorKey>.<添字>(札の誤りは赤の縁と、欄の下の文)。
  */
 export function SubjectPartyField({
     id,
     label,
+    type,
     rows,
     errors,
     errorKey,
     onChange,
 }: Props) {
     const errorId = formErrorId(id);
-    const rowErrors = rows.map((_, index) => errors[`${errorKey}.${index}`]);
-    const messages = [errors[errorKey], ...rowErrors].filter(
-        (message): message is string => message !== undefined,
-    );
+    const { rowErrors, messages } = fieldErrorsOf(errors, errorKey, rows);
 
     return (
         <div className="flex w-full flex-col gap-2">
@@ -222,11 +246,12 @@ export function SubjectPartyField({
             <SubjectSearch
                 id={id}
                 label={label}
+                type={type}
                 rows={rows}
                 invalid={errors[errorKey] !== undefined}
                 describedBy={messages.length > 0 ? errorId : undefined}
-                onPick={(type, candidate) =>
-                    onChange(withPicked(rows, type, candidate))
+                onPick={(picked, candidate) =>
+                    onChange(withPicked(rows, picked, candidate))
                 }
             />
             {messages.length > 0 && (

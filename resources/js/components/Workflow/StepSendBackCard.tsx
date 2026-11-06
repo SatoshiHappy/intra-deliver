@@ -53,12 +53,15 @@ function SendBackChecks({
 }
 
 /**
- * カード 3「差戻しできる先」: 祖先のステップの Checkbox の並び。「?」の説明は、カードの説明の文と 1 つも付けない場合の意味の 2 文。
+ * カード「差戻しできる先」: 祖先のステップの Checkbox の並び。「?」の説明は、カードの説明の文と 1 つも付けない場合の意味の 2 文。
+ * number は呼び手が出すカードの並び(cardOrderOf)から振る。
  */
 export function StepSendBackCard({
+    number,
     candidates,
     form,
 }: {
+    number: number;
     candidates: WorkflowNodeChoice[];
     form: StepFormApi;
 }) {
@@ -67,7 +70,7 @@ export function StepSendBackCard({
     return (
         <StepCard
             id={CARD_ID}
-            number={3}
+            number={number}
             heading="差戻しできる先"
             help={`${SEND_BACK_LINE}${HELP.sendBack}`}
         >

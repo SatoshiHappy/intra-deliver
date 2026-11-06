@@ -1,3 +1,4 @@
+import { ScrollWithActionBar } from '@/components/ScrollWithActionBar';
 import { StepSettingsForm } from '@/components/Workflow/StepSettingsForm';
 import { NodeSummary } from '@/components/Workflow/NodeSummary';
 import { Badge } from '@/components/ui/badge';
@@ -50,6 +51,7 @@ function StepPaneHeading({ step }: { step: WorkflowStepSettings }) {
 /**
  * 図で選んだステップの欄(docs の 設計/ワークフロー/ルートの深さ/画面/定義の管理の画面.md の 3.3 節): 見出し(ステップの名前と、横に種類のチップ)・
  * 要約の 1 文(設定から作った文。緑の帯の太字)・設定のカード。分岐・同期は設定を持たないので、カードを出さず要約だけ。
+ * 欄は呼び手が与えた高さ(図の枠と同じ高さ)で、中身だけが中でスクロールし、「保存」の帯は欄の下端(3.3 節)。
  */
 export function StepSettingsPane({
     flowCode,
@@ -62,22 +64,33 @@ export function StepSettingsPane({
     step: WorkflowStepSettings;
     options: WorkflowAdminFlowShowProps['options'];
 }) {
-    return (
-        <section
-            aria-labelledby="step-settings-heading"
-            className="flex min-w-0 flex-col gap-4 rounded-xl border bg-card p-5 text-card-foreground"
-        >
+    const header = (
+        <>
             <StepPaneHeading step={step} />
             <p className={SUMMARY_CLASSES}>
                 <NodeSummary parts={step.summary} />
             </p>
-            {step.target !== null && (
+        </>
+    );
+
+    return (
+        <section
+            aria-labelledby="step-settings-heading"
+            className={cn(
+                'flex min-h-0 min-w-0 flex-col overflow-hidden rounded-xl border bg-card',
+                'text-card-foreground xl:h-full',
+            )}
+        >
+            {step.target === null ? (
+                <ScrollWithActionBar bar={null}>{header}</ScrollWithActionBar>
+            ) : (
                 <StepSettingsForm
                     key={`${version}|${stepSignature(step)}`}
                     flowCode={flowCode}
                     version={version}
                     step={step}
                     options={options}
+                    header={header}
                 />
             )}
         </section>

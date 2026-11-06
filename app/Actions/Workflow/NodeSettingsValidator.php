@@ -8,8 +8,9 @@ use App\Enums\Workflow\WorkflowTargetKind;
 use App\Models\Master\CompanyPost;
 
 /**
- * ステップの設定の入力を、欄の扱いと値で確かめる(docs の 設計/ワークフロー/ルートの深さ/定義の管理.md の 5.1 節・6 節)。
- * DB の検査制約が止める組を書く前に 422 にするため(データモデル/README.md の 1 節の例外)。
+ * ステップの設定の入力を、欄の扱いと値で確かめる(docs の 設計/ワークフロー/ルートの深さ/定義の管理.md の 5.1 節・6 節、処理期限と確認する人 =
+ * 設計/ワークフロー/案件の運用/定義の管理.md の 2 節・5 節)。DB の検査制約が止める組を書く前に 422 にするため(データモデル/README.md の 1 節の例外)。
+ * 必須・任意の欄が送られていなければ、その欄の文で 422 にする(任意の欄を欠けたまま空で上書きしない = 5.1 節)。禁止の欄は欠けてもよい。
  */
 class NodeSettingsValidator
 {
@@ -18,6 +19,12 @@ class NodeSettingsValidator
     private const OPTIONAL = 'optional';
 
     private const FORBIDDEN = 'forbidden';
+
+    /** 確認する人の上限(重複を除いた人数) */
+    private const CONFIRMERS_MAX = 10;
+
+    /** 処理期限の日数の範囲 */
+    private const DEADLINE_DAYS_MAX = 99;
 
     /** 指定の種類で扱いが決まる欄 */
     private const BY_TARGET_KIND = [
@@ -90,6 +97,8 @@ class NodeSettingsValidator
             'send_back_node_codes' => $only($approving, self::OPTIONAL),
             'decision_rule' => $only($isParallel, self::REQUIRED),
             'decision_value' => $valueUsage,
+            'deadline_days' => $only($kind->isIn(WorkflowNodeKind::withDeadline()), self::OPTIONAL),
+            'confirmers' => $only($kind->isIn(WorkflowNodeKind::withConfirmers()), self::OPTIONAL),
         ];
     }
 
@@ -107,6 +116,7 @@ class NodeSettingsValidator
 
         return match (true) {
             $usage === self::FORBIDDEN => $isFilled ? FlowDefinitionErrors::NOT_ALLOWED : null,
+            in_array($field, $input->missing, true) => $this->missingError($field, $input),
             ! $isFilled => $usage === self::REQUIRED ? $this->requiredError($field, $input) : null,
             default => $this->valueError($field, $kind, $input, $nodeIds),
         };
@@ -131,6 +141,22 @@ class NodeSettingsValidator
     }
 
     /**
+     * 必須・任意の欄が送られていないときの文言(その欄の 422 の文。任意の欄は型の誤りの文)。
+     */
+    private function missingError(string $field, NodeSettingsInput $input): string
+    {
+        return match ($field) {
+            'company_post_id' => FlowDefinitionErrors::COMPANY_POST_MISSING,
+            'prevents_applicant_approval' => FlowDefinitionErrors::PREVENTS_APPLICANT_APPROVAL_INVALID,
+            'prevents_attachment_add' => FlowDefinitionErrors::PREVENTS_ATTACHMENT_ADD_INVALID,
+            'send_back_node_codes' => FlowDefinitionErrors::SEND_BACK_INVALID,
+            'deadline_days' => FlowDefinitionErrors::DEADLINE_RANGE,
+            'confirmers' => FlowDefinitionErrors::CONFIRMER_MISSING,
+            default => $this->requiredError($field, $input),
+        };
+    }
+
+    /**
      * 空でない欄の値の誤り(対象者の行の相手は、対象者の口が確かめるのでここで見ない)。
      *
      * @param  array<string, int>  $nodeIds
@@ -149,6 +175,8 @@ class NodeSettingsValidator
             'max_assignees' => self::inRange($input->maxAssignees, 1, 20),
             'send_back_node_codes' => array_diff($input->sendBackNodeCodes ?? [], array_keys($nodeIds)) === [],
             'decision_value' => self::isDecisionValueValid($kind, $input),
+            'deadline_days' => self::inRange($input->deadlineDays, 0, self::DEADLINE_DAYS_MAX),
+            'confirmers' => count(array_unique($input->confirmers ?? [])) <= self::CONFIRMERS_MAX,
             default => true,
         };
 
@@ -157,6 +185,8 @@ class NodeSettingsValidator
             'company_post_id' => FlowDefinitionErrors::COMPANY_POST_MISSING,
             'designator_node_code' => FlowDefinitionErrors::DESIGNATOR_INVALID,
             'send_back_node_codes' => FlowDefinitionErrors::SEND_BACK_INVALID,
+            'deadline_days' => FlowDefinitionErrors::DEADLINE_RANGE,
+            'confirmers' => FlowDefinitionErrors::CONFIRMERS_TOO_MANY,
             default => $this->requiredError($field, $input),
         };
     }
@@ -235,6 +265,8 @@ class NodeSettingsValidator
             'prevents_attachment_add' => $input->preventsAttachmentAdd,
             'send_back_node_codes' => $input->sendBackNodeCodes,
             'decision_rule' => $input->decisionRule,
+            'deadline_days' => $input->deadlineDays,
+            'confirmers' => $input->confirmers,
             default => $input->decisionValue,
         };
     }

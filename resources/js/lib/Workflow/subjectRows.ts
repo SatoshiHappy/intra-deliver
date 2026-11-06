@@ -19,10 +19,8 @@ export const SUBJECT_TYPES: { value: WorkflowSubjectType; label: string }[] = [
     { value: 'role', label: 'ロール' },
 ];
 
-/** 選んだ相手(サーバーの行と同じ形。affiliation = ユーザーの主所属の名前。札に添える。サーバーの行には無い) */
-export type SubjectRowDraft = WorkflowSubjectRow & {
-    affiliation?: string | null;
-};
+/** 選んだ相手(サーバーの行と同じ形。affiliation = ユーザーの主所属の名前。札の名前の後ろに出す。候補から選んだ相手は候補の所属) */
+export type SubjectRowDraft = WorkflowSubjectRow;
 
 /** 送る行 */
 export type SubjectRowPayload = {

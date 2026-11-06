@@ -1,7 +1,8 @@
 import { useForm } from '@inertiajs/react';
 import type { FormEvent } from 'react';
 import { clearRowErrors, clearServerErrors } from '@/lib/formErrors';
-import { errorKeysOf, formOf, payloadOf } from '@/lib/Workflow/stepForm';
+import { formOf, payloadOf } from '@/lib/Workflow/stepForm';
+import { errorKeysOf } from '@/lib/Workflow/stepFormErrors';
 import type { StepForm } from '@/lib/Workflow/stepForm';
 import { update } from '@/routes/workflow/admin/nodes';
 import type { WorkflowStepSettings } from '@/types';
@@ -25,6 +26,8 @@ export function useStepForm(
         set: <K extends keyof StepForm>(field: K, value: StepForm[K]) => {
             if (field === 'rows') {
                 clearRowErrors(form, 'targets');
+            } else if (field === 'confirmers') {
+                clearRowErrors(form, 'confirmers');
             } else {
                 clearServerErrors(form, errorKeysOf(field));
             }

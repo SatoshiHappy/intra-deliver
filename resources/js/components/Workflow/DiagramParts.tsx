@@ -6,6 +6,10 @@ import { CaseStepBadge } from '@/components/Workflow/WorkflowStatusBadge';
 import { useNodeSelection } from '@/hooks/Workflow/use-diagram-selection';
 import { cn } from '@/lib/utils';
 import { markedPeopleSegments } from '@/lib/Workflow/caseDetail';
+import {
+    SubtitleText,
+    WithConfirmBadge,
+} from '@/components/Workflow/DiagramTexts';
 import { councilBoxTitle } from '@/lib/Workflow/diagramFrames';
 import { stepBoxToneOf } from '@/lib/Workflow/diagramMarks';
 import type {
@@ -143,10 +147,28 @@ function StateLine({
 }
 
 /**
- * 申請・承認と展開の行の箱: 題(StepTitle)・短い文・人と状態の札。
+ * 申請・承認と展開の行の箱: 題(StepTitle)・短い文・人と状態の札。確認する人がいれば箱の下の中央に確認の札(配置は札の分だけ高い)。
  * 処理済み・承認待ちの箱は札を残して地を札の地で塗る(図と意匠とE2E.md 8 節)。
  */
-export function StepNode({ data, parentId }: NodeProps<Node<StepNodeData>>) {
+export function StepNode(nodeProps: NodeProps<Node<StepNodeData>>) {
+    const badge = nodeProps.data.node.confirmBadge;
+
+    if (badge === null) {
+        return <StepBox {...nodeProps} />;
+    }
+
+    return (
+        <WithConfirmBadge text={badge} handles={<Handles />}>
+            <StepBox {...nodeProps} hasHandles={false} />
+        </WithConfirmBadge>
+    );
+}
+
+function StepBox({
+    data,
+    parentId,
+    hasHandles = true,
+}: NodeProps<Node<StepNodeData>> & { hasHandles?: boolean }) {
     const { node, inCouncil = false } = data;
     const { isSelected, props } = useNodeSelection(node);
     const tone = stepBoxToneOf(node.stepState);
@@ -162,15 +184,10 @@ export function StepNode({ data, parentId }: NodeProps<Node<StepNodeData>>) {
                 props.className,
             )}
         >
-            <Handles />
+            {hasHandles && <Handles />}
             <StepTitle node={node} inCouncil={inCouncil} />
             {node.subtitle !== null && (
-                <span
-                    className="truncate text-xs text-muted-foreground"
-                    title={node.subtitle}
-                >
-                    {node.subtitle}
-                </span>
+                <SubtitleText parts={node.subtitle} className="truncate" />
             )}
             {node.stepState !== undefined && (
                 <StateLine

@@ -1,12 +1,7 @@
 import { describe, expect, it } from 'vite-plus/test';
 import type { WorkflowStepSettings } from '@/types';
-import {
-    cardOrderOf,
-    errorKeysOf,
-    formOf,
-    payloadOf,
-    shownErrorKeys,
-} from './stepForm';
+import { cardOrderOf, formOf, payloadOf } from './stepForm';
+import { errorKeysOf, shownErrorKeys } from './stepFormErrors';
 import { stepFieldsOf } from './stepFields';
 
 function step(overrides: Partial<WorkflowStepSettings>): WorkflowStepSettings {
@@ -25,6 +20,8 @@ function step(overrides: Partial<WorkflowStepSettings>): WorkflowStepSettings {
         preventsAttachmentAdd: true,
         sendBack: { candidates: [], selected: [] },
         decision: null,
+        deadline: { days: 5 },
+        confirmers: [],
         ...overrides,
     };
 }
@@ -86,24 +83,26 @@ describe('カード「添付ファイル」の入力と送る値(承認・横配
 });
 
 describe('cardOrderOf(出すカードの並び。番号は並びの順)', () => {
-    it('カードの並びは出す順(承認・横配置は添付ファイルが 4 番目、縦配置は 5 番目、設定を持たないノードは空)', () => {
+    it('添付ファイルは並びの最後(承認・縦配置は 6 番目、横配置は 5 番目、設定を持たないノードは空)', () => {
         const gateway = step({
             kind: 'branch_start',
             target: null,
             preventsApplicantApproval: null,
             preventsAttachmentAdd: null,
             sendBack: null,
+            deadline: null,
+            confirmers: null,
         });
-        const approve = ['target', 'prevents', 'sendBack', 'attachment'];
+        const council = { ...COUNCIL, confirmers: null };
+        const serial = step({
+            kind: 'serial',
+            target: COUNCIL.target,
+            confirmers: null,
+        });
 
-        expect(cardOrderOf(step({}))).toEqual(approve);
-        expect(cardOrderOf(COUNCIL)).toEqual([
-            'target',
-            'prevents',
-            'sendBack',
-            'decision',
-            'attachment',
-        ]);
+        expect(cardOrderOf(step({})).indexOf('attachment') + 1).toBe(6);
+        expect(cardOrderOf(council).indexOf('attachment') + 1).toBe(6);
+        expect(cardOrderOf(serial).indexOf('attachment') + 1).toBe(5);
         expect(cardOrderOf(gateway)).toEqual([]);
     });
 });

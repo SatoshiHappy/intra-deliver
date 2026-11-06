@@ -115,7 +115,7 @@ test('システム管理者: 詳細の見出しの右の「認可設定で見る
     await overview.close();
 });
 
-test('システム管理者: ステップの設定の最後のカード「添付ファイル」で、部長は「追加できない」を選んでいる(承認のステップはカード 4)', async ({
+test('システム管理者: ステップの設定の最後のカード「添付ファイル」で、部長は「追加できない」を選んでいる(承認のステップは処理期限・確認する人の後のカード 6)', async ({
     page,
 }) => {
     await openAsAdministrator(page, `${PLAN_ADMIN_URL}?node=manager`);
@@ -126,7 +126,7 @@ test('システム管理者: ステップの設定の最後のカード「添付
     });
 
     await expect(heading).toBeVisible();
-    await expect(heading).toContainText('4');
+    await expect(heading).toContainText('6');
     await expect(
         page.getByRole('radio', { name: '追加できる', exact: true }),
     ).not.toBeChecked();

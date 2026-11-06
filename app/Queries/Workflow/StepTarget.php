@@ -9,7 +9,9 @@ use App\Enums\Workflow\WorkflowTargetKind;
 /**
  * ノードの処理対象者の指定を、文を作るための名前つきの値にしたもの({@see StepDescriptions} が読む。{@see StepTargets} が作る)。
  *
- * @phpstan-type SubjectRow array{type: string, id: int, name: string}
+ * 対象者の行の affiliation = ユーザーの主所属の組織の名前(主所属が無い・ほかの種類の行は null = {@see SubjectRows})。
+ *
+ * @phpstan-type SubjectRow array{type: string, id: int, name: string, affiliation: string|null}
  */
 final readonly class StepTarget
 {

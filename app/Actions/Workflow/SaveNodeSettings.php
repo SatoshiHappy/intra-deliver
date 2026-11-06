@@ -2,6 +2,9 @@
 
 namespace App\Actions\Workflow;
 
+use App\Actions\Authz\Api\SelectionCondition;
+use App\Enums\Authz\SelectionConditionKind;
+use App\Enums\Workflow\WorkflowNodeKind;
 use App\Enums\Workflow\WorkflowTargetKind;
 use App\Models\Workflow\WorkflowFlow;
 use App\Models\Workflow\WorkflowFlowVersion;
@@ -13,7 +16,7 @@ use Illuminate\Validation\ValidationException;
 
 /**
  * ステップの設定の保存(docs の 設計/ワークフロー/ルートの深さ/定義の管理.md の 5.1 節。失敗の形 = 同じ文書の 6 節、
- * 鍵 = データモデル/直列化と検査.md の 4.2 節)。
+ * 鍵 = データモデル/直列化と検査.md の 4.2 節。処理期限と確認する人 = 設計/ワークフロー/案件の運用/定義の管理.md の 2 節・5 節)。
  */
 class SaveNodeSettings
 {
@@ -53,19 +56,20 @@ class SaveNodeSettings
             $nodes = WorkflowRouteNode::query()->where('workflow_flow_version_id', $version->id);
             $nodeIds = (clone $nodes)->pluck('id', 'code')->all();
             $node = $nodes->where('code', $nodeCode)->firstOrFail();
-            $subjectGroupId = $this->validateAndRepoint($flow, $node, $input, $nodeIds);
+            [$subjectGroupId, $confirmGroupId] = $this->validateAndRepoint($flow, $node, $input, $nodeIds);
 
-            $this->write($node, $input, $nodeIds, $subjectGroupId);
+            $this->write($node, $input, $nodeIds, $subjectGroupId, $confirmGroupId);
             $this->throwIfViolated($version->id, $node->code);
         });
     }
 
     /**
-     * 入力を確かめ、指定の種類が fixed で対象者の条件が今と違えば対象者を作ってその id を返す。相手の確かめは対象者の口に
-     * 任せるので、相手の誤りをほかの欄の誤りと 1 つの 422 にするためにここで呼ぶ(誤りがあればトランザクションごと戻る)。
+     * 入力を確かめ、指定の種類が fixed で対象者の条件が今と違えば対象者を作り、確認する人の条件が今と違えば確認する人の対象者を作って、
+     * その id を返す。相手の確かめは対象者の口に任せるので、相手の誤りをほかの欄の誤りと 1 つの 422 にするためにここで呼ぶ
+     * (誤りがあればトランザクションごと戻る)。
      *
      * @param  array<string, int>  $nodeIds
-     * @return int|null 指す対象者(fixed でなければ null)
+     * @return array{int|null, int|null} [指す対象者(fixed でなければ null), 確認する人の対象者(確認する人がいなければ null)]
      *
      * @throws ValidationException
      */
@@ -74,26 +78,50 @@ class SaveNodeSettings
         WorkflowRouteNode $node,
         NodeSettingsInput $input,
         array $nodeIds,
-    ): ?int {
+    ): array {
         $errors = array_map(fn (string $error) => [$error], $this->settings->errors($node->kind, $input, $nodeIds));
         $isFixed = $input->targetKind === WorkflowTargetKind::Fixed;
+        $hasConfirmers = $node->kind->isIn(WorkflowNodeKind::withConfirmers());
+        $name = "{$flow->name} / {$node->name}";
         $subjectGroupId = null;
+        $confirmGroupId = null;
 
-        if ($isFixed && ! isset($errors['target_kind']) && ! isset($errors['targets'])) {
-            try {
-                $name = "{$flow->name} / {$node->name}";
+        try {
+            if ($isFixed && ! isset($errors['target_kind']) && ! isset($errors['targets'])) {
                 $subjectGroupId = $this->subjectGroups
                     ->repoint($node->authz_subject_group_id, $input->targets ?? [], $name, 'targets');
-            } catch (ValidationException $exception) {
-                $errors = [...$errors, ...$exception->errors()];
             }
+        } catch (ValidationException $exception) {
+            $errors = [...$errors, ...$exception->errors()];
+        }
+
+        try {
+            if ($hasConfirmers && ! isset($errors['confirmers'])) {
+                $confirmGroupId = $this->subjectGroups->repoint(
+                    $node->confirm_authz_subject_group_id, self::userConditions($input->confirmers ?? []),
+                    "{$name} / 確認する人", 'confirmers', FlowDefinitionErrors::CONFIRMER_MISSING,
+                );
+            }
+        } catch (ValidationException $exception) {
+            $errors = [...$errors, ...$exception->errors()];
         }
 
         if ($errors !== []) {
             throw ValidationException::withMessages($errors);
         }
 
-        return $subjectGroupId;
+        return [$subjectGroupId, $confirmGroupId];
+    }
+
+    /**
+     * 確認する人のユーザーの id を、対象者の条件(ユーザー eq)にする(並びは入力のまま。添字は入力の添字)。
+     *
+     * @param  list<int>  $userIds
+     * @return list<SelectionCondition>
+     */
+    private static function userConditions(array $userIds): array
+    {
+        return array_map(fn (int $id) => new SelectionCondition(SelectionConditionKind::User, $id), $userIds);
     }
 
     /**
@@ -106,6 +134,7 @@ class SaveNodeSettings
         NodeSettingsInput $input,
         array $nodeIds,
         ?int $subjectGroupId,
+        ?int $confirmGroupId,
     ): void {
         $designatorCode = $input->designatorNodeCode;
         $node->update([
@@ -117,6 +146,7 @@ class SaveNodeSettings
             'prevents_applicant_approval' => $input->preventsApplicantApproval ?? false,
             'prevents_attachment_add' => $input->preventsAttachmentAdd ?? false,
             'decision_rule' => $input->decisionRule, 'decision_value' => $input->decisionValue,
+            'deadline_days' => $input->deadlineDays, 'confirm_authz_subject_group_id' => $confirmGroupId,
         ]);
 
         WorkflowRouteSendBack::query()->where('workflow_route_node_id', $node->id)->delete();

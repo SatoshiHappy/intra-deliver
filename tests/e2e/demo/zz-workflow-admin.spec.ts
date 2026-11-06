@@ -90,12 +90,14 @@ test('システム管理者: 「プロジェクト計画の承認」の詳細で
     await expect(diagram).toContainText('何もしない');
     await expect(diagram).toContainText('そのまま次へ進む');
     await expect(diagram).toContainText('同期終了');
-    // 右の欄は、選んでいないときは申請のステップの要約の 1 文
+    // 右の欄は、選んでいないときは申請のステップの要約の 1 文(確認する人の文が続く)
     await expect(
         page.getByRole('heading', { level: 2, name: '申請 申請' }),
     ).toBeVisible();
     await expect(
-        page.getByText('一般利用者が申請できます。', { exact: true }),
+        page.getByText('一般利用者が申請できます。確認する人はいません。', {
+            exact: true,
+        }),
     ).toBeVisible();
 
     await page.getByRole('combobox', { name: '版', exact: true }).click();

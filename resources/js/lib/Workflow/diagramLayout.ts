@@ -6,6 +6,7 @@ import { dashedEdges } from '@/lib/Workflow/diagramEdges';
 import { addDiagramMarks, plainEdge } from '@/lib/Workflow/diagramMarks';
 import type { AddedNode } from '@/lib/Workflow/diagramMarks';
 import {
+    CONFIRM_BADGE_SPACE,
     frameHeaderWidth,
     frameSize,
     placeChildren,
@@ -85,7 +86,15 @@ function sizeOf(node: DiagramInputNode, childCount: number) {
         return { ...(isDiamond(node) ? DIAMOND_SIZE : PILL_SIZE) };
     }
 
-    return { ...STEP_SIZE };
+    return node.confirmBadge === null
+        ? { ...STEP_SIZE }
+        : {
+              width: STEP_SIZE.width,
+              height:
+                  STEP_SIZE.height +
+                  CONFIRM_BADGE_SPACE.gap +
+                  CONFIRM_BADGE_SPACE.height,
+          };
 }
 
 /** 図の側で足す箱(「何もしない」は同じ段のステップの箱と同じ大きさ)と札の大きさ */

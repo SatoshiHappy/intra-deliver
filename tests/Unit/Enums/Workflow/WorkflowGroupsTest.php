@@ -9,7 +9,8 @@ use PHPUnit\Framework\TestCase;
 
 /**
  * 列挙の集まりのメソッド(種類・状態・履歴の種別の集まりの 1 か所 = docs の 設計/ワークフロー/ルートの深さ/定義の管理.md 7 節)が、設計の表と同じ集まり。
- * 期待は設計の文から書く(G-2・G-4・G-5・G-9・G-10 = 定義の管理.md 3 節、済んだ・省く前 = 案件の操作/README.md 1.2・2.1、引戻せる種別 = 操作.md 10.5)。
+ * 期待は設計の文から書く(G-2・G-4・G-5・G-9・G-10 = 定義の管理.md 3 節、済んだ・省く前 = 案件の操作/README.md 1.2・2.1、引戻せる種別 = 操作.md 10.5、
+ * 期限と確認する人を持てる種類 = 案件の運用/定義の管理.md 1 節)。
  * 現在のノードの状態に保留を含む(設計/ワークフロー/案件の運用/案件の操作/README.md の 1.3 節)。
  */
 final class WorkflowGroupsTest extends TestCase
@@ -28,6 +29,8 @@ final class WorkflowGroupsTest extends TestCase
         $this->assertSame(['approve', 'serial', 'parallel', 'branch_end', 'sync_end'], $values(WorkflowNodeKind::terminal()));
         $this->assertSame(['approve'], $values(WorkflowNodeKind::designating()));
         $this->assertSame(['branch_end', 'sync_end', 'parallel'], $values(WorkflowNodeKind::previousBlocking()));
+        $this->assertSame(['approve', 'serial', 'parallel'], $values(WorkflowNodeKind::withDeadline()));
+        $this->assertSame(['apply', 'approve'], $values(WorkflowNodeKind::withConfirmers()));
     }
 
     public function test_an_opening_kind_pairs_with_the_closing_kind_of_the_same_family(): void

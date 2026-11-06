@@ -5,6 +5,7 @@ import type {
     StepNodeData,
 } from '@/lib/Workflow/diagramTypes';
 import { personName } from '@/lib/Workflow/workflowLabels';
+import type { WorkflowSubtitlePart } from '@/types';
 
 /**
  * 横配置・縦配置の枠の中の並べ方(docs の 設計/ワークフロー/ルートの深さ/画面/図と意匠とE2E.md 8 節): 子(案件の展開の行、定義の図は仮の札)を、
@@ -23,6 +24,9 @@ export type ChildNode =
 
 /** 子の箱の大きさ(px。札を人の行の下に置くので、上の段の箱より 1 行分高い) */
 const CHILD_SIZE = { width: 176, height: 96 };
+/** 箱の下の確認の札の分(px。箱と札の間 + 札の高さ。配置の箱の高さに足す = StepNode が同じ値で描く) */
+export const CONFIRM_BADGE_SPACE = { gap: 6, height: 22 };
+
 /** 枠の見出しの高さ(px。左に種類と名前、右に短い文の 1 行) */
 export const FRAME_HEADER_HEIGHT = 40;
 const FRAME = {
@@ -48,9 +52,17 @@ export function frameHeaderWidth(node: DiagramInputNode): number {
     const subtitle =
         node.subtitle === null
             ? 0
-            : HEADER_TEXT.gap + node.subtitle.length * HEADER_TEXT.subtitle;
+            : HEADER_TEXT.gap +
+              subtitleText(node.subtitle).length * HEADER_TEXT.subtitle;
 
     return FRAME.padding * 2 + title + subtitle;
+}
+
+/** 短い文の字(区切りをつないだ文。幅の見積もりと、切れたときの title) */
+export function subtitleText(parts: WorkflowSubtitlePart[]): string {
+    return parts
+        .map((part) => (typeof part === 'string' ? part : part.text))
+        .join('');
 }
 
 /** 並列承認の枠の中の箱で、人がまだ選ばれていないときの題 */
@@ -58,7 +70,7 @@ export const UNPICKED_TITLE = '未選択';
 
 /**
  * 並列承認の枠の中の箱の題(人の名前を「、」で。自分なら「(自分)」を添える。人がまだ選ばれていなければ「未選択」。
- * 番号の題「関係部署の合議 承認 1」は出さない = 図と意匠とE2E.md 8 節。ユーザーの決定 2026-11-01)。
+ * 番号の題「関係部署の合議 承認 1」は出さない = 図と意匠とE2E.md 8 節)。
  */
 export function councilBoxTitle(node: DiagramInputNode): string {
     if (node.people.length === 0) {
@@ -77,7 +89,7 @@ export function councilBoxTitle(node: DiagramInputNode): string {
 export function frameHeaderTexts(
     node: DiagramInputNode,
     kindLabel: string,
-): { title: string; subtitle: string | null } {
+): { title: string; subtitle: WorkflowSubtitlePart[] | null } {
     return { title: `${kindLabel}「${node.name}」`, subtitle: node.subtitle };
 }
 

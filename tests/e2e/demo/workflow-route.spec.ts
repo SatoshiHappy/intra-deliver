@@ -289,7 +289,7 @@ test('申請者: 申請の画面に申請基準日(既定は今日)と担当組�
     await expect(diagramStep(page, '申請')).toContainText('処理済み(申請)');
     await expect(diagramStep(page, '課長')).toContainText('中村 美咲');
     await expect(diagramStep(page, '課長')).toContainText('承認待ち');
-    await expect(diagramStep(page, '責任者')).toContainText('課長が選択');
+    await expect(diagramStep(page, '責任者')).toContainText('課長が承認者');
     await expect(diagramStep(page, '責任者')).toContainText('到達していない');
     await expect(
         diagram(page).getByText('終了', { exact: true }),

@@ -165,9 +165,10 @@ final class SaveNodeSettingsTest extends TransactionalTestCase
     }
 
     /**
-     * 入力に無い列(期限・確認する人)は変えない。添付の追加の禁止は入力の欄で、NodeAttachmentSettingsTest が見る。
+     * 期限・確認する人を今の値のまま送れば、ほかの欄を変えても残る(確認する人は同じ集合なので対象者を作らない)。
+     * 期限・確認する人の保存は NodeDeadlineConfirmSettingsTest、添付の追加の禁止は NodeAttachmentSettingsTest が見る。
      */
-    public function test_the_columns_not_in_the_input_are_kept(): void
+    public function test_the_deadline_and_the_confirmers_sent_as_they_are_are_kept(): void
     {
         $confirmer = app(CreateSelectionSubjectGroup::class)
             ->execute([$this->userCondition('u0010')], ['ja' => '確認する人']);

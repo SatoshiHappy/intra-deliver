@@ -15,6 +15,7 @@ import {
     StepNode,
     borderOf,
 } from '@/components/Workflow/DiagramParts';
+import { SubtitleText } from '@/components/Workflow/DiagramTexts';
 import { FullscreenButton } from '@/components/Workflow/FullscreenButton';
 import {
     SelectionContext,
@@ -93,9 +94,10 @@ function FrameHeader({ node }: { node: DiagramInputNode }) {
                 {title}
             </span>
             {subtitle !== null && (
-                <span className="shrink-0 text-xs whitespace-nowrap text-muted-foreground">
-                    {subtitle}
-                </span>
+                <SubtitleText
+                    parts={subtitle}
+                    className="shrink-0 whitespace-nowrap"
+                />
             )}
         </div>
     );
@@ -240,12 +242,15 @@ export function WorkflowDiagram({
     edges,
     label,
     selection,
+    fillsParent = false,
 }: {
     nodes: DiagramInputNode[];
     edges: WorkflowDiagramEdge[];
     label: string;
     /** 渡すと、ステップを押して選べる(定義の図)。渡さない案件の図は押せない */
     selection?: DiagramSelection;
+    /** 真なら、2 列に並ぶ幅(xl)では親の高さいっぱいに描く(定義の管理の図の枠。図の中で拡大・縮小・移動する) */
+    fillsParent?: boolean;
 }) {
     const layout = useMemo(() => layoutDiagram(nodes, edges), [nodes, edges]);
     const fullscreen = useDiagramFullscreen();
@@ -257,12 +262,14 @@ export function WorkflowDiagram({
             aria-label={label}
             className={cn(
                 'w-full rounded-lg border bg-background',
+                fillsParent && 'xl:h-full',
                 fullscreen.isFullscreen && 'rounded-none border-0',
                 DIAGRAM_COLOR_VARIABLES,
             )}
         >
             {/* 高さは枠線の内側の要素に与える(枠線の分だけ配置より低くならない = 1 倍で全体が入る)。全画面の間は画面の高さいっぱい */}
             <div
+                className={cn(fillsParent && 'xl:h-full!')}
                 style={{
                     height: fullscreen.isFullscreen
                         ? '100%'

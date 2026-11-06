@@ -77,6 +77,12 @@ export type WorkflowApplyProps = {
     links: WorkflowPersonLinks; // 名前の札の「…」のリンク
 } & WorkflowApplyTarget;
 
+/**
+ * 図の短い文の区切り(文字列 = そのまま出す字、emphasis つき = 文字の色を本文の色にする字。基準にする人の起点と役職名 =
+ * docs の 設計/ワークフロー/ルートの深さ/画面/図と意匠とE2E.md の 9.3 節)
+ */
+export type WorkflowSubtitlePart = string | { text: string; emphasis: true };
+
 /** 図の 1 ノード(定義と案件で共通。ルートの深さ/画面/README.md 1.2)。並びはサーバーの写した並び(展開の行は親の直後に番号の順) */
 export type WorkflowDiagramNode = {
     id: number;
@@ -85,11 +91,12 @@ export type WorkflowDiagramNode = {
     kind: WorkflowNodeKind;
     parentId: number | null; // 展開の行の親(案件だけ)
     sequence: number | null; // 展開の行の番号(案件だけ)
-    subtitle: string | null; // 設定から作った短い文(「課長が指定」など)
+    subtitle: WorkflowSubtitlePart[] | null; // 設定から作った短い文(「課長が承認者を選択」、期限の日数があれば後ろに「期限 3 日」)
     state: WorkflowNodeState | null; // 案件だけ(定義は null)
     people: (WorkflowLinkedPerson & { isMe: boolean })[]; // 案件: 現在のステップは処理対象者、処理済みは処理者
     placeholders: { label: string; optional: boolean }[]; // 定義の配置のノードだけ
     consensus: { text: string } | null; // 縦配置だけ(案件の進み具合があれば「承認 1 / 2 人」、無ければ定義の条件「完了の条件 承認 2 人」)
+    confirmBadge: string | null; // 確認する人の札(「確認：山田 恵」「確認：山田 恵 ほか 1 人」。確認する人がいなければ null)
 };
 
 /** 図の 1 辺。taken = 分岐開始から出る辺の到達の時の評価(false = 通らなかった枝)。ほかの辺と定義の図は null */

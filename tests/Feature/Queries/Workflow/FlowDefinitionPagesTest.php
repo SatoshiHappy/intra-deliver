@@ -78,7 +78,7 @@ final class FlowDefinitionPagesTest extends TransactionalTestCase
         $this->assertSame([false, false, true], array_column($versions, 'isDisabled'));
         $this->assertSame([true, false, false], array_column($versions, 'isCurrent'));
         $accounting = Department::query()->where('code', 'accounting')->sole()->id;
-        $rows = [['type' => 'department', 'id' => $accounting, 'name' => '経理部']];
+        $rows = [['type' => 'department', 'id' => $accounting, 'name' => '経理部', 'affiliation' => null]];
         $this->assertSame(['rows' => $rows], $detail['referrers']);
         $this->assertSame(['code' => self::PLAN, 'name' => 'プロジェクト計画の承認'], array_slice($detail['flow'], 0, 2));
         // 版を追加の開始日の範囲に使う、サーバーの今日(Y-m-d)
@@ -123,51 +123,67 @@ final class FlowDefinitionPagesTest extends TransactionalTestCase
     }
 
     /**
-     * 図で選んだステップの設定(定義の管理の画面.md 3 節の StepSettings。持たない設定は null)と、選択の欄の候補(役職 = 今日に有効な役職、
-     * 指定するステップ = 定義の検査と同じ式)。
+     * 図で選んだステップの設定(定義の管理の画面.md 3 節の StepSettings)と、選択の欄の指定するステップの候補(定義の検査と同じ式)。
+     * 処理期限と確認する人(案件の運用/定義の管理.md 1 節、初期データ = 案件の運用/初期データ.md 3 節: 版 3 の課長・部長は確認する人
+     * 山田 恵(u0010)、承認・合議は期限の日数)は持てる種類だけ値を持ち、要約に文が続く(7.6 節)。
      */
     public function test_the_selected_step_and_the_options(): void
     {
         $chief = $this->detail(['node' => 'section_chief'])['selectedNode'];
         $council = $this->detail(['node' => 'council']);
-        $apply = $this->detail([]);
-        $budget = $this->detail(['node' => 'budget'])['selectedNode'];
         $post = CompanyPost::query()->where('code', 'section-chief')->sole()->id;
-        $role = Role::query()->where('code', 'general_user')->sole()->id;
         $choice = fn (string $code, string $name) => ['code' => $code, 'name' => $name];
+        // ユーザーの行は今日の主所属の組織の名前を持つ(定義の管理の画面.md 3 節の SubjectRow)
+        $yamadaId = $this->seededAccount('u0010')->id;
+        $yamada = ['type' => 'user', 'id' => $yamadaId, 'name' => '山田 恵', 'affiliation' => '経理部'];
 
         $this->assertSame([
-            'code' => 'section_chief', 'name' => '課長', 'kind' => 'approve', 'summary' => ['申請者の所属組織の課長が承認します。'],
+            'code' => 'section_chief', 'name' => '課長', 'kind' => 'approve',
+            'summary' => ['申請者の所属組織の課長が承認します。到達した日から 3 日以内に処理します。山田 恵が確認します。'],
             'target' => ['kind' => 'relative', 'base' => 'applicant', 'scope' => 'own', 'companyPostId' => $post],
             'preventsApplicantApproval' => true, 'preventsAttachmentAdd' => false,
             'sendBack' => ['candidates' => [$choice('apply', '申請')], 'selected' => ['apply']],
-            'decision' => null,
+            'decision' => null, 'deadline' => ['days' => 3], 'confirmers' => [$yamada],
         ], $chief);
         $this->assertSame([
             'code' => 'council', 'name' => '関係部署の合議', 'kind' => 'parallel',
-            'summary' => ['課長が選択した 2 人から 5 人のうち、2 人が承認すると次へ進みます。'],
+            'summary' => ['課長が選択した 2 人から 5 人のうち、2 人が承認すると次へ進みます。到達した日から 3 日以内に処理します。'],
             'target' => ['kind' => 'designated', 'designatorCode' => 'section_chief', 'min' => 2, 'max' => 5],
             'preventsApplicantApproval' => true, 'preventsAttachmentAdd' => false,
             'sendBack' => [
                 'candidates' => [$choice('apply', '申請'), $choice('section_chief', '課長'), $choice('manager', '部長')],
                 'selected' => ['apply', 'section_chief'],
             ],
-            'decision' => ['rule' => 'count', 'value' => 2],
+            'decision' => ['rule' => 'count', 'value' => 2], 'deadline' => ['days' => 3], 'confirmers' => null,
         ], $council['selectedNode']);
         $this->assertSame([$choice('section_chief', '課長')], $council['options']['designators']);
+    }
+
+    /**
+     * 申請・分岐のステップは持たない設定が null(申請の確認する人は持てるので空の並び)で、選択の欄の候補の役職は今日に有効な役職。
+     */
+    public function test_the_steps_without_the_settings_and_the_post_options(): void
+    {
+        $apply = $this->detail([]);
+        $budget = $this->detail(['node' => 'budget'])['selectedNode'];
+        $role = Role::query()->where('code', 'general_user')->sole()->id;
+
         $this->assertSame(
-            ['kind' => 'fixed', 'rows' => [['type' => 'role', 'id' => $role, 'name' => '一般利用者']]],
+            ['kind' => 'fixed', 'rows' => [
+                ['type' => 'role', 'id' => $role, 'name' => '一般利用者', 'affiliation' => null],
+            ]],
             $apply['selectedNode']['target'],
         );
         $applyNode = $apply['selectedNode'];
-        $this->assertSame([['一般利用者が申請できます。'], null, null, null], [
+        $this->assertSame([['一般利用者が申請できます。確認する人はいません。'], null, null, null, null, []], [
             $applyNode['summary'], $applyNode['preventsApplicantApproval'], $applyNode['preventsAttachmentAdd'],
-            $applyNode['sendBack'],
+            $applyNode['sendBack'], $applyNode['deadline'], $applyNode['confirmers'],
         ]);
         $this->assertSame([], $apply['options']['designators']);
-        $this->assertSame([['分岐「予算」の条件に該当する先へ、すべて進みます。'], null, null, null, null, null], [
+        $this->assertSame([['分岐「予算」の条件に該当する先へ、すべて進みます。'], null, null, null, null, null, null, null], [
             $budget['summary'], $budget['target'], $budget['preventsApplicantApproval'],
-            $budget['preventsAttachmentAdd'], $budget['sendBack'], $budget['decision'],
+            $budget['preventsAttachmentAdd'], $budget['sendBack'], $budget['decision'], $budget['deadline'],
+            $budget['confirmers'],
         ]);
         $president = CompanyPost::query()->where('code', 'president')->sole()->id;
         $this->assertSame(['id' => $president, 'name' => '社長'], $apply['options']['companyPosts'][0]);
@@ -183,7 +199,7 @@ final class FlowDefinitionPagesTest extends TransactionalTestCase
         $manager = $this->detail(['node' => 'manager'])['selectedNode'];
 
         $this->assertSame(
-            [['申請者の上位組織の部長が承認します。添付ファイルを追加できません。'], true],
+            [['申請者の上位組織の部長が承認します。到達した日から 5 日以内に処理します。山田 恵が確認します。添付ファイルを追加できません。'], true],
             [$manager['summary'], $manager['preventsAttachmentAdd']],
         );
         $this->assertSame(['isAttachmentEnabled' => true], $this->detail([])['flowSettings']);
@@ -208,7 +224,10 @@ final class FlowDefinitionPagesTest extends TransactionalTestCase
         app(SaveNodeSettings::class)->execute(self::PLAN, 3, 'manager', $input);
 
         $this->assertSame(
-            [['departmentId' => $accounting->id, 'text' => '経理部'], '、一般利用者が承認します。添付ファイルを追加できません。'],
+            [
+                ['departmentId' => $accounting->id, 'text' => '経理部'],
+                '、一般利用者が承認します。期限はありません。確認する人はいません。添付ファイルを追加できません。',
+            ],
             $this->detail(['node' => 'manager'])['selectedNode']['summary'],
         );
     }
