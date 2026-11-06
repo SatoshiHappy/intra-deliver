@@ -8,7 +8,6 @@ use App\Actions\Ai\CarryOverSpending;
 use App\Actions\Meeting\MeetingMinutesKind;
 use App\Actions\Meeting\MeetingTranscriptionKind;
 use App\Actions\Reset\Api\ResetParticipant;
-use App\Models\Master\User;
 use App\Queries\Account\Api\UserMenuSections;
 use App\Queries\Authz\Api\ResourceTypes;
 use App\Queries\Authz\ServiceResourceTypes;
@@ -62,9 +61,6 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        // 配線のファイルはモデルを名指せないため起動で設定し、ほかのプロバイダの boot() より前にガードへ渡す。
-        config(['auth.providers.users.model' => User::class]);
-
         // 依存の逆転(docs の 設計/コード構成/README.md 3 節): Master の業務処理が、後ろのモジュールのユーザーを指す期間の行まで確かめる
         $this->app->tag([UserRoleReferences::class], UserReferences::TAG);
 

@@ -160,7 +160,7 @@ services:
         tags:
             - phpat.test
 
-    # B1 配線のファイルが依存してよいのは入口・共有・起動・コマンド・外部(DB を除く)だけ(docs の 設計/コード構成/README.md 2 節)。
+    # B1 配線のファイルが依存してよいのは入口・共有・起動・コマンド・外部(DB を除く)と、config/ の永続化のクラス名だけ(docs の 設計/コード構成/README.md 2 節)。
     # 層と DB の定義は層の規則(LayerRules)の定数を使う(同じ定義を 2 か所に書かない)
     -
         class: Tests\Architecture\Engine\PhpStan\WiringDependenciesRule
@@ -176,6 +176,11 @@ services:
             forbiddenClasses: Tests\Architecture\Policy\LayerRules::DATABASE_CLASSES
             composerLock: %rootDir%/../../../composer.lock
             composerJson: %rootDir%/../../../composer.json
+            # config/ は永続化のクラス名を、返す配列の中の文字列のキーの値として書ける(Laravel が設定でクラスを求めるため = ADR 0044)
+            classNameDirectories:
+                - config
+            classNameNamespaces:
+                - Tests\Architecture\Policy\LayerRules::MODELS
         tags:
             - phpstan.rules.rule
 
