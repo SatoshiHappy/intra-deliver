@@ -396,7 +396,7 @@
     "tests/Architecture/Engine/PhpStan/PublicApiTypes.php": 1,
     "tests/Architecture/Engine/PhpStan/SideEffectsRule.php": 7,
     "tests/Architecture/Engine/PhpStan/SingleClassFileRule.php": 5,
-    "tests/Architecture/Engine/PhpStan/WiringDependenciesRule.php": 4,
+    "tests/Architecture/Engine/PhpStan/WiringDependenciesRule.php": 3,
     "tests/Architecture/Engine/PhpStanFindings.php": 1,
     "tests/Architecture/Engine/PhpStanParameters.php": 2,
     "tests/Architecture/Engine/PhpUnitConfig.php": 1,
