@@ -33,7 +33,7 @@ function deleteDescription(field: RecordFieldDefinition, count: number) {
 }
 
 /**
- * 項目の属性の札(画面/管理の画面.md 3.3)。長い既定値の札は 2 行で切る(画面/README.md 1.4)。既定値の札だけを特別に扱わないよう、
+ * 項目の属性の札(画面/管理の画面.md 3.3)。長い既定値の札は 2 行で切る(画面/リッチテキスト.md 1.4)。既定値の札だけを特別に扱わないよう、
  * どの札にも同じ形を当てる(短い札の見た目は変わらない)。
  */
 function AttributeBadges({ field }: { field: RecordAdminFieldDefinition }) {

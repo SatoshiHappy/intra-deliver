@@ -5,6 +5,7 @@ namespace App\Queries\Records;
 use App\Models\Records\Record;
 use App\Models\Records\RecordModule;
 use App\Queries\Authz\Api\Requester;
+use App\Queries\Records\Api\RecordFormQuery;
 use DateTimeInterface;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -18,7 +19,7 @@ use LogicException;
  *
  * @phpstan-import-type ReferenceValue from RecordValueReader
  * @phpstan-import-type ShownRowAccess from RecordRowAccessValues
- * @phpstan-import-type ClearedField from RecordCopyValues
+ * @phpstan-import-type ClearedField from RecordFormQuery
  *
  * @phpstan-type DetailRow array{id: int, values: array<string, mixed>}
  */

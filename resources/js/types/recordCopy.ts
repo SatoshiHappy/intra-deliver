@@ -1,7 +1,7 @@
 import type { RecordFieldValue, RowAccessInput } from './records';
 
 /**
- * 写す時に今は使えない値を空にした欄 1 つ(値を写す 3 つの仕組みで同じ形。サーバーの App\Queries\Records\RecordCopyValues の ClearedField)。
+ * 写す時に今は使えない値を空にした欄 1 つ(値を写す 3 つの仕組みで同じ形。サーバーの公開の口 App\Queries\Records\Api\RecordFormQuery の ClearedField)。
  * field = 親の項目、cell = 明細の行の項目(row = 写した行の添字)、viewers = 参照制限の参照者を外した。
  */
 export type ClearedField = {

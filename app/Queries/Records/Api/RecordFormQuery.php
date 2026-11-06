@@ -29,10 +29,11 @@ use LogicException;
  * @phpstan-import-type DraftValues from DraftValueReader
  * @phpstan-import-type DetailRow from RecordQuery
  * @phpstan-import-type CopiedValues from RecordCopyValues
- * @phpstan-import-type ClearedField from RecordCopyValues
  * @phpstan-import-type Party from RecordParty
  *
  * @phpstan-type CopiedRows array<string, list<array{values: array<string, mixed>}>>
+ * @phpstan-type ClearedField array{kind: 'field'|'cell'|'viewers', field: string|null, detail: string|null,
+ *     row: int|null, name: string}
  */
 class RecordFormQuery
 {

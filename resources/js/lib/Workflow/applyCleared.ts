@@ -1,12 +1,19 @@
 import {
-    VIEWERS_CLEARED_NOTICE,
     clearedNoticeOf,
     fieldMarksOf,
-    hasClearedViewers,
     shownMarksOf,
 } from '@/lib/clearedFields';
 import type { ClearedMark, FieldMarks } from '@/lib/clearedFields';
-import type { WorkflowApplyProps } from '@/types';
+import type { ClearedField, WorkflowApplyProps } from '@/types';
+
+/** 案件からの複製で引き継ぐ参照制限の参照者を外したときの 1 行(申請の画面に参照制限の欄が無いので、件数に数えない) */
+const VIEWERS_CLEARED_NOTICE =
+    '引き継ぐ参照制限の参照者のうち、今は使えない人・組織を外しました。';
+
+/** 参照制限の参照者を外したか */
+function hasClearedViewers(cleared: ClearedField[]): boolean {
+    return cleared.some((entry) => entry.kind === 'viewers');
+}
 
 /** 申請の画面の空にした欄の知らせ(欄の印・見出しの下の件数の注意・引き継ぐ参照者を外した 1 行) */
 export type ApplyCleared = {

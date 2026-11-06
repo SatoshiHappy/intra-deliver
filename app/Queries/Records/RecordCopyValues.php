@@ -7,6 +7,7 @@ use App\Models\Records\RecordField;
 use App\Models\Records\RecordModule;
 use App\Models\Records\RecordRevision;
 use App\Queries\Authz\Api\Requester;
+use App\Queries\Records\Api\RecordFormQuery;
 use DateTimeInterface;
 use Illuminate\Support\Collection;
 use LogicException;
@@ -21,9 +22,8 @@ use LogicException;
  * @phpstan-import-type ReferenceValue from RecordValueReader
  * @phpstan-import-type StoredRowAccess from RecordRowAccessValues
  * @phpstan-import-type CopySource from RecordCopySources
+ * @phpstan-import-type ClearedField from RecordFormQuery
  *
- * @phpstan-type ClearedField array{kind: 'field'|'cell'|'viewers', field: string|null, detail: string|null,
- *     row: int|null, name: string}
  * @phpstan-type CopiedValues array{values: array<string, mixed>,
  *     details: array<string, list<array{values: array<string, mixed>}>>, clearedFields: list<ClearedField>,
  *     rowAccess: StoredRowAccess|null}

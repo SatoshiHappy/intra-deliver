@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Queries\Records;
 
+use App\Enums\Records\RecordFieldType;
 use App\Models\Records\Record;
 use App\Models\Records\RecordModule;
 use App\Models\Records\RecordReference;
@@ -119,6 +120,27 @@ final class RecordCopyValuesTest extends TransactionalTestCase
         $this->assertSame(
             [['field', null, null, 'user'], ['cell', 'lines', 0, 'who'], ['cell', 'lines', 1, 'who']],
             array_map($cell, array_slice($copied['clearedFields'], 1)),
+        );
+    }
+
+    public function test_cells_follow_the_field_order_within_a_row_and_the_details_follow_their_order(): void
+    {
+        $fixture = $this->copyCheckFixture();
+        ['users' => $users] = $this->people();
+        $tasks = $this->detailsField($fixture['module'], 'tasks', ['sort_key' => 6]);
+        $this->field($this->childOf($tasks), 'owner', RecordFieldType::User, ['sort_key' => 1]);
+        $disabled = ['id' => $users['disabled']->id];
+
+        // 値は定義の並びと逆の順で渡す(明細の項目も、行の中の項目も)
+        $copied = $this->fromValues($fixture, [], [
+            'tasks' => [['values' => ['owner' => $disabled]]],
+            'lines' => [['values' => ['parent_ref' => ['id' => 999_999_999], 'who' => $disabled]]],
+        ]);
+
+        $cell = fn (array $entry) => [$entry['kind'], $entry['detail'], $entry['row'], $entry['field']];
+        $this->assertSame(
+            [['cell', 'lines', 0, 'who'], ['cell', 'lines', 0, 'parent_ref'], ['cell', 'tasks', 0, 'owner']],
+            array_map($cell, $copied['clearedFields']),
         );
     }
 

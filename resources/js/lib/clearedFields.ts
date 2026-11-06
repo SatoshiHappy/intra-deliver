@@ -16,10 +16,6 @@ export const CLEARED_REASON_TEXTS: Record<ClearedReason, string> = {
     record: '元のレコードの値は、今は使えないため空にしました。',
 };
 
-/** 案件からの複製で引き継ぐ参照制限の参照者を外したときの 1 行(申請の画面に参照制限の欄が無いので、件数に数えない) */
-export const VIEWERS_CLEARED_NOTICE =
-    '引き継ぐ参照制限の参照者のうち、今は使えない人・組織を外しました。';
-
 /**
  * 空にした欄の印 1 つ(画面.md の 5 節の表 1)。baseline = 空にした直後の値(JSON)、gone = 消えた。明細のセルは行の key で引く
  * (行を並べ替えても同じ行を指すため)。
@@ -247,9 +243,4 @@ export function clearedNoticeOf(count: number): string | null {
     return count === 0
         ? null
         : `今は使えない値を空にした項目が ${count} 件あります。⚠ の付いた欄を入力してください。`;
-}
-
-/** 参照制限の参照者を外したか */
-export function hasClearedViewers(cleared: ClearedField[]): boolean {
-    return cleared.some((entry) => entry.kind === 'viewers');
 }

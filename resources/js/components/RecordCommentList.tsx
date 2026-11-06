@@ -133,7 +133,7 @@ function CommentItem({
 
 /**
  * コメントの一覧(docs の 設計/業務データの入れ物/レコードの共通機能/コメント.md の 7 節): 新しい順の 1 件 = 書いた人・日時・本文(複数行の欄と
- * 同じ RichText。画面/README.md 1.4)・宛先。「削除」は自分の分と、管理の権限がある人に出す(押すと確かめの Dialog)。
+ * 同じ RichText。画面/リッチテキスト.md 1.4)・宛先。「削除」は自分の分と、管理の権限がある人に出す(押すと確かめの Dialog)。
  * 削除した行は印だけ。5 件ずつ「さらに表示」。
  */
 export function RecordCommentList(props: Props) {
