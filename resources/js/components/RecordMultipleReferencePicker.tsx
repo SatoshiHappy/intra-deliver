@@ -30,7 +30,7 @@ type Props = {
     invalid?: boolean;
     /** 添字の誤り(チップの印と、外したときの消し方) */
     itemErrors?: ReferenceItemErrors;
-    /** エラーの文言の要素の id(aria-describedby) */
+    /** 欄の説明の要素の id の並び(誤りの文言・空にした理由の 1 行。aria-describedby) */
     describedBy?: string;
     /** ラベルを持たない欄(明細の表のセル)の名前 */
     ariaLabel?: string;
@@ -65,7 +65,7 @@ function ChipMark({
 
 /**
  * 選んだ相手のチップ 1 つ(頭の印・表示名・所属と、右に外す ×)。誤りがあれば赤の枠で、外すボタンに aria-invalid を付ける
- * (送った後のフォーカスの行き先にする)。
+ * (送った後のフォーカスの行き先にする)。外すボタンの説明は誤りの有無によらず欄の説明(空にした理由の 1 行を含む)を指す。
  */
 function ReferenceChip({
     field,
@@ -101,7 +101,7 @@ function ReferenceChip({
                 className="size-6 rounded-full"
                 aria-label={`${picked.label}を外す`}
                 aria-invalid={invalid || undefined}
-                aria-describedby={invalid ? describedBy : undefined}
+                aria-describedby={describedBy}
                 onClick={onRemove}
             >
                 <X aria-hidden="true" />

@@ -5,6 +5,8 @@ import { fillVersionTwoBaseDate } from '../support/seed-dates';
 import {
     caseIdOf,
     caseStateOf,
+    copiedMilestones,
+    openCopyFromDetail,
     rewriteOpened,
 } from '../support/workflow-case-copy';
 import { pane, railButton } from '../support/workflow-case-show';
@@ -21,7 +23,8 @@ import {
 } from '../support/workflow-target-apply';
 
 // 案件からの複製で開いた申請の画面(クエリ copy)。筋の正本 = docs の 設計/ワークフロー/申請の周辺/画面.md の 9 節の「案件からの複製」。
-// 申請の詳細の「複製」から開く筋(フローの参照者 = 経理部の利用者が完了した WF-000001 を写す)は最後の 1 本で、ほかは移り先の URL を直に開く。
+// 申請の詳細の「複製」から開く筋(完了した WF-000001 を写す)は最後の 2 本で、フローの参照者(経理部の利用者)は開くところまで、
+// 申請までは元の申請者(初期データの経理部のルートには課長の承認者がいない)。ほかは移り先の URL を直に開く。
 // 見本の案件 WF-000013(新製品の発売計画。申請者 = u0001)を写す。空にした欄の知らせと申請対象の確かめは、開いた時の応答を書き換えて作る
 // (サーバーの確かめは Feature テスト)。プロジェクトを申請対象にするフローが 1 つのうちに流す(tests/e2e/demo/groups.ts の並び)。
 test.use({ viewport: { width: 1280, height: 720 } });
@@ -37,7 +40,10 @@ function sourceIdOf(artisan: Artisan): string {
     return caseIdOf(artisan, 13);
 }
 
-/** 申請対象の写しを出さず、元の申請の値を空にした欄(責任者)と明細のセル(マイルストーンの 1 行目の工数)の知らせを出す形で開く */
+/**
+ * 申請対象の写しを出さず、元の申請の値を空にした欄(責任者)と明細のセル(マイルストーンの 2 行目の工数)の知らせを出す形で開く
+ * (見本の WF-000013 は明細の行が無いので、書き換えで 2 行入れる。申請対象の写しが無いので行はそのまま残る)。
+ */
 async function openCopy(page: Page, artisan: Artisan) {
     const id = sourceIdOf(artisan);
     await rewriteOpened(page, (props) => {
@@ -45,7 +51,7 @@ async function openCopy(page: Page, artisan: Artisan) {
 
         if (props.copy !== null) {
             props.initial.values.manager = null;
-            props.initial.details.milestones[0].values.effort = null;
+            props.initial.details.milestones = copiedMilestones();
             props.copy.clearedFields = [
                 {
                     kind: 'field',
@@ -58,7 +64,7 @@ async function openCopy(page: Page, artisan: Artisan) {
                     kind: 'cell',
                     field: 'effort',
                     detail: 'milestones',
-                    row: 0,
+                    row: 1,
                     name: 'マイルストーンの工数(人日)',
                 },
             ];
@@ -83,7 +89,7 @@ async function expectClearedReasons(page: Page, form: Locator) {
         form.getByRole('combobox', { name: '責任者', exact: true }),
     ).toHaveAccessibleDescription(CLEARED_REASON);
     await expect(
-        form.getByRole('textbox', { name: '工数(人日)(1 行目)', exact: true }),
+        form.getByRole('textbox', { name: '工数(人日)(2 行目)', exact: true }),
     ).toHaveAccessibleDescription(CLEARED_REASON);
 }
 
@@ -233,24 +239,26 @@ test('申請の詳細のサイドパネルを開いた(部分の再読み込み�
     await expect(button).toBeVisible();
 });
 
-test('フローの参照者が完了した申請の詳細の「複製」から開き、値を直して申請すると新しい申請の詳細が開き、元の申請は変わらない', async ({
+test('フローの参照者が完了した申請の詳細の「複製」から開くと、申請名・値と見出しの下の 1 行が入る', async ({
+    page,
+    artisan,
+}) => {
+    const id = caseIdOf(artisan, 1);
+    await openAs(page, 'accounting', `/workflow/cases/${id}`);
+    await openApplicationTab(page);
+
+    await openCopyFromDetail(page);
+});
+
+test('元の申請者が完了した申請の詳細の「複製」から開き、値を直して申請すると新しい申請の詳細が開き、元の申請は変わらない', async ({
     page,
     artisan,
 }) => {
     const id = caseIdOf(artisan, 1);
     const before = caseStateOf(artisan, id);
-    await openAs(page, 'accounting', `/workflow/cases/${id}`);
+    await openAs(page, 'applicant', `/workflow/cases/${id}`);
     await openApplicationTab(page);
-    const button = page
-        .getByRole('main')
-        .getByRole('link', { name: '複製', exact: true });
-    await button.click();
-    await expect(page).toHaveURL(new RegExp(`${APPLY_URL}$`));
-    await expect(
-        page.getByText('(申請番号 WF-000001)を複製して申請します。', {
-            exact: false,
-        }),
-    ).toBeVisible();
+    await openCopyFromDetail(page);
     // 申請対象の今の値が写した値と違えば開いた時に確かめが出る(この筋では写した値のまま申請する)
     const confirm = page.getByRole('dialog', { name: CONFIRM_TITLE });
     if ((await confirm.count()) > 0) {

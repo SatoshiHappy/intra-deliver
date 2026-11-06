@@ -1,6 +1,7 @@
 import type { Page, Route } from '@playwright/test';
+import { expect } from './test';
 import type { Artisan } from './test';
-import { APPLY_URL } from './workflow-target-apply';
+import { APPLY_URL, applyForm } from './workflow-target-apply';
 
 // 案件からの複製の E2E の手助け(見本の案件の id と状態を読み、開いた時の応答の props を書き換える)。
 
@@ -100,4 +101,43 @@ export async function rewriteOpened(
             await route.fulfill({ response, body: html });
         },
     );
+}
+
+/** 写す元の明細「マイルストーン」の 2 行(見本の WF-000013 は行が無いので、開いた時の応答の書き換えで入れる。2 行目の工数は空) */
+export function copiedMilestones(): { values: Record<string, unknown> }[] {
+    return [
+        {
+            values: {
+                name: '要件の確定',
+                due_date: '2026-12-25',
+                effort: '5',
+                is_done: false,
+            },
+        },
+        {
+            values: {
+                name: '設計',
+                due_date: '2027-01-15',
+                effort: null,
+                is_done: false,
+            },
+        },
+    ];
+}
+
+/** 完了した見本の WF-000001 の詳細の「複製」から申請の画面を開く(申請名と見出しの下の 1 行が入る) */
+export async function openCopyFromDetail(page: Page) {
+    await page
+        .getByRole('main')
+        .getByRole('link', { name: '複製', exact: true })
+        .click();
+    await expect(page).toHaveURL(new RegExp(`${APPLY_URL}$`));
+    await expect(
+        page.getByText('(申請番号 WF-000001)を複製して申請します。', {
+            exact: false,
+        }),
+    ).toBeVisible();
+    await expect(
+        applyForm(page).getByRole('textbox', { name: '申請名', exact: true }),
+    ).not.toHaveValue('');
 }

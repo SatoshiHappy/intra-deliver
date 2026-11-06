@@ -81,7 +81,8 @@ function portsOf(
 }
 
 /**
- * 戻る・進むで来た時に、最後に決まった申請対象を戻すため、履歴の項目に覚える(画面.md の 5 節。空にした欄の印は useApplyForm が覚える)。
+ * 戻る・進むで来た時に、最後に決まった申請対象を戻すため、履歴の項目に覚える(docs の 設計/ワークフロー/申請の周辺/画面.md の 5 節。
+ * 空にした欄の印は useApplyForm が覚える)。
  */
 function rememberTarget(
     applicationTarget: ApplicationTargetFlow,

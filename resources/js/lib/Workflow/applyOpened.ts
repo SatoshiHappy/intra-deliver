@@ -146,10 +146,9 @@ type OpenedForm = {
 };
 
 /**
- * 開いた時のフォームの値と写しと印(印はフォームの値と同じ分かれ道で取る)。戻る・進むで来た(履歴の項目に覚えた入力がある)ときは
- * {@link restoredOf} と覚えた印。ほかは開いた時の写しと、同じ初期値から作った印(再読み込みでは Inertia が覚えた値を消す)。
- * 覚えた入力があり印が無い(印の形の前の履歴の項目)ときは、フォームは覚えた入力で始まる(useForm が戻す)ので、印は新しく作り、
- * 初めの 1 回の確かめに任せる。restore = 履歴の項目に覚えた値を鍵で引く口(Inertia の router.restore)。
+ * 開いた時のフォームの値と写しと印。印はフォームの値と同じ分かれ道で取る(明細の行の key をフォームとそろえるため = docs の
+ * 設計/ワークフロー/申請の周辺/画面.md の 5 節の「空にした項目の知らせ」の表 1)。restore = 履歴の項目に覚えた値を鍵で引く口
+ * (Inertia の router.restore)。
  */
 export function openedFormOf(
     props: Props,
@@ -157,7 +156,6 @@ export function openedFormOf(
     restore: (key: string) => unknown,
 ): OpenedForm {
     const remembered = restore(`${rememberKey}:data`) as ApplyForm | undefined;
-    const initial = initialApplyFormOf(props);
 
     if (remembered !== undefined) {
         const target = restore(`${rememberKey}:target`) as
@@ -171,10 +169,17 @@ export function openedFormOf(
             props.targetField,
             isRememberedCleared(cleared)
                 ? cleared
-                : { copy: copyMarksOf(props, initial.record), target: [] },
+                : {
+                      copy: copyMarksOf(
+                          props,
+                          initialApplyFormOf(props).record,
+                      ),
+                      target: [],
+                  },
         );
     }
 
+    const initial = initialApplyFormOf(props);
     const opening = openingOf(props, initial.record);
 
     return {

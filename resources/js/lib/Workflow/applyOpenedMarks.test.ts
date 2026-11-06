@@ -74,7 +74,7 @@ function shownOf(opened: ReturnType<typeof openedFormOf>) {
     return shownMarksOf(state.groups);
 }
 
-describe('元の申請の値の印とフォームの値の出どころ(T1)', () => {
+describe('元の申請の値の印とフォームの値の出どころ', () => {
     it('明細のセルの印の行の key がフォームの行の key と一致し、そのセルに印が付き、件数は 2(budget とセル)', () => {
         const opened = openedFormOf(copyProps(), 'k', () => undefined);
         const firstKey = opened.data.record.details.milestones[0].key;

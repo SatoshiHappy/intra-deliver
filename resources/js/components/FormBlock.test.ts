@@ -21,6 +21,12 @@ describe('invalidProps の説明の並び', () => {
         });
     });
 
+    it('複数行の文字列のプレビューの面(誤りなし・文字数あり)にも空にした理由を入れる', () => {
+        expect(
+            invalidProps('f', undefined, false, true, [clearedReasonId('f')]),
+        ).toEqual({ 'aria-describedby': 'f-cleared f-count' });
+    });
+
     it('どれも無ければ空', () => {
         expect(invalidProps('f', undefined)).toEqual({});
     });

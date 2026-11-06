@@ -58,7 +58,7 @@ export default function CaseShow(props: Props) {
             <Head title={props.case.name} />
 
             <div className="flex h-full flex-1 flex-col gap-6 p-4">
-                {layout.frame === null ? (
+                {layout.actionBar === 'belowHeading' ? (
                     <>
                         <CaseHeading {...props} />
                         {actionBar}

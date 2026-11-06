@@ -125,8 +125,7 @@ export function clearedMarksOf(
 }
 
 /**
- * 今の値で消えた印を決める(表 1。開いた時・戻った時の初めの 1 回と、値が変わるたびに当てる)。値が空にした直後と違う印と、
- * 明細の行が無くなった印は消えた。消えた印は値が戻っても消えたまま。何も変わらなければ同じ配列を返す。
+ * 今の値で消えた印を決める(画面.md の 5 節の表 1)。何も変わらなければ同じ配列を返す(描画の中で状態を更新し続けないため)。
  */
 export function settledMarksOf(
     marks: ClearedMark[],
@@ -159,7 +158,7 @@ export type ClearedState = {
     groups: ClearedMark[][];
 };
 
-/** 開いた時・戻った時の状態(初めの 1 回の確かめを当てる) */
+/** 開いた時・戻った時の状態(画面.md の 5 節の表 1 の初めの 1 回) */
 export function clearedStateOf(
     sources: ClearedMark[][],
     current: ClearedValues,
@@ -172,8 +171,8 @@ export function clearedStateOf(
 }
 
 /**
- * 次の状態(元が替わった組 = 申請対象を写し直した印は、新しい印で置き換える。値が変わったら、すべての組に表 1 を当てる)。
- * 何も変わらなければ同じ状態を返す。
+ * 次の状態(画面.md の 5 節の表 1。組の元の配列が替わったら、その組は写し直した新しい印)。何も変わらなければ同じ状態を返す
+ * (描画の中で状態を更新し続けないため)。
  */
 export function nextClearedStateOf(
     state: ClearedState,
@@ -209,8 +208,7 @@ function keyOf(mark: ClearedMark): string {
 }
 
 /**
- * 今出す印(表 2): 消えた印は出さない。参照者の印は参照制限のチェックが付いているときだけ(viewersShown)。同じ欄・セルに 2 つあれば、
- * 後の組(後から写した仕組み)の 1 つにまとめる。件数 = 返した印の数。
+ * 今出す印(画面.md の 5 節の表 2。件数 = 返した印の数)。viewersShown = 参照制限のチェックが付いているか。
  */
 export function shownMarksOf(
     groups: ClearedMark[][],

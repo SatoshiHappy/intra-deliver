@@ -1,6 +1,6 @@
 import { TriangleAlert } from 'lucide-react';
 import { CLEARED_FRAME_CLASS } from '@/components/ClearedNotice';
-import { formErrorId } from '@/components/FormBlock';
+import { clearedReasonId, formErrorId } from '@/components/FormBlock';
 import {
     hasCharacterCount,
     RecordFieldInput,
@@ -49,7 +49,7 @@ export function detailClearedReasonId(
     detailsCode: string,
     reason: ClearedReason,
 ): string {
-    return `record-field-${detailsCode}-cleared-${reason}`;
+    return `${clearedReasonId(`record-field-${detailsCode}`)}-${reason}`;
 }
 
 /** セルの誤りの文言(入力の aria-describedby が指す id) */

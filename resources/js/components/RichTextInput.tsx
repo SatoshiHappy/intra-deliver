@@ -92,18 +92,26 @@ function PreviewPanel({
     value,
     max,
     invalid,
+    describedIds,
     onFocus,
 }: {
     id: string;
     value: string;
     max: number | null;
     invalid: boolean;
+    describedIds?: string[];
     onFocus: (event: FocusEvent) => void;
 }) {
     return (
         <TabsContent
             value="preview"
-            {...invalidProps(id, invalid ? '' : undefined, false, max !== null)}
+            {...invalidProps(
+                id,
+                invalid ? '' : undefined,
+                false,
+                max !== null,
+                describedIds,
+            )}
             onFocus={onFocus}
             className={PREVIEW_CLASS}
         >
@@ -182,6 +190,7 @@ export function RichTextInput(props: Props) {
                     value={value}
                     max={max}
                     invalid={invalid && tab === 'preview'}
+                    describedIds={props.describedIds}
                     onFocus={moveToEdit}
                 />
             </Tabs>
