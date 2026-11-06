@@ -23,6 +23,8 @@ export async function expectBlockedBeforeSending(page: Page, form: Locator) {
     const toast = page.getByText(tooLarge, { exact: true });
     await form.getByRole('button', DRAFT_BUTTON).click();
     await expect(toast).toBeVisible();
+    // トーストは指が上にある間は消えない(押したボタンが右下のトーストに重なる幅がある)ので、指を画面の左上へ逃がしてから待つ
+    await page.mouse.move(0, 0);
     await expect(toast).toHaveCount(0, { timeout: 15_000 });
 }
 

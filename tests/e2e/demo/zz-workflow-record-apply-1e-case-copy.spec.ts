@@ -13,6 +13,7 @@ import { pane, railButton } from '../support/workflow-case-show';
 import {
     openApplicationTab,
     openAs,
+    pickReference,
     submitApplication,
 } from '../support/workflow-operations';
 import {
@@ -177,6 +178,17 @@ test('入力の誤りで戻った後に別のページへ移り、戻るで来�
     await expect(page.getByRole('dialog', { name: CONFIRM_TITLE })).toHaveCount(
         0,
     );
+
+    // 空にした必須の欄(責任者)を選ぶと、その欄の理由が消えて件数が減る(画面.md 5 節の表 1)。選ばないと申請は入力の誤りで戻る
+    await pickReference(page, '責任者', '中村', '中村 美咲');
+    await expect(page.getByText(CLEARED_REASON, { exact: true })).toHaveCount(
+        1,
+    );
+    await expect(
+        page.getByText('今は使えない値を空にした項目が 1 件あります。', {
+            exact: false,
+        }),
+    ).toBeVisible();
 
     const sent = page.waitForRequest(
         (request) =>
