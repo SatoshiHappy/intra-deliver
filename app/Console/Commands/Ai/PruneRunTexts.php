@@ -30,7 +30,8 @@ final class PruneRunTexts extends Command
     public function handle(PruneRunTextsAction $pruneRunTexts, PruneTranscriptionFiles $pruneTranscriptionFiles): int
     {
         $pruned = $pruneRunTexts->execute();
-        $this->info("AI の原文を {$pruned['texts']} 件消し、例外の文を {$pruned['errorMessages']} 件空にした");
+        $this->info("AI の実行の原文を {$pruned['texts']} 件・ステップの原文を {$pruned['stepTexts']} 件・"
+            ."道具の呼び出しの原文を {$pruned['toolCallTexts']} 件消し、例外の文を {$pruned['errorMessages']} 件空にした");
         $directories = $pruneTranscriptionFiles->execute();
         $this->info("残った文字起こしの一時ファイルのディレクトリを {$directories} 件消した");
 

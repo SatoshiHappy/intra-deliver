@@ -2,6 +2,7 @@
 
 namespace App\Queries\Ai;
 
+use App\Enums\Ai\AiConversationPurpose;
 use App\Support\DefaultDatabaseQueue;
 use Illuminate\Support\Facades\Config;
 use LogicException;
@@ -22,13 +23,13 @@ use LogicException;
 class ConversationSettings
 {
     /** 用途: 会話(要約も会話の用途で送る = 設計/AI/エージェントの実行/途中の表示と上限.md 9.9) */
-    public const CONVERSATION = 'conversation';
+    public const CONVERSATION = AiConversationPurpose::Conversation->value;
 
     /** 用途: 会話の題 */
-    public const TITLE = 'title';
+    public const TITLE = AiConversationPurpose::Title->value;
 
     /** 用途: ファイルを作る(接続先は Anthropic に限る = 設計/AI/ファイルの作業場.md 12.1・12.2) */
-    public const CREATE_FILE = 'create_file';
+    public const CREATE_FILE = AiConversationPurpose::CreateFile->value;
 
     /** 用途の一覧 */
     public const PURPOSES = [self::CONVERSATION, self::TITLE, self::CREATE_FILE];

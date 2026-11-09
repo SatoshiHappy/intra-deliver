@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use LogicException;
 
@@ -133,5 +134,25 @@ class AiRun extends Model
     public function text(): HasOne
     {
         return $this->hasOne(AiRunText::class);
+    }
+
+    /**
+     * ステップ(会話の型だけ。設計/AI/実行の記録.md 2.3)。
+     *
+     * @return HasMany<AiRunStep, $this>
+     */
+    public function steps(): HasMany
+    {
+        return $this->hasMany(AiRunStep::class);
+    }
+
+    /**
+     * 道具の呼び出し(会話の型だけ。設計/AI/実行の記録.md 2.4)。
+     *
+     * @return HasMany<AiToolCall, $this>
+     */
+    public function toolCalls(): HasMany
+    {
+        return $this->hasMany(AiToolCall::class);
     }
 }

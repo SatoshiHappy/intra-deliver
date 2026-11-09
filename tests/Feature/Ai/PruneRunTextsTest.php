@@ -7,7 +7,11 @@ use App\Console\Commands\Ai\PruneRunTexts as PruneRunTextsCommand;
 use App\Enums\Ai\AiRunErrorCode;
 use App\Enums\Ai\AiRunStatus;
 use App\Models\Ai\AiRun;
+use App\Models\Ai\AiRunStep;
+use App\Models\Ai\AiRunStepText;
 use App\Models\Ai\AiRunText;
+use App\Models\Ai\AiToolCall;
+use App\Models\Ai\AiToolCallText;
 use Carbon\CarbonImmutable;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Support\Facades\Artisan;
@@ -17,7 +21,8 @@ use Tests\Support\TransactionalTestCase;
 
 /**
  * 原文・例外の文の保存期間(対象と期限の正本 =
- * docs の 設計/AI/データと失敗と検査.md 6 節)。境界は 90 日の前後 1 秒で確かめる。
+ * docs の 設計/AI/データと失敗と検査.md 6 節)。境界は 90 日の前後 1 秒で確かめる。原文は実行・ステップ・道具の呼び出しの 3 つの表から消え、
+ * 記録の行(ステップと道具の行の業務モジュールと id を含む)は残る。
  */
 final class PruneRunTextsTest extends TransactionalTestCase
 {
@@ -27,7 +32,7 @@ final class PruneRunTextsTest extends TransactionalTestCase
         $expired = $this->runWithText(now()->subDays(90)->subSecond());
         $kept = $this->runWithText(now()->subDays(90)->addSecond());
 
-        $this->assertSame(['texts' => 1, 'errorMessages' => 0], app(PruneRunTexts::class)->execute());
+        $this->assertSame(self::pruned(texts: 1), app(PruneRunTexts::class)->execute());
 
         $this->assertSame([$kept], AiRunText::query()->whereIn('ai_run_id', [$expired, $kept])->pluck('ai_run_id')->all());
         $this->assertSame(2, AiRun::query()->whereKey([$expired, $kept])->count());
@@ -39,10 +44,44 @@ final class PruneRunTextsTest extends TransactionalTestCase
         $expired = AiRun::factory()->failed()->create(['created_at' => now()->subDays(90)->subSecond()]);
         $kept = AiRun::factory()->failed()->create(['created_at' => now()->subDays(90)->addSecond()]);
 
-        $this->assertSame(['texts' => 0, 'errorMessages' => 1], app(PruneRunTexts::class)->execute());
+        $this->assertSame(self::pruned(errorMessages: 1), app(PruneRunTexts::class)->execute());
 
         $this->assertSame(['', AiRunStatus::Failed, AiRunErrorCode::Provider], [$expired->refresh()->error_message, $expired->status, $expired->error_code]);
         $this->assertSame('接続先の誤り', $kept->refresh()->error_message);
+    }
+
+    public function test_deletes_only_the_step_and_tool_call_texts_older_than_the_retention_and_keeps_the_rows(): void
+    {
+        $this->freezeTime();
+        $records = [['module' => 'meetings', 'id' => 7]];
+        [$expiredStep, $expiredCall] = $this->stepAndCallWithTexts(now()->subDays(90)->subSecond(), $records);
+        [$keptStep, $keptCall] = $this->stepAndCallWithTexts(now()->subDays(90)->addSecond(), $records);
+
+        $this->assertSame(self::pruned(stepTexts: 1, toolCallTexts: 1), app(PruneRunTexts::class)->execute());
+
+        $stepTexts = AiRunStepText::query()->whereIn('ai_run_step_id', [$expiredStep->id, $keptStep->id]);
+        $this->assertSame([$keptStep->id], $stepTexts->pluck('ai_run_step_id')->all());
+        $callTexts = AiToolCallText::query()->whereIn('ai_tool_call_id', [$expiredCall->id, $keptCall->id]);
+        $this->assertSame([$keptCall->id], $callTexts->pluck('ai_tool_call_id')->all());
+        $this->assertSame(2, AiRunStep::query()->whereKey([$expiredStep->id, $keptStep->id])->count());
+        $this->assertEquals($records, $expiredCall->refresh()->records);
+        $this->assertSame(1, AiRun::query()->whereKey($expiredStep->ai_run_id)->count());
+    }
+
+    public function test_the_command_reports_the_count_of_each_table(): void
+    {
+        $this->freezeTime();
+        $this->runWithText(now()->subDays(91));
+        $this->stepAndCallWithTexts(now()->subDays(91), []);
+        $this->stepAndCallWithTexts(now()->subDays(91), []);
+        $emptyDirectory = sys_get_temp_dir().'/prune-run-texts-test-'.bin2hex(random_bytes(6));
+        config(['ai_runs.transcription.temp_directory' => $emptyDirectory]);
+
+        $this->assertSame(0, Artisan::call('ai:prune-run-texts'));
+        $this->assertStringStartsWith(
+            "AI の実行の原文を 1 件・ステップの原文を 2 件・道具の呼び出しの原文を 2 件消し、例外の文を 0 件空にした\n",
+            Artisan::output(),
+        );
     }
 
     /**
@@ -77,7 +116,8 @@ final class PruneRunTextsTest extends TransactionalTestCase
 
         $this->assertSame(0, Artisan::call('ai:prune-run-texts'));
         $this->assertSame(
-            "AI の原文を 1 件消し、例外の文を 0 件空にした\n残った文字起こしの一時ファイルのディレクトリを 0 件消した\n",
+            "AI の実行の原文を 1 件・ステップの原文を 0 件・道具の呼び出しの原文を 0 件消し、例外の文を 0 件空にした\n"
+            ."残った文字起こしの一時ファイルのディレクトリを 0 件消した\n",
             Artisan::output(),
         );
         $this->assertSame(0, AiRunText::query()->whereKey($expired)->count());
@@ -101,5 +141,40 @@ final class PruneRunTextsTest extends TransactionalTestCase
     private function runWithText(CarbonImmutable $createdAt): int
     {
         return AiRunText::factory()->create(['created_at' => $createdAt])->ai_run_id;
+    }
+
+    /**
+     * 原文を同じ時刻に作ったステップと、その中の道具の呼び出し。
+     *
+     * @param  list<array<string, mixed>>  $records
+     * @return array{AiRunStep, AiToolCall}
+     */
+    private function stepAndCallWithTexts(CarbonImmutable $createdAt, array $records): array
+    {
+        $step = AiRunStep::factory()->create();
+        AiRunStepText::factory()->for($step, 'step')->create(['created_at' => $createdAt]);
+        $call = AiToolCall::factory()->inStep($step)->create(['records' => $records]);
+        AiToolCallText::factory()->for($call, 'toolCall')->create(['created_at' => $createdAt]);
+
+        return [$step, $call];
+    }
+
+    /**
+     * 消した数の期待(表ごと)。
+     *
+     * @return array{texts: int, stepTexts: int, toolCallTexts: int, errorMessages: int}
+     */
+    private static function pruned(
+        int $texts = 0,
+        int $stepTexts = 0,
+        int $toolCallTexts = 0,
+        int $errorMessages = 0,
+    ): array {
+        return [
+            'texts' => $texts,
+            'stepTexts' => $stepTexts,
+            'toolCallTexts' => $toolCallTexts,
+            'errorMessages' => $errorMessages,
+        ];
     }
 }

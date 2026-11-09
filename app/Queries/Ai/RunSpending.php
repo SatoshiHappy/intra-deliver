@@ -15,7 +15,7 @@ use LogicException;
 /**
  * 予算の区分の使った額と上限の比べ方(正本 = docs の 設計/AI/実行と費用/接続先と費用.md 5.2)。依頼の口の上限の確認と、区分の状態の読み取りが
  * 同じ比べ方を使う。繰り越しを書く業務処理と退避から戻す道具も、数える行・実行ごとの額・東京の日を同じ式({@see self::COUNTED_RUNS_SQL}・
- * {@see self::RUN_COST_SQL}・{@see self::runDaySql()})で数える。会話の型はステップの行から数える(ステップの表を足す版で足す)。
+ * {@see self::RUN_COST_SQL}・{@see self::runDaySql()})で数える。会話の型はステップの行から数える(ステップの行を数える版で足す)。
  */
 class RunSpending
 {

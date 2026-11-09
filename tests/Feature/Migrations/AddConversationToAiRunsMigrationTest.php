@@ -26,6 +26,12 @@ final class AddConversationToAiRunsMigrationTest extends TransactionalTestCase
 
     private const TEXTS_MIGRATION = '2026_11_09_100003_add_conversation_to_ai_run_texts_table.php';
 
+    /** 実行の表の会話の型の列を指す後のマイグレーション(戻すときは先に戻す) */
+    private const LATER_MIGRATIONS = [
+        '2026_11_09_100004_create_ai_run_steps_table.php',
+        '2026_11_09_100005_create_ai_tool_calls_table.php',
+    ];
+
     public function test_the_prompt_and_transcription_runs_from_before_get_their_kind_type(): void
     {
         $this->reset();
@@ -120,10 +126,11 @@ final class AddConversationToAiRunsMigrationTest extends TransactionalTestCase
         return (string) DB::scalar('select pg_get_constraintdef(oid) from pg_constraint where conname = ?', [$name]);
     }
 
-    /** 原文の表と実行の表の会話の型の分を戻す(後のマイグレーションから順に) */
+    /** 原文の表と実行の表の会話の型の分を、それを指す後の表と一緒に戻す(後のマイグレーションから順に) */
     private function reset(): void
     {
-        $this->migrator()->reset([$this->path(self::MIGRATION), $this->path(self::TEXTS_MIGRATION)]);
+        $later = array_map(fn (string $migration): string => $this->path($migration), self::LATER_MIGRATIONS);
+        $this->migrator()->reset([$this->path(self::MIGRATION), $this->path(self::TEXTS_MIGRATION), ...$later]);
     }
 
     private function migrator(): Migrator
