@@ -1,12 +1,16 @@
 #!/usr/bin/env bash
 # DB をボリュームから作り直した後に、退避から AI の費用の繰り越しを戻す(docs の 設計/公開の配備/配備と戻し方.md 6.7 の作り直しの 5。
-# 数え方の正本 = 設計/AI/実行と費用.md 5.2、式 = app/Queries/Ai/RunSpending.php)。
+# 数え方の正本 = 設計/AI/実行と費用/接続先と費用.md 5.2、式 = app/Queries/Ai/RunSpending.php)。
 #   scripts/deploy/restore-ai-carryovers <compose.env のパス> <退避のファイル>
 # 退避 = 作り直しの 2 で取った pg_dump の出力(既定の平文の形)。出力: 戻した繰り越し(予算の区分ごと)。
 # アプリ用ロールは NOCREATEDB なので、退避の 2 つの表は一時のデータベースでなく pg_temp の表へ入れる。一時の表は退避の COPY の列の並びから
-# 作る(列はすべて text。戻す先に無い列を持つ退避、つまり新しい版へ戻す前の版の退避も戻せる)。数える式で、数える列の型へ変える。
-# 終了コード: 0 = 成功、2 = 使い方の誤り・退避のファイルが無い、1 = 退避の中身が足りない(数える列が欠けた退避を含む)・繰り越しの表に行が
-# 既にある・DB での失敗。
+# 作る(列はすべて text。戻す先に無い列を持つ退避も戻せる。ただし実行の型の列 kind_type の無い前の版の退避は、退避の確かめで止めて戻さない =
+# 下の代償)。数える式で、数える列の型へ変える。
+# 終了コード: 0 = 成功、2 = 使い方の誤り・退避のファイルが無い、1 = 退避の中身が足りない(数える列が欠けた退避と kind_type の無い前の版の
+# 退避を含む)・繰り越しの表に行が既にある・DB での失敗。
+# 会話の型の実行の行は数えない(会話の型はステップの行から数える。ステップの表を足す版で、その表の COPY を足して東京の日で足し込む)。
+# 代償: kind_type の無い退避は退避の確かめで止まり(逃げ道を告げる)、繰り越しが戻らない(上限の使った額に退避の分が入らず、上限が緩む)。
+# この版を配るときに取った前の版の退避で作り直すと当たる。逃げ道 = 前の版の作業木の道具で、その退避から戻す(前の版の数え方で正しく数える)。
 set -euo pipefail
 
 if [ "$#" -ne 2 ]; then
@@ -31,6 +35,21 @@ if ! awk '
     END { exit !(runs == 1 && carryovers == 1 && !copying) }
 ' "${dump}"; then
     echo "退避の中に ai_runs と ai_spending_carryovers の COPY の段が 1 つずつ揃っていません(pg_dump の既定の平文の形で、繰り越しの表がある版の退避を指定してください)。何も入れていません" >&2
+    exit 1
+fi
+
+# 退避の確かめ: ai_runs の COPY の列に実行の型(kind_type)がある(無いのは前の版の退避 = 頭のコメントの代償)
+if ! awk '
+    /^COPY public\.ai_runs \(/ {
+        columns = $0
+        sub(/^COPY public\.ai_runs \(/, "", columns)
+        sub(/\) FROM stdin;$/, "", columns)
+        count = split(columns, parts, ", ")
+        for (i = 1; i <= count; i++) if (parts[i] == "kind_type") found = 1
+    }
+    END { exit !found }
+' "${dump}"; then
+    echo "退避の ai_runs に kind_type の列がありません(前の版の退避です)。その退避を取った前の版の作業木の scripts/deploy/restore-ai-carryovers で戻してください。何も入れていません" >&2
     exit 1
 fi
 
@@ -79,10 +98,10 @@ FROM (
     UNION ALL
     SELECT budget, (created_at AT TIME ZONE 'Asia/Tokyo')::date, coalesce(cost_usd, reserved_cost_usd)
     FROM (
-        SELECT budget, status, created_at::timestamptz AS created_at, cost_usd::numeric AS cost_usd,
+        SELECT budget, status, kind_type, created_at::timestamptz AS created_at, cost_usd::numeric AS cost_usd,
             reserved_cost_usd::numeric AS reserved_cost_usd
         FROM pg_temp.restore_ai_runs
-    ) AS runs WHERE status <> 'queued'
+    ) AS runs WHERE status <> 'queued' AND kind_type <> 'conversation'
 ) AS spent
 GROUP BY budget, spent_on;
 \echo ==> 戻した繰り越し(予算の区分ごと)

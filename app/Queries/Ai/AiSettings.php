@@ -43,6 +43,19 @@ class AiSettings
     }
 
     /**
+     * 接続先・モデルのトークンの単価が、どの入力の量にも当たるか(段があり、最後の段に入力の上限が無い)。単価の段の規則の 1 か所
+     * (費用を 0 と数えて上限をすり抜けないため = docs の 設計/AI/実行と費用/接続先と費用.md 5 節。起動の時の確かめが使う)。
+     *
+     * @throws LogicException 段の形が合わないとき
+     */
+    public function pricesEveryInput(string $provider, string $model): bool
+    {
+        $tiers = $this->priceTiers($provider, $model);
+
+        return $tiers !== [] && end($tiers)['up_to_input_tokens'] === null;
+    }
+
+    /**
      * 接続先・モデルの音声の分単価(1 分あたりの米ドル)。分単価でなければ null。
      *
      * @return AudioMinutePrice|null

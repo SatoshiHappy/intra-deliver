@@ -49,6 +49,7 @@ final class AddTranscriptionToAiRunsMigrationTest extends TransactionalTestCase
         $uploadId = Upload::factory()->create()->id;
         $userId = User::factory()->create()->id;
         $this->insertRun($userId, [
+            'kind_type' => 'transcription',
             'max_output_tokens' => null,
             'input_upload_id' => $uploadId,
             'original_input_upload_id' => $uploadId,
@@ -129,6 +130,7 @@ final class AddTranscriptionToAiRunsMigrationTest extends TransactionalTestCase
     {
         DB::table('ai_runs')->insert([
             'kind' => 'meeting.minutes',
+            'kind_type' => 'prompt',
             'status' => 'queued',
             'requester_user_id' => $userId,
             'source_record_ids' => '[]',

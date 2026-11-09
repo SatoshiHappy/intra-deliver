@@ -2,19 +2,26 @@
 
 namespace App\Actions\Ai;
 
+use App\Actions\Ai\Api\ConversationFailed;
+use App\Actions\Ai\Api\ConversationKind;
 use App\Actions\Ai\Api\FailedRun;
+use App\Actions\Ai\Api\PromptKind;
 use App\Actions\Ai\Api\RunCompletionFailed;
 use App\Actions\Ai\Api\RunRequestDeclined;
+use App\Actions\Ai\Api\TranscriptionKind;
+use App\Enums\Ai\AiKindType;
 use App\Enums\Ai\AiRunErrorCode;
 use App\Models\Ai\AiRun;
+use Closure;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Throwable;
 
 /**
- * AI の実行を失敗にする 1 か所(docs の 設計/AI/実行と費用.md 4 節の「失敗の書き方」、受け手 = 公開の口.md 3.1、データと失敗と検査.md 7 節)。
- * 受け手の例外を投げずに報告するのは、呼び手が投げ直す元の例外を隠さないため。
+ * AI の実行を失敗にする 1 か所(docs の 設計/AI/実行と費用/README.md 4 節の「完了と失敗の書き方」、受け手 = 公開の口.md 3.1・
+ * 設計/AI/エージェントの実行/口と契約.md 9.13、データと失敗と検査.md 7 節)。受け手の例外を投げずに報告するのは、呼び手が投げ直す元の例外を隠さないため。
+ * 終わった実行(会話の型の確認待ち・止めたを含む)は変えず、受け手を呼ばない(表の F5)。
  */
 class FailRun
 {
@@ -22,6 +29,7 @@ class FailRun
         private MarkRunFailed $markRunFailed,
         private PromptKinds $kinds,
         private TranscriptionKinds $transcriptionKinds,
+        private ConversationKinds $conversationKinds,
         private FailingRun $failing,
     ) {}
 
@@ -107,24 +115,57 @@ class FailRun
         ?RunResult $result,
     ): bool {
         return rescue(function () use ($run, $errorCode, $exception, $result): bool {
-            $kind = $this->kinds->find($run->kind) ?? $this->transcriptionKinds->find($run->kind);
+            $receiver = $this->receiverOf($run, $errorCode->value, self::reasonOf($errorCode, $exception, $result));
 
-            if ($kind === null) {
-                return true;
+            if ($receiver !== null) {
+                $this->failing->during($run->id, $receiver);
             }
-
-            $failed = new FailedRun(
-                $run->id,
-                $run->kind,
-                $run->record_id,
-                $run->requester_user_id,
-                $errorCode->value,
-                self::reasonOf($errorCode, $exception, $result),
-            );
-            $this->failing->during($run->id, fn () => $kind->failed($failed));
 
             return true;
         }, false);
+    }
+
+    /**
+     * 種類の失敗の受け手を呼ぶ処理(実装が引けなければ null)。受け手は行の種類の型で決めた型の種類の一覧から引く(型をまたいで探さない。
+     * その型に登録が無ければ、登録が無いの扱い)。会話の型の種類には対象のレコードの代わりに会話の題を渡す(題を渡すのは会話のジョブ。ここからは無し)。
+     *
+     * @return (Closure(): void)|null
+     */
+    private function receiverOf(AiRun $run, string $errorCode, ?string $reason): ?Closure
+    {
+        $failed = fn (): FailedRun => new FailedRun(
+            $run->id, $run->kind, $run->record_id, $run->requester_user_id, $errorCode, $reason,
+        );
+
+        return match ($run->kind_type) {
+            AiKindType::Prompt => self::recordReceiver($this->kinds->find($run->kind), $failed),
+            AiKindType::Transcription => self::recordReceiver($this->transcriptionKinds->find($run->kind), $failed),
+            AiKindType::Conversation => self::conversationReceiver(
+                $this->conversationKinds->find($run->kind),
+                new ConversationFailed($run->id, $run->kind, $run->requester_user_id, $errorCode, $reason, null),
+            ),
+        };
+    }
+
+    /**
+     * 文章・文字起こしの種類の失敗の受け手を呼ぶ処理(実装が無ければ null)。
+     *
+     * @param  Closure(): FailedRun  $failed
+     * @return (Closure(): void)|null
+     */
+    private static function recordReceiver(PromptKind|TranscriptionKind|null $kind, Closure $failed): ?Closure
+    {
+        return $kind === null ? null : fn () => $kind->failed($failed());
+    }
+
+    /**
+     * 会話の型の種類の失敗の受け手を呼ぶ処理(実装が無ければ null)。
+     *
+     * @return (Closure(): void)|null
+     */
+    private static function conversationReceiver(?ConversationKind $kind, ConversationFailed $failed): ?Closure
+    {
+        return $kind === null ? null : fn () => $kind->failed($failed);
     }
 
     /**

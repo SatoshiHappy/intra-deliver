@@ -24,4 +24,10 @@ enum AiRunErrorCode: string
 
     /** worker が落ちた(ジョブの failed())。使用量は分からない */
     case WorkerLost = 'worker_lost';
+
+    /** (会話の型だけ)実行の始めの確かめで、外した後の道具の定義の大きさが上限を超える */
+    case Setting = 'setting';
+
+    /** (会話の型だけ)答えの実行の始めの確かめが合わない */
+    case Confirmation = 'confirmation';
 }

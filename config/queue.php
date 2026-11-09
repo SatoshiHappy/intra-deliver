@@ -45,6 +45,18 @@ return [
             'after_commit' => false,
         ],
 
+        // AI の会話のジョブの接続(docs の 設計/AI/実行と費用/README.md 4.5)。既定の database と同じ DB の接続と表で、キューの名前だけを分ける。
+        // 配り直すまでの時間は既定の接続の値以下(4.1)の仮の値で、会話のジョブの時間
+        // (設計/AI/エージェントの実行/途中の表示と上限.md 9.7)から決め直す。照合 = ai:check-settings
+        'database-agent' => [
+            'driver' => 'database',
+            'connection' => env('DB_QUEUE_CONNECTION'),
+            'table' => env('DB_QUEUE_TABLE', 'jobs'),
+            'queue' => env('DB_AGENT_QUEUE', 'agent'),
+            'retry_after' => (int) env('DB_AGENT_QUEUE_RETRY_AFTER', 600),
+            'after_commit' => false,
+        ],
+
         'beanstalkd' => [
             'driver' => 'beanstalkd',
             'host' => env('BEANSTALKD_QUEUE_HOST', 'localhost'),

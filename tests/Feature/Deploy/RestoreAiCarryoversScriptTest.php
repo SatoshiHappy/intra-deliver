@@ -22,8 +22,11 @@ final class RestoreAiCarryoversScriptTest extends TransactionalTestCase
         setUp as setUpDeployScripts;
     }
 
-    private const RUNS_HEADER = 'COPY public.ai_runs (id, budget, status, created_at, cost_usd, reserved_cost_usd)'
-        .' FROM stdin;';
+    private const RUNS_HEADER = 'COPY public.ai_runs (id, budget, status, created_at, cost_usd, reserved_cost_usd,'
+        .' kind_type) FROM stdin;';
+
+    /** 文章の型の実行の行(区分・状態・作った時刻・費用・見積もり。待ちでなく、費用の分かった行) */
+    private const PROMPT_ROW = "1\tdefault\tsucceeded\t2026-10-17 14:59:59+00\t1.000000\t2.000000\tprompt";
 
     private const CARRYOVERS_HEADER = 'COPY public.ai_spending_carryovers (budget, spent_on, cost_usd) FROM stdin;';
 
@@ -43,11 +46,11 @@ final class RestoreAiCarryoversScriptTest extends TransactionalTestCase
     {
         $dump = $this->writeDump(
             [
-                "1\tdefault\tsucceeded\t2026-10-17 14:59:59+00\t1.000000\t2.000000",
-                "2\tdefault\trunning\t2026-10-17 15:00:00+00\t\\N\t0.500000",
-                "3\tdefault\tqueued\t2026-10-17 15:00:00+00\t\\N\t9.000000",
-                "4\ttranscription\tfailed\t2026-10-17 15:00:00+00\t0.250000\t1.000000",
-                "5\ttranscription\tfailed\t2026-10-17 15:00:01+00\t\\N\t0.125000",
+                self::PROMPT_ROW,
+                "2\tdefault\trunning\t2026-10-17 15:00:00+00\t\\N\t0.500000\tprompt",
+                "3\tdefault\tqueued\t2026-10-17 15:00:00+00\t\\N\t9.000000\tprompt",
+                "4\ttranscription\tfailed\t2026-10-17 15:00:00+00\t0.250000\t1.000000\ttranscription",
+                "5\ttranscription\tfailed\t2026-10-17 15:00:01+00\t\\N\t0.125000\ttranscription",
             ],
             ["default\t2026-10-17\t3.000000", "default\t2026-10-10\t1.000000"],
         );
@@ -70,7 +73,7 @@ final class RestoreAiCarryoversScriptTest extends TransactionalTestCase
         $this->committedConnection()->insert(
             "INSERT INTO ai_spending_carryovers (budget, spent_on, cost_usd) VALUES ('default', '2026-10-01', 2)",
         );
-        $dump = $this->writeDump(["1\tdefault\tsucceeded\t2026-10-17 14:59:59+00\t1.000000\t2.000000"], []);
+        $dump = $this->writeDump([self::PROMPT_ROW], []);
 
         $result = $this->restore($dump);
 
@@ -83,11 +86,11 @@ final class RestoreAiCarryoversScriptTest extends TransactionalTestCase
     public function test_it_restores_from_a_dump_with_columns_the_new_tables_do_not_have(): void
     {
         $dump = $this->writeDump(
-            ["1\tdefault\tsucceeded\t2026-10-17 14:59:59+00\t1.000000\t2.000000\told"],
+            [self::PROMPT_ROW."\told"],
             ["default\t2026-10-17\t3.000000\tx"],
             carryoversHeader: 'COPY public.ai_spending_carryovers (budget, spent_on, cost_usd, gone) FROM stdin;',
-            runsHeader: 'COPY public.ai_runs (id, budget, status, created_at, cost_usd, reserved_cost_usd, "legacy")'
-                .' FROM stdin;',
+            runsHeader: 'COPY public.ai_runs (id, budget, status, created_at, cost_usd, reserved_cost_usd, kind_type,'
+                .' "legacy") FROM stdin;',
         );
 
         $result = $this->restore($dump);
@@ -103,10 +106,7 @@ final class RestoreAiCarryoversScriptTest extends TransactionalTestCase
      */
     public static function dumpsMissingACountedColumn(): array
     {
-        $runs = [
-            'id, budget, status, created_at, cost_usd, reserved_cost_usd',
-            "1\tdefault\tsucceeded\t2026-10-17 14:59:59+00\t1.000000\t2.000000",
-        ];
+        $runs = ['id, budget, status, created_at, cost_usd, reserved_cost_usd, kind_type', self::PROMPT_ROW];
         $carryovers = ['budget, spent_on, cost_usd', "default\t2026-10-17\t3.000000"];
         $without = fn (array $block, string $column, int $position): array => [
             implode(', ', array_diff(explode(', ', $block[0]), [$column])),
@@ -131,7 +131,7 @@ final class RestoreAiCarryoversScriptTest extends TransactionalTestCase
         string $row,
         string $table,
     ): void {
-        $runs = ["1\tdefault\tsucceeded\t2026-10-17 14:59:59+00\t1.000000\t2.000000"];
+        $runs = [self::PROMPT_ROW];
         $carryovers = ["default\t2026-10-17\t3.000000"];
         $dump = $table === 'runs'
             ? $this->writeDump([$row], $carryovers, runsHeader: "COPY public.ai_runs ({$columns}) FROM stdin;")
@@ -148,11 +148,31 @@ final class RestoreAiCarryoversScriptTest extends TransactionalTestCase
         $this->assertStringContainsString('何も入っていません', $result->stderr);
     }
 
+    /**
+     * 実行の型(kind_type)の無い退避(実行の型の列を足すマイグレーションの前の版の退避)は、docker を呼ばずに、前の版の作業木の道具で戻すよう
+     * 告げて終了 1(道具の頭のコメントの代償)。
+     */
+    public function test_it_stops_with_the_way_out_when_the_runs_in_the_dump_have_no_kind_type(): void
+    {
+        $dump = $this->writeDump(
+            ["1\tdefault\tsucceeded\t2026-10-17 14:59:59+00\t1.000000\t2.000000"],
+            ["default\t2026-10-17\t3.000000"],
+            runsHeader: 'COPY public.ai_runs (id, budget, status, created_at, cost_usd, reserved_cost_usd) FROM stdin;',
+        );
+
+        $result = $this->restore($dump);
+
+        $this->assertSame(1, $result->exitCode, $result->describe());
+        $this->assertSame([], $this->calls());
+        $this->assertStringContainsString('前の版の作業木の scripts/deploy/restore-ai-carryovers で戻してください', $result->stderr);
+        $this->assertStringContainsString('何も入れていません', $result->stderr);
+    }
+
     /** 途中の失敗(額が数でない)は全体が巻き戻り、何も入らない */
     public function test_a_failure_in_the_middle_adds_nothing(): void
     {
         $dump = $this->writeDump(
-            ["1\tdefault\tsucceeded\t2026-10-17 14:59:59+00\t1.000000\t2.000000"],
+            [self::PROMPT_ROW],
             ["default\t2026-10-17\tnot-a-number"],
         );
 
@@ -169,7 +189,7 @@ final class RestoreAiCarryoversScriptTest extends TransactionalTestCase
      */
     public static function incompleteDumps(): array
     {
-        $runs = self::RUNS_HEADER."\n1\tdefault\tsucceeded\t2026-10-17 14:59:59+00\t1.000000\t2.000000\n\\.\n";
+        $runs = self::RUNS_HEADER."\n".self::PROMPT_ROW."\n\\.\n";
         $carryovers = self::CARRYOVERS_HEADER."\n\\.\n";
 
         return [
@@ -202,7 +222,30 @@ final class RestoreAiCarryoversScriptTest extends TransactionalTestCase
         $this->assertSame([], $this->calls());
     }
 
-    /** 使った額・日・待ちを外すことは、毎日の初期化が繰り越しを書くのと同じ式(RunSpending の 1 か所)の写し */
+    /**
+     * 会話の型の実行の行は数えない(会話の型はステップの行から数える): 会話の型の行だけの日は繰り越しが増えず(費用と見積もりの無い行でも
+     * 止まらない)、文章の行と混ざる日は文章の行の分だけを足す。
+     */
+    public function test_it_leaves_out_the_runs_of_the_conversation_type(): void
+    {
+        $dump = $this->writeDump(
+            [
+                "1\tdefault\trunning\t2026-10-18 01:00:00+00\t\\N\t\\N\tconversation",
+                "2\tdefault\tfailed\t2026-10-18 02:00:00+00\t\\N\t\\N\tconversation",
+                "3\tdefault\tstopped\t2026-10-18 03:00:00+00\t\\N\t\\N\tconversation",
+                "4\tdefault\tsucceeded\t2026-10-19 01:00:00+00\t0.500000\t1.000000\tprompt",
+                "5\tdefault\tawaiting_confirmation\t2026-10-19 02:00:00+00\t\\N\t\\N\tconversation",
+            ],
+            ["default\t2026-10-18\t3.000000"],
+        );
+
+        $result = $this->restore($dump);
+
+        $this->assertSame(0, $result->exitCode, $result->describe());
+        $this->assertSame(['default 2026-10-18 3.000000', 'default 2026-10-19 0.500000'], $this->carryovers());
+    }
+
+    /** 数える行・使った額・日・待ちを外すことは、毎日の初期化が繰り越しを書くのと同じ式(RunSpending の 1 か所)の写し */
     public function test_the_script_counts_with_the_same_expressions_as_the_daily_reset(): void
     {
         $script = (string) file_get_contents(base_path('scripts/deploy/restore-ai-carryovers'));
@@ -211,7 +254,10 @@ final class RestoreAiCarryoversScriptTest extends TransactionalTestCase
             'SELECT budget, '.RunSpending::runDaySql().', '.RunSpending::RUN_COST_SQL,
             $script,
         );
-        $this->assertStringContainsString("WHERE status <> '".AiRunStatus::Queued->value."'", $script);
+        $this->assertStringContainsString(
+            "WHERE status <> '".AiRunStatus::Queued->value."' AND ".RunSpending::COUNTED_RUNS_SQL,
+            $script,
+        );
     }
 
     private function restore(string $dump): ProcessResult

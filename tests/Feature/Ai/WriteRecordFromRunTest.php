@@ -37,8 +37,7 @@ final class WriteRecordFromRunTest extends TransactionalTestCase
     use BuildsCommonMaster;
     use BuildsRecordModules;
     use UsesTestPromptKinds;
-
-    private const MODULE = 'ai_notes';
+    use WritesRecordsFromRuns;
 
     private const OPERATION = 'AI(要約の作成)';
 
@@ -231,10 +230,7 @@ final class WriteRecordFromRunTest extends TransactionalTestCase
         $longest = str_repeat('あ', RecordRevisionOrigin::OPERATION_MAX);
 
         $this->assertThrows(fn () => $this->writeDuringComplete($runId, ''), InvalidArgumentException::class);
-        app(CompletingRun::class)->during($runId, function () use ($runId, $longest): void {
-            $written = app(WriteRecordFromRun::class)->execute($runId, new RecordInput(['summary' => 'x']), $longest);
-            $this->assertTrue($written);
-        });
+        $this->assertTrue($this->writeDuringComplete($runId, $longest));
     }
 
     /**
@@ -244,23 +240,6 @@ final class WriteRecordFromRunTest extends TransactionalTestCase
     {
         $input = new RecordInput(['summary' => $run->structured['summary'] ?? null]);
         $this->written[] = app(WriteRecordFromRun::class)->execute($run->runId, $input, self::OPERATION);
-    }
-
-    /**
-     * 業務モジュール ai_notes(項目 summary・memo)と、summary が「元の要約」のレコード。
-     *
-     * @param  list<RecordModuleAction>|null  $permitted  ゲストと認証済みの全員に許すアクション(既定はすべて)
-     */
-    private function noteRecord(?array $permitted = null): Record
-    {
-        $module = $this->recordModule(self::MODULE, $permitted);
-        $summary = $this->field($module, 'summary');
-        $this->field($module, 'memo');
-
-        return Record::factory()->create([
-            'record_module_id' => $module->id,
-            'field_values' => [$summary->id => '元の要約'],
-        ]);
     }
 
     /**
@@ -299,26 +278,9 @@ final class WriteRecordFromRunTest extends TransactionalTestCase
         ];
     }
 
-    private function runningRun(int $recordId): int
-    {
-        $runId = $this->queuedRun(recordId: $recordId);
-        AiRun::query()->whereKey($runId)->update(['status' => AiRunStatus::Running, 'started_at' => now()]);
-
-        return $runId;
-    }
-
     private function assertLogicErrorDuring(int $runId, string $operation): void
     {
         $this->assertThrows(fn () => $this->writeDuringComplete($runId, $operation), LogicException::class);
-    }
-
-    private function writeDuringComplete(int $runId, string $operation): void
-    {
-        $write = function () use ($runId, $operation): void {
-            app(WriteRecordFromRun::class)->execute($runId, new RecordInput(['summary' => 'x']), $operation);
-        };
-
-        app(CompletingRun::class)->during($runId, $write);
     }
 
     private function assertFailedWith(int $runId, string $reason): void

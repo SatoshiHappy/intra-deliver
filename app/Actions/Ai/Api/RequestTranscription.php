@@ -8,6 +8,7 @@ use App\Actions\Ai\AudioUnreadable;
 use App\Actions\Ai\RunBudget;
 use App\Actions\Ai\RunRequestChecks;
 use App\Actions\Ai\TranscriptionKinds;
+use App\Enums\Ai\AiKindType;
 use App\Enums\Ai\AiRunStatus;
 use App\Jobs\Ai\RunTranscriptionJob;
 use App\Models\Ai\AiRun;
@@ -81,6 +82,7 @@ class RequestTranscription
 
         $attributes = [
             'kind' => $request->kindCode,
+            'kind_type' => AiKindType::Transcription,
             'status' => AiRunStatus::Queued,
             'requester_user_id' => $requesterUserId,
             'selected_department_id' => $context->selectedDepartmentId,

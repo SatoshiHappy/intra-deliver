@@ -3,6 +3,7 @@
 namespace App\Actions\Ai;
 
 use App\Queries\Ai\AiSettings;
+use App\Queries\Ai\ConversationSettings;
 use App\Queries\Ai\KindSettings;
 use App\Queries\Ai\RunEstimates;
 use App\Queries\Ai\TranscriptionSettings;
@@ -13,6 +14,7 @@ use LogicException;
  * 種類の設定の形(型ごとの必須の鍵)は {@see KindSettings::problems()} が見て、形の合う種類だけをここで見る。
  *
  * @phpstan-import-type TranscriptionKindSettings from KindSettings
+ * @phpstan-import-type AnyKindSettings from KindSettings
  */
 class KindLimitChecks
 {
@@ -24,36 +26,28 @@ class KindLimitChecks
 
     public function __construct(
         private AiSettings $settings,
-        private KindSettings $kinds,
         private TranscriptionSettings $transcription,
         private RunEstimates $estimates,
     ) {}
 
     /**
-     * 種類ごとの食い違い。ジョブの時間が retry_after 以上だと、走っている間に同じ仕事が 2 回目に配られて費用が 2 回かかる。
+     * 種類ごとの食い違い(どの型も、予算の区分が設定にある)。ジョブの時間が retry_after 以上だと、走っている間に同じ仕事が 2 回目に配られて
+     * 費用が 2 回かかる(文章と文字起こし。会話の型のジョブの時間は会話のジョブを足す版で確かめる)。
      *
+     * @param  AnyKindSettings  $kind  呼び手が引いた種類の設定
      * @return list<string>
      */
-    public function kindProblems(string $code): array
+    public function kindProblems(string $code, array $kind): array
     {
-        $prompt = $this->kinds->prompt($code);
-        $transcription = $this->kinds->transcription($code);
-        $budget = $prompt['budget'] ?? $transcription['budget'] ?? null;
-
-        if ($budget === null) {
-            return [];
-        }
-
-        $problems = in_array($budget, $this->settings->budgetNames(), true)
+        $problems = in_array($kind['budget'], $this->settings->budgetNames(), true)
             ? []
-            : ["種類 {$code} の予算の区分 {$budget} が設定(config/ai_runs.php の budget)に無い"];
-        $jobTimeout = $prompt !== null ? AiSettings::jobTimeout($prompt['timeout_seconds']) : null;
-
-        if ($transcription !== null) {
-            [$jobTimeout, $transcriptionProblems] = $this->transcriptionProblems($code, $transcription);
-            $problems = [...$problems, ...$transcriptionProblems];
-        }
-
+            : ["種類 {$code} の予算の区分 {$kind['budget']} が設定(config/ai_runs.php の budget)に無い"];
+        [$jobTimeout, $typeProblems] = match ($kind['type']) {
+            KindSettings::PROMPT => [AiSettings::jobTimeout($kind['timeout_seconds']), []],
+            KindSettings::TRANSCRIPTION => $this->transcriptionProblems($code, $kind),
+            KindSettings::CONVERSATION => [null, []],
+        };
+        $problems = [...$problems, ...$typeProblems];
         $retryAfter = $this->settings->queueRetryAfter();
 
         return $jobTimeout !== null && $jobTimeout >= $retryAfter
@@ -63,37 +57,35 @@ class KindLimitChecks
 
     /**
      * 単価の食い違い。文章の種類は最後の段に入力の上限があると、どの段にも収まらない入力が残る。文字起こしの種類は分単価が要る
-     * (費用を 0 と数えて上限をすり抜けないため = 設計/AI/実行と費用.md 5 節)。
+     * (費用を 0 と数えて上限をすり抜けないため = 設計/AI/実行と費用/接続先と費用.md 5 節)。会話の型の種類は用途ごとに確かめる
+     * ({@see ConversationSettings::problems()})。段の規則の 1 か所 = {@see AiSettings::pricesEveryInput()}。
      *
+     * @param  AnyKindSettings  $kind  呼び手が引いた種類の設定
      * @return list<string>
      */
-    public function pricingProblems(string $code): array
+    public function pricingProblems(string $code, array $kind): array
     {
-        $prompt = $this->kinds->prompt($code);
-        $transcription = $this->kinds->transcription($code);
-
-        if ($transcription !== null) {
-            return $this->settings->audioMinutePrice($transcription['provider'], $transcription['model']) === null
+        return match ($kind['type']) {
+            KindSettings::PROMPT => $this->settings->pricesEveryInput($kind['provider'], $kind['model'])
+                ? []
+                : ["種類 {$code} の接続先とモデルの単価が無いか、最後の段に入力の上限がある(config/ai_runs.php の pricing)"],
+            KindSettings::TRANSCRIPTION => $this->settings->audioMinutePrice($kind['provider'], $kind['model']) === null
                 ? ["種類 {$code} の接続先とモデルの音声の分単価が無い(config/ai_runs.php の pricing)"]
-                : [];
-        }
-
-        $tiers = $prompt === null ? [] : $this->settings->priceTiers($prompt['provider'], $prompt['model']);
-
-        return $prompt !== null && ($tiers === [] || end($tiers)['up_to_input_tokens'] !== null)
-            ? ["種類 {$code} の接続先とモデルの単価が無いか、最後の段に入力の上限がある(config/ai_runs.php の pricing)"]
-            : [];
+                : [],
+            KindSettings::CONVERSATION => [],
+        };
     }
 
     /**
      * 区分ごとの食い違い(守る条件 = 実行と費用.md 5.2)。見積もりの上限は単価が要るので、単価の食い違いが無いときだけ呼ぶ。
      * 期間の上限(日・月・累計)はどれも数として読む(数でない値は作りの誤りとして起動で止める = 実行と費用.md 5 節。読むのは {@see self::exceededLimit()})。
      *
+     * @param  array<string, AnyKindSettings>  $kinds  呼び手が引いた全部の種類の設定(コード → 設定)
      * @return list<string>
      *
      * @throws LogicException 期間の上限が数でないとき
      */
-    public function budgetProblems(): array
+    public function budgetProblems(array $kinds): array
     {
         $problems = [];
 
@@ -102,7 +94,7 @@ class KindLimitChecks
                 $problems[] = "予算の区分 {$budget} に超えたときの文が無い(RunBudget)";
             }
 
-            $exceeded = $this->exceededLimit($budget);
+            $exceeded = $this->exceededLimit($budget, $kinds);
 
             if ($exceeded !== null) {
                 [$label, $limit] = $exceeded;
@@ -136,9 +128,10 @@ class KindLimitChecks
      * 1 依頼の見積もりの上限の最大が、区分の日・月・累計の上限のうち空でない最も小さいもの以上なら、その期間の名前と上限(その日の最初の依頼でも
      * 断られる)。3 つとも空なら確かめない(null)。同じ額の期間が 2 つ以上あれば、短い期間(日 → 月 → 累計)の名前を出す。
      *
+     * @param  array<string, AnyKindSettings>  $kinds
      * @return array{string, string}|null
      */
-    private function exceededLimit(string $budget): ?array
+    private function exceededLimit(string $budget, array $kinds): ?array
     {
         $smallest = null;
         $smallestMicros = null;
@@ -159,7 +152,7 @@ class KindLimitChecks
             }
         }
 
-        $worst = RunEstimates::micros($this->estimates->ceilingOf($budget));
+        $worst = RunEstimates::micros($this->estimates->ceilingAmong($budget, $kinds));
 
         return $smallestMicros !== null && $worst >= $smallestMicros ? $smallest : null;
     }

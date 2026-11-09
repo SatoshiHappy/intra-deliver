@@ -3,6 +3,7 @@
 namespace App\Actions\Ai;
 
 use App\Actions\Ai\Api\PromptKind;
+use App\Queries\Ai\ConversationSettings;
 use App\Queries\Ai\KindSettings;
 use App\Support\DefaultDatabaseQueue;
 use Illuminate\Container\Attributes\Tag;
@@ -10,7 +11,8 @@ use LogicException;
 
 /**
  * AI の実行の種類の全体 = タグ {@see PromptKind::TAG} で束ねた実装を引く 1 か所(内部。docs の 設計/AI/公開の口.md 3.1)。
- * Ai の業務処理は種類の実装を直接呼ばずにここを通す。登録と設定の食い違い({@see self::problems()}。文字起こしの種類を含む)は `ai:check-settings` とテストが落とす。
+ * Ai の業務処理は種類の実装を直接呼ばずにここを通す。登録と設定の食い違い({@see self::problems()}。文字起こしと会話の型の種類を含む)は
+ * `ai:check-settings` とテストが落とす。
  */
 class PromptKinds
 {
@@ -20,8 +22,10 @@ class PromptKinds
     public function __construct(
         #[Tag(PromptKind::TAG)] private iterable $kinds,
         private TranscriptionKinds $transcriptionKinds,
+        private ConversationKinds $conversationKinds,
         private KindSettings $kindSettings,
         private KindLimitChecks $limits,
+        private ConversationSettings $conversation,
     ) {}
 
     /**
@@ -53,9 +57,11 @@ class PromptKinds
     }
 
     /**
-     * 登録と設定の食い違い(起動の時に確かめるもの = 設計/AI/データと失敗と検査.md 8 節。文章と文字起こしの 2 つの型をまたいで見る。
-     * 種類と区分の分は {@see KindLimitChecks})。無ければ空。設定の形が合わない種類があれば、単価と区分は見ない(形が無いと計算できない)。
-     * キューの置き場({@see DefaultDatabaseQueue})はどの環境も同じに見る(ジョブを実行の記録と同じトランザクションで入れる前提 = 実行と費用.md 4 節)。
+     * 登録と設定の食い違い(起動の時に確かめるもの = 設計/AI/データと失敗と検査.md 8 節。文章・文字起こし・会話の 3 つの型をまたいで見る。
+     * 種類と区分の分は {@see KindLimitChecks}、会話の接続と用途の分は {@see ConversationSettings})。無ければ空。設定の形が合わない種類があれば、
+     * 単価と区分は見ない(形が無いと計算できない)。
+     * キューの置き場({@see DefaultDatabaseQueue})はどの環境も同じに見る(ジョブを実行の記録と同じトランザクションで入れる前提 =
+     * 設計/AI/実行と費用/README.md 4 節・4.5)。
      *
      * @return list<string>
      */
@@ -68,25 +74,32 @@ class PromptKinds
         }
 
         $queue = [...DefaultDatabaseQueue::storeProblems(), ...DefaultDatabaseQueue::afterCommitProblems()];
+        $conversation = $this->conversation->problems();
 
         if ($shape !== []) {
-            return [...$queue, ...$this->registrationProblems(), ...$shape];
+            return [...$queue, ...$conversation, ...$this->registrationProblems(), ...$shape];
         }
 
-        $problems = [...$queue, ...$this->registrationProblems()];
+        $problems = [...$queue, ...$conversation, ...$this->registrationProblems()];
         $pricing = [];
+        $kinds = [];
 
         foreach ($this->kindSettings->codes() as $code) {
-            $pricing = [...$pricing, ...$this->limits->pricingProblems($code)];
-            $problems = [...$problems, ...$this->limits->kindProblems($code)];
+            $kind = $this->kindSettings->settings($code);
+
+            if ($kind !== null) {
+                $kinds[$code] = $kind;
+                $pricing = [...$pricing, ...$this->limits->pricingProblems($code, $kind)];
+                $problems = [...$problems, ...$this->limits->kindProblems($code, $kind)];
+            }
         }
 
-        return [...$problems, ...$pricing, ...($pricing === [] ? $this->limits->budgetProblems() : [])];
+        return [...$problems, ...$pricing, ...($pricing === [] ? $this->limits->budgetProblems($kinds) : [])];
     }
 
     /**
      * 登録した実装と設定の食い違い(同じコードの実装が 2 つ・設定に無いコード・設定の型が実装の型と違う)。
-     * コードは 2 つの型をまたいで一意。
+     * コードは 3 つの型をまたいで一意。
      *
      * @return list<string>
      */
@@ -100,6 +113,10 @@ class PromptKinds
 
         foreach ($this->transcriptionKinds->codes() as $code) {
             $registered[] = [$code, KindSettings::TRANSCRIPTION];
+        }
+
+        foreach ($this->conversationKinds->codes() as $code) {
+            $registered[] = [$code, KindSettings::CONVERSATION];
         }
 
         $problems = [];

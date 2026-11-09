@@ -28,9 +28,11 @@ class LlmClient
         $settings = $this->kinds->prompt($run->kind)
             ?? throw new LogicException("AI の実行の種類 {$run->kind} が文章の種類の設定(config/ai_runs.php の kinds)に無い");
         $maxOutputTokens = $run->max_output_tokens ?? throw new LogicException("AI の実行 {$run->id} に出力の上限が無い");
-        $driver = $this->settings->providerDriver($run->provider);
+        [$provider, $model] = $run->providerAndModel();
+        [$systemText, $userText] = $text->sentTexts();
+        $driver = $this->settings->providerDriver($provider);
         $agent = new PromptAgent(
-            $text->system_text,
+            $systemText,
             $kind,
             $maxOutputTokens,
             $settings['timeout_seconds'],
@@ -39,7 +41,7 @@ class LlmClient
         );
 
         try {
-            return LlmResult::fromResponse($agent->prompt($text->user_text, provider: $run->provider, model: $run->model));
+            return LlmResult::fromResponse($agent->prompt($userText, provider: $provider, model: $model));
         } catch (Throwable $exception) {
             throw LlmCallFailed::from($exception);
         }

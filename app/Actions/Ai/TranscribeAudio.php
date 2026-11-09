@@ -42,6 +42,7 @@ class TranscribeAudio
     public function execute(AiRun $run, array $kind, string $directory): TranscriptionOutcome
     {
         $chunks = $this->chunks($run, $kind, $directory);
+        [$provider, $model] = $run->providerAndModel();
         $segments = [];
         $calledSeconds = 0.0;
         $tokens = [0, 0];
@@ -50,7 +51,7 @@ class TranscribeAudio
             $calledSeconds += $chunk->lengthSeconds;
 
             try {
-                $transcript = $this->client->call($chunk->path, $run->provider, $run->model, $kind);
+                $transcript = $this->client->call($chunk->path, $provider, $model, $kind);
             } catch (LlmCallFailed $failure) {
                 throw $this->stopped($run, $failure->errorCode, $failure, $calledSeconds, null, $segments);
             }
@@ -147,9 +148,9 @@ class TranscribeAudio
         ?string $output,
         ?string $incompleteReason = null,
     ): RunResult {
-        $costs = $this->costs;
+        [$provider, $model] = $run->providerAndModel();
 
-        return $costs->transcriptionResult($run->provider, $run->model, $seconds, $tokens, $output, $incompleteReason);
+        return $this->costs->transcriptionResult($provider, $model, $seconds, $tokens, $output, $incompleteReason);
     }
 
     /**

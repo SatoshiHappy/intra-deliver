@@ -5,10 +5,12 @@ namespace Tests\Feature\Ai;
 use App\Actions\Ai\CarryOverSpending;
 use App\Actions\Reset\Api\ResetParticipant;
 use App\Enums\Ai\AiRunStatus;
+use App\Enums\Ai\AiRunStopReason;
 use App\Models\Ai\AiRun;
 use App\Models\Ai\AiSpendingCarryover;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
+use LogicException;
 use RuntimeException;
 use Tests\Support\AssertsConstraintViolations;
 use Tests\Support\TransactionalTestCase;
@@ -77,6 +79,32 @@ final class SpendingCarryoverTest extends TransactionalTestCase
         ], $this->carryovers());
     }
 
+    /**
+     * 会話の型の実行の行(待ちでない。費用と見積もりを持たない)は数えない(会話の型はステップの行から数える): 会話の型の行だけの日は止まらずに
+     * 繰り越しの行を作らず(文章の行が無い日と同じ)、文章の行と混ざる日は文章の行の分だけを足す。
+     */
+    public function test_conversation_runs_are_not_carried(): void
+    {
+        $this->conversationRuns('2026-10-17 12:00');
+        $this->conversationRuns('2026-10-18 12:00');
+        $this->aiRun('default', '2026-10-18 08:00', AiRunStatus::Succeeded, '1.000000', '0.500000');
+
+        app(CarryOverSpending::class)->beforeTruncate();
+
+        $this->assertSame([['default', '2026-10-18', '0.500000']], $this->carryovers());
+    }
+
+    /** その日の繰り越しの行が既にあり、会話の型の行だけが足される日は、額が変わらない */
+    public function test_conversation_runs_leave_the_existing_row_of_the_day_unchanged(): void
+    {
+        $this->carry('default', '2026-10-18', '1.250000');
+        $this->conversationRuns('2026-10-18 12:00');
+
+        app(CarryOverSpending::class)->beforeTruncate();
+
+        $this->assertSame([['default', '2026-10-18', '1.250000']], $this->carryovers());
+    }
+
     public function test_without_runs_nothing_is_carried(): void
     {
         app(CarryOverSpending::class)->beforeTruncate();
@@ -131,8 +159,26 @@ final class SpendingCarryoverTest extends TransactionalTestCase
             AiRunStatus::Running => AiRun::factory()->running(),
             AiRunStatus::Failed => AiRun::factory()->failed(),
             AiRunStatus::Queued => AiRun::factory(),
+            // 確認待ち・止めたは会話の型だけの状態で、文章の行には置けない(実行の行の検査制約)
+            AiRunStatus::AwaitingConfirmation, AiRunStatus::Stopped => throw new LogicException('会話の型だけの状態'),
         };
         $factory->create(['budget' => $budget, 'reserved_cost_usd' => $reservedUsd, 'created_at' => $at->utc()]);
+    }
+
+    /**
+     * 既定の区分の会話の型の実行の行(処理中・失敗・止めた・確認待ち。東京の時刻 $tokyoTime を UTC にして書く)。
+     */
+    private function conversationRuns(string $tokyoTime): void
+    {
+        $at = ['created_at' => CarbonImmutable::parse($tokyoTime, 'Asia/Tokyo')->utc(), 'budget' => 'default'];
+        $finished = ['started_at' => now(), 'finished_at' => now()];
+        $conversation = AiRun::factory()->conversation();
+
+        $conversation->running()->create($at);
+        $conversation->failed()->create($at);
+        $stopped = ['status' => AiRunStatus::Stopped, 'stop_reason' => AiRunStopReason::User];
+        $conversation->create([...$stopped, ...$finished, ...$at]);
+        $conversation->create(['status' => AiRunStatus::AwaitingConfirmation, ...$finished, ...$at]);
     }
 
     private function carry(string $budget, string $day, ?string $costUsd): void

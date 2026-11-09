@@ -9,6 +9,7 @@ use App\Actions\Ai\TranscriptionKinds;
 use App\Actions\Records\Api\RecordInput;
 use App\Actions\Records\Api\RecordRevisionOrigin;
 use App\Actions\Records\Api\UpdateRecordUnchecked;
+use App\Enums\Ai\AiKindType;
 use App\Enums\Ai\AiRunStatus;
 use App\Models\Ai\AiRun;
 use App\Queries\Records\Api\RecordDisplayQuery;
@@ -84,7 +85,11 @@ class WriteRecordFromRun
             throw new LogicException("AI の実行 {$runId} は処理中でない({$run->status->value})");
         }
 
-        $kind = $this->kinds->find($run->kind) ?? $this->transcriptionKinds->of($run->kind);
+        $kind = match ($run->kind_type) {
+            AiKindType::Prompt => $this->kinds->of($run->kind),
+            AiKindType::Transcription => $this->transcriptionKinds->of($run->kind),
+            AiKindType::Conversation => throw new LogicException("会話の型の実行 {$runId} は AI の書き込みの口を呼べない"),
+        };
         $writesTo = $kind->writesTo();
 
         if ($writesTo === null || $writesTo !== $run->record_module_code) {

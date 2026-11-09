@@ -111,7 +111,8 @@ final class SecretsSelfProofTest extends SelfProofTestCase
         $path = $this->workRoot.'/'.$name;
         mkdir($path, 0777, true);
 
-        $this->git(['init', '--quiet'], $path);
+        // 利用者の init.templatedir(全リポジトリに入れた gitleaks の pre-commit など)が偽の鍵のコミットを止めないよう、テンプレートを使わない
+        $this->git(['init', '--quiet', '--template='], $path);
         $this->git(['config', 'user.email', 'selfproof@example.test'], $path);
         $this->git(['config', 'user.name', 'SelfProof'], $path);
 

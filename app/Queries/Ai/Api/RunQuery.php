@@ -17,8 +17,8 @@ class RunQuery
     public function __construct(private RunVisibility $visibility, private MasterNames $names) {}
 
     /**
-     * 実行の状態の一覧(実行の id → 状態の文字列 queued・running・succeeded・failed)。主体の判定をしない(呼び手が対象のレコードの閲覧を判定済み。
-     * 判定の正本 = docs の 設計/AI/公開の口.md 3 節の表の「実行の状態の一覧」の行)。無い id は結果に入らない。空の一覧は問い合わせない。
+     * 実行の状態の一覧(実行の id → 状態の文字列 queued・running・succeeded・failed、会話の型だけ awaiting_confirmation・stopped)。
+     * 主体の判定をしない(呼び手が対象のレコードの閲覧を判定済み。判定の正本 = docs の 設計/AI/公開の口.md 3 節の表の「実行の状態の一覧」の行)。無い id は結果に入らない。空の一覧は問い合わせない。
      *
      * @param  list<int>  $runIds
      * @return array<int, string>

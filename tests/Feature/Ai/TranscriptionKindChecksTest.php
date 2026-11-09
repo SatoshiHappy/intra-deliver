@@ -36,8 +36,8 @@ final class TranscriptionKindChecksTest extends TransactionalTestCase
         $this->configureKind('test.other', ['type' => 'image']);
 
         $this->assertSame([
-            '種類 test.untyped の type が prompt・transcription のどちらでもない(config/ai_runs.php の kinds)',
-            '種類 test.other の type が prompt・transcription のどちらでもない(config/ai_runs.php の kinds)',
+            '種類 test.untyped の type が prompt・transcription・conversation のどれでもない(config/ai_runs.php の kinds)',
+            '種類 test.other の type が prompt・transcription・conversation のどれでもない(config/ai_runs.php の kinds)',
         ], $this->problems());
     }
 

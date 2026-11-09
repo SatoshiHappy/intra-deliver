@@ -2,6 +2,7 @@
 
 namespace App\Queries\Ai;
 
+use App\Enums\Ai\AiKindType;
 use App\Models\Ai\AiRun;
 use App\Models\Ai\AiSpendingCarryover;
 use App\Queries\Ai\Api\RunBudgetQuery;
@@ -12,13 +13,17 @@ use Illuminate\Support\Facades\DB;
 use LogicException;
 
 /**
- * 予算の区分の使った額と上限の比べ方(正本 = docs の 設計/AI/実行と費用.md 5.2)。依頼の口の上限の確認と、区分の状態の読み取りが同じ比べ方を使う。
- * 繰り越しを書く業務処理も、実行ごとの額と東京の日を同じ式({@see self::RUN_COST_SQL}・{@see self::runDaySql()})で数える。
+ * 予算の区分の使った額と上限の比べ方(正本 = docs の 設計/AI/実行と費用/接続先と費用.md 5.2)。依頼の口の上限の確認と、区分の状態の読み取りが
+ * 同じ比べ方を使う。繰り越しを書く業務処理と退避から戻す道具も、数える行・実行ごとの額・東京の日を同じ式({@see self::COUNTED_RUNS_SQL}・
+ * {@see self::RUN_COST_SQL}・{@see self::runDaySql()})で数える。会話の型はステップの行から数える(ステップの表を足す版で足す)。
  */
 class RunSpending
 {
     /** 実行 1 件の使った額(ai_runs の列の式。費用が分からない実行は見積もりで数え、上限をすり抜けない) */
     public const RUN_COST_SQL = 'coalesce(cost_usd, reserved_cost_usd)';
+
+    /** 実行の行から使った額を数える行(ai_runs の列の条件。会話の型の行は費用と見積もりを持たず、ステップの行から数えるので外す) */
+    public const COUNTED_RUNS_SQL = "kind_type <> '".AiKindType::Conversation->value."'";
 
     public function __construct(private AiSettings $settings) {}
 
@@ -74,6 +79,7 @@ class RunSpending
     {
         $runs = AiRun::query()
             ->where('budget', $budget)
+            ->whereRaw(self::COUNTED_RUNS_SQL)
             ->when($since !== null, fn ($query) => $query->where('created_at', '>=', $since?->utc()))
             ->sum(DB::raw(self::RUN_COST_SQL));
         $carried = AiSpendingCarryover::query()

@@ -5,6 +5,7 @@ namespace App\Actions\Ai\Api;
 use App\Actions\Ai\PromptKinds;
 use App\Actions\Ai\RunBudget;
 use App\Actions\Ai\RunRequestChecks;
+use App\Enums\Ai\AiKindType;
 use App\Enums\Ai\AiRunStatus;
 use App\Jobs\Ai\RunPromptJob;
 use App\Models\Ai\AiRun;
@@ -68,6 +69,7 @@ class RequestPrompt
 
         $attributes = [
             'kind' => $request->kindCode,
+            'kind_type' => AiKindType::Prompt,
             'status' => AiRunStatus::Queued,
             'requester_user_id' => $requesterUserId,
             'selected_department_id' => $context->selectedDepartmentId,

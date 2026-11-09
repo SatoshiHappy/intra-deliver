@@ -6,6 +6,9 @@
 .github
 .env*
 
+# Claude Code から移した版(手元だけのリポジトリへのリンク。docs の ADR 0039 の決定 8 = image に入れない)
+ai-private
+
 # 依存(build の段で composer install --no-dev・npm ci から作り直す。開発の vendor は require-dev を含む)
 vendor
 node_modules

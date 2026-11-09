@@ -5,11 +5,16 @@ namespace App\Queries\Ai;
 use LogicException;
 
 /**
- * AI の実行の見積もりと額の扱い(式の正本 = docs の 設計/AI/実行と費用.md 5.2。文章と文字起こし)。額は小数 6 桁の文字列(表の numeric(12,6) と同じ)。
- * 依頼の口と、予算の区分の状態の読み取りが同じ計算を使う。
+ * AI の実行の見積もりと額の扱い(式の正本 = docs の 設計/AI/実行と費用/接続先と費用.md 5.2。文章と文字起こし)。額は小数 6 桁の文字列(表の numeric(12,6) と同じ)。
+ * 依頼の口と、予算の区分の状態の読み取りが同じ計算を使う。会話の型の 1 依頼の見積もりの上限(1 ステップの見積もりの上限の最大)は、依頼の口の先の断りと
+ * 予算の区分の状態には足さない(0 で数える = 5.3 の「1 依頼の見積もりの上限」)。
  *
  * @phpstan-import-type PriceTier from AiSettings
  * @phpstan-import-type AudioMinutePrice from AiSettings
+ * @phpstan-import-type PromptKindSettings from KindSettings
+ * @phpstan-import-type TranscriptionKindSettings from KindSettings
+ * @phpstan-import-type ConversationKindSettings from KindSettings
+ * @phpstan-import-type AnyKindSettings from KindSettings
  */
 class RunEstimates
 {
@@ -68,21 +73,60 @@ class RunEstimates
     }
 
     /**
-     * 予算の区分の見積もりの上限 = 区分に属する種類の 1 依頼の見積もりの上限の最大。種類が無ければ 0。文章の種類は入力の上限の文字数と
-     * 出力の上限で、文字起こしの種類は 1 本の長さの上限で見積もる。
+     * 予算の区分の見積もりの上限 = 区分に属する種類の 1 依頼の見積もりの上限({@see self::ceilingOfKind()})の最大。種類が無ければ 0。
      *
      * @throws LogicException 単価が無いとき
      */
     public function ceilingOf(string $budget): string
     {
-        $ceiling = 0;
+        $kinds = [];
 
         foreach ($this->kinds->codes() as $code) {
-            $estimate = $this->kindCeiling($code, $budget);
-            $ceiling = max($ceiling, $estimate === null ? 0 : self::micros($estimate));
+            $kinds[$code] = $this->kinds->settings($code);
+        }
+
+        return $this->ceilingAmong($budget, array_filter($kinds));
+    }
+
+    /**
+     * 渡した種類の設定のうち、区分に属するものの 1 依頼の見積もりの上限の最大(種類が無ければ 0)。
+     *
+     * @param  array<string, AnyKindSettings>  $kinds  コード → 設定
+     *
+     * @throws LogicException 単価が無いとき
+     */
+    public function ceilingAmong(string $budget, array $kinds): string
+    {
+        $ceiling = 0;
+
+        foreach ($kinds as $kind) {
+            if ($kind['budget'] === $budget) {
+                $ceiling = max($ceiling, self::micros($this->ceilingOfKind($kind)));
+            }
         }
 
         return self::usd($ceiling / self::MICROS_PER_USD);
+    }
+
+    /**
+     * 種類の設定の 1 依頼の見積もりの上限。文章の種類は入力の上限の文字数と出力の上限で、文字起こしの種類は 1 本の長さの上限で見積もり、
+     * 会話の型の種類は 0。
+     *
+     * @param  AnyKindSettings  $kind
+     *
+     * @throws LogicException 単価が無いとき
+     */
+    public function ceilingOfKind(array $kind): string
+    {
+        return match ($kind['type']) {
+            KindSettings::PROMPT => $this->estimate(
+                $kind['provider'], $kind['model'], $kind['max_input_chars'], $kind['max_output_tokens'],
+            ),
+            KindSettings::TRANSCRIPTION => $this->transcriptionEstimate(
+                $kind['provider'], $kind['model'], $kind['max_audio_seconds'],
+            ),
+            KindSettings::CONVERSATION => self::usd(0),
+        };
     }
 
     /**
@@ -101,23 +145,6 @@ class RunEstimates
         }
 
         throw new LogicException("接続先 {$provider} のモデル {$model} の単価が無い(config/ai_runs.php の pricing)");
-    }
-
-    /** 種類の 1 依頼の見積もりの上限。区分が違えば null */
-    private function kindCeiling(string $code, string $budget): ?string
-    {
-        $prompt = $this->kinds->prompt($code);
-        $transcription = $this->kinds->transcription($code);
-
-        return match (true) {
-            $prompt !== null && $prompt['budget'] === $budget => $this->estimate(
-                $prompt['provider'], $prompt['model'], $prompt['max_input_chars'], $prompt['max_output_tokens'],
-            ),
-            $transcription !== null && $transcription['budget'] === $budget => $this->transcriptionEstimate(
-                $transcription['provider'], $transcription['model'], $transcription['max_audio_seconds'],
-            ),
-            default => null,
-        };
     }
 
     /** 額を小数 6 桁の文字列にする */

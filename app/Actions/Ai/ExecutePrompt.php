@@ -53,7 +53,8 @@ class ExecutePrompt
             throw $failure;
         }
 
-        $runResult = $this->costs->promptResult($run->provider, $run->model, $result);
+        [$provider, $model] = $run->providerAndModel();
+        $runResult = $this->costs->promptResult($provider, $model, $result);
 
         if ($result->isIncomplete()) {
             $incomplete = new RuntimeException("AI の出力が上限のトークンで切れたか、接続先が応答を断った(終わりの理由 {$result->finishReason})");

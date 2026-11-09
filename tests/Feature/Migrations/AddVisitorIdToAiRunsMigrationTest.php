@@ -58,6 +58,7 @@ final class AddVisitorIdToAiRunsMigrationTest extends TransactionalTestCase
     {
         DB::table('ai_runs')->insert([
             'kind' => 'meeting.minutes',
+            'kind_type' => 'prompt',
             'status' => 'queued',
             'requester_user_id' => $userId,
             'source_record_ids' => '[]',
