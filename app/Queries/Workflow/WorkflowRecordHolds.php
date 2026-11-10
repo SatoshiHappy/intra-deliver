@@ -10,7 +10,7 @@ use App\Queries\Records\Api\RecordHolds;
 /**
  * レコードの持ち主のワークフローの実装(持ち主の範囲 = 設計/ワークフロー/業務データとの接続/申請と書き込み.md の 4 節)。
  * 起動(App\Providers\AppServiceProvider)がタグ {@see RecordHolds::TAG} で登録する。
- * 案件の表を鍵なしで読む(設計/ワークフロー/データモデル/直列化と検査.md の 6 節の「ロックの順」の (3))。
+ * 案件の表を鍵なしで読む(設計/ワークフロー/データモデル/書き込みの直列化.md の 3.2 節の「待ちの輪ができない理由」)。
  */
 class WorkflowRecordHolds implements RecordHolds
 {

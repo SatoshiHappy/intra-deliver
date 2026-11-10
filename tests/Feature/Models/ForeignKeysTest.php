@@ -24,7 +24,7 @@ use Tests\Support\WorkflowSchema;
 /**
  * 外部キーの削除の動作とリレーション(docs の 設計/共通マスタ/共通の規則.md 7 節。自分の部品は CASCADE、ほかの事柄への参照は RESTRICT。
  * メニューの表も同じ = 設計/メニュー/表.md。業務データの入れ物の表も同じ = 設計/業務データの入れ物/データモデル/表.md 2 節・制約の分担と検査.md 7 節。
- * ワークフローの表も同じ = 設計/ワークフロー/データモデル/表.md 2 節、直列化と検査.md 6 節。通知の表も同じ = 設計/ワークフロー/案件の運用/通知.md の 2 節。
+ * ワークフローの表も同じ = 設計/ワークフロー/データモデル/表.md 2 節。通知の表も同じ = 設計/ワークフロー/案件の運用/通知.md の 2 節。
  * レコードの共通機能の表とアップロードの台帳も同じ = 設計/業務データの入れ物/レコードの共通機能/データモデル/表.md の 2.9 節。
  * 会議の表も同じ = 設計/業務ツール/共通データ.md の「専用の表」)。
  *
@@ -66,7 +66,7 @@ final class ForeignKeysTest extends TransactionalTestCase
      *   規則の外部キーに拒まれうる(設計/業務データの入れ物/データモデル/表.md 2.7)。
      * - WorkflowCaseNode (id, workflow_case_history_id)・WorkflowCaseHistory (workflow_case_id, workflow_case_node_id)・
      *   WorkflowCaseHistory (workflow_case_id, send_back_workflow_case_node_id): 案件のノードと履歴が互いを指すので、1 行の削除で削除の動作を確かめられない
-     *   (設計/ワークフロー/データモデル/直列化と検査.md 6 節。連鎖の結果は tests/Feature/Models/Workflow/ の削除のテスト)。
+     *   (設計/ワークフロー/データモデル/表.md 2.6・2.8。連鎖の結果は tests/Feature/Models/Workflow/ の削除のテスト)。
      * - WorkflowCaseConfirmation (workflow_case_id, workflow_case_node_id)・WorkflowCaseConfirmation (user_id):
      *   確認した人はそのノードの確認対象者(複合外部キー)なので、ノードは確認対象者の行(連鎖で消える)と確認の履歴の行からも、
      *   人は確認対象者の行からも指され、そちらの制約が先に拒む(設計/ワークフロー/案件の運用/データモデル/表.md の 3.11 節)。

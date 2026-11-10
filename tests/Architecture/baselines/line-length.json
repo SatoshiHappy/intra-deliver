@@ -612,7 +612,7 @@
     "tests/Feature/Models/Records/RecordTest.php": 10,
     "tests/Feature/Models/SchemaTest.php": 4,
     "tests/Feature/Models/SortKeyColumnsTest.php": 1,
-    "tests/Feature/Models/Workflow/ConstraintNamesTest.php": 4,
+    "tests/Feature/Models/Workflow/ConstraintNamesTest.php": 3,
     "tests/Feature/Models/Workflow/WorkflowCaseAssignmentTest.php": 4,
     "tests/Feature/Models/Workflow/WorkflowCaseHistoryTest.php": 10,
     "tests/Feature/Models/Workflow/WorkflowCaseNodeTest.php": 18,

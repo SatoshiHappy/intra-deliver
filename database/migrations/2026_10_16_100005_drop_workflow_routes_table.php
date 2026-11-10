@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * フローのルートの列と、ルートの表を消す(版がルートを持つ = docs の 設計/ワークフロー/データモデル/表.md 2.2・2.4、ルートの深さ/データモデル/直列化と検査.md 5 節の (4))。
+ * フローのルートの列と、ルートの表を消す(版がルートを持つ = docs の 設計/ワークフロー/データモデル/表.md 2.2・2.4)。
  * down は段 2 の形に戻す(ルートの表は 2026_10_13_100002 と同じ形。フローの列は表の末尾に付く)。
  */
 return new class extends Migration

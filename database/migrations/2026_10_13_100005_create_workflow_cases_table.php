@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * 案件の表と、案件番号のシーケンス(docs の 設計/ワークフロー/データモデル/表.md 2.5、直列化と検査.md 4 節)。
+ * 案件の表と、案件番号のシーケンス(docs の 設計/ワークフロー/データモデル/表.md 2.5)。
  * シーケンスは case_number の持ち物(OWNED BY)で、表を消すと一緒に消える。列の既定値にはしない(一時保存は番号を持たず、
  * 申請の確定の時だけ業務処理が nextval を呼ぶ)。
  */

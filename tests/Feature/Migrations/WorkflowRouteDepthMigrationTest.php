@@ -12,7 +12,7 @@ use Tests\Support\DropsUserOrDepartmentFields;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * 段 3a のワークフローのマイグレーション(docs の 設計/ワークフロー/ルートの深さ/データモデル/直列化と検査.md 5 節・7 節の「マイグレーションの検査」): 段 2 の定義と案件の行は
+ * 段 3a のワークフローのマイグレーション: 段 2 の定義と案件の行は
  * 移さない(ルート・フロー・案件の行がある DB で up が止まる)、空の DB で down が段 2 の形に戻り、その後の up で段 3a の形になる、フロー・案件の行がある DB で down が止まる。
  * 段 3a のマイグレーション = 名前が {@see self::FIRST} 以降のもの。DDL もテストの TX の中で行い、終わりに巻き戻る。初期データのワークフローの行は TX の中で消す。
  */

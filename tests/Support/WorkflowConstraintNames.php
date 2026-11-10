@@ -4,7 +4,7 @@ namespace Tests\Support;
 
 /**
  * ワークフローの 18 表の、設計どおりの制約と索引の名前(切り詰める前。主キーを除く。一意制約の索引は制約と同じ名前)。表の形 {@see WorkflowSchema} と分けて置く
- * (名前は docs の 設計/ワークフロー/データモデル/直列化と検査.md 4 節と、段 3a の 設計/ワークフロー/ルートの深さ/データモデル/直列化と検査.md 5 節。
+ * (名前の規則は docs の 設計/共通マスタ/共通の規則.md 9 節。
  * 63 バイトを超えて切り詰められる名前が重ならないことは tests/Feature/Models/Workflow/ConstraintNamesTest.php が確かめる)。
  */
 final class WorkflowConstraintNames

@@ -12,7 +12,7 @@ use Illuminate\Validation\ValidationException;
 
 /**
  * フローの最後に形つきの版を足す、初期データの業務処理(docs の 設計/ワークフロー/ルートの深さ/定義の管理.md の 1 節。
- * 鍵 = データモデル/直列化と検査.md の 4.2 節)。画面の版の追加({@see CopyFlowVersion})と分けるのは、過去の版の期間を固定の日付で再現するため。
+ * 鍵 = ワークフロー/データモデル/書き込みの直列化.md の 3.3 節)。画面の版の追加({@see CopyFlowVersion})と分けるのは、過去の版の期間を固定の日付で再現するため。
  */
 class AddRouteVersion
 {

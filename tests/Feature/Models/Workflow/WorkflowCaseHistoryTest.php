@@ -11,10 +11,10 @@ use Tests\Support\AssertsConstraintViolations;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * 履歴の制約(docs の 設計/ワークフロー/データモデル/表.md 2.8、直列化と検査.md 6 節の「履歴」): 処理したノードと差戻し先は同じ案件のノード、
+ * 履歴の制約(docs の 設計/ワークフロー/データモデル/表.md 2.8): 処理したノードと差戻し先は同じ案件のノード、
  * 差戻し ⇔ 差戻し先、差戻し先は差戻し元と違う、コメントは空文字にしない。申請・再申請 ⇒ 更新履歴の版を指す
  * (設計/業務データの入れ物/レコードの共通機能/更新履歴.md の 4.2 節)。
- * 段 3a(ワークフロー/データモデル/表.md 2.8、ルートの深さ/データモデル/直列化と検査.md 7 節の「履歴」): 引戻し ⇔ node_changes が無い、引戻し ⇔ 引戻した行がある、
+ * 段 3a(ワークフロー/データモデル/表.md 2.8): 引戻し ⇔ node_changes が無い、引戻し ⇔ 引戻した行がある、
  * node_changes は配列、引戻した行は同じ案件の前の行、同じ行を 2 回引戻さない。
  */
 final class WorkflowCaseHistoryTest extends TransactionalTestCase

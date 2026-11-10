@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Schema;
  * コンテンツに申請対象の項目 target_record_field_id と、その参照先の写し target_record_module_id を足し、業務モジュールを指すコンテンツを
  * 1 つまでにする(docs の 設計/ワークフロー/データモデル/表.md の 2.1 節)。今ある行は 2 列が NULL(申請対象なし)のまま。
  * 申請対象を持つ行が残っている間は戻さない(列を消すと黙って申請対象なしになる)。
- * 制約と索引の名前・索引の列の順は 設計/ワークフロー/データモデル/直列化と検査.md の 4 節。
+ * 名前の切り詰めで重ならないよう、索引の列の順は外部キーと変える(名前の規則 = 設計/共通マスタ/共通の規則.md の 9 節)。
  */
 return new class extends Migration
 {
@@ -36,7 +36,7 @@ return new class extends Migration
             .' REFERENCES record_fields (id, referenced_record_module_id) MATCH FULL ON DELETE RESTRICT');
 
         Schema::table('workflow_contents', function (Blueprint $table) {
-            // 外部キーと同じ列の順だと名前が切り詰めで重なる(直列化と検査.md の 4 節の手当て 4)
+            // 外部キーと同じ列の順だと名前が切り詰めで重なる
             $table->index(['target_record_module_id', 'target_record_field_id']);
         });
     }

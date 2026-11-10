@@ -9,7 +9,7 @@ use Tests\Support\AssertsConstraintViolations;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * 指定の制約(docs の 設計/ワークフロー/データモデル/辺と差戻し先と指定の表.md 2.14、ルートの深さ/データモデル/直列化と検査.md 7 節の「指定」): 指定した履歴の行と指定されたノードは同じ案件のもの、
+ * 指定の制約(docs の 設計/ワークフロー/データモデル/辺と差戻し先と指定の表.md 2.14): 指定した履歴の行と指定されたノードは同じ案件のもの、
  * 同じ指定(指定されたノードと履歴の行)に同じ番号・同じ人を重ねない、番号は 1 以上。
  */
 final class WorkflowCaseAssignmentTest extends TransactionalTestCase

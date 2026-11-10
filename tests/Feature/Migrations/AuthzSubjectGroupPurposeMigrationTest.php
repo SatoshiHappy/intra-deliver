@@ -72,7 +72,7 @@ final class AuthzSubjectGroupPurposeMigrationTest extends TransactionalTestCase
      */
     private function rollBackFromThisMigration(): void
     {
-        // 後のマイグレーションの段 3a のワークフローの down は、フロー・案件の行があると止まる(docs の 設計/ワークフロー/ルートの深さ/データモデル/直列化と検査.md 5 節)。
+        // 後のマイグレーションの段 3a のワークフローの down は、フロー・案件の行があると止まる(新しい形の定義と案件は前の形で表せないため)。
         // 初期データのワークフローの行を TX の中で消してから戻す。
         DB::statement('TRUNCATE workflow_flows, workflow_cases CASCADE');
         // 後のマイグレーションの項目の検査制約を狭める down は、相対の既定値か 4000 字を超える複数行の最大の文字数の

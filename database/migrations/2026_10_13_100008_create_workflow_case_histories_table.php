@@ -7,9 +7,9 @@ use Illuminate\Support\Facades\Schema;
 
 /**
  * 履歴(docs の 設計/ワークフロー/データモデル/表.md 2.8)と、案件のノードが処理済みにした履歴の行を指す複合外部キー
- * workflow_case_nodes (id, workflow_case_history_id)(表.md 2.6。履歴の表の後でないと作れないので最後に足し、down で先に消す = 直列化と検査.md 4 節)。
+ * workflow_case_nodes (id, workflow_case_history_id)(表.md 2.6。履歴の表の後でないと作れないので最後に足し、down で先に消す)。
  * 63 バイトを超えて切り詰められる名前が重ならないように、処理したノード・差戻し先の索引は (…_node_id, workflow_case_id) の列の順、
- * 差戻し先 ≠ 差戻し元の検査制約は workflow_case_node_id <> send_back_workflow_case_node_id の順に書く(直列化と検査.md 4 節の手当て 1・2)。
+ * 差戻し先 ≠ 差戻し元の検査制約は workflow_case_node_id <> send_back_workflow_case_node_id の順に書く(名前の規則 = 設計/共通マスタ/共通の規則.md 9 節)。
  */
 return new class extends Migration
 {

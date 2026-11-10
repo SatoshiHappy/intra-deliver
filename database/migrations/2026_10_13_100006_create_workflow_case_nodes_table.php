@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Schema;
 
 /**
  * 案件のノード(docs の 設計/ワークフロー/データモデル/表.md 2.6)。処理済みにした履歴の行を指す複合外部キー (id, workflow_case_history_id) は、
- * 履歴の表ができた後でないと作れないので、workflow_case_histories のマイグレーションが足す(直列化と検査.md 4 節)。
+ * 履歴の表ができた後でないと作れないので、workflow_case_histories のマイグレーションが足す。
  */
 return new class extends Migration
 {

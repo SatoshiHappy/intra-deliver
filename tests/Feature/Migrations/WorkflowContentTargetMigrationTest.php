@@ -9,8 +9,8 @@ use RuntimeException;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * コンテンツに申請対象の 2 列と制約を足すマイグレーション(docs の 設計/ワークフロー/データモデル/表.md の 2.1 節、
- * 直列化と検査.md の 4 節): 初期データのコンテンツがある DB で down・up が通り、up の後は 2 列(NULL 可)と一意 1・外部キー 2・索引 2 があって
+ * コンテンツに申請対象の 2 列と制約を足すマイグレーション(docs の 設計/ワークフロー/データモデル/表.md の 2.1 節):
+ * 初期データのコンテンツがある DB で down・up が通り、up の後は 2 列(NULL 可)と一意 1・外部キー 2・索引 2 があって
  * 今ある行の 2 列が NULL、down の後は 2 列と 5 つが無い。申請対象を持つ行があると down が何も変えずに止まる。DDL もテストの TX の中で行い、終わりに巻き戻る。
  */
 final class WorkflowContentTargetMigrationTest extends TransactionalTestCase
@@ -20,7 +20,7 @@ final class WorkflowContentTargetMigrationTest extends TransactionalTestCase
     /** 足す列 */
     private const COLUMNS = ['target_record_field_id', 'target_record_module_id'];
 
-    /** 足す制約と索引の名前(63 バイトに切り詰めた形 = 直列化と検査.md の 4 節) */
+    /** 足す制約と索引の名前(63 バイトに切り詰めた形) */
     private const NAMES = [
         'workflow_contents_record_module_id_target_record_field_id_forei',
         'workflow_contents_record_module_id_target_record_field_id_index',

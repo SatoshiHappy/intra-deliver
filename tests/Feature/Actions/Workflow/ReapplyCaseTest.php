@@ -173,7 +173,7 @@ final class ReapplyCaseTest extends TransactionalTestCase
     }
 
     /**
-     * 業務データの入れ物の検証の失敗はそのキーのまま伝わり、レコードも案件も変わらない(外側ごと巻き戻る = 設計/ワークフロー/データモデル/直列化と検査.md 3.2 の未確認の項)。
+     * 業務データの入れ物の検証の失敗はそのキーのまま伝わり、レコードも案件も変わらない(外側ごと巻き戻る = 設計/ワークフロー/データモデル/書き込みの直列化.md 3.2 の「トランザクション」)。
      */
     public function test_a_record_validation_failure_changes_nothing(): void
     {

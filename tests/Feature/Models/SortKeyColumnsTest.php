@@ -31,7 +31,7 @@ use Tests\Support\TransactionalTestCase;
  * ソートキー sort_key(docs の 設計/共通マスタ/共通の規則.md 4 節: bigint NOT NULL DEFAULT 0。
  * 値は本家の NUMERIC(15,0) の範囲 = 15 桁まで(この作業で決めた検査制約))。業務データの入れ物の定義の表も同じ(docs の
  * 設計/業務データの入れ物/データモデル/ 1 節。records は親の無い行の並びが 0 に限られるので tests/Feature/Models/Records/RecordTest.php)。
- * ワークフローのフローも同じ(docs の 設計/ワークフロー/データモデル/表.md 2.4、直列化と検査.md 6 節)。
+ * ワークフローのフローも同じ(docs の 設計/ワークフロー/データモデル/表.md 2.4)。
  * レコードの共通機能の見出しと関連レコードの列も同じ(設計/業務データの入れ物/レコードの共通機能/データモデル/表.md の 2.6・2.7 節)。
  */
 final class SortKeyColumnsTest extends TransactionalTestCase

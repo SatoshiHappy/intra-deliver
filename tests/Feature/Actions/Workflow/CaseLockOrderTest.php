@@ -29,7 +29,8 @@ use Tests\Support\RunsWorkflowOperations;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * 案件の操作の鍵の順(docs の 設計/ワークフロー/データモデル/直列化と検査.md 6 節「ロックの順」の (1)(2)(4)。(3) 持ち主の口は WorkflowRecordHoldsTest)。
+ * 案件の操作の鍵の順(docs の 設計/ワークフロー/データモデル/書き込みの直列化.md 3.1・3.2。
+ * (1)(2)(4) はこのテストの通し番号で、(3) 持ち主の口が鍵を取らないことは WorkflowRecordHoldsTest)。
  * 発行した SQL の順と、鍵の文が業務処理のトランザクションの中(レベル 2 以上。テストの TX がレベル 1)で出ることを確かめる(業務データの入れ物の RecordModuleLockTest と同じ形)。
  * 鍵が別の接続を待たせる効き目は、ここでは確かめない(確かめる形 = CommonMasterLockTest の第 2 の接続。案件の行の鍵への適用は docs の 課題「案件操作の同時実行・再送」)。
  */
@@ -137,7 +138,7 @@ final class CaseLockOrderTest extends TransactionalTestCase
     }
 
     /**
-     * ルートの深さの (1)(docs の 設計/ワークフロー/ルートの深さ/データモデル/直列化と検査.md 7 節「ロックの順」): 申請(新規・一時保存から)は、案件の行の鍵
+     * ルートの深さの (1)(docs の 設計/ワークフロー/データモデル/書き込みの直列化.md 3.1・3.2): 申請(新規・一時保存から)は、案件の行の鍵
      * (一時保存から)の後に、業務データの入れ物の勧告ロックより前に、フローの行の FOR SHARE を出す。
      */
     public function test_applying_takes_the_flow_row_for_share_after_the_case_row_and_before_the_module_lock(): void
