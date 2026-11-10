@@ -26,7 +26,7 @@ use Tests\Support\TransactionalTestCase;
 
 /**
  * 判定しない削除の公開の口(docs の 設計/業務データの入れ物/項目と規則/規則と業務処理/README.md 9.2 の 2 の「削除の結果」の表の
- * 判定しない行、保証 = 設計/ワークフロー/業務データとの接続/公開の口.md 7 節の表、消える順 = 設計/業務データの入れ物/レコードの共通機能/
+ * 判定しない行、保証 = 設計/ワークフロー/業務データとの接続/公開の口/README.md 7 節の表、消える順 = 設計/業務データの入れ物/レコードの共通機能/
  * 添付ファイル/レコードの添付.md の 6 節)。判定の入力を受けないこと・デッドロックの伝わり方は DeleteRecordUncheckedAuthorizationTest。
  */
 final class DeleteRecordUncheckedTest extends TransactionalTestCase

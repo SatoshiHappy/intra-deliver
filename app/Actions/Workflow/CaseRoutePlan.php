@@ -11,7 +11,7 @@ use App\Models\Workflow\WorkflowCaseNode;
 /**
  * ノードの動きの計画(docs の 設計/ワークフロー/ルートの深さ/案件の操作/操作.md 9 節の 1。書かない)。「どのノードを、どの状態に、どの処理対象者で」を、
  * 変えるノードごとの前後の値で持つ。新しい展開の行は仮の負の id で持ち、書くとき({@see CaseRoutePlanWriter})に本当の id へ付け替える。
- * node_changes(案件の表.md 3.7)と、操作の結果の値の到達したノード(11 節)をここから作る。
+ * node_changes(ワークフロー/データモデル/表.md 2.8)と、操作の結果の値の到達したノード(11 節)をここから作る。
  *
  * @phpstan-type NodeValues array{state: WorkflowNodeState, history: int|null, targets: list<int>}
  *
@@ -111,7 +111,7 @@ final readonly class CaseRoutePlan
 
     /**
      * 履歴の行の node_changes(この操作が変えた、操作するノード以外のノードの前の状態。ノードの id の昇順。分岐開始は出る辺の前の taken も持つ)。
-     * 引戻しの行は持たない(null。引戻した行を指す = 案件の表.md 3.7)。
+     * 引戻しの行は持たない(null。引戻した行を指す = ワークフロー/データモデル/表.md 2.8)。
      *
      * @param  array<int, int>  $ids  仮の id → 書いた行の id
      * @return list<array<string, mixed>>|null

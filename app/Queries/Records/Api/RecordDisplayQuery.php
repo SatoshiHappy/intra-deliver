@@ -15,7 +15,7 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 /**
  * レコードの表示の口(申請内容の表示と案件名の既定 = docs の 設計/ワークフロー/業務データとの接続/申請と書き込み.md 1 節。主体・認可・結果・失敗の正本 =
- * 同 公開の口.md 7 節の表)。業務モジュールの read を見ない(呼び手 = ワークフローの閲覧の判定が先)。
+ * 同 公開の口/README.md 7 節の表)。業務モジュールの read を見ない(呼び手 = ワークフローの閲覧の判定が先)。
  *
  * @phpstan-import-type ModuleDefinition from RecordDefinitionQuery
  * @phpstan-import-type ReferenceValue from RecordValueReader
@@ -34,7 +34,7 @@ class RecordDisplayQuery
      * 主体の判定をしない。呼び手が閲覧の判定を済ませてから呼ぶ。
      *
      * レコード(親の無いもの)の業務モジュールの定義と値(業務データの入れ物の詳細の画面と同じ形 = 設計/業務データの入れ物/画面/README.md 1.2・業務の画面.md 2.3)。業務モジュールの read を
-     * 見ない。他モジュール参照の表示名だけ、判定を求める者で出し分ける(参照先の read の読み方 = 設計/ワークフロー/業務データとの接続/公開の口.md 7 節の「行の権限」、
+     * 見ない。他モジュール参照の表示名だけ、判定を求める者で出し分ける(参照先の read の読み方 = 設計/ワークフロー/業務データとの接続/公開の口/README.md 7 節の「行の権限」、
      * 項目と規則/README.md 5 節の読むときの規則)。
      *
      * @return array{module: ModuleDefinition, record: array{id: int, values: array<string, mixed>, details: array<string, list<DetailRow>>, createdAt: string|null, updatedAt: string|null, createdBy: ReferenceValue|null, updatedBy: ReferenceValue|null}}

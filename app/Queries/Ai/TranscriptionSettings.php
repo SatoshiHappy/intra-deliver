@@ -5,7 +5,7 @@ namespace App\Queries\Ai;
 use LogicException;
 
 /**
- * 種類によらない文字起こしの値(config/ai_runs.php の transcription。見えない値 = docs の 設計/AI/実行と費用.md 4.2・5 節)を読む 1 か所と、
+ * 種類によらない文字起こしの値(config/ai_runs.php の transcription。見えない値 = docs の 設計/AI/実行と費用/README.md 4.2・5 節)を読む 1 か所と、
  * 文字起こしのジョブの時間(4.1)。形が合わない設定は作りの誤り(LogicException)。
  *
  * @phpstan-import-type TranscriptionKindSettings from KindSettings
@@ -18,7 +18,7 @@ class TranscriptionSettings
         return $this->positiveInt('conversion_timeout_seconds');
     }
 
-    /** 依頼の時点の長さの測りと先頭の復号の確かめの時間の上限(秒。外部のプロセスを合わせた長さ。変換と分ける理由 = 設計/AI/実行と費用.md 4.2) */
+    /** 依頼の時点の長さの測りと先頭の復号の確かめの時間の上限(秒。外部のプロセスを合わせた長さ。変換と分ける理由 = 設計/AI/実行と費用/README.md 4.2) */
     public function measureTimeoutSeconds(): int
     {
         return $this->positiveInt('measure_timeout_seconds');
@@ -114,7 +114,7 @@ class TranscriptionSettings
 
     /**
      * 文字起こしのジョブの時間(秒)。区切りごとの時間は文章のジョブと同じ数え方を使う(送り直しの数え方を 1 か所に保つため。
-     * 設計/AI/実行と費用.md 4.1)。
+     * 設計/AI/実行と費用/README.md 4.1)。
      *
      * @param  TranscriptionKindSettings  $kind
      */

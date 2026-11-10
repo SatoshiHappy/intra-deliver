@@ -8,7 +8,7 @@ use Laravel\Ai\Transcription;
 use Throwable;
 
 /**
- * 文字起こしの接続先を呼ぶ唯一のクラス(docs の 設計/AI/実行と費用.md 4 節。副作用 ai は台帳②で App\Actions\Ai だけ)。区切りの 1 つを
+ * 文字起こしの接続先を呼ぶ唯一のクラス(docs の 設計/AI/実行と費用/README.md 4 節。副作用 ai は台帳②で App\Actions\Ai だけ)。区切りの 1 つを
  * 話者の分離つきで送る(区間は話者の分離を頼んだときだけ返る = 設計/業務ツール/会議/文字起こしと議事録.md の 4.2)。
  * 保存しない指定は laravel/ai の Gemini の要求が既定で付ける(store = false。設計/AI/データと失敗と検査.md 6 節)。
  * 送る型は区切りのファイルの中身から推す(mp3 = audio/mpeg)。接続先とモデルは実行に写した値、言語と時間の上限は種類の設定。

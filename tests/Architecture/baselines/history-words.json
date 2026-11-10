@@ -65,7 +65,7 @@
     "tests/Support/RunsRoutePlans.php": 2,
     "tests/Support/RunsWorkflowOperations.php": 1,
     "tests/Support/WorkflowConstraintNames.php": 1,
-    "tests/Support/WorkflowSchema.php": 3,
+    "tests/Support/WorkflowSchema.php": 2,
     "tests/Unit/Enums/Workflow/WorkflowDecisionRuleTest.php": 1,
     "tests/Unit/Queries/Workflow/ApplicationBaseDatesTest.php": 1,
     "tests/e2e/demo/records-admin.spec.ts": 1

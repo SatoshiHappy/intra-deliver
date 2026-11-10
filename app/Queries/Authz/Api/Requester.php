@@ -14,7 +14,7 @@ use InvalidArgumentException;
  * 認証状態は持たない(d に有効なユーザーの有無で決まる = {@see SubjectQuery})。IPv6 の接続を null にするのは入口の仕事で、
  * IPv4 アドレスの形でない文字列は受けない(黙って「合わない」にしない)。
  *
- * Authz の公開の口(保証の正本 = docs の 設計/ワークフロー/業務データとの接続/公開の口.md 8.1 の表)。判定する人を替える作り手は
+ * Authz の公開の口(保証の正本 = docs の 設計/ワークフロー/業務データとの接続/公開の口/付け替えと土台の口.md 8.1 の表)。判定する人を替える作り手は
  * Authz の内部({@see JudgeRequesters})に置く(公開の範囲を広げない)。
  */
 final readonly class Requester

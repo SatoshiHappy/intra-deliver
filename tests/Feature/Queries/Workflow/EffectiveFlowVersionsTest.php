@@ -9,8 +9,8 @@ use Carbon\CarbonImmutable;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * フローの基準日 d に有効な版を引く口(docs の 設計/ワークフロー/ルートの深さ/データモデル/定義の表.md 2.1 の「申請に使う版」): 期間が d を含み(半開区間)、
- * ユーザー無効でない版。無ければ含まない・null。版は 初期データ.md 3.1 の「プロジェクト計画の承認」と同じ並び(版 1 = 無効、版 2、版 3 = 上限なし)。
+ * フローの基準日 d に有効な版を引く口(docs の 設計/ワークフロー/データモデル/表.md 2.2 の「申請に使う版」): 期間が d を含み(半開区間)、
+ * ユーザー無効でない版。無ければ含まない・null。版は ルートの深さ/初期データ.md 3.1 の「プロジェクト計画の承認」と同じ並び(版 1 = 無効、版 2、版 3 = 上限なし)。
  */
 final class EffectiveFlowVersionsTest extends TransactionalTestCase
 {

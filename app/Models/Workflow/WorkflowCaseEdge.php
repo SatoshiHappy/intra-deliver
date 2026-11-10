@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * 案件の辺(申請の時に版の辺を写した行。案件の部品)。表 workflow_case_edges(docs の 設計/ワークフロー/ルートの深さ/データモデル/案件の表.md 3.3)。
+ * 案件の辺(申請の時に版の辺を写した行。案件の部品)。表 workflow_case_edges(docs の 設計/ワークフロー/データモデル/辺と差戻し先と指定の表.md 2.12)。
  * 写した後は taken(分岐開始の評価の結果。条件を持つ辺だけ)だけを変える。両端は同じ案件のノード(複合外部キー)。
  */
 #[Fillable(['workflow_case_id', 'from_workflow_case_node_id', 'to_workflow_case_node_id', 'sort_key', 'label', 'condition', 'taken'])]

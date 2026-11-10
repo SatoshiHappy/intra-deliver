@@ -11,7 +11,7 @@ use LogicException;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * 予算の区分の状態(docs の 設計/AI/公開の口.md 3 節の「予算の区分の状態」、実行と費用.md 5.2)。
+ * 予算の区分の状態(docs の 設計/AI/公開の口.md 3 節の「予算の区分の状態」、実行と費用/接続先と費用.md 5.2)。
  */
 final class RunBudgetQueryTest extends TransactionalTestCase
 {

@@ -7,7 +7,7 @@ use Illuminate\Container\Attributes\Tag;
 
 /**
  * 業務モジュールの表示の止めの全体 = タグ {@see RecordModuleVisibilityStops::TAG} で束ねた実装を聞く 1 か所(内部。業務データの入れ物が
- * 実装を直接呼ばないため。保証と束ね方 = docs の 設計/ワークフロー/業務データとの接続/公開の口.md 7 節の表の RecordModuleVisibilityStops の行)。
+ * 実装を直接呼ばないため。保証と束ね方 = docs の 設計/ワークフロー/業務データとの接続/公開の口/README.md 7 節の表の RecordModuleVisibilityStops の行)。
  */
 class RecordModuleVisibilityStopCatalog
 {

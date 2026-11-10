@@ -43,7 +43,7 @@ final class CheckSettingsCommandTest extends TransactionalTestCase
     }
 
     /**
-     * 日だけでなく月・累計の上限も、数でない値は起動の確かめで止まる(作りの誤り = docs の 設計/AI/実行と費用.md の 5 節。
+     * 日だけでなく月・累計の上限も、数でない値は起動の確かめで止まる(作りの誤り = docs の 設計/AI/実行と費用/接続先と費用.md の 5 節。
      * コマンドの外では未処理の例外で終了コード 1)。
      */
     #[DataProvider('budgetPeriods')]

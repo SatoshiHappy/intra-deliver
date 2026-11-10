@@ -11,7 +11,7 @@ use Tests\Support\BuildsCommonMaster;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * ユーザーの主所属の組織({id, name})の公開の口(docs の 設計/ワークフロー/業務データとの接続/公開の口.md 7 節の mainDepartments)。
+ * ユーザーの主所属の組織({id, name})の公開の口(docs の 設計/ワークフロー/業務データとの接続/公開の口/README.md 7 節の mainDepartments)。
  * 主所属の意味と存在しない id の扱いは mainDepartmentNames と同じ。初期データ(u0009 = 総務部が主所属)で確かめる。
  */
 final class MainDepartmentsTest extends TransactionalTestCase

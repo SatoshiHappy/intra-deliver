@@ -5,7 +5,7 @@ namespace App\Queries\Ai;
 use LogicException;
 
 /**
- * モジュール Ai の設定 config/ai_runs.php を読む(docs の 設計/AI/実行と費用.md 5 節)。形が合わない設定は作りの誤り(LogicException)。
+ * モジュール Ai の設定 config/ai_runs.php を読む(docs の 設計/AI/実行と費用/接続先と費用.md 5 節)。形が合わない設定は作りの誤り(LogicException)。
  * 種類の設定 kinds は {@see KindSettings}、種類によらない文字起こしの値 transcription は {@see TranscriptionSettings} が読み、ほかをここで読む。
  *
  * @phpstan-type PriceTier array{up_to_input_tokens: int|null, input: float, output: float, cache_read: float, cache_write: float}
@@ -106,7 +106,7 @@ class AiSettings
     }
 
     /**
-     * ジョブの時間(秒) = (呼び出しの時間の上限 + 待ち 10 秒)× 2(送り直しの 1 回を含む。docs の 設計/AI/実行と費用.md 4.1)。
+     * ジョブの時間(秒) = (呼び出しの時間の上限 + 待ち 10 秒)× 2(送り直しの 1 回を含む。docs の 設計/AI/実行と費用/README.md 4.1)。
      */
     public static function jobTimeout(int $callTimeoutSeconds): int
     {

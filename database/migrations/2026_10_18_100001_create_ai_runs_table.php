@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * AI の実行(LLM の呼び出し 1 回)の表(docs の 設計/AI/README.md 2.1)。記録の表で、業務レコードを消しても残る
+ * AI の実行(LLM の呼び出し 1 回)の表(docs の 設計/AI/実行の記録.md 2.1)。記録の表で、業務レコードを消しても残る
  * (record_id は SET NULL、元の ID を外部キーの無い original_record_id と業務モジュールのコード record_module_code に持つ)。
  * 種類のコード(kind)の一覧は設定と種類の実装が持ち、DB に一覧の検査制約を置かない。
  * 使用量・単価・費用は分かったときに一緒に書く(分からない失敗は NULL のまま。上限の確認は見積もり reserved_cost_usd で数える = 5.2)。

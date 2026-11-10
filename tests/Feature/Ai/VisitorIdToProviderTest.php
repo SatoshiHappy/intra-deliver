@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Http;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * 接続先へ送る訪問者の ID(docs の 設計/AI/実行と費用.md 4.4、データと失敗と検査.md 8 節の「訪問者の ID の送り方」): driver が anthropic の
+ * 接続先へ送る訪問者の ID(docs の 設計/AI/実行と費用/README.md 4.4、データと失敗と検査.md 8 節の「訪問者の ID の送り方」): driver が anthropic の
  * 実行で ID があれば要求の本文に metadata.user_id、無ければ metadata が無い。driver が anthropic でない接続先には ID があっても送らない。
  * 本文は接続先の HTTP を Http::fake に差し替えて、実際に送った要求で確かめる。
  */

@@ -5,7 +5,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * AI の実行に、依頼の時点の訪問者の ID を足す(docs の 設計/AI/README.md 2.1、持ち方 = 設計/AI/データと失敗と検査.md 6 節)。
+ * AI の実行に、依頼の時点の訪問者の ID を足す(docs の 設計/AI/実行の記録.md 2.1、持ち方 = 設計/AI/データと失敗と検査.md 6 節)。
  * 無い依頼と前からある行は NULL。
  */
 return new class extends Migration

@@ -19,7 +19,7 @@ use Tests\Support\TransactionalTestCase;
 /**
  * 期間の列(docs の 設計/共通マスタ/共通の規則.md 5.1・5.2: 半開区間 [start_date, end_date)、end_date が NULL なら上限なし、
  * 長さ 0 の期間と、日付の特殊値 infinity・-infinity(この作業で決めた)を拒む。同じ業務キーの行どうしは、無効の行も含めて期間が重ならない)。
- * ワークフローのフローの版も同じ規則(業務キー = フロー。docs の 設計/ワークフロー/ルートの深さ/データモデル/定義の表.md 2.1、直列化と検査.md 7 節の「版」)。
+ * ワークフローのフローの版も同じ規則(業務キー = フロー。docs の 設計/ワークフロー/データモデル/表.md 2.2、ルートの深さ/データモデル/直列化と検査.md 7 節の「版」)。
  */
 final class PeriodColumnsTest extends TransactionalTestCase
 {

@@ -15,7 +15,7 @@ use Tests\Support\BuildsRecordModules;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * 申請の画面のフォームの口(docs の 設計/ワークフロー/業務データとの接続/申請と書き込み.md 2 節「開き方」・9 節「口」、公開の口.md 7 節の表):
+ * 申請の画面のフォームの口(docs の 設計/ワークフロー/業務データとの接続/申請と書き込み.md 2 節「開き方」・9 節「口」、公開の口/README.md 7 節の表):
  * 定義と判定、一時保存の入力の初期値(定義に無いキーを捨て、型の解釈に通らない値を未設定にし、明細の行は id を持たない)。
  */
 final class RecordFormQueryTest extends TransactionalTestCase
@@ -191,7 +191,7 @@ final class RecordFormQueryTest extends TransactionalTestCase
     }
 
     /**
-     * 再申請の画面の初期値(公開の口.md 7 節の editValues): 保存された値を編集の画面と同じ形で返し、明細の行は id を持つ。版は編集の画面と同じ。業務モジュールの判定をしない
+     * 再申請の画面の初期値(公開の口/README.md 7 節の editValues): 保存された値を編集の画面と同じ形で返し、明細の行は id を持つ。版は編集の画面と同じ。業務モジュールの判定をしない
      * (read も update も許されない業務モジュールでも返す = 呼び手が先に判定する)。
      */
     public function test_edit_values_return_the_stored_values_with_the_detail_row_ids_without_judging(): void

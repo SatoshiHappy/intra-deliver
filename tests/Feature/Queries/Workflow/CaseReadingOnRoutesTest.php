@@ -171,7 +171,7 @@ final class CaseReadingOnRoutesTest extends TransactionalTestCase
 
     /**
      * 承認の行の指定は、承認したノードが指定するノードごとに写した並びで出し、0 人を指定したノードは people が空(画面は「指定: {ステップ} = 省略」=
-     * 設計/ワークフロー/画面/ホームと意匠とE2E.md 7 節・設計/ワークフロー/ルートの深さ/データモデル/案件の表.md 3.5)。指定するノードを持たない承認の行と、申請の行は空。
+     * 設計/ワークフロー/画面/ホームと意匠とE2E.md 7 節・設計/ワークフロー/データモデル/辺と差戻し先と指定の表.md 2.14)。指定するノードを持たない承認の行と、申請の行は空。
      */
     public function test_an_approval_lists_every_designated_step_and_a_step_designated_with_nobody_has_no_people(): void
     {

@@ -10,9 +10,9 @@ use App\Enums\Workflow\WorkflowRelativeScope;
 use App\Enums\Workflow\WorkflowTargetKind;
 
 /**
- * 形つきの版のノード 1 つの入力({@see RouteVersionWriter}。位置は並びの順。docs の 設計/ワークフロー/ルートの深さ/データモデル/定義の表.md 2.3 の列)。
+ * 形つきの版のノード 1 つの入力({@see RouteVersionWriter}。位置は並びの順。docs の 設計/ワークフロー/データモデル/表.md 2.3 の列)。
  * 同じ版のノードはコードで指す(指定するノード・対の終了・差戻しできる先)。対象者で指定は、条件と表示名(専用の対象者を作る)か、既にある対象者の id
- * (版の複製で同じ対象者を指す = 定義の表.md 2.3)のどちらか。列の組(種類と指定の種類など)は DB の検査制約が止める。
+ * (版の複製で同じ対象者を指す = ワークフロー/データモデル/表.md 2.3)のどちらか。列の組(種類と指定の種類など)は DB の検査制約が止める。
  */
 final readonly class RouteNodeInput
 {

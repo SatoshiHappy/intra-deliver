@@ -4,7 +4,7 @@ namespace App\Actions\Ai;
 
 /**
  * 実行の結果のうち記録に書くもの(内部。文章と文字起こしで共通の形にし、完了と失敗の書き込みを 1 か所にする =
- * docs の 設計/AI/実行と費用.md 4 節の「2 つの種類に共通の扱い」)。
+ * docs の 設計/AI/実行と費用/README.md 4 節の「どの型にも共通の扱い」)。
  */
 final readonly class RunResult
 {

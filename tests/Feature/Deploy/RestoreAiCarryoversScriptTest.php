@@ -12,7 +12,7 @@ use Tests\Support\TransactionalTestCase;
 
 /**
  * 退避から AI の費用の繰り越しを戻す scripts/deploy/restore-ai-carryovers(docs の 設計/公開の配備/配備と戻し方.md 6.7 の作り直しの 5、数え方 =
- * docs の 設計/AI/実行と費用.md 5.2)を、db のコンテナのコマンドをテスト DB に流す偽の docker で確かめる。退避は pg_dump の平文の形を写した
+ * docs の 設計/AI/実行と費用/接続先と費用.md 5.2)を、db のコンテナのコマンドをテスト DB に流す偽の docker で確かめる。退避は pg_dump の平文の形を写した
  * ファイル(ほかの表の COPY と psql のメタコマンドの行を含む)。スクリプトが確定させた繰り越しの行は、テストの終わりにトランザクションの外で消す。
  * 道具は {@see RunsDeployScripts}。
  */

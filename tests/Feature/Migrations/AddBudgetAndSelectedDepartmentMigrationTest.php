@@ -11,7 +11,7 @@ use Tests\Support\AssertsConstraintViolations;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * 実行に予算の区分と依頼の時点の組織を足すマイグレーション(docs の 設計/AI/README.md 2.1): 前からある行の区分は default、区分は NOT NULL と空でない制約を持つ、
+ * 実行に予算の区分と依頼の時点の組織を足すマイグレーション(docs の 設計/AI/実行の記録.md 2.1): 前からある行の区分は default、区分は NOT NULL と空でない制約を持つ、
  * 選んだ組織は消せない(RESTRICT)、索引は (budget, created_at) で created_at だけの索引は無い。down は列・制約・索引を戻す。DDL もテストの TX の中で行い、終わりに巻き戻る。
  */
 final class AddBudgetAndSelectedDepartmentMigrationTest extends TransactionalTestCase

@@ -12,10 +12,10 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * 音声の長さの測りと変換と区切り(docs の 設計/AI/実行と費用.md 4.2)。テストの音声は ffmpeg の lavfi(正弦波と無音)でテストの中で作る。
+ * 音声の長さの測りと変換と区切り(docs の 設計/AI/実行と費用/README.md 4.2)。テストの音声は ffmpeg の lavfi(正弦波と無音)でテストの中で作る。
  * 区切りの長さ C = 10 秒・無音を探す幅 W = 2 秒(C > 3W)で、区切りの数を先に決めて等しく割った目標の前の幅の中の無音の中ほどに境が寄る・
  * 無音が無ければ目標で切れる・どの区切りも C 以下・区切りの長さの和が音声の長さ・終わりの無音の長さ、変換の形(モノラル・16kHz・16kbps)、
- * 測れない音声を見る(式の正本 = 設計/AI/実行と費用.md 4.2。時間の上限は AudioConverterTimeLimitTest)。
+ * 測れない音声を見る(式の正本 = 設計/AI/実行と費用/README.md 4.2。時間の上限は AudioConverterTimeLimitTest)。
  */
 final class AudioConverterTest extends TransactionalTestCase
 {
@@ -187,7 +187,7 @@ final class AudioConverterTest extends TransactionalTestCase
     }
 
     /**
-     * 区切りの数と境は docs の 設計/AI/実行と費用.md 4.2 の決め方で、どの区切りも 2 秒より長い(短い区切りを作らない)。
+     * 区切りの数と境は docs の 設計/AI/実行と費用/README.md 4.2 の決め方で、どの区切りも 2 秒より長い(短い区切りを作らない)。
      * 無音は 1.4 秒から 4.5 秒ごとに 0.8 秒で、境の一部は無音の中ほどへ寄り、ほかは目標の時刻で切る。
      *
      * @param  list<array{float, float}>  $expected

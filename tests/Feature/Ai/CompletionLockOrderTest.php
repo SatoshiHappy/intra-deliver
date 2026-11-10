@@ -23,7 +23,7 @@ use Tests\Support\BuildsRecordModules;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * 完了の鍵の順(文章と文字起こし。docs の 設計/AI/実行と費用.md 4 節、鍵の順の規則 = 設計/業務データの入れ物/レコードの共通機能/データモデル/README.md の 4 節):
+ * 完了の鍵の順(文章と文字起こし。docs の 設計/AI/実行と費用/README.md 4 節、鍵の順の規則 = 設計/業務データの入れ物/レコードの共通機能/データモデル/README.md の 4 節):
  * 受け手が呼ぶ書き込みの口の鍵(レコードの行)の後に、実行の行の鍵を最後に取り、受け手を呼ぶ前は実行の行に鍵を取らず書き込みもしない。
  * 失敗の書き方も同じ順(受け手の通知の書き込み → 実行の行)。
  * レコードの削除は行の鍵の後に外部キーで実行の行を書くので、どちらも実行の行を最後に取り、待ちの輪を作らない。
@@ -113,7 +113,7 @@ final class CompletionLockOrderTest extends TransactionalTestCase
     }
 
     /**
-     * 失敗の書き方も同じ順(実行と費用.md 4 節の「失敗の書き方」): 受け手の書き込み(通知)の後に、実行の行の鍵を最後に取る。
+     * 失敗の書き方も同じ順(実行と費用/README.md 4 節の「失敗の書き方」): 受け手の書き込み(通知)の後に、実行の行の鍵を最後に取る。
      */
     public function test_the_failure_locks_the_run_row_only_after_the_writes_of_the_receiver(): void
     {

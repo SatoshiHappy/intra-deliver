@@ -34,7 +34,7 @@ use Tests\Support\TransactionalTestCase;
 
 /**
  * 判定しない更新の公開の口(docs の 設計/業務データの入れ物/項目と規則/規則と業務処理/README.md 9.2 の 2 の「判定しない更新」、保証 =
- * 設計/ワークフロー/業務データとの接続/公開の口.md 7 節の表の行と、表の下の「外側のトランザクションの中で呼ばれた書き込みの口」)。
+ * 設計/ワークフロー/業務データとの接続/公開の口/README.md 7 節の表の行と、表の下の「外側のトランザクションの中で呼ばれた書き込みの口」)。
  * 判定する更新が断る利用者の文脈でも書き、更新者と版の操作した人がその利用者になる。持ち主・検証・404 は判定する更新と同じで、
  * 受けない入力は作りの誤り。参照制限の 2 つのキーは今の {@see RecordInput} に無い(渡せない。キーの一覧を固定する型の制約のテスト =
  * Tests\Unit\Actions\Records\RecordInputKeysTest)。
@@ -199,7 +199,7 @@ final class UpdateRecordUncheckedTest extends TransactionalTestCase
     }
 
     /**
-     * 参照制限の 2 つのキーは、どちらかを渡せば作りの誤りで、何も書かない(キーごとに 1 本。公開の口.md 7 節の判定しない更新の行)。
+     * 参照制限の 2 つのキーは、どちらかを渡せば作りの誤りで、何も書かない(キーごとに 1 本。公開の口/README.md 7 節の判定しない更新の行)。
      *
      * @param  list<array{type: string, id: int}>|null  $viewers
      */

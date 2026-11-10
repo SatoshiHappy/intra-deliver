@@ -11,7 +11,7 @@ use Illuminate\Validation\ValidationException;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * 依頼の口の 422 の理由のコード(docs の 設計/AI/実行と費用.md 5.2): 上限を超える = budget、入力が長すぎる = too_long。
+ * 依頼の口の 422 の理由のコード(docs の 設計/AI/実行と費用/接続先と費用.md 5.2): 上限を超える = budget、入力が長すぎる = too_long。
  * HTTP の応答(422・キー ai・文)は、理由を持たない ValidationException と同じ。
  */
 final class RunRequestDeclinedTest extends TransactionalTestCase

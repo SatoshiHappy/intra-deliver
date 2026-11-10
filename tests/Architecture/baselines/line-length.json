@@ -89,7 +89,6 @@
     "app/Actions/Workflow/WithdrawCase.php": 1,
     "app/Enums/Menu/MenuIcon.php": 1,
     "app/Enums/Workflow/WorkflowDecisionRule.php": 2,
-    "app/Enums/Workflow/WorkflowNodeKind.php": 1,
     "app/Enums/Workflow/WorkflowRelativeBase.php": 1,
     "app/Enums/Workflow/WorkflowRelativeScope.php": 1,
     "app/Enums/Workflow/WorkflowTargetKind.php": 1,

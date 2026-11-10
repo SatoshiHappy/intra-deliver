@@ -70,7 +70,7 @@ class ApplicationRecords
     }
 
     /**
-     * フローのコンテンツの業務モジュールのコード(record_modules の code を 1 回の結合で読むだけ = 業務データとの接続/公開の口.md 7 節。外部キーで必ずある)。
+     * フローのコンテンツの業務モジュールのコード(record_modules の code を 1 回の結合で読むだけ = 業務データとの接続/公開の口/README.md 7 節。外部キーで必ずある)。
      *
      * @throws LogicException 無いとき(外部キーの不変条件が崩れた)
      */

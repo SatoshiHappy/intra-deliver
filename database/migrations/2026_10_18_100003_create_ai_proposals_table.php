@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * AI の提案の表(docs の 設計/AI/README.md 2.2)。作成の案に要る列だけを作る(更新の案の 3 列と action の update は、
+ * AI の提案の表(docs の 設計/AI/実行の記録.md 2.2)。作成の案に要る列だけを作る(更新の案の 3 列と action の update は、
  * 更新の案を出すツールを作るときに足す)。採用で作ったレコードは SET NULL、元の ID を外部キーの無い original_created_record_id に持つ。
  * input はレコードの入力の封筒(values・details)。
  */

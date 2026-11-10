@@ -38,7 +38,7 @@ class KindSettings
     /** 種類の型: 会話(利用者の 1 操作。接続先への送信 1 回 = ステップの列) */
     public const CONVERSATION = 'conversation';
 
-    /** 接続先の要求に足す指定のうち、種類の設定が持たない鍵(実行ごとに訪問者の ID を入れる = docs の 設計/AI/実行と費用.md 4.4) */
+    /** 接続先の要求に足す指定のうち、種類の設定が持たない鍵(実行ごとに訪問者の ID を入れる = docs の 設計/AI/実行と費用/README.md 4.4) */
     public const RUN_OPTION_KEY = 'metadata';
 
     /** 型ごとの必須の鍵(値は空でない文字列 string か正の整数 int。予算の区分はどの型にもある) */

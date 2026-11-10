@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * 写した差戻しできる先(案件のノードの部品)。表 workflow_case_send_backs(docs の 設計/ワークフロー/ルートの深さ/データモデル/案件の表.md 3.4)。
+ * 写した差戻しできる先(案件のノードの部品)。表 workflow_case_send_backs(docs の 設計/ワークフロー/データモデル/辺と差戻し先と指定の表.md 2.13)。
  * 元と先は同じ案件のノード(複合外部キー)。展開の行は行を持たない(親の行を読む)。
  */
 #[Fillable(['workflow_case_id', 'workflow_case_node_id', 'target_workflow_case_node_id'])]

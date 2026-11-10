@@ -22,7 +22,7 @@ use Tests\Support\BuildsRecordModules;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * AI の実行の依頼(docs の 設計/AI/公開の口.md 3 節の「依頼(文章の種類)」の行、実行と費用.md 5.2、データと失敗と検査.md 8 節): ゲストは 403、未登録の種類は作りの誤り、
+ * AI の実行の依頼(docs の 設計/AI/公開の口.md 3 節の「依頼(文章の種類)」の行、実行と費用/接続先と費用.md 5.2、データと失敗と検査.md 8 節): ゲストは 403、未登録の種類は作りの誤り、
  * 入力が長すぎると 422(キー ai)、実行(queued)と送る文を書き、対象のレコードの業務モジュールのコードを引いて写し、ジョブの行は
  * 実行の記録と同じトランザクションで入る(巻き戻れば残らない)。
  * 上限の境界は RequestPromptBudgetTest。

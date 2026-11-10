@@ -23,7 +23,7 @@ use RuntimeException;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * 終わった実行は、あとから来る経路で変えない(docs の 設計/AI/実行と費用.md 4 節)。ほかの経路は、1 つの接続で真似るため、ジョブの failed() を
+ * 終わった実行は、あとから来る経路で変えない(docs の 設計/AI/実行と費用/README.md 4 節)。ほかの経路は、1 つの接続で真似るため、ジョブの failed() を
  * 呼んで終わらせる。
  */
 final class FinishedRunKeptTest extends TransactionalTestCase

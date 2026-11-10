@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\ValidationException;
 
 /**
- * AI の依頼の口が依頼を断った 422(キー ai。docs の 設計/AI/実行と費用.md 5.2)。呼び手が文を比べずに理由を分けられるよう、理由のコードを持つ
+ * AI の依頼の口が依頼を断った 422(キー ai。docs の 設計/AI/実行と費用/接続先と費用.md 5.2)。呼び手が文を比べずに理由を分けられるよう、理由のコードを持つ
  * (会議は文字起こしの完了の中の議事録の依頼が断られた理由を残す)。HTTP の応答は ValidationException と同じ。
  */
 final class RunRequestDeclined extends ValidationException

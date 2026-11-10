@@ -15,7 +15,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
- * 案件(フローの 1 回の申請。一時保存を含む)。表 workflow_cases(docs の 設計/ワークフロー/データモデル/表.md 2.5、ルートの深さ/データモデル/案件の表.md 3.1)。
+ * 案件(フローの 1 回の申請。一時保存を含む)。表 workflow_cases(docs の 設計/ワークフロー/データモデル/表.md 2.5、ワークフロー/データモデル/表.md 2.5)。
  * 状態ごとに持つ列の組は検査制約が止める。案件番号は列の既定値でなく、申請の確定の時に採る。
  * 「添付を使う」は申請の時のフローの値の写しで、一時保存は NULL(設計/ワークフロー/申請の周辺/データモデル.md の 3.4 節)。
  */

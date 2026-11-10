@@ -37,7 +37,7 @@ use Tests\Support\TransactionalTestCase;
 use Throwable;
 
 /**
- * 種類の失敗の受け手(docs の 設計/AI/公開の口.md 3.1、実行と費用.md 4 節の「失敗の書き方」、データと失敗と検査.md 7 節・8 節)。
+ * 種類の失敗の受け手(docs の 設計/AI/公開の口.md 3.1、実行と費用/README.md 4 節の「失敗の書き方」、データと失敗と検査.md 7 節・8 節)。
  * 鍵なしで読んだ時に終わっていれば呼ばないことは FinishedRunKeptTest、鍵の順は CompletionLockOrderTest。
  */
 final class FailedRunReceiverTest extends TransactionalTestCase

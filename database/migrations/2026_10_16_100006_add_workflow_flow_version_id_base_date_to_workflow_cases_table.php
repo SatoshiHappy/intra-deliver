@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * 案件が写した版と申請基準日(docs の 設計/ワークフロー/ルートの深さ/データモデル/案件の表.md 3.1)。写した版は案件のフローの版(複合外部キー)。
+ * 案件が写した版と申請基準日(docs の 設計/ワークフロー/データモデル/表.md 2.5)。写した版は案件のフローの版(複合外部キー)。
  */
 return new class extends Migration
 {

@@ -76,7 +76,7 @@ final class ApplicableFlowsTest extends TransactionalTestCase
     }
 
     /**
-     * 申請のノードは d に有効な版のもの。d に有効な版の無いフロー(版が後で始まる・d で終わった・無効)は出ない(段 3a の ルートの深さ/データモデル/定義の表.md 2.1)。
+     * 申請のノードは d に有効な版のもの。d に有効な版の無いフロー(版が後で始まる・d で終わった・無効)は出ない(段 3a の ワークフロー/データモデル/表.md 2.2)。
      */
     public function test_a_flow_without_a_version_valid_on_the_date_is_not_listed(): void
     {

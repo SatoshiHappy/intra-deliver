@@ -26,8 +26,8 @@ use Illuminate\Support\Facades\Log;
 use LogicException;
 
 /**
- * AI の文字起こしを依頼する(docs の 設計/AI/公開の口.md 3 節の文字起こしの依頼の行、実行と費用.md 4.2・5.2)。音声の長さを測り、上限を確かめて
- * 実行(queued)と空の送る文を書き、同じトランザクションでジョブを入れる(実行と費用.md 4 節の「ジョブの入れ方」)。
+ * AI の文字起こしを依頼する(docs の 設計/AI/公開の口.md 3 節の文字起こしの依頼の行、実行と費用/README.md 4.2・5.2)。音声の長さを測り、上限を確かめて
+ * 実行(queued)と空の送る文を書き、同じトランザクションでジョブを入れる(実行と費用/README.md 4 節の「ジョブの入れ方」)。
  * 区間の一覧は種類の実装({@see TranscriptionKind::complete()})が受け取る。対象のレコードの閲覧と、音声がそのレコードの添付であることの判定は呼び手。
  *
  * Ai の公開の口。自分のトランザクションを持ち、外側のトランザクションの中では savepoint で外側に含まれる
@@ -66,7 +66,7 @@ class RequestTranscription
      *                        依頼者か対象のレコードが完了中の実行と違うとき(呼び手の誤り)
      * @throws ModelNotFoundException 対象のレコードが無いとき(404)
      * @throws RunRequestDeclined 音声の実体が無い・読み取れない・長すぎる・上限を超えるとき(422。キー ai)
-     * @throws AudioConversionFailed 測りの時間切れ・外部のプロセスの起動の失敗のとき(500。呼び手は受け止めない = 設計/AI/実行と費用.md 4.2)
+     * @throws AudioConversionFailed 測りの時間切れ・外部のプロセスの起動の失敗のとき(500。呼び手は受け止めない = 設計/AI/実行と費用/README.md 4.2)
      */
     public function execute(AccessContext $context, TranscriptionRequest $request): int
     {

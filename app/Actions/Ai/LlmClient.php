@@ -12,7 +12,7 @@ use LogicException;
 use Throwable;
 
 /**
- * LLM を呼ぶ唯一のクラス(docs の 設計/AI/実行と費用.md 4 節。副作用 ai は台帳②で App\Actions\Ai だけ)。接続先・モデル・出力の上限は実行に写した値を使う。
+ * LLM を呼ぶ唯一のクラス(docs の 設計/AI/実行と費用/README.md 4 節。副作用 ai は台帳②で App\Actions\Ai だけ)。接続先・モデル・出力の上限は実行に写した値を使う。
  * 拡張点(名前を伏せる処理を足すときはここ = 呼ぶ前。設計/AI/データと失敗と検査.md 6 節)。
  */
 class LlmClient
@@ -49,7 +49,7 @@ class LlmClient
 
     /**
      * 実行ごとに接続先の要求に足す訪問者の ID。anthropic だけに送るのは、ほかの driver の接続先は識別子の欄を確かめていないため
-     * (送る条件 = docs の 設計/AI/実行と費用.md 4.4)。
+     * (送る条件 = docs の 設計/AI/実行と費用/README.md 4.4)。
      *
      * @return array<string, mixed>
      */

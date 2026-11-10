@@ -5,7 +5,7 @@ namespace App\Actions\Authz\Api;
 use App\Enums\Authz\SelectionConditionKind;
 
 /**
- * 用途 selection の対象者の条件 1 つ({@see CreateSelectionSubjectGroup} に渡す値。docs の 設計/ワークフロー/業務データとの接続/公開の口.md 8.1)。
+ * 用途 selection の対象者の条件 1 つ({@see CreateSelectionSubjectGroup} に渡す値。docs の 設計/ワークフロー/業務データとの接続/公開の口/付け替えと土台の口.md 8.1)。
  * 種類と相手の id だけを持つ(比較は eq だけ。除外・入れ子・期間などの種類は持たない)。
  * 例: 組織 = new SelectionCondition(SelectionConditionKind::Department, 12)。
  */

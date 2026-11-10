@@ -4,7 +4,7 @@ namespace App\Actions\Ai\Api;
 
 /**
  * 文字起こしの区間 1 つ({@see CompletedTranscription} の一覧の要素)。時刻は音声 1 本の始まりからの秒(区切りの始まりの分をずらした後)。
- * 区切りが 2 つ以上のとき、話者のラベルは区切りの番号を添えた形になる(docs の 設計/AI/実行と費用.md 4.2)。
+ * 区切りが 2 つ以上のとき、話者のラベルは区切りの番号を添えた形になる(docs の 設計/AI/実行と費用/README.md 4.2)。
  */
 final readonly class TranscribedSegment
 {

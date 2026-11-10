@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\Collection;
  * 条件つき必須(業務処理の App\Actions\Records\RuleEvaluator)と公開の口 {@see Api\RecordConditions::matches()} が同じこのクラスを呼ぶ
  * (判定を 2 か所に書かない = docs の 設計/ワークフロー/ルートの深さ/段2の設計への反映.md 3 節)。相関チェックの比べ方も {@see self::satisfies()} を使う。
  *
- * 式ごとの 1 判定(同 3 節の matches の行、定義の表.md 2.4、C-R11 の決定): 式の構造か写した値が今の定義に合わない式は「項目が空」として評価し
+ * 式ごとの 1 判定(同 3 節の matches の行、ワークフロー/データモデル/辺と差戻し先と指定の表.md 2.10、C-R11 の決定): 式の構造か写した値が今の定義に合わない式は「項目が空」として評価し
  * (empty だけが真)、合う式は写した値のまま比べる。評価で見るのは値の型の形だけで、正規化・長さ・選択肢の検証はしない(書く時の検証だけが行う)。
  */
 class RecordConditionEvaluator

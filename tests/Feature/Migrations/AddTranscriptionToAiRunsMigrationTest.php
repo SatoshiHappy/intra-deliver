@@ -12,7 +12,7 @@ use Tests\Support\AssertsConstraintViolations;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * 実行に文字起こしの音声と長さを足すマイグレーション(docs の 設計/AI/README.md 2.1): 前からある文章の行はそのまま通る。
+ * 実行に文字起こしの音声と長さを足すマイグレーション(docs の 設計/AI/実行の記録.md 2.1): 前からある文章の行はそのまま通る。
  * down は文字起こしの行があれば理由つきで止まり(行を消さない)、無ければ列と制約を戻す(出力の上限は NOT NULL、失敗の種類から conversion を外す、
  * 対象のレコードの元の値の制約を元の式に戻す)。
  * DDL もテストの TX の中で行い、終わりに巻き戻る。

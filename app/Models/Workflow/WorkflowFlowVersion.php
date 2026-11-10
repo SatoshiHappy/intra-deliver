@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
- * フローの版(フローの部品。期間の表の形 = 共通の規則 5 節)。表 workflow_flow_versions(docs の 設計/ワークフロー/ルートの深さ/データモデル/定義の表.md 2.1)。
+ * フローの版(フローの部品。期間の表の形 = 共通の規則 5 節)。表 workflow_flow_versions(docs の 設計/ワークフロー/データモデル/表.md 2.2)。
  * 版がルート(ノード・辺・差戻しできる先)を持つ。申請に使う版 = 申請基準日に有効な版({@see HasPeriod} の effectiveOn)。
  */
 #[Fillable(['workflow_flow_id', 'number', 'start_date', 'end_date', 'is_deleted'])]

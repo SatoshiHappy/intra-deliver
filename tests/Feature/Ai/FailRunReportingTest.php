@@ -17,7 +17,7 @@ use RuntimeException;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * 実行を失敗にする途中の例外の報告(docs の 設計/AI/実行と費用.md 4 節の「失敗の書き方」)。受け手の例外そのものの扱いは FailedRunReceiverTest。
+ * 実行を失敗にする途中の例外の報告(docs の 設計/AI/実行と費用/README.md 4 節の「失敗の書き方」)。受け手の例外そのものの扱いは FailedRunReceiverTest。
  */
 final class FailRunReportingTest extends TransactionalTestCase
 {

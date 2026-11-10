@@ -28,7 +28,7 @@ use Tests\Support\TransactionalTestCase;
 /**
  * 決まった値の一覧の列と列挙の一致(docs の 設計/ワークフロー/データモデル/README.md 1 節: 値の正本は列挙 App\Enums\Workflow で、検査制約と同じ値を持つ。
  * 直列化と検査.md 6 節の「決まった値の一覧の外の値を拒む」): 列ごとの検査制約 <表>_<列>_check の値の一覧が列挙の値と同じ、列挙のどの値の行も入り
- * (キャストで列挙に読み戻る)、一覧の外の値の行は検査制約に拒まれる。段 3a で足した列(ルートの深さ/データモデル/README.md 1 節の決まった値の一覧)も同じ。
+ * (キャストで列挙に読み戻る)、一覧の外の値の行は検査制約に拒まれる。段 3a で足した列(ワークフロー/データモデル/README.md 1 節の決まった値の一覧)も同じ。
  * 案件の運用で足した値と列(設計/ワークフロー/案件の運用/データモデル/README.md の 1 節)も同じ。
  */
 final class WorkflowEnumValuesTest extends TransactionalTestCase

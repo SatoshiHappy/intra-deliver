@@ -4,7 +4,7 @@ namespace App\Actions\Ai;
 
 /**
  * 変換した音声を区切ったものの 1 つ(内部。{@see AudioConverter::split()} の結果)。時刻は元の音声の始まりからの秒。
- * 終わりの無音の長さは、応答が区切りの終わりまで届いたかの判定に使う(docs の 設計/AI/実行と費用.md 4.2)。
+ * 終わりの無音の長さは、応答が区切りの終わりまで届いたかの判定に使う(docs の 設計/AI/実行と費用/README.md 4.2)。
  */
 final readonly class AudioChunk
 {

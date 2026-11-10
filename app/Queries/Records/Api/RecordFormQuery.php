@@ -23,7 +23,7 @@ use LogicException;
 
 /**
  * 申請の画面のフォームの口(業務モジュールの定義・判定・一時保存の入力と再申請の初期値 = docs の 設計/ワークフロー/業務データとの接続/申請と書き込み.md 1 節・
- * 2 節。主体・認可・結果・失敗の正本 = 同 公開の口.md 7 節の表)。判定は業務データの入れ物の画面と同じ口({@see RecordModuleGate})を通る。
+ * 2 節。主体・認可・結果・失敗の正本 = 同 公開の口/README.md 7 節の表)。判定は業務データの入れ物の画面と同じ口({@see RecordModuleGate})を通る。
  *
  * @phpstan-import-type ModuleDefinition from RecordDefinitionQuery
  * @phpstan-import-type DraftValues from DraftValueReader
@@ -77,7 +77,7 @@ class RecordFormQuery
      *
      * 一時保存の入力(業務処理の入力と同じ形 = 項目のコード → 値、明細の項目のコード → 行)を、画面の初期値の形に直す。業務モジュールの判定を
      * しない(呼び手が {@see self::definition()} を通してから呼ぶ)。検証しない。規則は {@see DraftValueReader}。判定を求める者は、他モジュール
-     * 参照の相手の表示名の出し分けにだけ使う(参照先の read の読み方 = 設計/ワークフロー/業務データとの接続/公開の口.md 7 節の「行の権限」)。
+     * 参照の相手の表示名の出し分けにだけ使う(参照先の read の読み方 = 設計/ワークフロー/業務データとの接続/公開の口/README.md 7 節の「行の権限」)。
      *
      * @param  array<array-key, mixed>  $values  項目のコード → 値
      * @param  array<array-key, mixed>  $details  明細の項目のコード → 行(行 = values を持つ配列)
@@ -95,7 +95,7 @@ class RecordFormQuery
 
     /**
      * 主体の判定をしない。呼び手が、そのレコードの値を見てよいことを確かめてから呼ぶ(呼び手ごとの確かめ = docs の
-     * 設計/ワークフロー/業務データとの接続/公開の口.md 7 節の editValues の行)。
+     * 設計/ワークフロー/業務データとの接続/公開の口/README.md 7 節の editValues の行)。
      *
      * 結果の形は `@return` の型(rowAccessRestricted = そのレコードのチェック「参照を制限する」= 7 節の行の結果)。検証の範囲 = 同じ 7 節の editValues の行
      * (version を送り返す使い方 = 設計/ワークフロー/申請の周辺/既存のデータからの申請/README.md の 3 節)。判定を求める者は、参照先の表示名の

@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * 履歴(案件の処理の記録。案件の部品。追記だけ)。表 workflow_case_histories(docs の 設計/ワークフロー/データモデル/表.md 2.8、ルートの深さ/データモデル/案件の表.md 3.7)。
+ * 履歴(案件の処理の記録。案件の部品。追記だけ)。表 workflow_case_histories(docs の 設計/ワークフロー/データモデル/表.md 2.8、ワークフロー/データモデル/表.md 2.8)。
  * 処理日時は created_at、並びは id。申請・再申請の行はいつもその操作の更新履歴の版を指し(record_revision_id。docs の
  * 設計/業務データの入れ物/レコードの共通機能/更新履歴.md の 4.2 節)、ステップの処理の行は添付を付けたときだけその版を指し
  * (指すかどうかは行の操作で決まらない)、差戻しの行だけが差戻し先を持つ。

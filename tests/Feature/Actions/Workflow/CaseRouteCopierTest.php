@@ -16,7 +16,7 @@ use Tests\Support\BuildsRouteVersions;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * 申請の写し(docs の 設計/ワークフロー/ルートの深さ/データモデル/案件の表.md 3.2〜3.4、区切り 2 の残課題 #1): 指定するノード・対の終了を持つ版のノード・辺・
+ * 申請の写し(docs の 設計/ワークフロー/データモデル/表.md 2.6・辺と差戻し先と指定の表.md 2.12・2.13、区切り 2 の残課題 #1): 指定するノード・対の終了を持つ版のノード・辺・
  * 差戻しできる先を全部写せる(参照される側を先に書く)。写したノードはすべて到達していない、辺の taken は NULL、指す列は同じ案件のノード。
  */
 final class CaseRouteCopierTest extends TransactionalTestCase

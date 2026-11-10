@@ -10,7 +10,7 @@ use Carbon\CarbonImmutable;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * ユーザー・組織・役職の表示名の公開の口(docs の 設計/ワークフロー/業務データとの接続/公開の口.md 8.1: id → {code, name}。存在しない id は入れない。
+ * ユーザー・組織・役職の表示名の公開の口(docs の 設計/ワークフロー/業務データとの接続/公開の口/付け替えと土台の口.md 8.1: id → {code, name}。存在しない id は入れない。
  * d・ロケールの名前が無ければ name が null、code はアンカーの値)。初期データ(u0014 は 2025-10-01 に退職、第二営業部は 2025-04-01 から)で確かめる。
  */
 final class MasterNamesTest extends TransactionalTestCase

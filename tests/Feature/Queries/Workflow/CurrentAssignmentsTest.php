@@ -14,7 +14,7 @@ use Tests\Support\BuildsWorkflowCases;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * 今の指定(docs の 設計/ワークフロー/ルートの深さ/データモデル/案件の表.md 3.5): 指定されたノード Y の指定するノード X の、引戻されていない最新の承認の行の、
+ * 今の指定(docs の 設計/ワークフロー/データモデル/辺と差戻し先と指定の表.md 2.14): 指定されたノード Y の指定するノード X の、引戻されていない最新の承認の行の、
  * Y の行の集まり(指定の順)。行が 0 = 0 人。X の承認が無い Y は入らない。
  */
 final class CurrentAssignmentsTest extends TransactionalTestCase

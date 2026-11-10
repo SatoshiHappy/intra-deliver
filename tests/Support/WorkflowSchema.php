@@ -18,8 +18,8 @@ use App\Models\Workflow\WorkflowRouteSendBack;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * ワークフローの 13 表の設計どおりの列・外部キーと、制約・索引の名前(docs の 設計/ワークフロー/データモデル/表.md 2 節と、段 3a の差 = 設計/ワークフロー/ルートの深さ/
- * データモデル/定義の表.md 2 節・案件の表.md 3 節。型は 設計/ワークフロー/データモデル/README.md 1 節で採った共通の規則 4 節、名前は 設計/ワークフロー/データモデル/直列化と検査.md 4 節と、
+ * ワークフローの 13 表の設計どおりの列・外部キーと、制約・索引の名前(表の意味 = docs の 設計/ワークフロー/データモデル/表.md 2 節と
+ * 辺と差戻し先と指定の表.md。型は 設計/ワークフロー/データモデル/README.md 1 節で採った共通の規則 4 節、名前は 設計/ワークフロー/データモデル/直列化と検査.md 4 節と、
  * 設計/ワークフロー/ルートの深さ/データモデル/直列化と検査.md 5 節)。
  * 列の書き方は {@see RecordsSchema} と同じ(列 → PostgreSQL の format_type と NOT NULL・既定値。id・created_at・updated_at は SchemaTest が足す。
  * 生成列は「generated always as 式 stored」で、式は pg_get_expr の形 = 定数は括弧なし)。段 3a で既存の表に足した列は {@see self::COLUMNS_ADDED_LATER}(表の末尾)。

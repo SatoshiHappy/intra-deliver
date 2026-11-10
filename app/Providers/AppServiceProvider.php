@@ -114,7 +114,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->tag([WorkflowRecordHolds::class], RecordHolds::TAG);
 
         // 依存の逆転: 業務モジュールを変える業務処理と管理の編集の画面が、コンテンツが指す業務モジュールの表示の止めを聞く(ADR 0031。
-        // docs の 設計/ワークフロー/業務データとの接続/公開の口.md 7 節)
+        // docs の 設計/ワークフロー/業務データとの接続/公開の口/README.md 7 節)
         $this->app->tag([WorkflowRecordModuleVisibilityStops::class], RecordModuleVisibilityStops::TAG);
 
         // 依存の逆転: レコードの閲覧の判定が、未完了の申請の関係者の経路を聞く(docs の

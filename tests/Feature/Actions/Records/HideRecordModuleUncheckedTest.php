@@ -12,7 +12,7 @@ use Tests\Support\ReadsRecordModuleMenus;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * 業務モジュールを判定せずに非表示にする公開の口(docs の 設計/ワークフロー/業務データとの接続/公開の口.md 7 節の表。ADR 0031 の決定 2):
+ * 業務モジュールを判定せずに非表示にする公開の口(docs の 設計/ワークフロー/業務データとの接続/公開の口/README.md 7 節の表。ADR 0031 の決定 2):
  * 表示の業務モジュールの「業務」の 2 つのアイテム(global-nav-main・sitemap-main)を消し、既に非表示なら何も変えない。業務モジュールが無い・
  * 明細のモジュールは呼び手の誤り(LogicException)。メニューを消す業務処理の拒否は 422(キー is_visible)。初期データのプロジェクトを使う。
  */

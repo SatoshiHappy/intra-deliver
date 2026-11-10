@@ -21,7 +21,7 @@ use Illuminate\Validation\ValidationException;
  * 組み方 any、条件は {@see SelectionCondition} ごとに 1 つ(比較 eq、除外・入れ子なし)。中で {@see CreateSubjectGroup} を使う。
  * 認可の判定をしない(定義の業務処理。段 2 は初期データだけが呼ぶ)。
  *
- * Authz の公開の口(主体・認可・検証の範囲・ロック・原子性・結果・失敗の正本 = docs の 設計/ワークフロー/業務データとの接続/公開の口.md 8.1 の表)。
+ * Authz の公開の口(主体・認可・検証の範囲・ロック・原子性・結果・失敗の正本 = docs の 設計/ワークフロー/業務データとの接続/公開の口/付け替えと土台の口.md 8.1 の表)。
  * 共通マスタの勧告ロックを取る({@see WritesCommonMaster})。自分のトランザクションを持ち、外側のトランザクションの中では savepoint で外側に含まれる。
  */
 class CreateSelectionSubjectGroup

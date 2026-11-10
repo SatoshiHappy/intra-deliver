@@ -30,7 +30,7 @@ use Tests\Support\TransactionalTestCase;
  * 本家のコードの列 code(docs の 設計/共通マスタ/共通の規則.md 2 節・4 節: 空文字を拒み、本家のキーの範囲で一意)。業務データの入れ物の
  * コードの列も同じ(空文字は書式の検査制約が拒む = 設計/業務データの入れ物/データモデル/ 1 節。書式そのものは tests/Feature/Models/Records/)。
  * ワークフローのコンテンツ・フロー・ルートのノード・案件のノードのコードも同じ(設計/ワークフロー/データモデル/README.md 1 節、直列化と検査.md 6 節。
- * 段 3a でルートの表を消し、ルートのノードは版の中で一意 = ルートの深さ/データモデル/README.md 1 節。案件のノードの code は展開の行で NULL だが、
+ * 段 3a でルートの表を消し、ルートのノードは版の中で一意 = ワークフロー/データモデル/README.md 1 節。案件のノードの code は展開の行で NULL だが、
  * 書式の検査制約は NULL を通す。書式そのものは tests/Feature/Models/Workflow/)。
  */
 final class CodeColumnsTest extends TransactionalTestCase

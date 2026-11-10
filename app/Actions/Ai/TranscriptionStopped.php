@@ -8,7 +8,7 @@ use Throwable;
 
 /**
  * 文字起こしが途中で止まった(内部。{@see TranscribeAudio} が投げ、{@see ExecuteTranscription} が失敗を書いて元の失敗を投げ直す)。
- * 分かった分の使用量・費用・原文を持つ(呼んだ区切りの費用は失敗でも数える = docs の 設計/AI/実行と費用.md 5.1)。
+ * 分かった分の使用量・費用・原文を持つ(呼んだ区切りの費用は失敗でも数える = docs の 設計/AI/実行と費用/接続先と費用.md 5.1)。
  */
 final class TranscriptionStopped extends RuntimeException
 {

@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * AI の実行に、依頼の時点に依頼者が選んでいた組織と予算の区分を足す(docs の 設計/AI/README.md 2.1)。
+ * AI の実行に、依頼の時点に依頼者が選んでいた組織と予算の区分を足す(docs の 設計/AI/実行の記録.md 2.1)。
  * 前からある行の区分は default(NULL 可で足し、既存の行に書いてから NOT NULL にする)。区分の一覧は設定が持ち、DB に一覧の検査制約を置かない。
  * 区分ごとの上限の集計のため、(budget, created_at) の索引を足し、created_at だけの索引を外す。
  */

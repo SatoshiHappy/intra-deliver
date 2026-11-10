@@ -14,7 +14,7 @@ use Tests\Support\TransactionalTestCase;
 /**
  * 全体のホームの入口(docs の 設計/メニュー/ホーム.md 6.1・6.2・6.6): ページ Menu/Home の props today に基準日 d(YYYY-MM-DD)、sections に
  * タグ HomeSections::TAG で登録した実装の null でない節を登録の順に渡し、app は null。節が無ければ空。実装が例外を投げればホームは 500
- * (実装は投げない契約 = 設計/ワークフロー/業務データとの接続/公開の口.md 8.1)。
+ * (実装は投げない契約 = 設計/ワークフロー/業務データとの接続/公開の口/付け替えと土台の口.md 8.1)。
  * 初期データ(ゲストへの許可)を入れ、今日を 2026-10-15(Asia/Tokyo)に固定し、ルートの認可を外さずに開く。
  *
  * @phpstan-import-type HomeTilesSection from HomeSections

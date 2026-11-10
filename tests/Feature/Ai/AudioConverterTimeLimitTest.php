@@ -13,7 +13,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * 音声の外部のプロセスの時間の上限(docs の 設計/AI/実行と費用.md 4.2): 測りと区切りは別の上限で、どちらも超えたら読めない音声でなく変換の失敗になる。
+ * 音声の外部のプロセスの時間の上限(docs の 設計/AI/実行と費用/README.md 4.2): 測りと区切りは別の上限で、どちらも超えたら読めない音声でなく変換の失敗になる。
  */
 final class AudioConverterTimeLimitTest extends TransactionalTestCase
 {

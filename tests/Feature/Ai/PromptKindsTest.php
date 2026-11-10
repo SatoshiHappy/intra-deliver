@@ -11,9 +11,9 @@ use PHPUnit\Framework\Attributes\TestWith;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * 種類の登録と設定の食い違いを起動のテストで落とす(docs の 設計/AI/公開の口.md 3.1、実行と費用.md 4.1・5 節): 起動(AppServiceProvider)の登録と
+ * 種類の登録と設定の食い違いを起動のテストで落とす(docs の 設計/AI/公開の口.md 3.1、実行と費用/README.md 4.1・5 節): 起動(AppServiceProvider)の登録と
  * config/ai_runs.php は食い違わない。同じコードの実装が 2 つ・設定に無いコードの実装・単価が無い種類・予算の区分が設定に無い種類・
- * ジョブの時間が retry_after 以上の種類・区分の守る条件(1 依頼の見積もりの上限の最大 < 空でない最も小さい期間の上限。実行と費用.md 5.2)を破る設定・
+ * ジョブの時間が retry_after 以上の種類・区分の守る条件(1 依頼の見積もりの上限の最大 < 空でない最も小さい期間の上限。実行と費用/接続先と費用.md 5.2)を破る設定・
  * 既定の DB 接続の database でないキューは食い違いとして出る。
  */
 final class PromptKindsTest extends TransactionalTestCase
@@ -50,7 +50,7 @@ final class PromptKindsTest extends TransactionalTestCase
     }
 
     /**
-     * 守る条件の右辺は、日・月・累計の上限のうち空でない最も小さいもの(実行と費用.md 5.2。3 つとも空なら確かめない)。
+     * 守る条件の右辺は、日・月・累計の上限のうち空でない最も小さいもの(実行と費用/接続先と費用.md 5.2。3 つとも空なら確かめない)。
      * 今の設定の default の 1 依頼の見積もりの上限の最大は 0.161000 ドル(上のテスト)。境界は見積もりの上限と同じ額(以上で止まる)と、
      * その両側の 100 万分の 1 ドル(額の刻み)。同じ額の期間が 2 つ以上なら短い期間の名前を出す。
      *
@@ -204,7 +204,7 @@ final class PromptKindsTest extends TransactionalTestCase
         ], app(PromptKinds::class)->problems());
     }
 
-    /** 訪問者の ID は実行ごとに metadata に足すので、種類の設定は metadata を持たない(docs の 設計/AI/実行と費用.md 4.4) */
+    /** 訪問者の ID は実行ごとに metadata に足すので、種類の設定は metadata を持たない(docs の 設計/AI/実行と費用/README.md 4.4) */
     public function test_detects_provider_options_with_the_metadata_of_the_run(): void
     {
         $options = ['metadata' => ['user_id' => 'fixed']];

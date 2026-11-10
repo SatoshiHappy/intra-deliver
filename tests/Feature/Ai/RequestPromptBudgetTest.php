@@ -15,7 +15,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * 費用の上限の境界(docs の 設計/AI/実行と費用.md 5.2、データと失敗と検査.md 8 節)。依頼の見積もりは 0.000270。
+ * 費用の上限の境界(docs の 設計/AI/実行と費用/接続先と費用.md 5.2、データと失敗と検査.md 8 節)。依頼の見積もりは 0.000270。
  */
 final class RequestPromptBudgetTest extends TransactionalTestCase
 {

@@ -17,7 +17,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
- * ルートのノード(版の部品)。表 workflow_route_nodes(docs の 設計/ワークフロー/ルートの深さ/データモデル/定義の表.md 2.3)。
+ * ルートのノード(版の部品)。表 workflow_route_nodes(docs の 設計/ワークフロー/データモデル/表.md 2.3)。
  * 位置 1 だけが申請のノード。種類と処理対象者の指定の種類・指定の列・人数・可決の条件・申請者承認防止・対の終了の組は検査制約が止める。
  * 指定するノード・対の終了は同じ版のノード(複合外部キー)。処理対象者の指定(fixed)は用途 selection の認可の対象者(生成列 purpose はアプリが書かず読まない)。
  * 処理期限の日数と確認する人はステップの設定の列(設計/ワークフロー/案件の運用/データモデル/表.md の 2.3 節)。確認する人も用途 selection の対象者。

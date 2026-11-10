@@ -15,7 +15,7 @@ use LogicException;
 use Throwable;
 
 /**
- * AI の文字起こしの実行を動かす(ジョブ App\Jobs\Ai\RunTranscriptionJob から呼ぶ。手順と失敗の扱いの正本 = docs の 設計/AI/実行と費用.md 4 節、
+ * AI の文字起こしの実行を動かす(ジョブ App\Jobs\Ai\RunTranscriptionJob から呼ぶ。手順と失敗の扱いの正本 = docs の 設計/AI/実行と費用/README.md 4 節、
  * データと失敗と検査.md 7 節)。変換と接続先を待つ間は鍵もトランザクションも持たない。完了の順と失敗の書き方は文章の種類と同じ部品
  * ({@see CompleteRun}・{@see FailRun})。区切りの一時ファイルは成功でも失敗でも実行の終わりに消す(データと失敗と検査.md 6 節)。
  *

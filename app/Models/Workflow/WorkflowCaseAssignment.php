@@ -11,7 +11,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * 指定(指定するノードの処理者が承認の時に指定した処理対象者。案件の部品。追記だけ)。表 workflow_case_assignments
- * (docs の 設計/ワークフロー/ルートの深さ/データモデル/案件の表.md 3.5)。指定した承認の履歴の行と指定されたノードは同じ案件のもの(複合外部キー)。
+ * (docs の 設計/ワークフロー/データモデル/辺と差戻し先と指定の表.md 2.14)。指定した承認の履歴の行と指定されたノードは同じ案件のもの(複合外部キー)。
  */
 #[Fillable(['workflow_case_id', 'workflow_case_history_id', 'workflow_case_node_id', 'sequence', 'user_id'])]
 class WorkflowCaseAssignment extends Model

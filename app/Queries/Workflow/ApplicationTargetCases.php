@@ -38,7 +38,7 @@ class ApplicationTargetCases
 
     /**
      * レコードを申請対象にする申請書のレコードの id(昇順)。申請対象の項目が無ければ読まない。参照元を項目で引く読み取りは主体の判定を
-     * しないので、結果は呼び手が案件の閲覧の判定で絞る(設計/ワークフロー/業務データとの接続/公開の口.md の 7 節)。
+     * しないので、結果は呼び手が案件の閲覧の判定で絞る(設計/ワークフロー/業務データとの接続/公開の口/README.md の 7 節)。
      *
      * @param  list<int>  $fieldIds  申請対象の項目の id({@see self::fieldIdsByModule()})
      * @return list<int>

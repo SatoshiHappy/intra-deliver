@@ -187,7 +187,7 @@ final class WriteRecordFromRunTest extends TransactionalTestCase
     }
 
     /**
-     * 判定しない更新が受けない入力(明細の入力)を渡すと作りの誤り(docs の 設計/ワークフロー/業務データとの接続/公開の口.md 7 節)。
+     * 判定しない更新が受けない入力(明細の入力)を渡すと作りの誤り(docs の 設計/ワークフロー/業務データとの接続/公開の口/README.md 7 節)。
      */
     public function test_an_input_the_unchecked_update_does_not_accept_is_a_logic_error(): void
     {

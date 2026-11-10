@@ -142,7 +142,7 @@ services:
             - no-new-privileges:true
         restart: unless-stopped
         # 止めるときは SIGTERM の後、処理中のジョブを終えてから抜ける(pcntl)。ジョブの時間の上限 < キューが配り直すまでの時間
-        # (config/queue.php の database の retry_after の既定。docs の 設計/AI/実行と費用.md の 4.1 節)≤ この値
+        # (config/queue.php の database の retry_after の既定。docs の 設計/AI/実行と費用/README.md の 4.1 節)≤ この値
         stop_grace_period: 3600s
         depends_on:
             db:

@@ -14,7 +14,7 @@ use Illuminate\Validation\ValidationException;
 
 /**
  * レコードを判定せずに削除する公開の口(案件の削除で申請書のレコードを一緒に消す = ADR 0025 の決定 8。規則 = docs の
- * 設計/業務データの入れ物/項目と規則/規則と業務処理/README.md 9.2 の 2、保証の正本 = 設計/ワークフロー/業務データとの接続/公開の口.md
+ * 設計/業務データの入れ物/項目と規則/規則と業務処理/README.md 9.2 の 2、保証の正本 = 設計/ワークフロー/業務データとの接続/公開の口/README.md
  * 7 節の表)。業務モジュールと行の判定だけを行わず、鍵と行の鍵より後ろは判定する削除 {@see DeleteRecord} と同じ。
  */
 class DeleteRecordUnchecked

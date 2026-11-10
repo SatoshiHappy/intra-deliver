@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Queue;
 
 /**
- * キューの表(jobs)のジョブを読み、テストの中で明示して流す手助け(テストのキューも既定の DB 接続の database = docs の 設計/AI/実行と費用.md 4 節の
+ * キューの表(jobs)のジョブを読み、テストの中で明示して流す手助け(テストのキューも既定の DB 接続の database = docs の 設計/AI/実行と費用/README.md 4 節の
  * 「ジョブの入れ方」。ジョブは依頼のトランザクションの中では走らない)。
  */
 trait RunsQueuedJobs

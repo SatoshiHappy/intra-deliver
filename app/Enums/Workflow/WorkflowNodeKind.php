@@ -3,8 +3,8 @@
 namespace App\Enums\Workflow;
 
 /**
- * ノードの種類(docs の 設計/ワークフロー/ルートの深さ/データモデル/README.md 1 節。表 workflow_route_nodes・workflow_case_nodes の kind)。値は DB の検査制約と同じ一覧。
- * 申請は位置 1 のノードだけ(定義の表.md 2.3)。履歴の種別 {@see WorkflowAction} とは列が別なので別の列挙にする。
+ * ノードの種類(docs の 設計/ワークフロー/データモデル/README.md 1 節。表 workflow_route_nodes・workflow_case_nodes の kind)。値は DB の検査制約と同じ一覧。
+ * 申請は位置 1 のノードだけ(ワークフロー/データモデル/表.md 2.3)。履歴の種別 {@see WorkflowAction} とは列が別なので別の列挙にする。
  * 種類の集まり(承認する種類・処理対象者を持つ種類など)はこの列挙のメソッドだけに置く(DB の検査制約の式と同じ集まり)。
  */
 enum WorkflowNodeKind: string
@@ -34,7 +34,7 @@ enum WorkflowNodeKind: string
     case SyncEnd = 'sync_end';
 
     /**
-     * 処理対象者の指定(target_kind)を持つ種類(申請・承認・横配置・縦配置。差戻しできる先になれる種類 = 定義の表.md 2.5)。
+     * 処理対象者の指定(target_kind)を持つ種類(申請・承認・横配置・縦配置。差戻しできる先になれる種類 = ワークフロー/データモデル/辺と差戻し先と指定の表.md 2.11)。
      *
      * @return list<self>
      */
@@ -44,7 +44,7 @@ enum WorkflowNodeKind: string
     }
 
     /**
-     * 処理対象者を持たない、ルートの形だけの種類(分岐・同期。定義の表.md 2.3 の種類と指定の種類の組)。
+     * 処理対象者を持たない、ルートの形だけの種類(分岐・同期。ワークフロー/データモデル/表.md 2.3 の種類と指定の種類の組)。
      *
      * @return list<self>
      */
@@ -54,7 +54,7 @@ enum WorkflowNodeKind: string
     }
 
     /**
-     * 承認する種類(申請者承認防止を持てる・差戻し元になれる = 定義の表.md 2.3・2.5)。
+     * 承認する種類(申請者承認防止を持てる・差戻し元になれる = ワークフロー/データモデル/表.md 2.3・辺と差戻し先と指定の表.md 2.11)。
      *
      * @return list<self>
      */
@@ -86,7 +86,7 @@ enum WorkflowNodeKind: string
     }
 
     /**
-     * 展開の行を持つ種類(横配置・縦配置。処理の時に指定だけ = 定義の表.md 2.3、案件の表.md 3.2)。
+     * 展開の行を持つ種類(横配置・縦配置。処理の時に指定だけ = ワークフロー/データモデル/表.md 2.3、ワークフロー/データモデル/表.md 2.6)。
      *
      * @return list<self>
      */
@@ -96,7 +96,7 @@ enum WorkflowNodeKind: string
     }
 
     /**
-     * 対の終了を持つ種類(分岐開始・同期開始 = 定義の表.md 2.3)。
+     * 対の終了を持つ種類(分岐開始・同期開始 = ワークフロー/データモデル/表.md 2.3)。
      *
      * @return list<self>
      */
@@ -106,7 +106,7 @@ enum WorkflowNodeKind: string
     }
 
     /**
-     * 対の終了になる種類(分岐終了・同期終了 = 定義の管理.md 3 節の G-4・G-5)。
+     * 対の終了になる種類(分岐終了・同期終了 = ルートの深さ/定義の管理.md 3 節の G-4・G-5)。
      *
      * @return list<self>
      */
@@ -136,7 +136,7 @@ enum WorkflowNodeKind: string
     }
 
     /**
-     * 案件の操作の一本道のルートに置ける種類(申請・承認 = 定義の表.md 2.3、ルートの深さ/案件の操作/README.md 2.1)。
+     * 案件の操作の一本道のルートに置ける種類(申請・承認 = ワークフロー/データモデル/表.md 2.3、ルートの深さ/案件の操作/README.md 2.1)。
      *
      * @return list<self>
      */

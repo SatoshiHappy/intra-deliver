@@ -12,7 +12,7 @@ use Tests\Support\TransactionalTestCase;
 
 /**
  * 業務の画面の参照制限の props(docs の 設計/業務データの入れ物/画面/業務の画面.md 2.2・2.3、
- * 設計/業務データの入れ物/レコードの共通機能/複製.md の 2 節・5 節、設計/ワークフロー/業務データとの接続/公開の口.md の 7 節の editValues の行):
+ * 設計/業務データの入れ物/レコードの共通機能/複製.md の 2 節・5 節、設計/ワークフロー/業務データとの接続/公開の口/README.md の 7 節の editValues の行):
  * 登録 = rowAccess(業務モジュールの既定と空)、編集・詳細 = record.rowAccess(今の値。参照者は相手の種類と参照の値)、複製 = copySource.rowAccess
  * (元のレコードの値。業務モジュールの既定と違っても)。editValues の rowAccessRestricted = そのレコードのチェック。今日を 2026-10-11 に固定する。
  *

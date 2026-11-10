@@ -15,7 +15,7 @@ use Illuminate\Validation\ValidationException;
  * コンテンツを作る(docs の 設計/ワークフロー/データモデル/表.md の 2.1 節。呼び手は 設計/ワークフロー/初期データ.md の 3 節)。
  * 業務モジュールと申請対象の項目はコードで指す(業務データの入れ物の口と同じ)。
  * コンテンツは業務モジュールの表示の止めを立てるので、止めを書く前に非表示の口({@see HideRecordModuleUnchecked})で鍵を取り、その下で検証する
- * (ADR 0031。手順と失敗の優先順 = 設計/ワークフロー/業務データとの接続/公開の口.md 7 節の「表示の止めを立てる側の保証」、
+ * (ADR 0031。手順と失敗の優先順 = 設計/ワークフロー/業務データとの接続/公開の口/README.md 7 節の「表示の止めを立てる側の保証」、
  * 鍵の順 = 設計/ワークフロー/データモデル/直列化と検査.md 3.2 の「コンテンツを作る業務処理」)。
  */
 class CreateWorkflowContent
@@ -29,7 +29,7 @@ class CreateWorkflowContent
      * @return int 作ったコンテンツの id
      *
      * @throws ModelNotFoundException<RecordModule> 業務モジュールが無い・明細のモジュールのとき
-     * @throws ValidationException 拒むとき(業務データとの接続/公開の口.md 7 節)
+     * @throws ValidationException 拒むとき(業務データとの接続/公開の口/README.md 7 節)
      */
     public function execute(string $moduleCode, string $code, string $name, ?string $targetFieldCode = null): int
     {

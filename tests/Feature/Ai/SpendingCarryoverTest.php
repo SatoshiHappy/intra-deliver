@@ -16,7 +16,7 @@ use Tests\Support\AssertsConstraintViolations;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * AI の費用の繰り越し(docs の 設計/AI/実行と費用.md 5.2、口の保証 = 設計/公開の配備/毎日の初期化.md 7 節)。繰り越しの表の制約の検査も含む。
+ * AI の費用の繰り越し(docs の 設計/AI/実行と費用/接続先と費用.md 5.2、口の保証 = 設計/公開の配備/毎日の初期化.md 7 節)。繰り越しの表の制約の検査も含む。
  */
 final class SpendingCarryoverTest extends TransactionalTestCase
 {

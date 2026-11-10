@@ -66,7 +66,7 @@ final class CaseSendBackPullBackOnRoutesTest extends TransactionalTestCase
 
     /**
      * (c) 親を最初に展開した承認(R1 の部長)を引戻すと、足した展開の行は到達していないで残り、親(縦配置)は到達していないに戻る。承認し直すと同じ行を使って
-     * 展開し、行が増えない(10.5 の段 2 との対応・案件の表.md 3.7)。
+     * 展開し、行が増えない(10.5 の段 2 との対応・ワークフロー/データモデル/表.md 2.8)。
      */
     public function test_pulling_back_the_approval_that_expanded_a_parent_keeps_the_added_children_for_the_next_expansion(): void
     {

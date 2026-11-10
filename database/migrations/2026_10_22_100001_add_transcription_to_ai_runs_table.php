@@ -6,9 +6,9 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * AI の実行に文字起こしの音声と長さを足す(docs の 設計/AI/README.md 2.1)。音声の実体の行を消すと指す先を NULL にし、元の ID を残す
+ * AI の実行に文字起こしの音声と長さを足す(docs の 設計/AI/実行の記録.md 2.1)。音声の実体の行を消すと指す先を NULL にし、元の ID を残す
  * (record_id と original_record_id と同じ形。どちらの組も、元の値が NULL のまま指す先だけを持つ行を止める)。種類の型の列は持たず、音声の長さ・元の音声・出力の上限の組で文章と文字起こしを分ける。
- * 文字起こしの費用は呼んだ区切りの長さで数えるので、使用量のトークンが分からなくても単価と費用を持てる(設計/AI/実行と費用.md 5.1)。
+ * 文字起こしの費用は呼んだ区切りの長さで数えるので、使用量のトークンが分からなくても単価と費用を持てる(設計/AI/実行と費用/接続先と費用.md 5.1)。
  */
 return new class extends Migration
 {

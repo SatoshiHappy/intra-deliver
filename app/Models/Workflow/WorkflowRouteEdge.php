@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
- * ルートの辺(版の部品)。表 workflow_route_edges(docs の 設計/ワークフロー/ルートの深さ/データモデル/定義の表.md 2.4)。
+ * ルートの辺(版の部品)。表 workflow_route_edges(docs の 設計/ワークフロー/データモデル/辺と差戻し先と指定の表.md 2.10)。
  * 両端は同じ版のノード(複合外部キー)。分岐開始から出る辺だけが名前と分岐の条件(業務データの入れ物の規則の条件の JSON)を持つ。
  */
 #[Fillable(['workflow_flow_version_id', 'from_workflow_route_node_id', 'to_workflow_route_node_id', 'sort_key', 'label', 'condition'])]

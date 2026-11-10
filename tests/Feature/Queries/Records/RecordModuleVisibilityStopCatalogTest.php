@@ -10,7 +10,7 @@ use Database\Seeders\WorkflowApplicationModules;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * 表示の止めの実装を束ねる 1 か所とワークフローの実装(docs の 設計/ワークフロー/業務データとの接続/公開の口.md 7 節の
+ * 表示の止めの実装を束ねる 1 か所とワークフローの実装(docs の 設計/ワークフロー/業務データとの接続/公開の口/README.md 7 節の
  * RecordModuleVisibilityStops の行。ADR 0031 の決定 2・4): 束ねる口は実装を登録の順に聞き、最初の非 null を返す(どれも null なら null)。
  * ワークフローの実装は、コンテンツが指す業務モジュールで理由の文言、指さない業務モジュールで null。初期データのコンテンツ 2 つを使う。
  */

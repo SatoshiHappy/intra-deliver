@@ -256,7 +256,7 @@ final class CreateMeetingTest extends TransactionalTestCase
             ->assertForbidden()->assertJsonPath('message', RecordFormQuery::NOT_ALLOWED_MESSAGE);
     }
 
-    /** 接続元ごとの回数の上限は持たない(docs の 設計/AI/実行と費用.md 5.2)。費用の上限の内なら、同じ接続元から何回でも受け付ける */
+    /** 接続元ごとの回数の上限は持たない(docs の 設計/AI/実行と費用/接続先と費用.md 5.2)。費用の上限の内なら、同じ接続元から何回でも受け付ける */
     public function test_accepts_more_requests_from_one_address_than_the_former_daily_count(): void
     {
         $runs = AiRun::query()->count();

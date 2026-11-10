@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 
 /**
- * 履歴に、操作の前のノードの状態の写しと、引戻した行を足す(docs の 設計/ワークフロー/ルートの深さ/データモデル/案件の表.md 3.7、直列化と検査.md 5 節の (8))。
+ * 履歴に、操作の前のノードの状態の写しと、引戻した行を足す(docs の 設計/ワークフロー/データモデル/表.md 2.8、ルートの深さ/データモデル/直列化と検査.md 5 節の (8))。
  * 段 2 の索引 (workflow_case_id, id) を一意にし、引戻した行と指定(2026_10_16_100011)の複合外部キーの参照先にする。
  */
 return new class extends Migration

@@ -20,7 +20,7 @@ use Tests\Support\TransactionalTestCase;
 
 /**
  * ワークフローの定義と、案件のノード(写した定義)の制約(docs の 設計/ワークフロー/データモデル/README.md 1 節、表.md 2.1〜2.4・2.6、
- * 直列化と検査.md 6 節の「書式」「指定の用途と申請フォーム」、段 3a の ルートの深さ/データモデル/定義の表.md 2.1・2.3): コードの書式・名前の空・
+ * 直列化と検査.md 6 節の「書式」「指定の用途と申請フォーム」、段 3a の ワークフロー/データモデル/表.md 2.2・2.3): コードの書式・名前の空・
  * 先頭だけが申請のノード・位置の一意(ルートのノードは版の中)・明細のモジュールを申請フォームにしない・処理対象者と参照者の指定は用途 selection の対象者だけ・
  * 版の番号は 1 以上で、フローの中で一意。版の期間は tests/Feature/Models/PeriodColumnsTest.php、ノードの設定は WorkflowNodeSettingsTest。
  * コードの重なりの拒否は tests/Feature/Models/CodeColumnsTest.php、決まった値の一覧は WorkflowEnumValuesTest。

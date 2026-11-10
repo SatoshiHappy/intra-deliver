@@ -9,7 +9,7 @@ use Tests\Support\RegistersRecordHolds;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * 持ち主の実装を束ねる 1 か所(docs の 設計/ワークフロー/業務データとの接続/公開の口.md 7 節の RecordHoldCatalog の行): 実装を登録の順に聞く。
+ * 持ち主の実装を束ねる 1 か所(docs の 設計/ワークフロー/業務データとの接続/公開の口/README.md 7 節の RecordHoldCatalog の行): 実装を登録の順に聞く。
  * blockingHold = 渡した鍵と違う最初の持ち主(鍵が null なら最初の持ち主)、firstHoldInModule = 最初の持ち主。実装が 0 件なら両方 null。
  */
 final class RecordHoldCatalogTest extends TransactionalTestCase

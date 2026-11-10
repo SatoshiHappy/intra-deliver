@@ -21,7 +21,7 @@ use Tests\Support\BuildsRecordModules;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * 判定しない読み取りの公開の口(docs の 設計/ワークフロー/業務データとの接続/公開の口.md 7 節の表の行): 判定する者を受けず、業務モジュールの read を
+ * 判定しない読み取りの公開の口(docs の 設計/ワークフロー/業務データとの接続/公開の口/README.md 7 節の表の行): 判定する者を受けず、業務モジュールの read を
  * 持たない業務モジュールのレコードも読み、形は表示の口の show と同じで、他モジュール参照の表示名だけが null(画面の #<id>)。
  * ユーザー・組織の名前は渡した基準日のもの。
  */

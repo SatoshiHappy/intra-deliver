@@ -14,7 +14,7 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 /**
  * 他モジュール参照の表示名(内部。{@see RecordValueReader} から分けた、参照先のレコードの表示の項目の値を判定する者で出し分ける部分 =
  * docs の 設計/業務データの入れ物/認可とメニュー/行の権限.md 2.4 の「参照の表示名」)。判定する者が無ければ表示名を引かない
- * (主体の判定をしない読み取り = 設計/ワークフロー/業務データとの接続/公開の口.md 7 節の表)。
+ * (主体の判定をしない読み取り = 設計/ワークフロー/業務データとの接続/公開の口/README.md 7 節の表)。
  *
  * @phpstan-import-type ReferenceValue from RecordValueReader
  */

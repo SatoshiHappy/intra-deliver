@@ -66,7 +66,7 @@ class ApplicationRowAccess
 
     /**
      * 送る値の表(docs の 設計/ワークフロー/申請の周辺/既存のデータからの申請/申請対象からの申請.md の 10.1 節)を当てる。
-     * 閲覧できない申請対象のチェックは読まない(`editValues` の呼び手の前提 = docs の 設計/ワークフロー/業務データとの接続/公開の口.md の 7 節)。
+     * 閲覧できない申請対象のチェックは読まない(`editValues` の呼び手の前提 = docs の 設計/ワークフロー/業務データとの接続/公開の口/README.md の 7 節)。
      *
      * @param  array{field: string, module: string}|null  $target
      */

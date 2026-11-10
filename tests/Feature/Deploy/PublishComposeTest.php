@@ -69,7 +69,7 @@ final class PublishComposeTest extends TestCase
     }
 
     /**
-     * 止めるときに処理中のジョブを終えるまで待つ時間は、キューが配り直すまでの時間(ジョブの時間の上限より長い = docs の 設計/AI/実行と費用.md の
+     * 止めるときに処理中のジョブを終えるまで待つ時間は、キューが配り直すまでの時間(ジョブの時間の上限より長い = docs の 設計/AI/実行と費用/README.md の
      * 4.1 節)以上。キューが配り直すまでの時間は config/queue.php の既定値だけが決める(雛形に置かない)。
      */
     public function test_the_queue_waits_for_the_running_job_at_least_as_long_as_the_queue_redelivers(): void

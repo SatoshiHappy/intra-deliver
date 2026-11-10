@@ -19,7 +19,7 @@ use RuntimeException;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * AI の実行(docs の 設計/AI/実行と費用.md 4 節・5.1、データと失敗と検査.md 7 節・8 節): 接続先に実行の max_output_tokens を送る。成功は使用量・単価・費用・原文を書いて
+ * AI の実行(docs の 設計/AI/実行と費用/README.md 4 節・5.1、データと失敗と検査.md 7 節・8 節): 接続先に実行の max_output_tokens を送る。成功は使用量・単価・費用・原文を書いて
  * complete を呼び succeeded にする。失敗の種類ごとの状態(provider・timeout は使用量が分からず費用は NULL、incomplete・completion は使用量と費用を書く、
  * completion は complete の書き込みを残さない、worker_lost はジョブの failed())。失敗は握りつぶさず投げ直す。
  * 接続先は Http::fake(Anthropic の Messages API の形)か PromptAgent::fake で作る(本物を呼ばない)。

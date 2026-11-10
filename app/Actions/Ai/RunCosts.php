@@ -8,7 +8,7 @@ use App\Queries\Ai\RunEstimates;
 use LogicException;
 
 /**
- * AI の実行の費用(docs の 設計/AI/実行と費用.md 5.1。文章はトークンの段、文字起こしは音声の分単価)。額は小数 6 桁の文字列(表の numeric(12,6) と同じ)。見積もり(5.2)は {@see RunEstimates}。
+ * AI の実行の費用(docs の 設計/AI/実行と費用/接続先と費用.md 5.1。文章はトークンの段、文字起こしは音声の分単価)。額は小数 6 桁の文字列(表の numeric(12,6) と同じ)。見積もり(5.2)は {@see RunEstimates}。
  *
  * @phpstan-import-type PriceTier from AiSettings
  */

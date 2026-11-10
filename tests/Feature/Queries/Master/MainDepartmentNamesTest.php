@@ -10,7 +10,7 @@ use Tests\Support\BuildsCommonMaster;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * ユーザーの主所属の名前の公開の口(docs の 設計/ワークフロー/業務データとの接続/公開の口.md 8.1 の mainDepartmentNames。意味は
+ * ユーザーの主所属の名前の公開の口(docs の 設計/ワークフロー/業務データとの接続/公開の口/付け替えと土台の口.md 8.1 の mainDepartmentNames。意味は
  * 設計/共通マスタ/検索と組織図.md 2 節の「ユーザーの主所属」)。初期データ(u0009 = 総務部が主所属で人事部を兼務、u0014 = 経理部が主所属で
  * 2025-10-01 に退職)で確かめる。
  */

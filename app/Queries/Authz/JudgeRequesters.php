@@ -8,7 +8,7 @@ use InvalidArgumentException;
 
 /**
  * 認可の確認の画面と認可の編集の守りの、判定する人を替えた判定を求める者を作る(Authz の内部。公開の口 {@see Requester} に置かない =
- * docs の 設計/ワークフロー/業務データとの接続/公開の口.md 8 節)。
+ * docs の 設計/ワークフロー/業務データとの接続/公開の口/付け替えと土台の口.md 8 節)。
  */
 final class JudgeRequesters
 {

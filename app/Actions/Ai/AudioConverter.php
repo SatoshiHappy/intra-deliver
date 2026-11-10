@@ -9,7 +9,7 @@ use Illuminate\Support\Facades\Process;
 use Symfony\Component\Process\Exception\ExceptionInterface as ProcessException;
 
 /**
- * 音声の長さを測り、変換して区切る(内部。外部のプロセス ffprobe・ffmpeg を呼ぶ Ai の中の 1 か所 = docs の 設計/AI/実行と費用.md 4.2)。
+ * 音声の長さを測り、変換して区切る(内部。外部のプロセス ffprobe・ffmpeg を呼ぶ Ai の中の 1 か所 = docs の 設計/AI/実行と費用/README.md 4.2)。
  * 境は無音へ寄せる(発言の途中で切らないため)。外部のプロセスを合わせた時間の上限は、区切りはジョブの時間に含めた値(4.1)、測りは 4.2 の値。
  */
 class AudioConverter
@@ -30,7 +30,7 @@ class AudioConverter
 
     /**
      * 音声の長さ(秒)。先頭を復号できることも確かめる(長さは入れ物の見出しだけで測れるので、ffmpeg が復号できない符号化と
-     * 中身の壊れた音声を、費用を予約する前の依頼の時点に断るため = 設計/AI/実行と費用.md 4.2)。
+     * 中身の壊れた音声を、費用を予約する前の依頼の時点に断るため = 設計/AI/実行と費用/README.md 4.2)。
      *
      * @throws AudioUnreadable 壊れた音声・音声の流れが無い・先頭を復号できないとき
      * @throws AudioConversionFailed 外部のプロセスの時間切れ・起動の失敗のとき
@@ -135,7 +135,7 @@ class AudioConverter
 
     /**
      * 区切りの境(始まりと終わりの秒)。区切りの数を先に決めて等しく割り、境を無音へ寄せる(残りを先頭から詰めて切ると、
-     * 最後に極く短い区切りが残るため。境の寄せ方 = 設計/AI/実行と費用.md 4.2)。
+     * 最後に極く短い区切りが残るため。境の寄せ方 = 設計/AI/実行と費用/README.md 4.2)。
      *
      * @param  list<array{float, float}>  $silences
      * @return list<array{float, float}>
