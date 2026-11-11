@@ -228,7 +228,7 @@ export function RecordOptionsEditor({
                     ))}
                 </TableBody>
             </Table>
-            <div>
+            <div className="flex justify-end">
                 <Button
                     type="button"
                     variant="outline"

@@ -4,13 +4,15 @@ namespace App\Queries\Records;
 
 use App\Queries\Records\Api\RecordShowSections;
 use App\Support\AccessContext;
+use Closure;
 use Illuminate\Container\Attributes\Tag;
 use LogicException;
+use Throwable;
 
 /**
  * 業務ツールの節の全体 = タグ {@see RecordShowSections::TAG} で束ねた実装を登録の順に呼ぶ 1 か所(内部。docs の
- * 設計/業務データの入れ物/レコードの共通機能/詳細の画面/節の口.md の 2 節)。名札は読むたびに確かめて例外にし(全部の詳細に効く
- * 実装の誤り)、中身の形の違いは報告して失敗の形にする。実装の例外は握らない。閲覧の判定は呼び手がしてから呼ぶ。
+ * 設計/業務データの入れ物/レコードの共通機能/詳細の画面/節の口.md の 2 節)。実装 1 つの誤りで詳細が開かなくならないよう、
+ * 実装の呼び出しは rescue() で受けて欄に閉じる(名札の誤りは全部の詳細に効くので閉じない)。
  *
  * @phpstan-import-type RecordShowSectionDescriptor from RecordShowSections
  * @phpstan-import-type RecordShowTableSection from RecordShowSections
@@ -50,7 +52,11 @@ class RecordShowSectionCatalog
         $shown = [];
 
         foreach ($this->sections() as [$descriptor, $section]) {
-            $presence = $section->presence($context, $moduleCode, $recordId);
+            $presence = rescue(
+                fn () => $section->presence($context, $moduleCode, $recordId),
+                $this->closedBy($descriptor['code'], 'presence', ['count' => null]),
+                report: false,
+            );
 
             if ($presence !== null) {
                 $shown[] = [...$descriptor, 'count' => $this->countOf($descriptor['code'], $presence)];
@@ -71,7 +77,11 @@ class RecordShowSectionCatalog
     {
         foreach ($this->sections() as [$descriptor, $section]) {
             if ($descriptor['code'] === $code) {
-                $content = $section->section($context, $moduleCode, $recordId);
+                $content = rescue(
+                    fn () => $section->section($context, $moduleCode, $recordId),
+                    $this->closedBy($code, 'section', ['kind' => 'failed']),
+                    report: false,
+                );
 
                 return ['code' => $code, 'content' => $this->checked($code, $content)];
             }
@@ -85,7 +95,7 @@ class RecordShowSectionCatalog
      *
      * @return list<array{RecordShowSectionDescriptor, RecordShowSections}>
      *
-     * @throws LogicException 名札の誤り(code の形・重複、空の heading、shortHeading の字数・正式の名前との違い)
+     * @throws LogicException 名札の誤り
      */
     private function sections(): array
     {
@@ -128,6 +138,23 @@ class RecordShowSectionCatalog
         if ($errors !== []) {
             throw new LogicException("詳細の節 {$class} の名札の誤り: ".implode('、', $errors));
         }
+    }
+
+    /**
+     * rescue() の代わりの値の関数。元の例外を包んで自分で報告する(Handler が記録しない型の例外も残すため、rescue() の報告は止める)。
+     *
+     * @template T of array
+     *
+     * @param  T  $fallback
+     * @return Closure(Throwable): T
+     */
+    private function closedBy(string $code, string $method, array $fallback): Closure
+    {
+        return function (Throwable $e) use ($code, $method, $fallback): array {
+            report(new LogicException("詳細の節 {$code} の {$method}() が例外を投げた", 0, $e));
+
+            return $fallback;
+        };
     }
 
     /**

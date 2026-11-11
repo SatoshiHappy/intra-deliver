@@ -2,7 +2,6 @@ import type { ReactNode } from 'react';
 import { DetailItem } from '@/components/DetailItem';
 import { RecordFieldName } from '@/components/RecordFieldBadges';
 import { RecordHeadingGroups } from '@/components/RecordHeadingGroups';
-import { RecordRelatedChips } from '@/components/RecordRelatedChips';
 import {
     RecordRelatedMenuItems,
     RecordRelatedTab,
@@ -26,7 +25,7 @@ import type {
     RecordShowDetail,
 } from '@/types';
 
-/** 関連レコードのタブ・チップの状態と操作(rowHref = 行の詳細の URL。ページがルートから作る) */
+/** 関連レコードのタブの状態と操作(rowHref = 行の詳細の URL。ページがルートから作る) */
 type RelatedTabState = ReturnType<typeof useRecordRelated> & {
     rowHref: (moduleCode: string, recordId: number) => string;
 };
@@ -73,7 +72,7 @@ function FieldItem({
 }
 
 /**
- * 詳細タブ(中の並び = 設計/業務データの入れ物/レコードの共通機能/詳細の画面/README.md の 4 節): 関連レコードのチップ、見出しのまとまりごとの
+ * 詳細タブ(中の並び = 設計/業務データの入れ物/レコードの共通機能/詳細の画面/README.md の 4 節): 見出しのまとまりごとの
  * 項目の格子(列は左の面の幅の段階 = 帯だけで 3 列、パネルを開くと 2 列 = 同 1 節。複数行は全幅。見出しの行で畳める = 見出し.md の 2 節)、
  * 明細の帯と表、作成・更新の日時と人。notes = 後ろのモジュールが足す、項目の名前の横の注(項目のコード → 文)。
  */
@@ -82,16 +81,11 @@ function FieldsTab({
     headings,
     record,
     notes,
-    related,
     notice,
-}: TabProps) {
+}: Omit<TabProps, 'related'>) {
     return (
         <div className="flex flex-col gap-5">
             {notice}
-            <RecordRelatedChips
-                entries={related.entries}
-                onSelect={related.select}
-            />
             <RecordHeadingGroups groups={headings} idPrefix="record-show">
                 {(group) => (
                     <dl className="grid grid-cols-1 gap-x-6 gap-y-4 text-sm @md:grid-cols-2 @3xl:grid-cols-3">
@@ -213,7 +207,6 @@ export function RecordDetailTabs({
                     headings={headings}
                     record={record}
                     notes={fieldNotes}
-                    related={related}
                     notice={fieldsNotice}
                 />
             ),

@@ -54,7 +54,7 @@ async function openCompleted(page: Page) {
     return heading;
 }
 
-test('申請書の業務モジュールの参照を持たない申請者が完了した申請を開くと、詳細タブに申請の時点の値と 1 行が出て、サイドパネルの帯と関連レコードのチップは出ない', async ({
+test('申請書の業務モジュールの参照を持たない申請者が完了した申請を開くと、詳細タブに申請の時点の値と 1 行が出て、サイドパネルの帯は出ない', async ({
     page,
 }) => {
     const heading = await openCompleted(page);
@@ -76,9 +76,6 @@ test('申請書の業務モジュールの参照を持たない申請者が完�
         card.getByText(COMPLETED_PROJECT, { exact: true }).first(),
     ).toBeVisible();
     await expect(rail(page)).toHaveCount(0);
-    await expect(
-        page.getByRole('group', { name: '関連レコードの件数' }),
-    ).toHaveCount(0);
     const masked = page.getByRole('region', {
         name: 'サイドパネル',
         exact: true,

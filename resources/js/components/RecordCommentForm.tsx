@@ -35,8 +35,7 @@ function ErrorLines({ messages, id }: { messages: string[]; id?: string }) {
 }
 
 /**
- * コメントの入力(docs の 設計/業務データの入れ物/レコードの共通機能/コメント.md の 7 節。順 = 説明の 1 行 → 宛先 → 本文 → 右寄せの「投稿」)。
- * 送ると元の画面の同じ欄へ戻り、成功すれば入力を空にする。誤り(本文・宛先)は欄の下に出し、入力を保つ。
+ * コメントの入力(docs の 設計/業務データの入れ物/レコードの共通機能/コメント.md の 7 節)。
  */
 export function RecordCommentForm({ storeUrl, candidatesUrl }: Props) {
     const post = useCommentPost(storeUrl);
@@ -78,11 +77,13 @@ export function RecordCommentForm({ storeUrl, candidatesUrl }: Props) {
                 id={formErrorId(BODY_ID)}
                 messages={errors.body === null ? [] : [errors.body]}
             />
-            <div className="flex justify-end">
-                <Button type="submit" disabled={sending}>
-                    投稿
-                </Button>
-            </div>
+            <Button
+                type="submit"
+                className="justify-self-start"
+                disabled={sending}
+            >
+                投稿
+            </Button>
         </form>
     );
 }

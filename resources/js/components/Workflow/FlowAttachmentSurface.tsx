@@ -29,7 +29,7 @@ function SurfaceHeading() {
 
 /**
  * 面「添付ファイル」(docs の 設計/ワークフロー/申請の周辺/画面.md の 4 節): 見出しと横の「?」、ラジオ「使用する」「使用しない」
- * (幅は面「参照者」と同じ max-w-120)、「キャンセル」「保存」(ボタンの列は欄の並びの右端 = 設計/画面の意匠/README.md の方針 11)。
+ * (幅は面「参照者」と同じ max-w-120)、「キャンセル」「保存」(ボタンの列は欄の並びの左端 = 設計/画面の意匠/README.md の方針 11)。
  * 保存は面ごとで、真偽を 1 つ送る。呼び手は、サーバーの値が替わったら key を替えて作り直す。
  */
 export function FlowAttachmentSurface({
@@ -68,7 +68,7 @@ export function FlowAttachmentSurface({
                     </p>
                 )}
             </div>
-            <div className="flex w-full max-w-120 justify-end gap-2">
+            <div className="flex gap-2">
                 <Button type="button" variant="outline" onClick={form.cancel}>
                     キャンセル
                 </Button>

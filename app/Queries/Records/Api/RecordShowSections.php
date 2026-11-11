@@ -9,8 +9,8 @@ use App\Support\AccessContext;
  * 設計/業務データの入れ物/レコードの共通機能/詳細の画面/節の口.md の 1 節)。節を足すモジュールが自分の読み取りの層にこれを実装し
  * (1 節 1 クラス)、起動がタグ {@see self::TAG} で登録する。Records は登録の順に呼び、名札と中身の形を確かめる。
  *
- * 予期する失敗は実装が狭い型で捕まえて報告し、presence() は件数なし・section() は failed を返す。予期しない例外は投げたまま
- * (Records は握らない = 節の口.md の 2 節)。
+ * 予期する失敗は実装が狭い型で捕まえて報告し、presence() は件数なし・section() は failed を返す。予期しない例外は投げたままにする
+ * (Records が rescue() で報告し、presence() なら件数なし・section() なら失敗の形にして欄に閉じる = 節の口.md の 2 節の 4)。
  *
  * @phpstan-type RecordShowSectionLink array{label: string, url: string}
  * @phpstan-type RecordShowSectionDescriptor array{code: string, heading: string, shortHeading: string}
@@ -41,6 +41,7 @@ interface RecordShowSections
 
     /**
      * 節を帯に出すかと件数。出さないときは null。詳細の最初の応答で全実装について呼ぶので、件数を数えるだけにする。
+     * 予期しない例外は Records が報告して件数なしにする(節の口.md の 2 節の 4)。
      *
      * @return RecordShowSectionPresence|null
      */

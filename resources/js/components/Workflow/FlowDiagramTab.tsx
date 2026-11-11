@@ -19,7 +19,7 @@ type Props = Pick<
 > & { flowCode: string };
 
 /**
- * 左の面の見出しと版の選択(版を替えても同じコードのステップを選んだままにする)。
+ * 左の面の版の選択(見出し「フロー図」はタブと同じ名前なので読み上げだけ)。版を替えても同じコードのステップを選んだままにする。
  */
 function DiagramPanelHeader({
     flowCode,
@@ -33,8 +33,8 @@ function DiagramPanelHeader({
     nodeCode: string;
 }) {
     return (
-        <div className="flex flex-wrap items-center justify-between gap-4">
-            <h2 id="flow-diagram-heading" className="text-[15px] font-semibold">
+        <div className="flex flex-wrap items-center justify-end gap-4">
+            <h2 id="flow-diagram-heading" className="sr-only">
                 フロー図
             </h2>
             <FlowVersionSelect
@@ -53,7 +53,7 @@ function DiagramPanelHeader({
 }
 
 /**
- * 左の面(見出し・版の選択・押して選べるフロー図・図の下のステップの名前のボタン)。
+ * 左の面(読み上げの見出し・版の選択・押して選べるフロー図・図の下のステップの名前のボタン)。
  */
 function DiagramPanel({
     flowCode,

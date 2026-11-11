@@ -12,9 +12,11 @@ use App\Models\Records\RecordModule;
 use App\Models\Upload\Upload;
 use Carbon\CarbonImmutable;
 use Illuminate\Http\Response;
+use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Testing\TestResponse;
 use Inertia\Support\Header;
 use Inertia\Testing\AssertableInertia as Assert;
+use LogicException;
 use RuntimeException;
 use Tests\Support\BuildsRecordModules;
 use Tests\Support\BuildsUploads;
@@ -157,7 +159,7 @@ final class RecordShowPanelControllerTest extends TransactionalTestCase
             ->assertInertia(fn (Assert $page) => $page->where('panelContent', null)->where('can.attach', false));
     }
 
-    public function test_a_failed_section_keeps_the_detail_and_a_throwing_section_is_a_server_error(): void
+    public function test_a_failed_section_keeps_the_detail(): void
     {
         $this->registerRecordShowSection(
             new FixedRecordShowSection('test-failed', '失敗', '失敗', section: ['kind' => 'failed']),
@@ -167,11 +169,43 @@ final class RecordShowPanelControllerTest extends TransactionalTestCase
             ->where('panelContent', ['kind' => 'section', 'code' => 'test-failed', 'content' => ['kind' => 'failed']])
             ->has('record')
         );
+    }
 
+    public function test_a_section_that_throws_in_section_keeps_the_detail_and_is_reported(): void
+    {
+        Exceptions::fake();
+        $this->registerRecordShowSection($this->listSection('test-ok', '正常', '正常', 2));
         $this->registerRecordShowSection(
-            new FixedRecordShowSection('test-throw', '投げる', '投げる', new RuntimeException('節の誤り')),
+            new FixedRecordShowSection('test-throw', '投げる', '投げる', ['count' => 1], new RuntimeException('節の誤り')),
         );
-        $this->get($this->url())->assertServerError();
+
+        $this->get($this->url(['panel' => 'test-throw']))->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->where('panelContent', ['kind' => 'section', 'code' => 'test-throw', 'content' => ['kind' => 'failed']])
+            ->where('sections.0.count', 2)
+            ->where('sections.1.count', 1)
+            ->has('record')
+        );
+        Exceptions::assertReported(fn (LogicException $e) => str_contains($e->getMessage(), 'test-throw')
+            && $e->getPrevious()?->getMessage() === '節の誤り');
+    }
+
+    public function test_a_section_that_throws_in_presence_keeps_the_detail_with_the_band_without_a_count(): void
+    {
+        Exceptions::fake();
+        $this->registerRecordShowSection($this->listSection('test-ok', '正常', '正常', 2));
+        $this->registerRecordShowSection(
+            new FixedRecordShowSection('test-throw', '投げる', '投げる', new RuntimeException('帯の誤り')),
+        );
+
+        $this->get($this->url())->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->where('sections', [
+                ['code' => 'test-ok', 'heading' => '正常', 'shortHeading' => '正常', 'count' => 2],
+                ['code' => 'test-throw', 'heading' => '投げる', 'shortHeading' => '投げる', 'count' => null],
+            ])
+            ->has('record')
+        );
+        Exceptions::assertReported(fn (LogicException $e) => str_contains($e->getMessage(), 'test-throw')
+            && $e->getPrevious()?->getMessage() === '帯の誤り');
     }
 
     public function test_the_rows_carry_the_urls_to_open_the_files(): void

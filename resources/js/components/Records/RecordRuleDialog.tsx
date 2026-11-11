@@ -595,7 +595,7 @@ export function RecordRuleDialog({
                                     }
                                 />
                             ))}
-                            <div>
+                            <div className="flex justify-end">
                                 <Button
                                     type="button"
                                     variant="outline"

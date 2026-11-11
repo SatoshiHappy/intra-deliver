@@ -7,8 +7,8 @@ import {
 import type { WorkflowFlowVersionRow } from '@/types';
 
 /**
- * 版のタブ(docs の 設計/ワークフロー/ルートの深さ/画面/定義の管理の画面.md の 3.2 節): 見出し「版の一覧」と「版を追加」
- * (最後の版の開始日が今日 + 1 年以後なら、ボタンの代わりに追加できない理由の文)、版の表、期間の注意の 1 行。
+ * 版のタブ(docs の 設計/ワークフロー/ルートの深さ/画面/定義の管理の画面.md の 3.2 節): 読み上げだけの見出し「版の一覧」と、
+ * 「版を追加」(最後の版の開始日が今日 + 1 年以後なら、ボタンの代わりに追加できない理由の文)、版の表、期間の注意の 1 行。
  */
 export function FlowVersionsTab({
     flowCode,
@@ -30,8 +30,8 @@ export function FlowVersionsTab({
             aria-labelledby="versions-heading"
             className="flex flex-col gap-4 rounded-xl border bg-card p-5 text-card-foreground"
         >
-            <div className="flex items-center justify-between gap-4">
-                <h2 id="versions-heading" className="text-[15px] font-semibold">
+            <div className="flex items-center justify-end gap-4">
+                <h2 id="versions-heading" className="sr-only">
                     版の一覧
                 </h2>
                 {canAdd ? (

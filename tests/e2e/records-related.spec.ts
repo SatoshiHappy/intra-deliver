@@ -26,15 +26,29 @@ async function relatedCount(page: Page): Promise<number> {
     return Number(name.replace('関連レコード ', ''));
 }
 
-/** 詳細タブの先頭のチップ「課題」の件数(読み上げは「課題 <件数> 件」) */
-async function issueChipCount(page: Page): Promise<number> {
-    const name =
-        (await page
-            .getByRole('group', { name: '関連レコードの件数' })
-            .getByRole('button', { name: /^課題 \d+ 件$/ })
-            .getAttribute('aria-label')) ?? '';
+/** タブ「関連レコード」にポインタを合わせる(閉じた直後の同じタブへの hover は入り直しにならず開かないので、先にタブの外へ動かす) */
+async function hoverRelatedTab(page: Page) {
+    await page.mouse.move(0, 0);
+    await relatedTab(page).hover();
+}
 
-    return Number(name.replace(/^課題 (\d+) 件$/, '$1'));
+/** タブ「関連レコード」のメニューを開き、入口「課題」の行(名前と件数)を返す */
+async function openIssueEntry(page: Page): Promise<Locator> {
+    await hoverRelatedTab(page);
+    const item = page.getByRole('menuitem', { name: /^課題\s*\d+$/ });
+    await expect(item).toBeVisible();
+
+    return item;
+}
+
+/** メニューの入口「課題」の件数(読んだ後にメニューを閉じる) */
+async function issueEntryCount(page: Page): Promise<number> {
+    const item = await openIssueEntry(page);
+    const text = (await item.textContent()) ?? '';
+    await page.keyboard.press('Escape');
+    await expect(item).toHaveCount(0);
+
+    return Number(text.replace(/\D+/g, ''));
 }
 
 /** 一覧からプロジェクト「社内ポータル刷新」の詳細を開く */
@@ -84,7 +98,7 @@ async function deleteIssue(page: Page) {
  * タブ「関連レコード」にポインタを合わせ、メニューの「課題の新規」のダイアログで 2 件を続けて登録して閉じる(プロジェクトは固定)。
  */
 async function addTwoFromMenu(page: Page) {
-    await relatedTab(page).hover();
+    await hoverRelatedTab(page);
     await page
         .getByRole('menuitem', { name: '課題の新規', exact: true })
         .click();
@@ -118,13 +132,13 @@ async function deleteAdded(page: Page, projectUrl: string) {
     }
 }
 
-test('関連レコードの入口から「新規」で続けて 2 件登録すると、表とタブの件数が増え、チップを押すとその入口の表が出る', async ({
+test('関連レコードの入口から「新規」で続けて 2 件登録すると、表とタブとメニューの件数が増え、詳細タブにチップは無く、メニューで入口を選ぶとその入口の表が出る', async ({
     page,
 }) => {
     await openProject(page);
     const projectUrl = page.url();
     const before = await relatedCount(page);
-    const issuesBefore = await issueChipCount(page);
+    const issuesBefore = await issueEntryCount(page);
 
     await addTwoFromMenu(page);
 
@@ -138,13 +152,11 @@ test('関連レコードの入口から「新規」で続けて 2 件登録す�
     }
 
     await page.getByRole('tab', { name: '詳細', exact: true }).click();
-    const chips = page.getByRole('group', { name: '関連レコードの件数' });
-    await chips
-        .getByRole('button', {
-            name: `課題 ${issuesBefore + 2} 件`,
-            exact: true,
-        })
-        .click();
+    await expect(
+        page.getByRole('group', { name: '関連レコードの件数' }),
+    ).toHaveCount(0);
+    expect(await issueEntryCount(page)).toBe(issuesBefore + 2);
+    await (await openIssueEntry(page)).click();
     await expect(page).toHaveURL(ISSUE_ENTRY_URL);
     await expect(issueLink(page, ADDED[0])).toBeVisible();
 

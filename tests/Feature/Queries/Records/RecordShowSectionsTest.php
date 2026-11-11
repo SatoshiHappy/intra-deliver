@@ -12,7 +12,6 @@ use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Exceptions;
 use LogicException;
 use PHPUnit\Framework\Attributes\DataProvider;
-use RuntimeException;
 use Tests\Support\BuildsRecordModules;
 use Tests\Support\FixedRecordShowSection;
 use Tests\Support\RegistersRecordShowSections;
@@ -20,9 +19,8 @@ use Tests\Support\TransactionalTestCase;
 use Tests\Support\UsesSeededRecords;
 
 /**
- * 詳細の節の口の呼び方・失敗・型・全実装(docs の 設計/業務データの入れ物/レコードの共通機能/詳細の画面/節の口.md の 2 節・5 節):
- * 登録の順に Records の欄の後ろへ並べ、閲覧できない見る人では呼ばない。帯は presence() だけ、欄を開いた時はその節の section() だけを呼ぶ。
- * 中身の形の違いは失敗の形にして報告し、名札の誤りと実装の例外は投げる。テストの節をタグで登録し、業務モジュールとレコードはテストで作る。
+ * 詳細の節の口の呼び方・失敗・型・全実装の検査(docs の 設計/業務データの入れ物/レコードの共通機能/詳細の画面/節の口.md の 2 節・5 節)。
+ * 節はテストでタグに登録する(Records は実装のモジュールを名指さないため)。実装の例外は {@see RecordShowSectionFailuresTest}。
  */
 final class RecordShowSectionsTest extends TransactionalTestCase
 {
@@ -213,15 +211,6 @@ final class RecordShowSectionsTest extends TransactionalTestCase
         Exceptions::assertReported(LogicException::class);
     }
 
-    public function test_an_exception_of_a_section_is_not_caught(): void
-    {
-        $throwing = new FixedRecordShowSection('test-throw', '投げる', '投げる', section: new RuntimeException('節の誤り'));
-        $this->registerRecordShowSection($throwing);
-
-        $this->expectExceptionObject(new RuntimeException('節の誤り'));
-        $this->content($this->record->id, 'test-throw');
-    }
-
     /**
      * @return array<string, array{list<array{string, string, string}>}>
      */
@@ -260,11 +249,11 @@ final class RecordShowSectionsTest extends TransactionalTestCase
     }
 
     /**
-     * 登録された全部の実装を、見本のレコードの詳細(閲覧できる見る人)で呼んでも例外を投げない(登録が 0 でも通る。節を足すときは、
-     * その節が null 以外を返す見本のデータを足す = 節の口.md の 5 節)。
+     * 全実装の呼び出し(節の口.md の 5 節)。実装の例外は Records が欄に閉じて 200 にするので、報告が 0 件であることで実装の誤りを見つける。
      */
     public function test_every_registered_section_can_be_called_on_a_sample_record(): void
     {
+        Exceptions::fake();
         $project = $this->recordNamed('project', 'name', '社内ポータル刷新');
         $context = new AccessContext(null, null, null, CarbonImmutable::parse('2026-10-11'), 'ja');
         $panels = $this->panels();
@@ -272,11 +261,25 @@ final class RecordShowSectionsTest extends TransactionalTestCase
         $panel = $panels->panel($context, 'project', $project->id);
         $this->assertNotNull($panel);
 
+        $bands = [];
+
         foreach ($this->app->tagged(RecordShowSections::TAG) as $section) {
             $this->assertInstanceOf(RecordShowSections::class, $section);
             $code = $section->descriptor()['code'];
-            $this->assertNotNull($panels->content($context, 'project', $project->id, $code, null));
+
+            $presence = $section->presence($context, 'project', $project->id);
+
+            if ($presence !== null) {
+                $bands[] = [$code, $presence['count']];
+            }
+
+            $content = $panels->content($context, 'project', $project->id, $code, null);
+            $this->assertNotNull($content);
+            $this->assertNotSame('failed', $content['content']['kind'] ?? null, "節 {$code} が失敗の形");
         }
+
+        $this->assertSame($bands, array_map(fn (array $band) => [$band['code'], $band['count']], $panel['sections']));
+        Exceptions::assertNothingReported();
     }
 
     public function test_a_details_row_and_a_record_of_another_module_have_no_panel(): void
