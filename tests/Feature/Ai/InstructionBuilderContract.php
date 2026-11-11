@@ -20,6 +20,9 @@ use PHPUnit\Framework\Attributes\TestWith;
  */
 trait InstructionBuilderContract
 {
+    /** 言葉の口に入れる見分けの値(文の中に出ない語。言葉の口に値が入ることと入らないことをこの値で見る) */
+    private const LANGUAGE_MARKER = 'language-marker-x';
+
     /** 試す版 */
     abstract protected function instructionBuilder(): InstructionBuilder;
 
@@ -96,7 +99,7 @@ trait InstructionBuilderContract
         $system = $this->systemOf(self::request($call));
 
         $this->assertStringContainsString('Answer as the sales desk.', $system);
-        $this->assertStringContainsString(InstructionRequest::JAPANESE, $system);
+        $this->assertStringContainsString(self::LANGUAGE_MARKER, $system);
     }
 
     /** 言葉は要約の予備・題・ファイルを作るのシステムの文に入らない(docs の 設計/AI/設定とプロンプト/使う文と組み立て.md 11.8) */
@@ -105,7 +108,7 @@ trait InstructionBuilderContract
     #[TestWith([AiInstructionCall::CreateFile])]
     public function test_the_language_is_not_in_the_other_system_texts(AiInstructionCall $call): void
     {
-        $this->assertStringNotContainsString(InstructionRequest::JAPANESE, $this->systemOf(self::request($call)));
+        $this->assertStringNotContainsString(self::LANGUAGE_MARKER, $this->systemOf(self::request($call)));
     }
 
     public function test_empty_instructions_still_return_a_text(): void
@@ -234,7 +237,7 @@ trait InstructionBuilderContract
             modelId: 'model-id-x',
             modelDisplayName: $displayName,
             knowledgeCutoff: $cutoff,
-            language: InstructionRequest::JAPANESE,
+            language: self::LANGUAGE_MARKER,
             startedAt: CarbonImmutable::parse($startedAt),
         );
     }

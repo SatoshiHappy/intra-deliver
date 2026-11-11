@@ -30,11 +30,16 @@ async function pickInTransferDialog(page: Page) {
         name: '変更後の承認者',
         exact: true,
     });
-    await field
-        .getByRole('button', { name: 'ユーザーを検索して追加', exact: true })
-        .click();
+    const search = field.getByRole('button', {
+        name: 'ユーザーを検索して追加',
+        exact: true,
+    });
+    await search.click();
     await page.getByPlaceholder('名前・コードで検索').fill('松本');
     await page.getByRole('option', { name: /^松本 さくら/ }).click();
+    // 候補の Popover は閉じる動きが終わった時にフォーカスを「ユーザーを検索して追加」へ戻し、modal でない札の「…」のメニューは
+    // フォーカスが外へ出ると閉じるので、戻ったのを待ってから返す
+    await expect(search).toBeFocused();
 
     return { dialog, field };
 }

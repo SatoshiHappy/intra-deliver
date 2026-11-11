@@ -8,52 +8,52 @@
 
 return [
     'compaction_custom_instructions' => <<<'TEXT'
-        Keep every record reference marker exactly as it appeared in the conversation.
-        List each file created in the conversation with its name and reference marker.
+        あなたは、すべてのレコードの印を、会話に現れたとおりの形で残す。
+        会話で作ったファイルを 1 つずつ、名前と印を添えて挙げる。
         TEXT,
 
-    'stopped_by_time_limit' => 'This tool call was not run because the request reached its time limit.',
+    'stopped_by_time_limit' => 'この道具の呼び出しは、依頼が時間の上限に達したため実行されなかった。',
 
-    'source_file_not_found' => 'The file to revise could not be found.',
+    'source_file_not_found' => '直す対象のファイルが見つからなかった。',
 
-    'tool_exception' => 'The tool {{tool_name}} failed because of an unexpected error.',
+    'tool_exception' => '道具 {{tool_name}} は予期しない誤りのため失敗した。',
 
     'large_result_search' => <<<'TEXT'
-        The result is too long ({{original_length}} characters). Only the first {{preview_length}} characters are shown.
-        To get the rest, narrow the search conditions or ask for the next page.
+        結果が長すぎる({{original_length}} 文字)。先頭の {{preview_length}} 文字だけを示す。
+        あなたは、残りを得るには、検索の条件を絞るか、次のページを求める。
 
         {{preview}}
         TEXT,
 
     'large_result_read' => <<<'TEXT'
-        The result is too long ({{original_length}} characters). Only the first {{preview_length}} characters are shown.
-        To get the rest, read the comments and the change history page by page.
+        結果が長すぎる({{original_length}} 文字)。先頭の {{preview_length}} 文字だけを示す。
+        あなたは、残りを得るには、コメントと変更の履歴をページごとに読む。
 
         {{preview}}
         TEXT,
 
     'large_result_aggregate' => <<<'TEXT'
-        The result is too long ({{original_length}} characters). Only the first {{preview_length}} characters are shown.
-        To get the rest, group by fewer fields or narrow the conditions.
+        結果が長すぎる({{original_length}} 文字)。先頭の {{preview_length}} 文字だけを示す。
+        あなたは、残りを得るには、グループ化する項目を減らすか、条件を絞る。
 
         {{preview}}
         TEXT,
 
     'large_result_truncated' => <<<'TEXT'
-        The result is too long ({{original_length}} characters) and was cut.
-        Only the first {{preview_length}} characters are shown, and this tool cannot return the rest.
+        結果が長すぎる({{original_length}} 文字)ので、切り詰めた。
+        先頭の {{preview_length}} 文字だけを示し、この道具は残りを返せない。
 
         {{preview}}
         TEXT,
 
     'created_files_after_compaction' => <<<'TEXT'
-        Files created earlier in this conversation (newest first):
+        この会話でこれまでに作ったファイル(新しい順):
         {{created_files}}
         TEXT,
 
     'unknown_outcome_notice' => <<<'TEXT'
-        The previous request stopped while these tool calls were running, so it is not known whether they finished.
-        Check their results before relying on them or running them again:
+        前の依頼は次の道具の呼び出しの実行中に止まったので、それらが終わったかどうかは分からない。
+        あなたは、それらに頼ったり、もう一度実行したりする前に、結果を確かめる:
         {{unknown_calls}}
         TEXT,
 ];

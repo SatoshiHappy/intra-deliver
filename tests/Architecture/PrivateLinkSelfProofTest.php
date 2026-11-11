@@ -75,7 +75,7 @@ final class PrivateLinkSelfProofTest extends PhpStanSelfProofTestCase
     {
         return [
             'クラスを置くディレクトリ(配線のファイルの規則が当たらない)' => ['ai-private/app/Actions/Alpha/UsesModel.php'],
-            '照合しないディレクトリ(副作用・自分の表の規則が当たらない)' => ['ai-private/tests/Feature/WritesInTest.php'],
+            '照合しないディレクトリ(副作用・自分の表の規則が当たらない)' => ['ai-private/tests/Feature/WritesInTestDirectory.php'],
         ];
     }
 

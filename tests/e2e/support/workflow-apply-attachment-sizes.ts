@@ -23,6 +23,9 @@ export async function expectBlockedBeforeSending(page: Page, form: Locator) {
     const toast = page.getByText(tooLarge, { exact: true });
     await form.getByRole('button', DRAFT_BUTTON).click();
     await expect(toast).toBeVisible();
+    // 押した一時保存のボタン(spec の 1280×720 では右下)の上にトーストが出て、sonner はポインタが乗っている間は消える時間を
+    // 止めるので、ポインタを画面の左上へ逃がしてから待つ
+    await page.mouse.move(0, 0);
     await expect(toast).toHaveCount(0, { timeout: 15_000 });
 }
 

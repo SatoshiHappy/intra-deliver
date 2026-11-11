@@ -10,7 +10,7 @@ use Closure;
 use Illuminate\Support\Facades\Config;
 
 /**
- * 指示の組み立ての口の代わりの版(docs の 設計/AI/設定とプロンプト/README.md 11.4 の「2 つの版」): 呼び出しの種類ごとの自前の英語の既定の文
+ * 指示の組み立ての口の代わりの版(docs の 設計/AI/設定とプロンプト/README.md 11.4 の「2 つの版」): 呼び出しの種類ごとの自前の日本語の既定の文
  * (resources/ai/instructions/default.php)を読み、値を入れて返すだけ。持つ条件は、モデルの表示名が無ければ ID を入れる・知識の期限が
  * あるときだけ期限の文を足す・定義の指示文が空なら出力の形の部分を捨てる、の 3 つ。持ち主が ③ の文は {@see SharedInstructionTemplates} から引く。
  */

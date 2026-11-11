@@ -12,6 +12,7 @@ use App\Actions\Meeting\MeetingTranscriptionKind;
 use App\Actions\Reset\Api\ResetParticipant;
 use App\Queries\Account\Api\UserMenuSections;
 use App\Queries\Authz\Api\ResourceTypes;
+use App\Queries\Authz\AuthorizationMemo;
 use App\Queries\Authz\ServiceResourceTypes;
 use App\Queries\Authz\UserRoleReferences;
 use App\Queries\Master\UserReferences;
@@ -52,8 +53,12 @@ use App\Queries\Workflow\WorkflowUserMenuSection;
 use App\Support\PrivateProviders;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Events\QueryExecuted;
+use Illuminate\Database\Events\TransactionCommitting;
+use Illuminate\Database\Events\TransactionRolledBack;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 
@@ -181,6 +186,13 @@ class AppServiceProvider extends ServiceProvider
 
         // 毎日の初期化がオンのときの置き場の確かめ(docs の 設計/公開の配備/毎日の初期化.md 5 節の「置き場の確かめ」)
         $this->app->make(ResetSettings::class)->ensureSharedStores();
+
+        // 判定の使い回しの覚えを捨てる場面の配線(docs の 設計/共通マスタ/ロールと認可/認可の確認/判定の使い回し.md 3.4 の捨てる場面)
+        DB::listen(fn (QueryExecuted $query) => $this->app->make(AuthorizationMemo::class)->noteStatement($query->sql));
+        Event::listen(
+            [TransactionRolledBack::class, TransactionCommitting::class],
+            fn () => $this->app->make(AuthorizationMemo::class)->discard(),
+        );
     }
 
     /**

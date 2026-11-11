@@ -11,8 +11,8 @@ use DateTimeInterface;
  */
 final readonly class InstructionRequest
 {
-    /** 答えの言葉(日本語を表す英語の語 = docs の 設計/AI/設定とプロンプト/使う文と組み立て.md 11.8) */
-    public const JAPANESE = 'Japanese';
+    /** 答えの言葉(言葉の口に入れる日本語の値 = docs の 設計/AI/設定とプロンプト/使う文と組み立て.md 11.8) */
+    public const JAPANESE = '日本語';
 
     /**
      * @param  string  $instructions  エージェントの定義の指示文(空でもよい)

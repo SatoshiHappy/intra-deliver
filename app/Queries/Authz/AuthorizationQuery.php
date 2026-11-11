@@ -17,6 +17,7 @@ class AuthorizationQuery
     public function __construct(
         private SubjectQuery $subjects,
         private ResourceGroupSettingsQuery $settings,
+        private AuthorizationMemo $memo,
     ) {}
 
     /**
@@ -33,9 +34,70 @@ class AuthorizationQuery
      */
     public function allowsUri(Requester $requester, string $uri, string $action, DateTimeInterface $date): bool
     {
-        $resource = AuthzResource::query()->where('uri', $uri)->first();
+        return $this->allowsEachUri($requester, [$uri], $action, $date)[$uri];
+    }
 
-        return $resource !== null && $this->allows($requester, $resource->authz_resource_group_id, $action, $date);
+    /**
+     * 渡した URI ごとに {@see self::allowsUri()} と同じ判定をまとめて行う(URI → 許されるか。渡した URI のすべてにキーを置く)。
+     * リソースは 1 回で引き、判定は 1 回の {@see self::explainEach()} に渡す(1 回の表示で多くの URI を判定するメニューのため)。
+     * 判定の使い回しのまとまりの中では覚えた結果を使う(docs の 設計/共通マスタ/ロールと認可/認可の確認/判定の使い回し.md 3.4。覚え = {@see AuthorizationMemo})。
+     *
+     * @param  list<string>  $uris
+     * @return array<string, bool>
+     */
+    public function allowsEachUri(Requester $requester, array $uris, string $action, DateTimeInterface $date): array
+    {
+        $known = [];
+        $unknown = [];
+
+        foreach ($uris as $uri) {
+            $recalled = $this->memo->recall($requester, $uri, $action, $date);
+
+            if ($recalled === null) {
+                $unknown[$uri] = true;
+            } else {
+                $known[$uri] = $recalled;
+            }
+        }
+
+        $since = $this->memo->generation();
+
+        $decided = $this->allowsEachUriFromSettings($requester, array_keys($unknown), $action, $date);
+
+        foreach ($decided as $uri => $allowed) {
+            $this->memo->remember($requester, $uri, $action, $date, $allowed, $since);
+            $known[$uri] = $allowed;
+        }
+
+        return array_combine($uris, array_map(fn (string $uri) => $known[$uri], $uris));
+    }
+
+    /**
+     * 渡した URI(重ねない)の判定。URI のリソースが無ければ禁止。
+     *
+     * @param  list<string>  $uris
+     * @return array<string, bool>
+     */
+    private function allowsEachUriFromSettings(
+        Requester $requester,
+        array $uris,
+        string $action,
+        DateTimeInterface $date,
+    ): array {
+        $groupIdByUri = $uris === []
+            ? []
+            : AuthzResource::query()->whereIn('uri', $uris)->pluck('authz_resource_group_id', 'uri')->all();
+        $groupIds = array_values(array_unique(array_map('intval', $groupIdByUri)));
+        $explanations = $groupIds === [] ? [] : $this->explainEach($requester, $groupIds, [$action], $date);
+        $allowed = [];
+
+        foreach ($uris as $uri) {
+            $groupId = $groupIdByUri[$uri] ?? null;
+            $allowed[$uri] = $groupId !== null
+                && $explanations[(int) $groupId][$action]->result === AuthorizationResult::Permit;
+        }
+
+        return $allowed;
     }
 
     /**

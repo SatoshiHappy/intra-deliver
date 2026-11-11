@@ -153,7 +153,7 @@
     "app/Queries/Master/OrganizationChartQuery.php": 8,
     "app/Queries/Master/TermQuery.php": 7,
     "app/Queries/Menu/Api/HomeSections.php": 6,
-    "app/Queries/Menu/MenuDisplayQuery.php": 6,
+    "app/Queries/Menu/MenuDisplayQuery.php": 5,
     "app/Queries/Menu/MenuResourceTypes.php": 1,
     "app/Queries/Menu/QuickActionsHomeSection.php": 1,
     "app/Queries/Menu/VisibleMenuTree.php": 4,

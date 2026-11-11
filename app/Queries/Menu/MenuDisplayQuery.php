@@ -130,9 +130,12 @@ class MenuDisplayQuery
      */
     private function permittedRoots(string $categoryCode, Requester $requester, DateTimeInterface $date): Collection
     {
-        return $this->rootsOf($categoryCode)
-            ->filter(fn (Menu $root) => $this->authorization->allowsUri($requester, MenuResourceKind::Group->uri($root->code), MenuGroupAction::Read->value, $date))
-            ->values();
+        $roots = $this->rootsOf($categoryCode);
+        $uris = $roots->map(fn (Menu $root) => MenuResourceKind::Group->uri($root->code))->all();
+        $read = MenuGroupAction::Read->value;
+        $allowed = $this->authorization->allowsEachUri($requester, array_values($uris), $read, $date);
+
+        return $roots->filter(fn (Menu $root, int $key) => $allowed[$uris[$key]])->values();
     }
 
     /**
@@ -203,7 +206,7 @@ class MenuDisplayQuery
     }
 
     /**
-     * 表示するアイテムの id → 外部サイトのアイテムか。追加の判定は、ルートの execute で表示と決まったアイテムを集めて 1 回だけ呼ぶ。
+     * 表示するアイテムの id → 外部サイトのアイテムか。ルートの execute と追加の判定は、照合で合ったアイテムを集めてそれぞれ 1 回だけ呼ぶ。
      *
      * @param  list<Menu>  $menus
      * @return array<int, bool>
@@ -211,7 +214,7 @@ class MenuDisplayQuery
     private function isExternalByVisibleItemId(array $menus, Requester $requester, DateTimeInterface $date): array
     {
         $isExternalById = [];
-        $routes = [];
+        $matched = [];
 
         foreach (array_filter($menus, fn (Menu $menu) => $menu->type === MenuType::Item) as $item) {
             $url = (string) $item->url;
@@ -222,37 +225,42 @@ class MenuDisplayQuery
                 continue;
             }
 
-            $route = $this->permittedRoute($item, $url, $requester, $date);
+            $route = $this->matchedRoute($item, $url);
 
             if ($route !== null) {
-                $isExternalById[$item->id] = false;
-                $routes[$item->id] = $route;
+                $matched[$item->id] = $route;
             }
         }
+
+        $routes = $this->permittedRoutes($matched, $requester, $date);
+        $isExternalById += array_fill_keys(array_keys($routes), false);
 
         return array_diff_key($isExternalById, $this->visibilities->hiddenItems($requester, $routes, $date));
     }
 
     /**
-     * アプリの中のパスのアイテムが指すルート(名前を持ち、その名前の execute を許されるときだけ。照合は {@see RouteResources::matchBound()})。
+     * アプリの中のパスのアイテムが指すルート(名前を持つときだけ。照合は {@see RouteResources::matchBound()})。
      */
-    private function permittedRoute(
-        Menu $item,
-        string $url,
-        Requester $requester,
-        DateTimeInterface $date,
-    ): ?MenuItemRoute {
+    private function matchedRoute(Menu $item, string $url): ?MenuItemRoute
+    {
         $route = $this->routeResources->matchBound($item->method->value, $url);
         $name = $route?->getName();
 
-        if ($route === null || $name === null) {
-            return null;
-        }
+        return $route === null || $name === null ? null : new MenuItemRoute($name, $route->parameters());
+    }
 
-        $uri = $this->routeResources->uriOf($name);
+    /**
+     * 照合で合ったルートのうち、その名前の URI の execute を許されるもの(アイテムの id → ルート。判定はまとめて 1 回)。
+     *
+     * @param  array<int, MenuItemRoute>  $matched
+     * @return array<int, MenuItemRoute>
+     */
+    private function permittedRoutes(array $matched, Requester $requester, DateTimeInterface $date): array
+    {
+        $uris = array_map(fn (MenuItemRoute $route) => $this->routeResources->uriOf($route->routeName), $matched);
+        $execute = ServiceAction::Execute->value;
+        $allowed = $this->authorization->allowsEachUri($requester, array_values(array_unique($uris)), $execute, $date);
 
-        return $this->authorization->allowsUri($requester, $uri, ServiceAction::Execute->value, $date)
-            ? new MenuItemRoute($name, $route->parameters())
-            : null;
+        return array_filter($matched, fn (int $id) => $allowed[$uris[$id]], ARRAY_FILTER_USE_KEY);
     }
 }
