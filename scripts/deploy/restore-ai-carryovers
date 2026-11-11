@@ -3,14 +3,17 @@
 # 数え方の正本 = 設計/AI/実行と費用/接続先と費用.md 5.2、式 = app/Queries/Ai/RunSpending.php)。
 #   scripts/deploy/restore-ai-carryovers <compose.env のパス> <退避のファイル>
 # 退避 = 作り直しの 2 で取った pg_dump の出力(既定の平文の形)。出力: 戻した繰り越し(予算の区分ごと)。
-# アプリ用ロールは NOCREATEDB なので、退避の 2 つの表は一時のデータベースでなく pg_temp の表へ入れる。一時の表は退避の COPY の列の並びから
-# 作る(列はすべて text。戻す先に無い列を持つ退避も戻せる。ただし実行の型の列 kind_type の無い前の版の退避は、退避の確かめで止めて戻さない =
-# 下の代償)。数える式で、数える列の型へ変える。
-# 終了コード: 0 = 成功、2 = 使い方の誤り・退避のファイルが無い、1 = 退避の中身が足りない(数える列が欠けた退避と kind_type の無い前の版の
-# 退避を含む)・繰り越しの表に行が既にある・DB での失敗。
-# 会話の型の実行の行は数えない(会話の型はステップの行から数える。ステップの行を数える版で、ステップの表の COPY を足して東京の日で足し込む)。
-# 代償: kind_type の無い退避は退避の確かめで止まり(逃げ道を告げる)、繰り越しが戻らない(上限の使った額に退避の分が入らず、上限が緩む)。
-# この版を配るときに取った前の版の退避で作り直すと当たる。逃げ道 = 前の版の作業木の道具で、その退避から戻す(前の版の数え方で正しく数える)。
+# アプリ用ロールは NOCREATEDB なので、退避の 3 つの表は一時のデータベースでなく pg_temp の表へ入れる。一時の表は退避の COPY の列の並びから
+# 作る(列はすべて text。戻す先に無い列を持つ退避も戻せる。ただし実行の型の列 kind_type かステップの表の COPY の無い前の版の退避は、
+# 退避の確かめで止めて戻さない = 下の代償)。その上に数える列の型をそろえた一時の見かけの表を作り、毎日の初期化と同じ式で数える。
+# 終了コード: 0 = 成功、2 = 使い方の誤り・退避のファイルが無い、1 = 退避の中身が足りない(数える列が欠けた退避と、kind_type かステップの表の
+# COPY の無い前の版の退避を含む)・繰り越しの表に行が既にある・DB での失敗。
+# 会話の型の実行は実行の行でなくステップの行から数え、ステップの開始の時刻の東京の日で足し込む(足し込む SQL は RunSpending の
+# carryOverRowsSql の写し。道具は PHP を呼べないので写し、写しのテストが同じ文字を確かめる)。
+# 代償: kind_type の無い退避と、ステップの表(ai_run_steps)の COPY の無い退避(ステップの表を足すマイグレーションの前の表から取った退避)は、
+# 退避の確かめで止まり(逃げ道を告げる)、繰り越しが戻らない(上限の使った額に退避の分が入らず、上限が緩む)。
+# この版を配るときに取った前の版の退避で作り直すと当たる。逃げ道 = その退避を取った前の版の作業木の、この道具で戻す(その退避は
+# ステップの行を含まないので、前の版の数え方で正しく数える)。
 set -euo pipefail
 
 if [ "$#" -ne 2 ]; then
@@ -27,14 +30,25 @@ if [ ! -f "${dump}" ] || [ ! -r "${dump}" ]; then
     exit 2
 fi
 
-# 退避の確かめ: 2 つの表の COPY の段がちょうど 1 つずつあり、どちらも終わりの行(\.)で閉じている
-if ! awk '
+# 退避の確かめ: 3 つの表の COPY の段がちょうど 1 つずつあり、どれも終わりの行(\.)で閉じている。ステップの表の段だけが無いのは
+# 前の版の退避(awk は 3 を返す。頭のコメントの代償)
+copies=0
+awk '
     copying { if ($0 == "\\.") copying = 0; next }
     /^COPY public\.ai_runs \([a-z0-9_, "]+\) FROM stdin;$/ { runs++; copying = 1; next }
+    /^COPY public\.ai_run_steps \([a-z0-9_, "]+\) FROM stdin;$/ { steps++; copying = 1; next }
     /^COPY public\.ai_spending_carryovers \([a-z0-9_, "]+\) FROM stdin;$/ { carryovers++; copying = 1; next }
-    END { exit !(runs == 1 && carryovers == 1 && !copying) }
-' "${dump}"; then
-    echo "退避の中に ai_runs と ai_spending_carryovers の COPY の段が 1 つずつ揃っていません(pg_dump の既定の平文の形で、繰り越しの表がある版の退避を指定してください)。何も入れていません" >&2
+    END {
+        if (runs != 1 || carryovers != 1 || copying || steps > 1) exit 1
+        exit steps == 1 ? 0 : 3
+    }
+' "${dump}" || copies=$?
+if [ "${copies}" -eq 3 ]; then
+    echo "退避に ai_run_steps の COPY の段がありません(前の版の退避です)。その退避を取った前の版の作業木の scripts/deploy/restore-ai-carryovers で戻してください。何も入れていません" >&2
+    exit 1
+fi
+if [ "${copies}" -ne 0 ]; then
+    echo "退避の中に ai_runs と ai_run_steps と ai_spending_carryovers の COPY の段が 1 つずつ揃っていません(pg_dump の既定の平文の形で、繰り越しの表がある版の退避を指定してください)。何も入れていません" >&2
     exit 1
 fi
 
@@ -53,7 +67,7 @@ if ! awk '
     exit 1
 fi
 
-# 2 つの表の COPY の段だけを、一時の表(退避の COPY の列の並びで作る。列はすべて text)と、その表への COPY に書き換えて出す(ほかの行は出さない)
+# 3 つの表の COPY の段だけを、一時の表(退避の COPY の列の並びで作る。列はすべて text)と、その表への COPY に書き換えて出す(ほかの行は出さない)
 copy_blocks() {
     awk '
         function open_block(name,   columns, count, parts, definition, i) {
@@ -70,6 +84,7 @@ copy_blocks() {
         }
         copying { print; if ($0 == "\\.") copying = 0; next }
         /^COPY public\.ai_runs \(/ { open_block("ai_runs"); next }
+        /^COPY public\.ai_run_steps \(/ { open_block("ai_run_steps"); next }
         /^COPY public\.ai_spending_carryovers \(/ { open_block("ai_spending_carryovers"); next }
     ' "${dump}"
 }
@@ -91,18 +106,30 @@ SQL
     # 書き換えに失敗したら終わりの COMMIT を出さない(psql は COMMIT の無いまま入力が終わり、トランザクションは巻き戻る)
     copy_blocks || return 1
     cat <<'SQL'
+-- 数える列の型をそろえた見かけの表(数える列が欠けた退避はここで止まる)
+CREATE TEMP VIEW counted_runs AS
+SELECT id::bigint AS id, budget, status, kind_type, created_at::timestamptz AS created_at,
+    cost_usd::numeric AS cost_usd, reserved_cost_usd::numeric AS reserved_cost_usd
+FROM pg_temp.restore_ai_runs;
+CREATE TEMP VIEW counted_steps AS
+SELECT ai_run_id::bigint AS ai_run_id, started_at::timestamptz AS started_at, cost_usd::numeric AS cost_usd,
+    reserved_cost_usd::numeric AS reserved_cost_usd
+FROM pg_temp.restore_ai_run_steps;
+-- 退避の繰り越しと、退避の実行とステップの使った額(RunSpending::carryOverRowsSql の写し)を区分 × 東京の日で足し込む
 INSERT INTO public.ai_spending_carryovers (budget, spent_on, cost_usd)
 SELECT budget, spent_on, sum(cost_usd)
 FROM (
     SELECT budget, spent_on::date, cost_usd::numeric FROM pg_temp.restore_ai_spending_carryovers
     UNION ALL
-    SELECT budget, (created_at AT TIME ZONE 'Asia/Tokyo')::date, coalesce(cost_usd, reserved_cost_usd)
-    FROM (
-        SELECT budget, status, kind_type, created_at::timestamptz AS created_at, cost_usd::numeric AS cost_usd,
-            reserved_cost_usd::numeric AS reserved_cost_usd
-        FROM pg_temp.restore_ai_runs
-    ) AS runs WHERE status <> 'queued' AND kind_type <> 'conversation'
-) AS spent
+    (
+        SELECT budget, (counted_at AT TIME ZONE 'Asia/Tokyo')::date AS spent_on, sum(cost_usd) AS cost_usd
+        FROM (SELECT budget, status, created_at AS counted_at, coalesce(cost_usd, reserved_cost_usd) AS cost_usd
+            FROM pg_temp.counted_runs WHERE kind_type <> 'conversation'
+            UNION ALL SELECT r.budget, r.status, s.started_at, coalesce(s.cost_usd, s.reserved_cost_usd)
+            FROM pg_temp.counted_steps AS s JOIN pg_temp.counted_runs AS r ON r.id = s.ai_run_id
+            WHERE r.kind_type = 'conversation') AS spent WHERE status <> 'queued' GROUP BY 1, 2
+    )
+) AS carried
 GROUP BY budget, spent_on;
 \echo ==> 戻した繰り越し(予算の区分ごと)
 SELECT budget AS "予算の区分", count(*) AS "日の数", sum(cost_usd) AS "額の和(米ドル)"

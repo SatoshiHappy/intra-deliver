@@ -98,7 +98,8 @@ final class ConversationBudgetQueryTest extends TransactionalTestCase
     }
 
     /**
-     * 会話の型の実行の行は使った額に入らない(会話の型はステップの行から数える): 文章の行と混ざる日は文章の行の分だけで数える。
+     * 会話の型の実行の行は使った額に入らない(会話の型はステップの行から数える = 同じ日にステップの行を足した場合は
+     * {@see ConversationStepSpendingTest}): ステップの無い会話の型の行と文章の行が混ざる日は、文章の行の分だけで数える。
      * 会話の型の行は費用と見積もりを持たないので、外す前から結果は同じ(守る結果の確かめ。外したことの証は繰り越しと退避から戻す道具のテスト)。
      */
     public function test_conversation_runs_add_nothing_to_the_spent_amount_on_a_day_with_prompt_runs(): void

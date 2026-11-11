@@ -14,12 +14,16 @@ use Throwable;
 /**
  * 実行の行の鍵を取り、待ちか処理中なら失敗にする(docs の 設計/AI/実行と費用/README.md 4 節の「完了と失敗の書き方」、データと失敗と検査.md 7 節)。
  * 終わった実行は変えず、失敗にしたかを返す(ジョブの failed() が、ExecutePrompt が失敗にした後にも呼ばれるため)。
- * 呼び手 = {@see FailRun} だけ(書き込みの失敗の報告も FailRun)。会話の型の実行は状態・失敗の種類と文・終わりの時刻だけを書く
- * (会話の型の使用量と費用はステップの行が持つ = docs の 設計/AI/実行の記録.md 2.1。実行の行は持てない)。
+ * 呼び手 = {@see FailRun} だけ(書き込みの失敗の報告も FailRun)。会話の型の実行は状態・失敗の種類と文・終わりの時刻だけを書き
+ * (会話の型の使用量と費用はステップの行が持つ = docs の 設計/AI/実行の記録.md 2.1。実行の行は持てない)、同じ鍵の下で後始末をして、
+ * 表示用の和を失敗と一緒に書く({@see CleanUpFailedConversation})。受け手のトランザクションの中の呼び出しと別のトランザクションの
+ * 呼び出しの両方がここを通るので、後始末は受け手の例外で巻き戻らない側にも入る。
  */
 class MarkRunFailed
 {
     private const MESSAGE_MAX_CHARS = 1000;
+
+    public function __construct(private CleanUpFailedConversation $cleanUp) {}
 
     /**
      * 自分のトランザクションを持つ(呼び手のトランザクションの中では savepoint)。
@@ -50,7 +54,13 @@ class MarkRunFailed
                 'error_code' => $errorCode,
                 'error_message' => mb_substr($exception?->getMessage() ?? '', 0, self::MESSAGE_MAX_CHARS),
                 'finished_at' => now(),
-            ])->save();
+            ]);
+
+            if ($conversation) {
+                $run->fill($this->cleanUp->execute($run));
+            }
+
+            $run->save();
 
             if (! $conversation && $result?->outputText !== null) {
                 AiRunText::query()->whereKey($runId)->update(['output_text' => $result->outputText]);

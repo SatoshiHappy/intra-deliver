@@ -28,6 +28,7 @@ use Throwable;
  * 確認待ち・止めたで終わった実行に失敗の経路(ジョブの失敗の扱いを含む)が来ても何も変えず、受け手を呼ばない(F5)。処理中の実行の失敗では、
  * 会話の型の種類の失敗の受け手が呼ばれ(題は無し)、受け手の中からの依頼は B7(作りの誤り)で断られる(公開の口.md 3 節の表)。
  * ジョブの失敗の扱いは、会話のジョブ(後の区切り)と同じく失敗の書き方の 1 か所(FailRun)を通るので、今のジョブの failed() で真似る。
+ * 失敗で終わるときの子の行の後始末は {@see ConversationFailureCleanUpTest}。
  */
 final class ConversationFailureTest extends TransactionalTestCase
 {

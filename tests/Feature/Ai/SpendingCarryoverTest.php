@@ -80,8 +80,9 @@ final class SpendingCarryoverTest extends TransactionalTestCase
     }
 
     /**
-     * 会話の型の実行の行(待ちでない。費用と見積もりを持たない)は数えない(会話の型はステップの行から数える): 会話の型の行だけの日は止まらずに
-     * 繰り越しの行を作らず(文章の行が無い日と同じ)、文章の行と混ざる日は文章の行の分だけを足す。
+     * 会話の型の実行の行(待ちでない。費用と見積もりを持たない)は数えない(会話の型はステップの行から数える = 同じ日にステップの行を足した場合は
+     * {@see ConversationStepCarryoverTest}): ステップの無い会話の型の行だけの日は止まらずに繰り越しの行を作らず(文章の行が無い日と同じ)、
+     * 文章の行と混ざる日は文章の行の分だけを足す。
      */
     public function test_conversation_runs_are_not_carried(): void
     {
