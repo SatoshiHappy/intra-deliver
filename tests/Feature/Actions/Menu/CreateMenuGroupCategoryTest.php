@@ -26,6 +26,7 @@ final class CreateMenuGroupCategoryTest extends TransactionalTestCase
     public function test_creates_a_category_and_its_resource_with_the_same_display_names(): void
     {
         $set = AuthzResourceGroup::query()->where('code', 'im-menu-group')->sole();
+        $next = (int) AuthzResourceGroup::query()->where('parent_id', $set->id)->max('sort_key') + 1;
         $resources = AuthzResource::query()->pluck('id');
 
         $category = $this->create('example_nav_pc', ['ja' => '例のナビ（PC用）', 'en' => 'Example navigation (PC)'], isSelectable: true);
@@ -35,7 +36,7 @@ final class CreateMenuGroupCategoryTest extends TransactionalTestCase
         $resource = AuthzResource::query()->whereNotIn('id', $resources)->sole();
         $group = $resource->authzResourceGroup()->firstOrFail();
         $this->assertSame(['im-menu-group', 'im-menu-group://category/example_nav_pc'], [$resource->resource_type, $resource->uri]);
-        $this->assertSame(['im-menu-group-cat-example_nav_pc', $set->id, 0], [$group->code, $group->parent_id, $group->sort_key]);
+        $this->assertSame(['im-menu-group-cat-example_nav_pc', $set->id, $next], [$group->code, $group->parent_id, $group->sort_key]);
         $this->assertEqualsCanonicalizing(
             [['例のナビ（PC用）', null], ['Example navigation (PC)', null]],
             $group->authzResourceGroupTranslations()->get()->map(fn (AuthzResourceGroupTranslation $translation) => [$translation->display_name, $translation->description])->all(),

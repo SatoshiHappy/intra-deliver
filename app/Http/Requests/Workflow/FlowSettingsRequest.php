@@ -3,7 +3,7 @@
 namespace App\Http\Requests\Workflow;
 
 /**
- * フローの機能設定の保存 workflow.admin.flows.settings.update の入力 { is_attachment_enabled: boolean }
+ * フローの機能設定の保存 workflow.admin.flows.update-settings の入力 { is_attachment_enabled: boolean }
  * (docs の 設計/ワークフロー/申請の周辺/画面.md の 4 節)。画面は必ず真偽を送るので、欠けた・真偽でない送りは壊れた送りだけ。
  */
 class FlowSettingsRequest extends FlowDefinitionRequest

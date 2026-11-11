@@ -20,7 +20,7 @@ final class RoleCandidatesTest extends TransactionalTestCase
         $this->assertSame(
             [
                 ['id' => $this->roleId('system_admin'), 'code' => 'system_admin', 'name' => 'システム管理者'],
-                ['id' => $this->roleId('master_admin'), 'code' => 'master_admin', 'name' => '共通マスタ管理者'],
+                ['id' => $this->roleId('master_admin'), 'code' => 'master_admin', 'name' => '基本データ管理者'],
                 ['id' => $this->roleId('workflow_admin'), 'code' => 'workflow_admin', 'name' => 'ワークフロー管理者'],
             ],
             $this->candidates()->roles('管理者', 'ja', 20),

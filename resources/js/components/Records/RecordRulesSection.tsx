@@ -10,7 +10,7 @@ import {
     TableRow,
 } from '@/components/ui/table';
 import { RULE_KIND_LABELS, ruleSummary } from '@/lib/Records/recordDefinitions';
-import { destroy as destroyRule } from '@/routes/records/admin/rules';
+import { destroyRule } from '@/routes/records/admin/modules';
 import type { RecordAdminModule, RecordRuleDefinition } from '@/types';
 
 type Props = {

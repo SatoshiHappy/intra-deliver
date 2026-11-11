@@ -74,7 +74,7 @@ async function expectEditing(page: Page) {
 }
 
 /**
- * システム管理者の列の「組織図」のセルを 許可 → 禁止 → 未設定 と循環させ、元の継承の表示に戻す。
+ * システム管理者の列の束「組織図」のセルを 許可 → 禁止 → 未設定 と循環させ、元の継承の表示に戻す。
  * 継承のセルは未設定として扱い、押すと直接の許可。成功のトーストは出さない(セルの表示が結果)。
  */
 async function cycleAdministratorCell(page: Page) {
@@ -106,6 +106,29 @@ test('開始してセルを押すと 許可 → 禁止 → 未設定 と循環�
 
     await endButton(page).click();
     await expectReadOnly(page);
+});
+
+test('表示の範囲で絞ったままセルを切り替えても、戻り先は URL の feature のままで、絞り込みが残る', async ({
+    page,
+}) => {
+    await openOverviewAs(page, ADMINISTRATOR);
+    await startEditing(page);
+    const feature = page.getByRole('combobox', { name: '表示の範囲' });
+    await feature.click();
+    await page.getByRole('option', { name: '基本データ', exact: true }).click();
+    await expect(page).toHaveURL(/\?feature=http-services\.master$/);
+    const filtered = async () => {
+        await expect(page).toHaveURL(/\?feature=http-services\.master$/);
+        await expect(feature).toHaveText('基本データ');
+        await expect(
+            page.getByRole('rowheader', { name: '認可設定', exact: true }),
+        ).toHaveCount(0);
+    };
+
+    // 編集の応答は back() なので、要求を送らずに替えた URL(Referer)が戻り先になる。押した分は元の継承に戻す
+    await cycleAdministratorCell(page);
+    await filtered();
+    await expectEditing(page);
 });
 
 test('列を追加すると全セルが未設定で、同じ条件の列は追加できず、削除の確かめに件数が出て、削除で列が消える', async ({
@@ -140,7 +163,7 @@ test('列を追加すると全セルが未設定で、同じ条件の列は追�
     const dialog = await openDeleteDialog(page, '山田 恵');
     await expect(dialog).toContainText('列「山田 恵」を削除しますか。');
     await expect(dialog).toContainText(
-        'この列に設定された 1 件の許可と禁止が、すべてのリソースの種類から削除されます。この操作は取り消せません。',
+        'この列に設定された 1 件の許可と禁止が、すべての認可対象の種類から削除されます。この操作は取り消せません。',
     );
     await dialog
         .getByRole('button', { name: 'キャンセル', exact: true })

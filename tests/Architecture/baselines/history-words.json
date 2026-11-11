@@ -19,7 +19,7 @@
     "database/migrations/2026_10_16_100011_create_workflow_case_assignments_table.php": 7,
     "database/seeders/SeedsWorkflowRouteVersions.php": 2,
     "resources/css/app.css": 1,
-    "resources/js/components/Authz/SettingsHead.tsx": 3,
+    "resources/js/components/Authz/SettingsHead.tsx": 2,
     "resources/js/components/ConfirmDeleteDialog.tsx": 1,
     "resources/js/components/Menu/HomeTable.tsx": 1,
     "resources/js/components/Workflow/WorkflowStatusBadge.tsx": 2,

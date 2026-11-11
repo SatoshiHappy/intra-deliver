@@ -19,7 +19,7 @@ final class SubjectTypeTest extends TestCase
     public static function categories(): array
     {
         return [
-            '1 種' => [[SubjectType::MetaSubject], 'im_authz_meta_subject', '認証', 'Authentication'],
+            '1 種' => [[SubjectType::MetaSubject], 'im_authz_meta_subject', 'ログインの状態', 'Login status'],
             '1 種を重ねたもの' => [[SubjectType::Role, SubjectType::Role], 'b_m_role', 'ロール', 'Role'],
             '2 種(渡した順と逆のバイト順)' => [[SubjectType::Ipv4Address, SubjectType::Role], 'b_m_role:im_authz_ipv4', 'ロール、IPv4 アドレスの複合', 'Composite of Role and IPv4 address'],
             '2 種(「_」が英字より前になるバイト順)' => [[SubjectType::Term, SubjectType::CompanyPost], 'im_authz_term:imm_company_post', '期間、役職の複合', 'Composite of Term and Post'],
@@ -44,8 +44,8 @@ final class SubjectTypeTest extends TestCase
     {
         $this->assertSame(
             [
-                ['ユーザ', 'User'], ['会社組織', 'Department'], ['役職', 'Post'], ['ロール', 'Role'],
-                ['IPv4 アドレス', 'IPv4 address'], ['認証', 'Authentication'], ['期間', 'Term'],
+                ['ユーザー', 'User'], ['組織', 'Department'], ['役職', 'Post'], ['ロール', 'Role'],
+                ['IPv4 アドレス', 'IPv4 address'], ['ログインの状態', 'Login status'], ['期間', 'Term'],
             ],
             array_map(fn (SubjectType $type) => [$type->displayName('ja'), $type->displayName('en')], SubjectType::cases()),
         );

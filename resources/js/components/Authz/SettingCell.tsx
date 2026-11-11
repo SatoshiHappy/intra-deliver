@@ -1,5 +1,5 @@
 import { GridCell } from '@/components/Authz/GridCells';
-import { NoSettingMark, SettingMark } from '@/components/Authz/SettingMark';
+import { SettingMark } from '@/components/Authz/SettingMark';
 import { RESULT_LABELS } from '@/lib/Authz/labels';
 import { nameOrCode } from '@/lib/nameOrCode';
 import { cn } from '@/lib/utils';
@@ -9,7 +9,7 @@ import type { AuthzGridSetting } from '@/types';
 export type CellPress = { onPress: () => void; saving: boolean };
 
 /**
- * セルの中身。継承は title に置き場の表示名(無ければコード)、読み上げ用の文字を添える。setting が無ければ設定なし。
+ * セルの中身。継承は title に置き場の表示名(無ければコード)、読み上げ用の文字を添える。setting が無ければ設定なし(印は出さず、読み上げ用の文字だけ)。
  */
 function SettingContent({
     setting,
@@ -19,7 +19,6 @@ function SettingContent({
     if (setting === undefined) {
         return (
             <span className="relative inline-flex">
-                <NoSettingMark />
                 <span className="sr-only">設定なし</span>
             </span>
         );

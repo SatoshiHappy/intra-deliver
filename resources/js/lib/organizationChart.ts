@@ -1,4 +1,4 @@
-import { organizationChart } from '@/routes/master';
+import { show as organizationChart } from '@/routes/master/organization-chart';
 
 /**
  * 組織図の行き先(docs の 設計/共通マスタ/検索と組織図.md 3.2 の「選んだとき」)。検索の結果とワークフローの名前の札が同じ URL を作るための 1 か所

@@ -3,6 +3,7 @@ import {
     actionLabel,
     blockedLabel,
     judgementTitle,
+    RESULT_LABELS,
     resourceTypeLabel,
 } from './labels';
 
@@ -29,16 +30,26 @@ describe('resourceTypeLabel', () => {
 });
 
 describe('blockedLabel', () => {
-    it('全部のアクションが閉塞なら「閉塞中」だけ', () => {
+    it('全部のアクションが閉塞なら「使用停止中」だけ', () => {
         expect(blockedLabel(['read', 'admin'], ['read', 'admin'])).toBe(
-            '閉塞中',
+            '使用停止中',
         );
     });
 
     it('一部なら閉塞のアクションの語を括弧に並べる', () => {
         expect(
             blockedLabel(['read', 'update'], ['read', 'update', 'admin']),
-        ).toBe('閉塞中(参照、更新)');
+        ).toBe('使用停止中(参照、更新)');
+    });
+});
+
+describe('RESULT_LABELS', () => {
+    it('判定の結果の語(閉塞は「使用停止」)', () => {
+        expect(RESULT_LABELS).toEqual({
+            permit: '許可',
+            deny: '禁止',
+            block: '使用停止',
+        });
     });
 });
 

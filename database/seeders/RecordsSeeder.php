@@ -24,8 +24,9 @@ use Illuminate\Database\Seeder;
 
 /**
  * 業務データの入れ物の初期データ(docs の 設計/業務データの入れ物/認可とメニュー/メニューと初期データ.md 6 節・7 節、設計/メニュー/初期データ.md 4 節):
- * 1. 接頭辞のリソースグループ http-services.records・…data・…admin(・modules・fields・headings・related-columns・rules・categories)と、業務のルートのリソースとポリシー(ゲストユーザと認証済みユーザに
- *    execute の許可。接頭辞には置かない)、管理のルートのリソース(ポリシーなし)
+ * 1. 設定不可のセットに接頭辞のリソースグループ http-services-unmanaged.records・…data(・attachments・comments・revision-files)と、業務のルートの
+ *    リソースとポリシー(ゲストユーザと認証済みユーザに execute の許可。接頭辞には置かない)。http-services に接頭辞のリソースグループ
+ *    http-services.records・…admin と、ルートの束 …admin.modules・…admin.categories・…admin.comments と、管理のルートのリソース(ポリシーなし)
  * 2. セット record-modules と、システム管理者への 5 つのアクション(全件の参照を含む)の許可(全部を許すロール = 認可とメニュー/README.md 3 節)
  * 3. 業務モジュール「プロジェクト」「課題」(業務モジュールを作る業務処理 = リソース・初期ポリシー・「業務」のアイテム)と、明細「マイルストーン」
  * 4. 項目・選択肢・規則、5. レコード(判定の入力 = u0004 伊藤 涼子、基準日 = 流す日の Asia/Tokyo の日付、ロケール ja)。
@@ -37,22 +38,36 @@ use Illuminate\Database\Seeder;
 class RecordsSeeder extends Seeder
 {
     use FindsAuthzSubjects;
+    use TranslatesRoutePrefixes;
 
-    /** 接頭辞のリソースグループ: 接頭辞 => [表示名(ja), 表示名(en)] */
+    /** 設定不可のセットの接頭辞のリソースグループ(業務のルートの上): 接頭辞 => [表示名(ja), 表示名(en)] */
     private const PREFIXES = [
         'records' => ['業務データ', 'Records'],
         'records.data' => ['レコード', 'Record data'],
         'records.data.attachments' => ['添付ファイル', 'Record attachments'],
         'records.data.comments' => ['コメント', 'Record comments'],
         'records.data.revision-files' => ['更新履歴のファイル', 'Revision files'],
+    ];
+
+    /** http-services の接頭辞のリソースグループ(管理のルートの上のフォルダとルートの束): 接頭辞 => [表示名(ja), 表示名(en), 説明(ja)?, 説明(en)?] */
+    private const ADMIN_PREFIXES = [
+        'records' => ['業務データ', 'Records'],
         'records.admin' => ['業務データの管理', 'Records administration'],
-        'records.admin.comments' => ['コメントの管理', 'Comment administration'],
-        'records.admin.modules' => ['業務モジュール', 'Record modules'],
-        'records.admin.fields' => ['項目', 'Fields'],
-        'records.admin.headings' => ['見出し', 'Field headings'],
-        'records.admin.related-columns' => ['関連レコードの列', 'Related record columns'],
-        'records.admin.rules' => ['規則', 'Rules'],
-        'records.admin.categories' => ['モジュール分類', 'Module categories'],
+        'records.admin.comments' => [
+            'コメントの管理', 'Comment administration',
+            'すべての業務モジュールで、ほかの人のコメントも削除できます',
+            'Delete comments written by others in every record module',
+        ],
+        'records.admin.modules' => [
+            '業務モジュール', 'Record modules',
+            '業務モジュールを作成し、項目・見出し・規則などの定義を変更できます',
+            'Create record modules and change their fields, headings, rules and other definitions',
+        ],
+        'records.admin.categories' => [
+            'モジュール分類', 'Module categories',
+            'モジュール分類を作成・変更し、業務モジュールを分類できます',
+            'Create and change module categories and categorize record modules',
+        ],
     ];
 
     /** 業務のルート: 名前 => [表示名(ja), 表示名(en)] */
@@ -85,21 +100,25 @@ class RecordsSeeder extends Seeder
         'records.admin.modules.show' => ['業務モジュールの定義', 'Record module definition'],
         'records.admin.modules.edit' => ['業務モジュールの編集画面', 'Edit record module form'],
         'records.admin.modules.update' => ['業務モジュールの更新', 'Update record module'],
-        'records.admin.modules.reorder' => ['業務モジュールの並び替え(業務の直下)', 'Reorder uncategorized record modules'],
-        'records.admin.modules.categories' => ['業務モジュールのモジュール分類の更新', 'Update record module categories'],
-        'records.admin.fields.create' => ['項目の追加画面', 'New field form'],
-        'records.admin.fields.store' => ['項目の追加', 'Create field'],
-        'records.admin.fields.edit' => ['項目の編集画面', 'Edit field form'],
-        'records.admin.fields.update' => ['項目の更新', 'Update field'],
-        'records.admin.fields.destroy' => ['項目の削除', 'Delete field'],
-        'records.admin.fields.reorder' => ['項目の並び替え', 'Reorder fields'],
-        'records.admin.headings.store' => ['見出しの追加', 'Create field heading'],
-        'records.admin.headings.update' => ['見出しの更新', 'Update field heading'],
-        'records.admin.headings.destroy' => ['見出しの削除', 'Delete field heading'],
-        'records.admin.related-columns.update' => ['関連レコードの列の保存', 'Save related record columns'],
-        'records.admin.rules.store' => ['規則の追加', 'Create rule'],
-        'records.admin.rules.update' => ['規則の更新', 'Update rule'],
-        'records.admin.rules.destroy' => ['規則の削除', 'Delete rule'],
+        'records.admin.categories.reorder-uncategorized' => [
+            '業務モジュールの並び替え(業務の直下)', 'Reorder uncategorized record modules',
+        ],
+        'records.admin.categories.update-module-categories' => [
+            '業務モジュールのモジュール分類の更新', 'Update record module categories',
+        ],
+        'records.admin.modules.create-field' => ['項目の追加画面', 'New field form'],
+        'records.admin.modules.store-field' => ['項目の追加', 'Create field'],
+        'records.admin.modules.edit-field' => ['項目の編集画面', 'Edit field form'],
+        'records.admin.modules.update-field' => ['項目の更新', 'Update field'],
+        'records.admin.modules.destroy-field' => ['項目の削除', 'Delete field'],
+        'records.admin.modules.reorder-fields' => ['項目の並び替え', 'Reorder fields'],
+        'records.admin.modules.store-heading' => ['見出しの追加', 'Create field heading'],
+        'records.admin.modules.update-heading' => ['見出しの更新', 'Update field heading'],
+        'records.admin.modules.destroy-heading' => ['見出しの削除', 'Delete field heading'],
+        'records.admin.modules.update-related-columns' => ['関連レコードの列の保存', 'Save related record columns'],
+        'records.admin.modules.store-rule' => ['規則の追加', 'Create rule'],
+        'records.admin.modules.update-rule' => ['規則の更新', 'Update rule'],
+        'records.admin.modules.destroy-rule' => ['規則の削除', 'Delete rule'],
         'records.admin.categories.index' => ['モジュール分類の一覧', 'Module category list'],
         'records.admin.categories.store' => ['モジュール分類の作成', 'Create module category'],
         'records.admin.categories.update' => ['モジュール分類の更新', 'Update module category'],
@@ -234,8 +253,15 @@ class RecordsSeeder extends Seeder
      */
     private function createRoutes(): void
     {
-        foreach (self::PREFIXES as $prefix => [$ja, $en]) {
-            $this->createPrefix->execute($prefix, ['ja' => ['display_name' => $ja], 'en' => ['display_name' => $en]]);
+        $prefixesOfSets = [
+            ServiceAction::UNMANAGED_SET_CODE => self::PREFIXES,
+            ServiceAction::SET_CODE => self::ADMIN_PREFIXES,
+        ];
+
+        foreach ($prefixesOfSets as $set => $prefixes) {
+            foreach ($prefixes as $prefix => $names) {
+                $this->createPrefix->execute($prefix, $set, $this->prefixTranslations($names));
+            }
         }
 
         $everyone = [$this->guestSubjectGroupId($this->findOrCreate), $this->authenticatedSubjectGroupId($this->findOrCreate)];

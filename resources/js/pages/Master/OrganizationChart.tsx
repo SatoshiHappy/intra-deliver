@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/table';
 import { nameOrCode } from '@/lib/nameOrCode';
 import { cn } from '@/lib/utils';
-import { organizationChart } from '@/routes/master';
+import { show as organizationChart } from '@/routes/master/organization-chart';
 import type {
     NamedDepartment,
     OrganizationMember,

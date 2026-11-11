@@ -78,17 +78,17 @@ class ChangeAuthzCell
         }
 
         if (! $this->resourceTypes->hasResourceType($cell->resourceType)) {
-            throw ValidationException::withMessages(['type' => ["リソースの種類 {$cell->resourceType} はありません"]]);
+            throw ValidationException::withMessages(['type' => ["認可対象の種類 {$cell->resourceType} はありません"]]);
         }
 
         if (! $this->resourceTypes->hasAction($cell->resourceType, $cell->action)) {
-            $message = "リソースの種類 {$cell->resourceType} にアクション {$cell->action} はありません";
+            $message = "認可対象の種類 {$cell->resourceType} にアクション {$cell->action} はありません";
 
             throw ValidationException::withMessages(['action' => [$message]]);
         }
 
         if (! $this->tree->isRowOf($cell->resourceType, $cell->resourceGroupId)) {
-            throw ValidationException::withMessages(['resource_group_id' => ['このリソースの種類の格子の行ではありません']]);
+            throw ValidationException::withMessages(['resource_group_id' => ['この認可対象の種類の行ではありません']]);
         }
     }
 

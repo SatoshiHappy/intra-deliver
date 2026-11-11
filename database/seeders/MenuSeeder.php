@@ -27,7 +27,7 @@ use Illuminate\Database\Seeder;
  *
  * ポリシー: 誰にでも見せるものは、認証状態がゲストユーザか認証済みユーザのどちらか一方なので両方に許す。「管理」のグループにはポリシーを置かず、
  * システム管理者がセットの先頭の許可を継承して見る。ほかのモジュールのルートのリソースと許可は、そのモジュールの seeder が作る。
- * AuthzSeeder(セット http-services)の後に、空のメニューの表へ 1 回入れる前提。すべて業務処理を通す。
+ * AuthzSeeder(2 つのセット)の後に、空のメニューの表へ 1 回入れる前提。すべて業務処理を通す。
  */
 class MenuSeeder extends Seeder
 {
@@ -79,7 +79,7 @@ class MenuSeeder extends Seeder
         'admin' => [
             '管理', 'Administration', 1000, false, 'admin_menu_pc', 'wrench', 'システムの設定',
             [
-                'authz.overview', 'master.organization-chart',
+                'authz.settings.show', 'master.organization-chart.show',
                 'records.admin.modules.index', 'records.admin.categories.index',
                 'workflow.admin.flows.index', 'workflow.admin.cases.index', 'workflow.admin.proxies.index',
             ],
@@ -99,8 +99,8 @@ class MenuSeeder extends Seeder
      */
     private const ITEMS = [
         'workflow.home' => ['/workflow', 'ホーム', 'Home', 'house'],
-        'master.organization-chart' => ['/master/organization-chart', '組織図', 'Organization chart', 'network'],
-        'authz.overview' => ['/authz/overview', '認可設定', 'Authorization', 'shield-check'],
+        'master.organization-chart.show' => ['/master/organization-chart', '組織図', 'Organization chart', 'network'],
+        'authz.settings.show' => ['/authz/overview', '認可設定', 'Authorization', 'shield-check'],
         'records.admin.modules.index' => ['/records/admin/modules', '業務モジュール', 'Record modules', 'database'],
         'records.admin.categories.index' => ['/records/admin/categories', 'モジュール分類', 'Module categories', 'folder-tree'],
         'workflow.flows.index' => ['/workflow/flows', '申請する', 'Apply', 'send'],
@@ -182,13 +182,16 @@ class MenuSeeder extends Seeder
     }
 
     /**
-     * 接頭辞のリソースグループ http-services.menu と、ルートのリソース。
+     * 設定不可のセットに、接頭辞のリソースグループ http-services-unmanaged.menu と、ルートのリソース。
      *
      * @return list<int> ルートのリソースグループの id
      */
     private function createRouteResources(): array
     {
-        $this->createPrefix->execute('menu', ['ja' => ['display_name' => 'メニュー'], 'en' => ['display_name' => 'Menu']]);
+        $this->createPrefix->execute('menu', ServiceAction::UNMANAGED_SET_CODE, [
+            'ja' => ['display_name' => 'メニュー'],
+            'en' => ['display_name' => 'Menu'],
+        ]);
         $ids = [];
 
         foreach (self::ROUTES as $name => [$ja, $en]) {

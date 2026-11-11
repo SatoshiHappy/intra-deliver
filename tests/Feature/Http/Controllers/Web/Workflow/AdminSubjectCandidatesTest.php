@@ -8,7 +8,7 @@ use Tests\Support\SendsFlowDefinitionRequests;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * 定義の管理の対象者の候補 workflow.admin.subject-candidates(docs の 設計/ワークフロー/ルートの深さ/画面/README.md 1.1 節、認可と一覧.md 4.2 節):
+ * 定義の管理の対象者の候補 workflow.admin.flows.subject-candidates(docs の 設計/ワークフロー/ルートの深さ/画面/README.md 1.1 節、認可と一覧.md 4.2 節):
  * 1 つの語で 4 種類(共通マスタの口 = 基準日は今日、ロールは認可の口)をまとめて引き、種類ごとの群(並び = ユーザー・組織・役職・ロール)で返す。
  * 語が空なら 4 つの空の群(上限が種類ごとなのは tests/Unit/Queries/Workflow/SubjectCandidatesTest.php)、主所属はユーザーだけ、
  * Cache-Control: private, no-store。ゲストと u0001 はルートの認可で 403。種類の指定(type)があれば、その種類の群だけ

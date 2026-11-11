@@ -11,9 +11,9 @@ use App\Enums\Authz\ServiceAction;
 use Illuminate\Database\Seeder;
 
 /**
- * 会議の初期データ(docs の 設計/業務ツール/会議/処理.md の 3.2・3.7): 接頭辞のリソースグループ http-services.meeting と、作成・再作成の 2 ルートの
+ * 会議の初期データ(docs の 設計/業務ツール/会議/処理.md の 3.2・3.7): 設定不可のセットに、接頭辞のリソースグループ http-services-unmanaged.meeting と、作成・再作成の 2 ルートの
  * リソースと、ゲストユーザと認証済みユーザへの execute の許可(4)。ルートは通しても、作成・再作成の可否は会議の業務モジュールの許可と
- * ゲストの判定で業務処理が決める(入れ物の業務の画面のルートと同じ形)。システム管理者は http-services の先頭の許可を継承する。すべて業務処理を通す。
+ * ゲストの判定で業務処理が決める(入れ物の業務の画面のルートと同じ形)。システム管理者は設定不可のセットの先頭の許可を継承する。すべて業務処理を通す。
  */
 class MeetingSeeder extends Seeder
 {
@@ -34,7 +34,11 @@ class MeetingSeeder extends Seeder
 
     public function run(): void
     {
-        $this->createPrefix->execute('meeting', self::displayNames('会議', 'Meetings'));
+        $this->createPrefix->execute(
+            'meeting',
+            ServiceAction::UNMANAGED_SET_CODE,
+            self::displayNames('会議', 'Meetings'),
+        );
         $everyone = [
             $this->guestSubjectGroupId($this->findOrCreate),
             $this->authenticatedSubjectGroupId($this->findOrCreate),

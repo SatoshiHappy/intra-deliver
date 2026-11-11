@@ -1,15 +1,17 @@
 import { ChevronDown, ChevronRight } from 'lucide-react';
 import { GridHead } from '@/components/Authz/GridCells';
+import { RowName } from '@/components/Authz/RowName';
 import { Badge } from '@/components/ui/badge';
 import { blockedLabel } from '@/lib/Authz/labels';
 import { cn } from '@/lib/utils';
 
 type Props = {
-    name: string;
+    /** 行の名前と説明(説明は null = 無し。あれば名前の右の「?」の吹き出しに出す = {@link RowName}) */
+    label: { name: string; description: string | null };
     depth: number;
     /** 子のある行(名前を太字にする) */
     hasChildren: boolean;
-    /** 開閉の記号。null なら記号を出さず、字下げ揃えの空白を置く(子の無い行・検索中) */
+    /** 開閉の記号。null なら記号を出さず、字下げ揃えの空白を置く(子の無い行・検索中・表示の範囲で選んだ行の祖先) */
     toggle: { isOpen: boolean; onToggle: () => void } | null;
     /** 判定が閉塞のアクション(空 = 閉塞の行ではない) */
     blocked: string[];
@@ -22,7 +24,7 @@ type Props = {
  * 読み上げの名前はリソース名だけ(開閉の記号・札を含めない)。
  */
 export function ResourceCell({
-    name,
+    label,
     depth,
     hasChildren,
     toggle,
@@ -34,7 +36,7 @@ export function ResourceCell({
     return (
         <GridHead
             scope="row"
-            aria-label={name}
+            aria-label={label.name}
             className={cn(
                 'sticky left-0 z-10 h-12 min-w-64 border-b font-normal group-last/row:border-b-0 group-hover/row:bg-muted',
                 hasChildren && 'font-medium',
@@ -50,7 +52,7 @@ export function ResourceCell({
                     <button
                         type="button"
                         aria-expanded={toggle.isOpen}
-                        aria-label={`${name}の配下を${toggle.isOpen ? '非表示' : '表示'}`}
+                        aria-label={`${label.name}の配下を${toggle.isOpen ? '非表示' : '表示'}`}
                         onClick={toggle.onToggle}
                         className="inline-flex size-6 flex-none items-center justify-center rounded-md text-muted-foreground outline-none hover:text-foreground focus-visible:ring-[3px] focus-visible:ring-ring/50"
                     >
@@ -69,7 +71,7 @@ export function ResourceCell({
                 ) : (
                     <span className="size-6 flex-none" aria-hidden="true" />
                 )}
-                <span>{name}</span>
+                <RowName {...label} />
                 {isBlocked && (
                     <Badge className="bg-status-rejected-foreground text-status-rejected">
                         {blockedLabel(blocked, actions)}

@@ -130,7 +130,7 @@ export type WorkflowSubjectCandidate = {
 };
 
 /**
- * 対象者の候補の応答 GET workflow.admin.subject-candidates?q=(1 つの語で 4 種類をまとめて引く。群の並び = ユーザー・組織・役職・ロール。
+ * 対象者の候補の応答 GET workflow.admin.flows.subject-candidates?q=(1 つの語で 4 種類をまとめて引く。群の並び = ユーザー・組織・役職・ロール。
  * 上限は種類ごと。語が空なら 4 つの空の群。type を付けると、その種類の群だけ)
  */
 export type WorkflowSubjectCandidatesResponse = {

@@ -2,7 +2,11 @@
 
 namespace Tests\Feature\Demo;
 
+use App\Enums\Authz\ServiceAction;
 use App\Http\Controllers\Web\Demo\SwitchUserController;
+use App\Models\Authz\AuthzPolicy;
+use App\Models\Authz\AuthzResourceGroup;
+use App\Models\Authz\AuthzSubjectCondition;
 use App\Models\Master\User;
 use App\Queries\Account\Api\UserMenuSections;
 use App\Queries\Demo\DemoResetSeeder;
@@ -65,6 +69,23 @@ final class DemoEnabledTest extends TransactionalTestCase
         $this->assertSame([], $this->routesWithExplicitBinding($routes));
         $this->assertSame([], $this->routesHandledByClosure($routes));
         $this->assertSame([], $this->routesWithoutTheirResource($routes));
+    }
+
+    /**
+     * 切替のルートの置き場は設定不可のセット(宣言。docs の 設計/デモユーザー切替/デモの取り付け.md 6.3 の初期データ)で、リソースはその下にあり、
+     * ゲストユーザと認証済みユーザの許可をルートに直接持つ。
+     */
+    public function test_the_switch_route_is_declared_in_the_unmanaged_set_with_its_direct_permits(): void
+    {
+        $group = AuthzResourceGroup::query()->where('code', 'http-services-unmanaged.demo.switch-user')
+            ->with(['parent', 'authzPolicies.authzSubjectGroup.authzSubjectConditions'])->sole();
+
+        $this->assertSame(ServiceAction::UNMANAGED_SET_CODE, $this->routeResources()->setOf('demo.switch-user'));
+        $this->assertSame('http-services-unmanaged.demo', $group->parent?->code);
+        $this->assertSame(['anonymous', 'authenticated'], $group->authzPolicies
+            ->map(fn (AuthzPolicy $policy) => $policy->authzSubjectGroup?->authzSubjectConditions->sole())
+            ->map(fn (?AuthzSubjectCondition $condition) => $condition?->meta_subject?->value)
+            ->sort()->values()->all());
     }
 
     /**

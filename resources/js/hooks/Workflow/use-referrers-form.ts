@@ -3,7 +3,7 @@ import type { FormEvent } from 'react';
 import { clearRowErrors } from '@/lib/formErrors';
 import { draftsOf, rowsPayloadOf } from '@/lib/Workflow/subjectRows';
 import type { SubjectRowDraft } from '@/lib/Workflow/subjectRows';
-import { update } from '@/routes/workflow/admin/flows/referrers';
+import { updateReferrers } from '@/routes/workflow/admin/flows';
 import type { WorkflowSubjectRow } from '@/types';
 
 /** 行の誤りのキー(並び全体は referrers、行は referrers.<添字>) */
@@ -36,7 +36,7 @@ export function useReferrersForm(flow: string, saved: WorkflowSubjectRow[]) {
             form.transform((data) => ({
                 referrers: rowsPayloadOf(data.referrers),
             }));
-            form.submit(update(flow), { preserveScroll: true });
+            form.submit(updateReferrers(flow), { preserveScroll: true });
         },
     };
 }

@@ -2,7 +2,7 @@ import { useForm } from '@inertiajs/react';
 import { useState } from 'react';
 import { EDITED_PROPS } from '@/lib/Authz/editMode';
 import { subjectKindOf } from '@/lib/Authz/subjectKinds';
-import { store } from '@/routes/authz/editor/subjects';
+import { storeSubject } from '@/routes/authz/settings';
 import type { AuthzSubjectCandidate, AuthzSubjectKind } from '@/types';
 
 type Data = { kind: AuthzSubjectKind; target_id: number | null };
@@ -50,7 +50,7 @@ export function useAddColumn() {
             form.clearErrors('target_id');
         },
         submit: () =>
-            form.submit(store(), {
+            form.submit(storeSubject(), {
                 only: EDITED_PROPS,
                 preserveScroll: true,
                 preserveState: true,

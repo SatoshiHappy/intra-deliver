@@ -8,7 +8,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { useEditMode } from '@/hooks/Authz/useEditMode';
 import { useGridView } from '@/hooks/Authz/useGridView';
 import type { GridTab } from '@/lib/Authz/gridView';
-import { overview } from '@/routes/authz';
+import { show as overview } from '@/routes/authz/settings';
 import type { AuthzCan, AuthzGrid, AuthzJudge, AuthzJudgeUser } from '@/types';
 
 type Props = {
@@ -21,8 +21,8 @@ type Props = {
 
 /**
  * 認可設定(docs の 設計/共通マスタ/ロールと認可/認可の確認/認可設定の画面.md 2.3)。行 = リソースの木、
- * 列 = 対象者 × アクションの格子を、1 つのリソースの種類ごとに「設定」「判定」のタブで見る。選択(リソースの種類・判定する人)はサーバーへの
- * 部分再読み込みで、タブ・検索の語・畳んだ行は画面の状態のまま残す。「権限設定を開始する」で編集中になり(can が真の操作だけを出す。
+ * 列 = 対象者 × アクションの格子を、1 つの認可対象の種類ごとに「設定」「判定」のタブで見る。選択(認可対象の種類・判定する人)はサーバーへの
+ * 部分再読み込みで、タブ・検索の語・畳んだ行は画面の状態のまま残す。表示の範囲(URL のクエリ feature)は画面だけで行を絞る。「権限設定を開始する」で編集中になり(can が真の操作だけを出す。
  * docs の 設計/ワークフロー/申請の周辺/認可設定の編集.md 1 節)、種類を替えても編集中のまま。
  */
 export default function Overview({

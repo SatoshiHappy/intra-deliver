@@ -7,7 +7,11 @@ import {
     sidebarLink,
     sidebarHeading,
 } from '../support/app-navigation';
-import { menuAdminRow } from './authz-editor-support';
+import {
+    ADMINISTRATOR,
+    menuAdminRow,
+    openOverviewAs,
+} from './authz-editor-support';
 
 // 認可の確認(docs の 設計/共通マスタ/ロールと認可/認可の確認/README.md 4 節の E2E)のうち、デモユーザー切替でシステム管理者になって確かめるもの
 // (切替を使うので demo の持ち物。docs の 設計/デモユーザー切替/デモの取り付け.md 6.1)。画面は PC の幅だけを前提にする。
@@ -28,7 +32,7 @@ async function choose(page: Page, label: string, item: string) {
 }
 
 /**
- * 認可設定の格子の、名前で引いた行(先頭の列は th scope="row" で、読み上げの名前はリソース名だけ。URI は画面に無い)。
+ * 認可設定の格子の、名前で引いた行(先頭の列は th scope="row" で、読み上げの名前は行の名前だけ。URI は画面に無い)。
  */
 function resourceRow(page: Page, name: string) {
     return page.locator('tbody tr').filter({
@@ -36,10 +40,10 @@ function resourceRow(page: Page, name: string) {
     });
 }
 
-/** 画面・処理(アクションが 1 つの種類)のリソースの種類の欄の説明 */
+/** 画面・処理(アクションが 1 つの種類)の認可対象の種類の欄の説明 */
 const TYPE_HELP = '画面・処理のアクションは「実行」の 1 つです';
 
-test('システム管理者に切り替えると歯車の「認可設定」から開け、判定する人とリソースの種類を替えられる', async ({
+test('システム管理者に切り替えると歯車の「認可設定」から開け、判定する人と認可対象の種類を替えられる', async ({
     page,
 }) => {
     await page.goto('/');
@@ -56,14 +60,14 @@ test('システム管理者に切り替えると歯車の「認可設定」か�
         page.getByRole('heading', { level: 1, name: '認可設定' }),
     ).toBeVisible();
     const judge = page.getByRole('combobox', { name: 'この人として判定' });
-    const type = page.getByRole('combobox', { name: 'リソースの種類' });
+    const type = page.getByRole('combobox', { name: '認可対象の種類' });
     await expect(judge).toHaveText('伊藤 涼子');
     await expect(type).toHaveText('画面・処理');
 
     // アクションが 1 つの種類は「?」の説明が入力の説明に結ばれ(写しは hidden で見える文に出ない)、フォーカスで Tooltip が出る
     await expect(type).toHaveAccessibleDescription(TYPE_HELP);
     await expect(page.getByText(TYPE_HELP, { exact: true })).toBeHidden();
-    await page.getByRole('button', { name: 'リソースの種類の説明' }).focus();
+    await page.getByRole('button', { name: '認可対象の種類の説明' }).focus();
     await expect(page.getByRole('tooltip')).toHaveText(TYPE_HELP);
 
     // 列の見出し: 判定する人に該当する対象者だけ札「該当」
@@ -75,7 +79,7 @@ test('システム管理者に切り替えると歯車の「認可設定」か�
     );
     await expect(
         page
-            .getByRole('columnheader', { name: 'ゲストユーザ' })
+            .getByRole('columnheader', { name: 'ゲストユーザー' })
             .getByText('該当', { exact: true }),
     ).toHaveCount(0);
 
@@ -84,7 +88,7 @@ test('システム管理者に切り替えると歯車の「認可設定」か�
         page.getByRole('columnheader', { name: '実行', exact: true }),
     ).toHaveCount(0);
 
-    // 「設定」タブ: 認証の束(ゲストユーザ・認証済みユーザ)の右がシステム管理者(認証の束が左)。置き場から継承した許可
+    // 「設定」タブ: 「ログインの状態」の束(ゲストユーザー・ログイン済みユーザー)の右がシステム管理者(ログインの状態の束が左)。置き場から継承した許可
     await expect(
         resourceRow(page, '認可設定').locator('td').nth(5),
     ).toContainText('許可(画面・処理から継承)');
@@ -110,49 +114,12 @@ test('システム管理者に切り替えると歯車の「認可設定」か�
         'aria-selected',
         'true',
     );
-    const chart = resourceRow(page, '組織図').locator('td').first();
-    await expect(chart).toContainText('許可');
-    await expect(chart).toContainText('ゲストユーザ');
+    // ルートの束「組織図」の判定は配下のルートの判定
+    const master = resourceRow(page, '組織図').locator('td').first();
+    await expect(master).toContainText('許可');
+    await expect(master).toContainText('ゲストユーザー');
 
-    // 検索: 一致した行とその祖先だけが残り(畳んだ祖先も開いて出す)、検索中は開閉の記号を出さない。
-    // 畳んだ状態は検索で変わらず、語を消す(空白だけでも同じ)と検索前の開閉に戻る
-    const search = page.getByRole('textbox', { name: 'リソース名で検索' });
-    const rowheader = (name: string) =>
-        page.getByRole('rowheader', { name, exact: true });
-    const toggles = page.getByRole('button', {
-        name: /の配下を(非表示|表示)$/,
-    });
-    await page
-        .getByRole('button', { name: '共通マスタの配下を非表示', exact: true })
-        .click();
-    await expect(rowheader('組織図')).toHaveCount(0);
-
-    await search.fill('組織');
-    await expect(rowheader('組織図')).toBeVisible();
-    await expect(rowheader('認可設定')).toHaveCount(0);
-    await expect(toggles).toHaveCount(0);
-
-    for (const cleared of ['', ' ']) {
-        await search.fill('組織');
-        await expect(rowheader('組織図')).toBeVisible();
-        await search.fill(cleared);
-        await expect(rowheader('認可設定')).toBeVisible();
-        await expect(rowheader('組織図')).toHaveCount(0);
-        await expect(
-            page.getByRole('button', {
-                name: '共通マスタの配下を表示',
-                exact: true,
-            }),
-        ).toHaveAttribute('aria-expanded', 'false');
-    }
-
-    await page
-        .getByRole('button', { name: '共通マスタの配下を表示', exact: true })
-        .click();
-    await expect(rowheader('組織図')).toBeVisible();
-    await search.fill('');
-
-    // リソースの種類を替えても、判定する人(user=guest)とタブは残る
+    // 認可対象の種類を替えても、判定する人(user=guest)とタブは残る
     await type.click();
     await page
         .getByRole('option', { name: 'メニューグループ', exact: true })
@@ -188,9 +155,88 @@ test('システム管理者に切り替えると歯車の「認可設定」か�
     await expect(adminMenuButton(page)).toHaveCount(0);
 });
 
+test('画面の語は「認可対象」「表示の範囲」「使用停止」で、「リソース」「閉塞」「機能」の語が無い', async ({
+    page,
+}) => {
+    await openOverviewAs(page, ADMINISTRATOR);
+    const banned = /リソース|閉塞|機能/;
+    await expect(
+        page.getByRole('columnheader', { name: '認可対象', exact: true }),
+    ).toBeVisible();
+    await expect(page.getByRole('combobox', { name: '表示の範囲' })).toHaveText(
+        'すべて',
+    );
+    await expect(
+        page.getByRole('textbox', { name: '認可対象を検索' }),
+    ).toHaveAttribute('placeholder', '認可対象を検索');
+    await expect(
+        page.getByText('継承(元の行の名前は、ポインタを合わせたときに表示)', {
+            exact: true,
+        }),
+    ).toBeVisible();
+    await expect(page.locator('body')).not.toContainText(banned);
+
+    await page.getByRole('tab', { name: '判定' }).click();
+    await expect(
+        page.getByText('使用停止中の認可対象(行が赤地)', { exact: true }),
+    ).toBeVisible();
+    await expect(page.locator('body')).not.toContainText(banned);
+});
+
+test('画面・処理の格子にルートの行が無く、束に開閉の記号が無い。検索は一致した行と祖先だけを出し、語を消すと検索前の開閉に戻る', async ({
+    page,
+}) => {
+    await page.goto('/');
+    await choose(page, 'ゲスト', 'システム管理者');
+    await page.goto('/authz/overview');
+    const search = page.getByRole('textbox', { name: '認可対象を検索' });
+    const rowheader = (name: string) =>
+        page.getByRole('rowheader', { name, exact: true });
+    const workflowToggle = (state: string) =>
+        page.getByRole('button', {
+            name: `ワークフローの配下を${state}`,
+            exact: true,
+        });
+
+    // ルートの行は無く(認可設定の画面は束「認可設定」の配下、レコードの削除は設定不可のセット)、ルートの束は子を持たないので開閉の記号が無い。
+    // 基本データはフォルダで、子は束「組織図」
+    await expect(rowheader('認可設定の画面')).toHaveCount(0);
+    await expect(rowheader('レコードの削除')).toHaveCount(0);
+    await expect(
+        page.getByRole('button', { name: '基本データの配下を非表示' }),
+    ).toBeVisible();
+    for (const bundle of ['組織図', '認可設定', '申請操作']) {
+        await expect(rowheader(bundle)).toBeVisible();
+        await expect(
+            page.getByRole('button', { name: `${bundle}の配下を非表示` }),
+        ).toHaveCount(0);
+    }
+
+    // 畳んだ祖先も検索中は開いて出し、開閉の記号を出さない。語を消す(空白だけでも同じ)と検索前の開閉に戻る
+    await workflowToggle('非表示').click();
+    await expect(rowheader('申請操作')).toHaveCount(0);
+    for (const cleared of ['', ' ']) {
+        await search.fill('申請');
+        await expect(rowheader('申請操作')).toBeVisible();
+        await expect(rowheader('認可設定')).toHaveCount(0);
+        await expect(
+            page.getByRole('button', { name: /の配下を(非表示|表示)$/ }),
+        ).toHaveCount(0);
+        await search.fill(cleared);
+        await expect(rowheader('認可設定')).toBeVisible();
+        await expect(rowheader('申請操作')).toHaveCount(0);
+        await expect(workflowToggle('表示')).toHaveAttribute(
+            'aria-expanded',
+            'false',
+        );
+    }
+});
+
 test('格子の枠は、ページを最後まで送るとヘッダーの下の画面いっぱいに収まり、枠の中で送っても見出しの行が止まる', async ({
     page,
 }) => {
+    // 画面・処理の格子の行(先頭・上のフォルダ・ルートの束の 15 行)が枠に収まらない高さにする(幅は PC のまま)
+    await page.setViewportSize({ width: 1280, height: 400 });
     await page.goto('/');
     await choose(page, 'ゲスト', 'システム管理者');
     await page.goto('/authz/overview');
@@ -211,7 +257,7 @@ test('格子の枠は、ページを最後まで送るとヘッダーの下の�
         });
 
         // 最後まで送ると枠の下端は余白の分だけ画面の下端に寄るので、上端の位置で枠の高さが決まる。
-        // 「画面・処理」の行は画面に収まらないので、上端はヘッダーのすぐ下(隙間 1rem 以内)に来る
+        // 「画面・処理」の行はこの高さの画面に収まらないので、上端はヘッダーのすぐ下(隙間 1rem 以内)に来る
         const box = await frame.boundingBox();
         expect(box).not.toBeNull();
         expect(box!.y).toBeGreaterThanOrEqual(headerBottom);
@@ -220,11 +266,11 @@ test('格子の枠は、ページを最後まで送るとヘッダーの下の�
 
         // 枠の中で縦に送っても、見出しの行は枠の上端に止まる
         const scrolled = await frame.evaluate((element) => {
-            element.scrollTop = 600;
+            element.scrollTop = 200;
 
             return element.scrollTop;
         });
-        expect(scrolled).toBe(600);
+        expect(scrolled).toBe(200);
         const head = await frame.locator('thead').boundingBox();
         expect(head).not.toBeNull();
         expect(Math.abs(head!.y - box!.y)).toBeLessThanOrEqual(1);

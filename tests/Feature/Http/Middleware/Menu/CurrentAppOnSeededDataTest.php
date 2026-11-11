@@ -24,7 +24,7 @@ use Tests\Support\TransactionalTestCase;
  * @phpstan-type App array{code: string, entry: array{href: string, isExternal: bool}, children: list<mixed>}
  * @phpstan-type Navigation array{
  *     launcher: list<App>, adminMenu: list<App>,
- *     currentApp: string|null, currentItemPath: string|null, showSitemap: bool,
+ *     currentApp: string|null, currentItemPath: string|null, showSitemap: bool, showSearch: bool,
  * }
  */
 final class CurrentAppOnSeededDataTest extends TransactionalTestCase
@@ -130,7 +130,7 @@ final class CurrentAppOnSeededDataTest extends TransactionalTestCase
     public function test_without_the_execute_of_an_item_the_current_app_stays(?string $user): void
     {
         $before = $this->navigationOf($user, '/workflow/cases/42');
-        $route = 'http-services.workflow.cases.index';
+        $route = 'http-services-unmanaged.workflow.cases.index';
         AuthzPolicy::query()->whereRelation('authzResourceGroup', 'code', $route)->delete();
         $after = $this->navigationOf($user, '/workflow/cases/42');
 
@@ -145,7 +145,8 @@ final class CurrentAppOnSeededDataTest extends TransactionalTestCase
     #[TestWith(['u0001'])]
     public function test_an_app_whose_items_are_all_not_executable_is_not_shown(?string $user): void
     {
-        AuthzPolicy::query()->whereRelation('authzResourceGroup', 'code', 'http-services.records.data.index')->delete();
+        $route = 'http-services-unmanaged.records.data.index';
+        AuthzPolicy::query()->whereRelation('authzResourceGroup', 'code', $route)->delete();
 
         $navigation = $this->navigationOf($user, '/records/data/project/5');
 

@@ -11,23 +11,21 @@ use App\Enums\Authz\ServiceAction;
 use Illuminate\Database\Seeder;
 
 /**
- * 共通マスタの画面のルートの認可の初期データ(docs の 設計/メニュー/初期データ.md 4 節、設計/共通マスタ/検索と組織図.md 4 節): 接頭辞のリソースグループ
- * http-services.master と、ルート master.organization-chart・master.search のリソースとポリシー。共通マスタの初期データ(CommonMasterSeeder)はセット
- * http-services と対象者より前に入るので、ルートの分を別の seeder にした。
+ * 共通マスタの画面のルートの認可の初期データ(docs の 設計/メニュー/初期データ.md 4 節、設計/共通マスタ/検索と組織図.md 4 節)。共通マスタの初期データ
+ * (CommonMasterSeeder)はセットと対象者より前に入るので、ルートの分を別の seeder にした。
+ * - 組織図 master.organization-chart.show = http-services。接頭辞のリソースグループ http-services.master(フォルダ「基本データ」)と
+ *   http-services.master.organization-chart(ルートの束「組織図」)と、ルートのリソース。許可はルートの束に置き、フォルダとルートには置かない
+ *   (http-services の許可の置き場 = 設計/メニュー/認可との結び付け.md 2.3)
+ * - 共通マスタの検索 master.search = 設定不可のセット。接頭辞のリソースグループ http-services-unmanaged.master と、ルートのリソース。
+ *   許可はルートに置き、接頭辞には置かない(設定不可のセットの中の置き方)
  *
- * ポリシー: ルートごとに、ゲストユーザと認証済みユーザの両方に execute の許可(誰にでも許すものは両方に置く)。接頭辞 http-services.master には
- * 置かない(後の段で足す共通マスタの管理画面が、ゲストへの許可を継承しないように)。システム管理者は http-services の先頭の許可を継承する(足さない)。
- * AuthzSeeder の後に 1 回入れる前提。すべて業務処理を通す。
+ * ポリシー: ゲストユーザと認証済みユーザの両方に execute の許可(誰にでも許すものは両方に置く)。システム管理者は 2 つのセットの先頭の許可を継承する
+ * (足さない)。AuthzSeeder の後に 1 回入れる前提。すべて業務処理を通す。
  */
 class CommonMasterRouteSeeder extends Seeder
 {
     use FindsAuthzSubjects;
-
-    /** ルート: 名前 => [表示名(ja), 表示名(en)] */
-    private const ROUTES = [
-        'master.organization-chart' => ['組織図', 'Organization chart'],
-        'master.search' => ['共通マスタの検索', 'Common master search'],
-    ];
+    use TranslatesRoutePrefixes;
 
     public function __construct(
         private CreateRoutePrefixResourceGroup $createPrefix,
@@ -38,14 +36,32 @@ class CommonMasterRouteSeeder extends Seeder
 
     public function run(): void
     {
-        $this->createPrefix->execute('master', ['ja' => ['display_name' => '共通マスタ'], 'en' => ['display_name' => 'Common master']]);
-        $everyone = [$this->guestSubjectGroupId($this->findOrCreate), $this->authenticatedSubjectGroupId($this->findOrCreate)];
+        $names = fn (string $ja, string $en) => ['ja' => ['display_name' => $ja], 'en' => ['display_name' => $en]];
+        $this->createPrefix->execute('master', ServiceAction::SET_CODE, $names('基本データ', 'Basic data'));
+        $chart = $this->prefixTranslations([
+            '組織図', 'Organization chart',
+            '組織の階層と、組織に所属するユーザーを表示できます',
+            'View the organization hierarchy and the members of each organization',
+        ]);
+        $bundle = $this->createPrefix->execute('master.organization-chart', ServiceAction::SET_CODE, $chart);
+        $this->createPrefix->execute('master', ServiceAction::UNMANAGED_SET_CODE, $names('基本データ', 'Basic data'));
+        $this->createRouteResource->execute('master.organization-chart.show', $names('組織図', 'Organization chart'));
+        $search = $this->createRouteResource->execute('master.search', $names('基本データの検索', 'Basic data search'));
 
-        foreach (self::ROUTES as $name => [$ja, $en]) {
-            $resource = $this->createRouteResource->execute($name, ['ja' => ['display_name' => $ja], 'en' => ['display_name' => $en]]);
+        $everyone = [
+            $this->guestSubjectGroupId($this->findOrCreate),
+            $this->authenticatedSubjectGroupId($this->findOrCreate),
+        ];
 
-            foreach ($everyone as $subjectGroupId) {
-                $this->createPolicy->execute($resource->authz_resource_group_id, $subjectGroupId, ServiceAction::RESOURCE_TYPE, ServiceAction::Execute->value, PolicyEffect::Permit);
+        foreach ($everyone as $subjectGroupId) {
+            foreach ([$bundle->id, $search->authz_resource_group_id] as $resourceGroupId) {
+                $this->createPolicy->execute(
+                    $resourceGroupId,
+                    $subjectGroupId,
+                    ServiceAction::RESOURCE_TYPE,
+                    ServiceAction::Execute->value,
+                    PolicyEffect::Permit,
+                );
             }
         }
     }

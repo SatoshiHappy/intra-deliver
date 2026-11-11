@@ -46,7 +46,7 @@ final class AuthzSubjectControllerTest extends TransactionalTestCase
     }
 
     #[TestWith(['user', 'u0001', 'user_id', '佐々木 陽太'])]
-    #[TestWith(['role', 'master_admin', 'role_id', '共通マスタ管理者'])]
+    #[TestWith(['role', 'master_admin', 'role_id', '基本データ管理者'])]
     #[TestWith(['department', 'tokyo-sales', 'department_id', '東京営業課'])]
     #[TestWith(['post', 'manager', 'company_post_id', '部長'])]
     public function test_adds_a_column_with_one_condition_named_after_the_target_and_no_settings(
@@ -154,7 +154,7 @@ final class AuthzSubjectControllerTest extends TransactionalTestCase
     public function test_deletes_every_policy_of_the_column_in_every_type_and_the_column(): void
     {
         $column = $this->userColumn('u0001');
-        $this->place('http-services.master.search', $column, PolicyEffect::Permit);
+        $this->place('http-services-unmanaged.master.search', $column, PolicyEffect::Permit);
         $this->place('im-menu-group-global-nav-admin', $column, PolicyEffect::Deny, 'im-menu-group', 'read');
 
         $this->deleteColumn($column)->assertRedirect(self::OVERVIEW_URL)->assertSessionHasNoErrors();
@@ -192,7 +192,7 @@ final class AuthzSubjectControllerTest extends TransactionalTestCase
     {
         $column = $this->userColumn('u0001');
         $seen = app(SubjectGroupPolicyFingerprints::class)->of([$column])[$column];
-        $this->place('http-services.master.search', $column, PolicyEffect::Permit);
+        $this->place('http-services-unmanaged.master.search', $column, PolicyEffect::Permit);
 
         $this->deleteColumn($column, $seen)->assertSessionHasErrors(['subject' => DeleteAuthzColumn::STALE_MESSAGE]);
         $current = app(SubjectGroupPolicyFingerprints::class)->of([$column])[$column];
@@ -201,19 +201,18 @@ final class AuthzSubjectControllerTest extends TransactionalTestCase
         $this->deleteColumn($column, ['policyCount' => 0, 'fingerprint' => $current['fingerprint']])
             ->assertSessionHasErrors('subject');
 
-        $this->assertSame('permit', $this->directSetting('http-services.master.search', $column));
+        $this->assertSame('permit', $this->directSetting('http-services-unmanaged.master.search', $column));
     }
 
     public function test_deleting_the_column_that_lets_the_operator_open_and_save_is_rolled_back(): void
     {
         $column = $this->userColumn('u0001');
-        $this->place('http-services.authz.overview', $column, PolicyEffect::Permit);
-        $this->place('http-services.authz.editor', $column, PolicyEffect::Permit);
+        $this->place('http-services.authz.settings', $column, PolicyEffect::Permit);
         $this->actingAs($this->user('u0001'));
 
         $this->deleteColumn($column)->assertSessionHasErrors(['subject' => AuthzEditGuard::VIOLATION_MESSAGE]);
 
-        $this->assertSame(2, AuthzPolicy::query()->where('authz_subject_group_id', $column)->count());
+        $this->assertSame(1, AuthzPolicy::query()->where('authz_subject_group_id', $column)->count());
     }
 
     public function test_a_subject_for_selection_or_a_missing_subject_is_not_found(): void

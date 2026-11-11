@@ -4,6 +4,7 @@ namespace App\Queries\Workflow;
 
 use App\Queries\Authz\Api\Requester;
 use App\Queries\Authz\Api\RouteAuthorization;
+use App\Queries\Master\Api\OrganizationChartRoute;
 use App\Support\AccessContext;
 use Closure;
 
@@ -25,8 +26,8 @@ class PersonLinks
         $requester = Requester::fromAccessContext($context);
 
         return [
-            'organizationChart' => $this->routes->allows($requester, 'master.organization-chart', $context->date),
-            'authz' => $this->routes->allows($requester, 'authz.overview', $context->date),
+            'organizationChart' => $this->routes->allows($requester, OrganizationChartRoute::NAME, $context->date),
+            'authz' => $this->routes->allows($requester, 'authz.settings.show', $context->date),
         ];
     }
 

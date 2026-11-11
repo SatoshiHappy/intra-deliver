@@ -6,8 +6,9 @@ use App\Queries\Workflow\FlowDefinitionGate;
 use Illuminate\Foundation\Http\FormRequest;
 
 /**
- * 定義の管理の書き込み(管理のルート workflow.admin.flows.settings.update・referrers.update・versions.*・nodes.update)の入口の共通: authorize が
- * フロー・版・ノードの 404 を封筒の検証より先に確かめる(docs の 設計/ワークフロー/ルートの深さ/定義の管理.md 6 節。判定 = {@see FlowDefinitionGate})。
+ * 定義の管理の書き込み(管理のルート workflow.admin.flows.update-settings・update-referrers・store-version・disable-version・
+ * enable-version・update-node)の入口の共通: authorize がフロー・版・ノードの 404 を封筒の検証より先に確かめる
+ * (docs の 設計/ワークフロー/ルートの深さ/定義の管理.md 6 節。判定 = {@see FlowDefinitionGate})。
  * システム管理者だけが通るのはルートの認可が決める。版の無効・有効は封筒を持たない。
  */
 class FlowDefinitionRequest extends FormRequest

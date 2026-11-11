@@ -51,9 +51,9 @@ async function permit(page: Page, rowName: string, action = 0) {
     await expect(cell.getByText('許可', { exact: true })).toBeVisible();
 }
 
-// 初期状態で認可設定を開けない人に、2 つの許可(認可設定の画面と、編集の 4 ルートの接頭辞のグループ「認可設定の編集」の「実行」)と
+// 初期状態で認可設定を開けない人に、ルートの束「認可設定」(画面と編集の 4 ルート)の「実行」と
 // メニューグループ「管理」(歯車のアプリ)の「参照」を許可すると、その人が開いてセルを保存できる。
-test('認可設定を開けない人に 2 つの許可と「管理」の参照を足すと、開いてセルを保存できる', async ({
+test('認可設定を開けない人に束「認可設定」の許可と「管理」の参照を足すと、開いてセルを保存できる', async ({
     page,
 }) => {
     // 利用者の切替と列の追加・削除を含む長い一本道で、負荷のある回に既定の 60 秒を超えるため
@@ -66,7 +66,6 @@ test('認可設定を開けない人に 2 つの許可と「管理」の参照�
     await addApplicantColumn(page, APPLICANT.label);
     await chooseType(page, '画面・処理');
     await permit(page, '認可設定');
-    await permit(page, '認可設定の編集');
     await chooseType(page, 'メニューグループ');
     const cell = await subjectCell(page, menuAdminRow(page), APPLICANT_NAME);
     await press(page, cell);

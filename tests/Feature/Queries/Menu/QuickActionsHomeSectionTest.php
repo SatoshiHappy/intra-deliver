@@ -45,7 +45,7 @@ final class QuickActionsHomeSectionTest extends TransactionalTestCase
      */
     public function test_a_tile_whose_route_is_not_permitted_is_left_out(): void
     {
-        AuthzPolicy::query()->whereRelation('authzResourceGroup', 'code', 'http-services.workflow.flows.index')->delete();
+        AuthzPolicy::query()->whereRelation('authzResourceGroup', 'code', 'http-services-unmanaged.workflow.flows.index')->delete();
 
         $this->assertSame(
             ['home-quick-actions-workflow-cases-index-pending', 'home-quick-actions-workflow-cases-index-processed'],

@@ -13,7 +13,7 @@ import {
     DialogTitle,
     DialogTrigger,
 } from '@/components/ui/dialog';
-import { store, update } from '@/routes/records/admin/headings';
+import { storeHeading, updateHeading } from '@/routes/records/admin/modules';
 
 type Props = {
     /** 見出しを足す・変える業務モジュールのコード */
@@ -93,8 +93,8 @@ function HeadingForm({
         event.preventDefault();
         form.submit(
             heading === null
-                ? store(moduleCode)
-                : update({ module: moduleCode, heading: heading.id }),
+                ? storeHeading(moduleCode)
+                : updateHeading({ module: moduleCode, heading: heading.id }),
             { preserveScroll: true, onSuccess: onDone },
         );
     };

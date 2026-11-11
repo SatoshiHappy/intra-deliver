@@ -68,6 +68,7 @@ export function navigation(
         currentApp: null,
         currentItemPath: null,
         showSitemap: true,
+        showSearch: true,
         ...overrides,
     };
 }

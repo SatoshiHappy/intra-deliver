@@ -20,7 +20,7 @@ trait FindsAuthzSubjects
     {
         return $findOrCreate->execute(
             new SubjectConditionInput(metaSubject: MetaSubject::Anonymous),
-            ['ja' => ['display_name' => 'ゲストユーザ'], 'en' => ['display_name' => 'Guest user']],
+            ['ja' => ['display_name' => 'ゲストユーザー'], 'en' => ['display_name' => 'Guest user']],
         )->id;
     }
 
@@ -31,7 +31,7 @@ trait FindsAuthzSubjects
     {
         return $findOrCreate->execute(
             new SubjectConditionInput(metaSubject: MetaSubject::Authenticated),
-            ['ja' => ['display_name' => '認証済みユーザ'], 'en' => ['display_name' => 'Authenticated user']],
+            ['ja' => ['display_name' => 'ログイン済みユーザー'], 'en' => ['display_name' => 'Logged-in user']],
         )->id;
     }
 

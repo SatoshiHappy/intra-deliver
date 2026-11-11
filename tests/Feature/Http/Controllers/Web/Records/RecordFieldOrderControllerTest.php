@@ -12,7 +12,7 @@ use PHPUnit\Framework\Attributes\TestWith;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * 見出しと項目の並び替えの口 records.admin.fields.reorder(docs の 設計/業務データの入れ物/画面/README.md 1.1・設計/業務データの入れ物/画面/管理の画面.md 3.3、認可とメニュー/README.md 4 節、メニューと初期データ.md 8 節の「管理」、
+ * 見出しと項目の並び替えの口 records.admin.modules.reorder-fields(docs の 設計/業務データの入れ物/画面/README.md 1.1・設計/業務データの入れ物/画面/管理の画面.md 3.3、認可とメニュー/README.md 4 節、メニューと初期データ.md 8 節の「管理」、
  * 項目と規則/規則と業務処理/画面と検査.md 13 節の「ルート `reorder` が `{field}` に取られない」): ゲストと u0001 は 403 で並びが変わらず、
  * システム管理者(u0004)は並びが変わる。
  * 成功は定義の画面へ 303(トーストなし)、順列でない items はキー items のエラーで元の画面へ、業務モジュールが無ければ壊れた items でも 404。
@@ -100,7 +100,7 @@ final class RecordFieldOrderControllerTest extends TransactionalTestCase
     {
         $route = Route::getRoutes()->match(Request::create('/records/admin/modules/project/fields/reorder', 'PUT'));
 
-        $this->assertSame('records.admin.fields.reorder', $route->getName());
+        $this->assertSame('records.admin.modules.reorder-fields', $route->getName());
     }
 
     public function test_the_field_form_does_not_carry_the_sort_key(): void

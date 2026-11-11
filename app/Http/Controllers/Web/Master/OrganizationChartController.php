@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Web\Master;
 
 use App\Http\Controllers\Controller;
+use App\Queries\Master\Api\OrganizationChartRoute;
 use App\Queries\Master\OrganizationChartQuery;
 use App\Support\AccessContext;
 use App\Support\QueryParameters;
@@ -17,6 +18,9 @@ use Inertia\Response;
  */
 class OrganizationChartController extends Controller
 {
+    /** ルートの名前(ルートの定義が使う。正本は公開の口 {@see OrganizationChartRoute}) */
+    public const ROUTE_NAME = OrganizationChartRoute::NAME;
+
     public function __construct(private OrganizationChartQuery $chart) {}
 
     public function __invoke(Request $request): Response

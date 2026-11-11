@@ -11,7 +11,8 @@ final readonly class OverviewTreeNode
      * @param  int|null  $parentId  木の親の行のリソースグループ(先頭 = null)
      * @param  int  $depth  先頭 = 0
      * @param  string|null  $name  ロケールの表示名(行が無ければ null)
-     * @param  bool  $holdsResource  格子のタイプのリソースを持つ(判定する行)
+     * @param  string|null  $description  ロケールの説明(行が無いか説明が無ければ null。初期データではルートの束だけが持つ)
+     * @param  int|null  $judgementSourceId  判定の元のリソースグループ(判定しない行 = null。決め方は {@see OverviewTree})
      */
     public function __construct(
         public int $resourceGroupId,
@@ -19,6 +20,7 @@ final readonly class OverviewTreeNode
         public int $depth,
         public string $code,
         public ?string $name,
-        public bool $holdsResource,
+        public ?string $description,
+        public ?int $judgementSourceId,
     ) {}
 }

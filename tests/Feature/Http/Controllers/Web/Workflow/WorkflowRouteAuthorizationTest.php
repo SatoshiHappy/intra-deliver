@@ -43,10 +43,11 @@ final class WorkflowRouteAuthorizationTest extends TransactionalTestCase
         'workflow.admin.cases.index', 'workflow.admin.cases.retarget', 'workflow.admin.cases.reexpand',
         'workflow.admin.cases.move', 'workflow.admin.cases.assign', 'workflow.admin.cases.destroy',
         'workflow.admin.proxies.index', 'workflow.admin.proxies.store', 'workflow.admin.proxies.destroy',
-        'workflow.admin.flows.index', 'workflow.admin.flows.show', 'workflow.admin.flows.referrers.update',
-        'workflow.admin.flows.settings.update',
-        'workflow.admin.versions.store', 'workflow.admin.versions.disable', 'workflow.admin.versions.enable',
-        'workflow.admin.nodes.update', 'workflow.admin.subject-candidates',
+        'workflow.admin.flows.index', 'workflow.admin.flows.show', 'workflow.admin.flows.update-referrers',
+        'workflow.admin.flows.update-settings',
+        'workflow.admin.flows.store-version', 'workflow.admin.flows.disable-version',
+        'workflow.admin.flows.enable-version',
+        'workflow.admin.flows.update-node', 'workflow.admin.flows.subject-candidates',
     ];
 
     protected function setUp(): void
@@ -85,10 +86,10 @@ final class WorkflowRouteAuthorizationTest extends TransactionalTestCase
     public function test_the_module_has_64_policies_permitting_execute_to_the_guest_and_the_authenticated(): void
     {
         $summaries = AuthzPolicy::query()->with('authzResourceGroup')->get()
-            ->filter(fn (AuthzPolicy $policy) => str_starts_with((string) $policy->authzResourceGroup?->code, 'http-services.workflow'))
+            ->filter(fn (AuthzPolicy $policy) => str_starts_with((string) $policy->authzResourceGroup?->code, 'http-services-unmanaged.workflow'))
             ->map(fn (AuthzPolicy $policy) => "{$policy->authzResourceGroup?->code} {$policy->resource_type}:{$policy->action} {$policy->effect->value}")
             ->all();
-        $expected = array_merge(...array_map(fn (string $name) => array_fill(0, 2, "http-services.{$name} service:execute permit"), self::ROUTES));
+        $expected = array_merge(...array_map(fn (string $name) => array_fill(0, 2, "http-services-unmanaged.{$name} service:execute permit"), self::ROUTES));
 
         $this->assertCount(64, $summaries);
         $this->assertEqualsCanonicalizing($expected, array_values($summaries));

@@ -36,11 +36,12 @@ export type AuthzGridRow = {
     depth: number; // 先頭 = 0
     code: string; // リソースグループ ID
     name: string | null; // 表示名(無ければ null。画面はコードを出す)
+    description: string | null; // 説明(無ければ null。あれば行の名前の右の「?」の吹き出しに出す)
     settings: AuthzGridSetting[];
     judgements: AuthzGridJudgement[] | null; // null = この種類のリソースを持たない行(判定しない)。あればアクションの並び
 };
 
-/** 1 つのリソースの種類の格子 */
+/** 1 つの認可対象の種類の格子 */
 export type AuthzGrid = {
     resourceType: string; // 選んだリソースタイプの ID
     actions: string[]; // そのタイプのアクション(ResourceTypeCatalog の並び)
@@ -69,7 +70,7 @@ export type AuthzCan = {
 /** 「列を追加」の対象者の種類(認可設定の編集.md 3.1) */
 export type AuthzSubjectKind = 'user' | 'role' | 'department' | 'post';
 
-/** 「列を追加」の候補(authz.editor.subject-candidates の 1 件。主所属の名前はユーザーだけ) */
+/** 「列を追加」の候補(authz.settings.subject-candidates の 1 件。主所属の名前はユーザーだけ) */
 export type AuthzSubjectCandidate = {
     id: number;
     code: string;
@@ -77,7 +78,7 @@ export type AuthzSubjectCandidate = {
     mainDepartmentName: string | null;
 };
 
-/** 候補の口 authz.editor.subject-candidates の応答 */
+/** 候補の口 authz.settings.subject-candidates の応答 */
 export type AuthzSubjectCandidates = {
     candidates: AuthzSubjectCandidate[];
 };

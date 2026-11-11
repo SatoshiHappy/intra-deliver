@@ -71,8 +71,8 @@ final class SitemapControllerTest extends TransactionalTestCase
                 'description' => 'システムの設定',
                 'entry' => ['href' => '/authz/overview', 'isExternal' => false],
                 'children' => [
-                    $this->item('sitemap-admin-authz-overview', '認可設定', 'shield-check', '/authz/overview'),
-                    $this->item('sitemap-admin-master-organization-chart', '組織図', 'network', '/master/organization-chart'),
+                    $this->item('sitemap-admin-authz-settings-show', '認可設定', 'shield-check', '/authz/overview'),
+                    $this->item('sitemap-admin-master-organization-chart-show', '組織図', 'network', '/master/organization-chart'),
                     $this->item('sitemap-admin-records-admin-modules-index', '業務モジュール', 'database', '/records/admin/modules'),
                     $this->item('sitemap-admin-records-admin-categories-index', 'モジュール分類', 'folder-tree', '/records/admin/categories'),
                     $this->item(

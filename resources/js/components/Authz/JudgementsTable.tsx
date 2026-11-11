@@ -39,7 +39,7 @@ export function JudgementsTable({ grid, rows, tree }: Props) {
                         scope="col"
                         className="sticky left-0 z-30 min-w-64 border-b align-bottom"
                     >
-                        リソース
+                        認可対象
                     </GridHead>
                     {grid.actions.map((action) => (
                         <GridHead

@@ -18,8 +18,8 @@ export const APPLICANT: Person = {
 
 /** 初期データが作る組み込みの 3 列(認可設定の編集.md 5.2)の見出し */
 export const BUILTIN_COLUMNS = [
-    'ゲストユーザ',
-    '認証済みユーザ',
+    'ゲストユーザー',
+    'ログイン済みユーザー',
     'システム管理者',
 ];
 
@@ -104,7 +104,9 @@ export function menuAdminRow(page: Page) {
 }
 
 /**
- * 行の、subject の列の action 番目(0 始まり)のセル。列の位置は見出しの 2 行目(対象者の行)の幅から数える。
+ * 行の、subject の列の action 番目(0 始まり)のセル。列の位置は見出しの 1 行目(対象者の行。先頭の「認可対象」の見出しは数えない)の幅から数える。
+ * 列は見出しの名前(最初の span の先頭の文字。同じ span の札・「…」と、下の種類を含めない)の完全一致で引く
+ * (種類の語「ロール」などに部分一致させないため)。
  */
 export async function subjectCell(
     page: Page,
@@ -114,13 +116,17 @@ export async function subjectCell(
 ) {
     const index = await page
         .locator('thead tr')
-        .nth(1)
+        .first()
         .locator('th')
         .evaluateAll((heads, name) => {
             let position = 0;
 
-            for (const head of heads) {
-                if ((head.textContent ?? '').includes(name)) {
+            for (const head of heads.slice(1)) {
+                if (
+                    head
+                        .querySelector('span')
+                        ?.firstChild?.textContent?.trim() === name
+                ) {
                     return position;
                 }
 
@@ -143,10 +149,10 @@ export async function press(page: Page, cell: Locator) {
 }
 
 /**
- * リソースの種類を選ぶ(編集中のまま部分再読み込みされる)。
+ * 認可対象の種類を選ぶ(編集中のまま部分再読み込みされる)。
  */
 export async function chooseType(page: Page, label: string) {
-    const type = page.getByRole('combobox', { name: 'リソースの種類' });
+    const type = page.getByRole('combobox', { name: '認可対象の種類' });
     await type.click();
     await page.getByRole('option', { name: label, exact: true }).click();
     await expect(type).toHaveText(label);

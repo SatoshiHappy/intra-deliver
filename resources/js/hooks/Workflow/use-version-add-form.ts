@@ -1,6 +1,6 @@
 import { useForm } from '@inertiajs/react';
 import type { FormEvent } from 'react';
-import { store } from '@/routes/workflow/admin/versions';
+import { storeVersion } from '@/routes/workflow/admin/flows';
 
 /**
  * 版を追加するダイアログの入力と送信(docs の 設計/ワークフロー/ルートの深さ/画面/定義の管理の画面.md の 4 節)。
@@ -20,7 +20,7 @@ export function useVersionAddForm(
         setStartDate: (value: string) => form.setData('start_date', value),
         submit: (event: FormEvent) => {
             event.preventDefault();
-            form.submit(store(flow), {
+            form.submit(storeVersion(flow), {
                 preserveScroll: true,
                 onSuccess: onSucceeded,
             });

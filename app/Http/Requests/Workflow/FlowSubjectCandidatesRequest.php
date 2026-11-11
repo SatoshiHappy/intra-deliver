@@ -8,7 +8,7 @@ use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Enum;
 
 /**
- * 定義の管理の対象者の候補 workflow.admin.subject-candidates の入力 { q, type }(docs の 設計/ワークフロー/ルートの深さ/画面/README.md 1.1 節):
+ * 定義の管理の対象者の候補 workflow.admin.flows.subject-candidates の入力 { q, type }(docs の 設計/ワークフロー/ルートの深さ/画面/README.md 1.1 節):
  * q は 100 文字以内(無い・空なら候補は空)。type は任意で、あればその種類だけを引く(確認する人の候補 = type=user。
  * 設計/ワークフロー/案件の運用/定義の管理.md 2 節)。無ければ 4 種類をまとめて引く。文言は認可設定の候補の入口と同じ。
  * 失敗は Laravel の既定の応答(JSON の要求なので 422)。

@@ -7,13 +7,6 @@ import { showsActionRow } from '@/lib/Authz/gridView';
 import { actionLabel } from '@/lib/Authz/labels';
 
 /**
- * 同じ束(カテゴリ)の列の数(対象者 × アクションと、対象者の間の空き)。
- */
-function bundleSpan(group: ColumnGroup, actionCount: number): number {
-    return group.subjects.length * (actionCount + 1) - 1;
-}
-
-/**
  * 束の間隔の種類(先頭の束の左 = edge、そのほかの束の左 = between)。
  */
 function bundleGap(index: number) {
@@ -21,7 +14,7 @@ function bundleGap(index: number) {
 }
 
 /**
- * 「設定」タブの見出し。段 1 = カテゴリ、段 2 = 対象者(部分下線と札「該当」)、段 3 = アクション(2 つ以上のときだけ)。
+ * 「設定」タブの見出し。段 1 = 対象者(名前・種類・部分下線・札「該当」)、段 2 = アクション(2 つ以上のときだけ)。
  */
 export function SettingsHead({
     groups,
@@ -38,25 +31,11 @@ export function SettingsHead({
         <>
             <TableRow>
                 <GridHead
-                    rowSpan={showActions ? 3 : 2}
+                    rowSpan={showActions ? 2 : 1}
                     className="sticky left-0 z-30 min-w-64 border-b align-bottom"
                 >
-                    リソース
+                    認可対象
                 </GridHead>
-                {groups.map((group, index) => (
-                    <Fragment key={group.category.code}>
-                        <GapHead kind={bundleGap(index)} />
-                        <GridHead
-                            scope="colgroup"
-                            colSpan={bundleSpan(group, actions.length)}
-                            className="h-8 text-center text-xs font-normal text-muted-foreground"
-                        >
-                            {group.category.name ?? group.category.code}
-                        </GridHead>
-                    </Fragment>
-                ))}
-            </TableRow>
-            <TableRow>
                 {groups.map((group, index) => (
                     <Fragment key={group.category.code}>
                         <GapHead kind={bundleGap(index)} />

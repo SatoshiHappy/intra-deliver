@@ -63,8 +63,8 @@ final class CreateRecordModuleTest extends TransactionalTestCase
         $this->assertSame(['record-module', 'record-module-equipment', 'record-modules'], [$resource->resource_type, $group->code, $group->parent?->code]);
         $this->assertSame(['備品', '備品'], $group->authzResourceGroupTranslations->map(fn (AuthzResourceGroupTranslation $translation) => $translation->display_name)->all());
         $this->assertEqualsCanonicalizing([
-            'read ゲストユーザ', 'create ゲストユーザ', 'update ゲストユーザ', 'delete ゲストユーザ',
-            'read 認証済みユーザ', 'create 認証済みユーザ', 'update 認証済みユーザ', 'delete 認証済みユーザ',
+            'read ゲストユーザー', 'create ゲストユーザー', 'update ゲストユーザー', 'delete ゲストユーザー',
+            'read ログイン済みユーザー', 'create ログイン済みユーザー', 'update ログイン済みユーザー', 'delete ログイン済みユーザー',
         ], $this->policiesOn($group->id));
         $this->assertSame([
             ['global-nav-main-records-equipment', 'global-nav-main', '/records/data/equipment', 'table', 130, ['備品', '備品']],

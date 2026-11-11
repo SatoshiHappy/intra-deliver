@@ -2,7 +2,7 @@ import { Link } from '@inertiajs/react';
 import { RecordFieldTable } from '@/components/Records/RecordFieldTable';
 import { RecordHeadingDialog } from '@/components/Records/RecordHeadingDialog';
 import { Button } from '@/components/ui/button';
-import { create as createField } from '@/routes/records/admin/fields';
+import { createField } from '@/routes/records/admin/modules';
 import type {
     RecordAdminHeading,
     RecordAdminItem,

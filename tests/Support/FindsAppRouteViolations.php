@@ -22,7 +22,7 @@ trait FindsAppRouteViolations
 {
     /**
      * 初期データを入れた後に、名前から決まる URI の service のリソースが無いか、そのリソースグループ ID と親のリソースグループ ID が
-     * 名前から決まるもの(2.3 の表)でないルートの URI(検査 2)。
+     * 置き場と名前から決まるもの(2.3 の表)でないルートの URI(検査 2)。
      *
      * @param  list<RoutingRoute>  $routes
      * @return list<string>
@@ -33,9 +33,12 @@ trait FindsAppRouteViolations
 
         return array_values(array_map(fn (RoutingRoute $route) => $route->uri(), array_filter($routes, function (RoutingRoute $route) use ($routeResources) {
             $name = (string) $route->getName();
-            $group = AuthzResource::query()->with('authzResourceGroup.parent')->where('uri', $routeResources->uriOf($name))->where('resource_type', 'service')->first()?->authzResourceGroup;
+            $set = $routeResources->setOf($name);
+            $group = AuthzResource::query()->with('authzResourceGroup.parent')
+                ->where('uri', $routeResources->uriOf($name))->where('resource_type', 'service')->first()?->authzResourceGroup;
+            $expected = [$routeResources->resourceGroupCodeOf($set, $name), $routeResources->parentResourceGroupCodeOf($set, $name)];
 
-            return [$group?->code, $group?->parent?->code] !== [$routeResources->resourceGroupCodeOf($name), $routeResources->parentResourceGroupCodeOf($name)];
+            return [$group?->code, $group?->parent?->code] !== $expected;
         })));
     }
 
@@ -70,8 +73,8 @@ trait FindsAppRouteViolations
     }
 
     /**
-     * 名前が無いか、名前の規則(形・長さ・ほかの名前の接頭辞にならない)に合わないか、名前の先頭の区切りがそのルートの処理の持ち主のモジュールでない
-     * ルートの URI。
+     * 名前が無いか、名前の規則(形・長さ・ほかの名前の接頭辞にならない・置き場が http-services のルートどうしで同じ接頭辞の直下にルートと
+     * より長い接頭辞を混ぜない)に合わないか、名前の先頭の区切りがそのルートの処理の持ち主のモジュールでないルートの URI。
      *
      * @param  list<RoutingRoute>  $routes
      * @return list<string>
@@ -82,6 +85,7 @@ trait FindsAppRouteViolations
             fn (RoutingRoute $route) => $route->uri(),
             array_filter($routes, fn (RoutingRoute $route) => $route->getName() === null
                 || ! $this->routeResources()->followsNameRules($route->getName())
+                || $this->routeResources()->isUnderMixedPrefix($route->getName())
                 || ! in_array(explode('.', $route->getName())[0], $this->namePrefixesFor($route), true)),
         ));
     }

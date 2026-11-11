@@ -61,6 +61,7 @@ use App\Actions\Records\UpdateRecordModule;
 use App\Actions\Records\UpdateRecordRule;
 use App\Enums\Authz\PolicyEffect;
 use App\Enums\Authz\SelectionConditionKind;
+use App\Enums\Authz\ServiceAction;
 use App\Enums\Authz\SubjectCombination;
 use App\Enums\Menu\MenuType;
 use App\Enums\Menu\WorkMenuGroup;
@@ -152,7 +153,7 @@ final class CommonMasterLockTest extends TransactionalTestCase
             CreatePolicy::class => [fn (self $test) => app(CreatePolicy::class)->execute(AuthzResourceGroup::factory()->create()->id, AuthzSubjectGroup::factory()->create()->id, 'service', 'execute', PolicyEffect::Permit)],
             CreateResource::class => [fn (self $test) => app(CreateResource::class)->execute('example.home', AuthzResourceGroup::factory()->create()->id, 'service', 'service://example/home', [])],
             CreateResourceGroup::class => [fn (self $test) => app(CreateResourceGroup::class)->execute('example.menu', AuthzResourceGroup::factory()->create()->id, [])],
-            CreateRoutePrefixResourceGroup::class => [fn (self $test) => app(CreateRoutePrefixResourceGroup::class)->execute('example', [])],
+            CreateRoutePrefixResourceGroup::class => [fn (self $test) => app(CreateRoutePrefixResourceGroup::class)->execute('example', ServiceAction::SET_CODE, [])],
             CreateRouteResource::class => [fn (self $test) => $test->createRouteResource()],
             CreateSubjectGroup::class => [fn (self $test) => app(CreateSubjectGroup::class)->execute(SubjectCombination::All, [new SubjectConditionInput(roleId: Role::factory()->create()->id)], [])],
             FindOrCreateSingleConditionSubjectGroup::class => [fn (self $test) => app(FindOrCreateSingleConditionSubjectGroup::class)->execute(new SubjectConditionInput(roleId: Role::factory()->create()->id), [])],

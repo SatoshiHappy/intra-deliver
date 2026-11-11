@@ -12,7 +12,7 @@ use Illuminate\Database\Seeder;
 /**
  * 初期データ: ロール・サブロール・付与(認可のリソースとポリシーはメニューの単位で入れる)。
  *
- * サブロール = システム管理者 ⊃ 共通マスタ管理者、ワークフロー管理者 ⊃ 一般利用者(親ロールを持つ人は子ロールも持つ)。
+ * サブロール = システム管理者 ⊃ 基本データ管理者、ワークフロー管理者 ⊃ 一般利用者(親ロールを持つ人は子ロールも持つ)。
  * 全員に一般利用者を既定の期間(登録日 = ユーザーの開始日から、ユーザーが続けて有効な間)で付ける。退職者の付与は退職の日で切れる。
  * ワークフロー管理者の 1 人は 2026-03-31 で終える(終了日 2026-04-01 = その日を含まない)。
  */
@@ -23,7 +23,7 @@ class RoleSeeder extends Seeder
     /** ロール: コード => [ロール名, 表示名(ja), 表示名(en), カテゴリ, 並び順] */
     private const ROLES = [
         'system_admin' => ['system_admin', 'システム管理者', 'System administrator', 'administration', 1],
-        'master_admin' => ['master_admin', '共通マスタ管理者', 'Master data administrator', 'administration', 2],
+        'master_admin' => ['master_admin', '基本データ管理者', 'Basic data administrator', 'administration', 2],
         'workflow_admin' => ['workflow_admin', 'ワークフロー管理者', 'Workflow administrator', 'workflow', 3],
         'general_user' => ['general_user', '一般利用者', 'General user', 'basic', 4],
     ];

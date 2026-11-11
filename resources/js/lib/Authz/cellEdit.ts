@@ -41,7 +41,7 @@ export function nextSetting(current: DirectSetting): DirectSetting {
 }
 
 /**
- * セルの切替の入力(authz.editor.cells.update。docs の 設計/ワークフロー/申請の周辺/認可設定の編集.md 2.2)。
+ * セルの切替の入力(authz.settings.update-cell。docs の 設計/ワークフロー/申請の周辺/認可設定の編集.md 2.2)。
  */
 export function cellPayload(resourceType: string, target: CellTarget) {
     const from = directSettingOf(target.setting);

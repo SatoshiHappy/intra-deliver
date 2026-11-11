@@ -8,6 +8,7 @@ use App\Actions\Authz\CreateRouteResource;
 use App\Actions\Authz\FindOrCreateSingleConditionSubjectGroup;
 use App\Actions\Authz\SubjectConditionInput;
 use App\Enums\Authz\PolicyEffect;
+use App\Enums\Authz\ServiceAction;
 use App\Enums\Authz\SubjectCombination;
 use App\Http\Middleware\Authz\AuthorizeRoute;
 use App\Models\Authz\AuthzPolicy;
@@ -134,7 +135,7 @@ final class SubjectQueryScopedTest extends TransactionalTestCase
     {
         Route::middleware(['web', AuthorizeRoute::class])
             ->get('/test/departmental', fn () => 'ok')->name('test.departmental');
-        app(CreateRoutePrefixResourceGroup::class)->execute('test', []);
+        app(CreateRoutePrefixResourceGroup::class)->execute('test', ServiceAction::SET_CODE, []);
         $resource = app(CreateRouteResource::class)->execute('test.departmental', []);
         $subjectGroup = app(FindOrCreateSingleConditionSubjectGroup::class)
             ->execute(new SubjectConditionInput(departmentId: $this->department->id), []);

@@ -27,7 +27,7 @@ const ACTION_LABELS: Record<string, string> = {
 export const RESULT_LABELS = {
     permit: '許可',
     deny: '禁止',
-    block: '閉塞',
+    block: '使用停止',
 } as const;
 
 /**
@@ -45,12 +45,12 @@ export function actionLabel(action: string): string {
 }
 
 /**
- * 閉塞の行の札(全部のアクションが閉塞なら「閉塞中」、一部なら閉塞のアクションを括弧に並べる)。
+ * 閉塞の行の札(全部のアクションが閉塞なら「使用停止中」、一部なら閉塞のアクションを括弧に並べる)。
  */
 export function blockedLabel(blocked: string[], actions: string[]): string {
     return blocked.length === actions.length
-        ? '閉塞中'
-        : `閉塞中(${blocked.map(actionLabel).join('、')})`;
+        ? '使用停止中'
+        : `使用停止中(${blocked.map(actionLabel).join('、')})`;
 }
 
 /**

@@ -4,6 +4,7 @@ namespace App\Http\Middleware\Menu;
 
 use App\Queries\Authz\Api\Requester;
 use App\Queries\Authz\Api\RouteAuthorization;
+use App\Queries\Master\Api\OrganizationChartRoute;
 use App\Queries\Menu\CurrentApp;
 use App\Queries\Menu\MenuDisplayQuery;
 use App\Support\AccessContext;
@@ -15,7 +16,8 @@ use Symfony\Component\HttpFoundation\Response;
 /**
  * 骨格の共有プロパティ appNavigation を全ページに渡す(docs の 設計/メニュー/表示.md 3.2 の「置き場」・3.3): ランチャーのアプリ launcher
  * (カテゴリ im_global_nav_pc の表示判定の結果)、歯車のアプリ adminMenu(admin_menu_pc の表示判定の結果)、今のアプリのグループの code currentApp と
- * 現在地のパス currentItemPath(3.3.2 = {@see CurrentApp}。無ければ null)、サイトマップを出すか showSitemap(ルート menu.sitemap の execute)。
+ * 現在地のパス currentItemPath(3.3.2 = {@see CurrentApp}。無ければ null)、サイトマップを出すか showSitemap(ルート menu.sitemap の execute)、
+ * 見出しの検索欄を出すか showSearch(組織図のルートの execute = 人のリンクの組織図と同じ判定。docs の 設計/共通マスタ/検索と組織図.md 3.2)。
  * 起動の配線が routes/web.php のグループに、ルートの認可の後に付ける。
  *
  * クロージャで共有するので、判定は Inertia の応答を描くときだけ走る。always の props にするので、部分再読み込み(only で別の props だけを求める要求)
@@ -48,6 +50,7 @@ class ShareAppNavigation
                 'adminMenu' => $adminMenu,
                 ...$this->currentApp->of($request->path(), [...$launcher, ...$adminMenu]),
                 'showSitemap' => $this->routes->allows($requester, 'menu.sitemap', $date),
+                'showSearch' => $this->routes->allows($requester, OrganizationChartRoute::NAME, $date),
             ];
         }));
 

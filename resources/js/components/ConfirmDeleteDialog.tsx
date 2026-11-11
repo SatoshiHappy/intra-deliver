@@ -25,7 +25,10 @@ type Props = {
     description: string;
     /** 削除の後も今のスクロール位置を保つか(同じ画面に戻る管理の表 = true、別の画面へ移るレコードの削除 = false。既定 false) */
     preserveScroll?: boolean;
-    /** 削除の送り先(records.data.destroy・records.admin.fields.destroy・records.admin.rules.destroy・workflow.drafts.destroy) */
+    /**
+     * 削除の送り先(records.data.destroy・records.admin.modules.destroy-field・records.admin.modules.destroy-rule・
+     * workflow.drafts.destroy)
+     */
     action: RouteDefinition<'delete'>;
     /** 本文で送る値(ワークフローの一時保存の削除 = 画面を開いた時の改訂番号 { revision }。省くと送らない) */
     data?: Record<string, string | number>;

@@ -46,7 +46,7 @@ class AuthzCellRequest extends FormRequest
         return [
             'resource_group_id' => '行の指定が正しくありません',
             'subject_group_id' => '列の指定が正しくありません',
-            'type' => 'リソースの種類の指定が正しくありません',
+            'type' => '認可対象の種類の指定が正しくありません',
             'action' => 'アクションの指定が正しくありません',
             'from' => '変更前の設定の指定が正しくありません',
             'to' => '変更後の設定の指定が正しくありません',

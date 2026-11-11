@@ -11,9 +11,9 @@ use App\Enums\Authz\ServiceAction;
 use Illuminate\Database\Seeder;
 
 /**
- * 通知の初期データ(docs の 設計/ワークフロー/案件の運用/認可と一覧.md の 4 節): 接頭辞のリソースグループ http-services.notice と、
+ * 通知の初期データ(docs の 設計/ワークフロー/案件の運用/認可と一覧.md の 4 節): 設定不可のセットに、接頭辞のリソースグループ http-services-unmanaged.notice と、
  * 通知の 4 ルートのリソースと、ゲストユーザと認証済みユーザへの execute の許可(8)。ゲストは通れても、一覧は空で既読は 403
- * (見られる範囲と可否は読み取りと業務処理が絞る)。システム管理者は http-services の先頭の許可を継承する(足さない)。すべて業務処理を通す。
+ * (見られる範囲と可否は読み取りと業務処理が絞る)。システム管理者は設定不可のセットの先頭の許可を継承する(足さない)。すべて業務処理を通す。
  */
 class NoticeSeeder extends Seeder
 {
@@ -36,7 +36,11 @@ class NoticeSeeder extends Seeder
 
     public function run(): void
     {
-        $this->createPrefix->execute('notice', self::displayNames('通知', 'Notifications'));
+        $this->createPrefix->execute(
+            'notice',
+            ServiceAction::UNMANAGED_SET_CODE,
+            self::displayNames('通知', 'Notifications'),
+        );
         $everyone = [
             $this->guestSubjectGroupId($this->findOrCreate),
             $this->authenticatedSubjectGroupId($this->findOrCreate),

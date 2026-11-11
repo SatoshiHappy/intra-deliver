@@ -1,4 +1,4 @@
-import { ArrowUp, Check, Minus, X } from 'lucide-react';
+import { ArrowUp, Check, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 /**
@@ -29,14 +29,5 @@ export function SettingMark({
                 )}
             />
         </span>
-    );
-}
-
-/**
- * 設定なしのアイコン。
- */
-export function NoSettingMark() {
-    return (
-        <Minus className="size-4 text-muted-foreground" aria-hidden="true" />
     );
 }

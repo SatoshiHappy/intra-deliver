@@ -42,39 +42,132 @@ export function parentIdsOf(rows: AuthzGridRow[]): Set<number> {
 /**
  * 検索の語(入力の前後の空白を除き、小文字にしたもの)。空なら検索していない。
  */
-export function searchTermOf(query: string): string {
+function keywordOf(query: string): string {
     return query.trim().toLowerCase();
 }
 
+/** 表に出す行と、そのうち開閉の記号を出す行 */
+export type VisibleRows = {
+    rows: AuthzGridRow[];
+    /** 開閉の記号を出す行の ID(子のある行のうち、開閉の状態を見て出す行) */
+    toggleable: ReadonlySet<number>;
+};
+
 /**
- * 表に出す行。検索の語(searchTermOf)が空なら、畳んだ行の配下を除いたすべて。語があれば、表示名(無ければコード)に部分一致
- * (大文字小文字を区別しない)する行とその祖先(畳んでいても出す)。
+ * 表示の範囲の選択肢 = 格子の深さ 1 の行(行の並びのまま。docs の 設計/共通マスタ/ロールと認可/認可の確認/認可設定の画面.md 2.3 の「表示の範囲」)。
+ */
+export function featureOptions(rows: AuthzGridRow[]): AuthzGridRow[] {
+    return rows.filter((row) => row.depth === 1);
+}
+
+/**
+ * クエリ feature の値(リソースグループのコード)に当たる表示の範囲の行。無い値・深さ 1 の行に無い値は null(「すべて」)。
+ */
+export function featureOf(
+    rows: AuthzGridRow[],
+    code: string | null,
+): AuthzGridRow | null {
+    return featureOptions(rows).find((row) => row.code === code) ?? null;
+}
+
+/**
+ * 表に出す行と開閉の記号(docs の 設計/共通マスタ/ロールと認可/認可の確認/認可設定の画面.md 2.3 の「縦軸の絞り込み」)。
+ * 絞るのは画面の中だけ(サーバーは種類のすべての行を送る)。
  */
 export function visibleRows(
     rows: AuthzGridRow[],
     query: string,
     collapsed: ReadonlySet<number>,
-): AuthzGridRow[] {
-    const byId = new Map(rows.map((row) => [row.resourceGroupId, row]));
+    featureId: number | null = null,
+): VisibleRows {
+    const range = rangeOf(rows, featureId);
+    const keyword = keywordOf(query);
 
-    const term = searchTermOf(query);
-
-    if (term === '') {
-        return rows.filter(
-            (row) => !ancestorsOf(row, byId).some((a) => collapsed.has(a)),
-        );
+    if (keyword === '') {
+        return browsedRows(rows, collapsed, range);
     }
 
     const shown = new Set<number>();
 
-    rows.filter((row) => nameOrCode(row).toLowerCase().includes(term)).forEach(
-        (row) => {
-            shown.add(row.resourceGroupId);
-            ancestorsOf(row, byId).forEach((id) => shown.add(id));
-        },
-    );
+    rows.filter(
+        (row) =>
+            range.ancestorsInRange(row) !== null &&
+            nameOrCode(row).toLowerCase().includes(keyword),
+    ).forEach((row) => {
+        shown.add(row.resourceGroupId);
+        range.ancestorsOf(row).forEach((id) => shown.add(id));
+    });
 
-    return rows.filter((row) => shown.has(row.resourceGroupId));
+    return {
+        rows: rows.filter((row) => shown.has(row.resourceGroupId)),
+        toggleable: new Set(),
+    };
+}
+
+/** 表示の範囲で絞る範囲(選んだ行と配下。選んでいなければすべての行) */
+type Range = {
+    ancestorsOf: (row: AuthzGridRow) => number[];
+    /** 範囲の中の祖先(範囲の外の行は null。含め方は「縦軸の絞り込み」の表の 9・10 行) */
+    ancestorsInRange: (row: AuthzGridRow) => number[] | null;
+    /** 選んだ行の祖先(選んでいなければ空) */
+    featureAncestors: ReadonlySet<number>;
+};
+
+function rangeOf(rows: AuthzGridRow[], featureId: number | null): Range {
+    const byId = new Map(rows.map((row) => [row.resourceGroupId, row]));
+    const feature = featureId === null ? undefined : byId.get(featureId);
+    const ancestors = (row: AuthzGridRow) => ancestorsOf(row, byId);
+
+    return {
+        ancestorsOf: ancestors,
+        ancestorsInRange: (row) => {
+            if (feature === undefined) {
+                return ancestors(row);
+            }
+
+            if (row.resourceGroupId === feature.resourceGroupId) {
+                return [];
+            }
+
+            const at = ancestors(row).indexOf(feature.resourceGroupId);
+
+            return at === -1 ? null : ancestors(row).slice(0, at + 1);
+        },
+        featureAncestors: new Set(
+            feature === undefined ? [] : ancestors(feature),
+        ),
+    };
+}
+
+/**
+ * 語が空のときの表に出す行と開閉の記号(「縦軸の絞り込み」の表の、語が空の行)。
+ */
+function browsedRows(
+    rows: AuthzGridRow[],
+    collapsed: ReadonlySet<number>,
+    range: Range,
+): VisibleRows {
+    const parents = parentIdsOf(rows);
+    const toggleable = new Set<number>();
+    const shown = rows.filter((row) => {
+        const ancestors = range.ancestorsInRange(row);
+
+        if (ancestors === null) {
+            return range.featureAncestors.has(row.resourceGroupId);
+        }
+
+        if (ancestors.some((id) => collapsed.has(id))) {
+            return false;
+        }
+
+        if (parents.has(row.resourceGroupId)) {
+            toggleable.add(row.resourceGroupId);
+        }
+
+        return true;
+    });
+
+    return { rows: shown, toggleable };
 }
 
 /**

@@ -5,7 +5,7 @@ import { subjectLabel } from '@/lib/Authz/gridColumns';
 import type { AuthzGridSubject } from '@/types';
 
 /**
- * 「設定」タブの対象者の見出し(部分下線と札「該当」)。canDelete のとき、組み込みでない列に「…」(列を削除)を添える。
+ * 「設定」タブの対象者の見出し(名前・その下に種類 = カテゴリの表示名(無ければコード)・部分下線と札「該当」)。canDelete のとき、組み込みでない列に「…」(列を削除)を添える。
  */
 export function SubjectHeadCell({
     subject,
@@ -21,7 +21,7 @@ export function SubjectHeadCell({
             scope="col"
             colSpan={colSpan}
             band={subject.matches}
-            className="h-9 border-b border-input pb-1.5 text-center align-bottom"
+            className="h-12 border-b border-input pb-1.5 text-center align-bottom"
         >
             <span className="inline-flex items-center gap-1.5">
                 {subjectLabel(subject)}
@@ -29,6 +29,9 @@ export function SubjectHeadCell({
                 {canDelete && !subject.builtin && (
                     <ColumnMenu subject={subject} />
                 )}
+            </span>
+            <span className="block text-xs font-normal text-muted-foreground">
+                {subject.category.name ?? subject.category.code}
             </span>
         </GridHead>
     );

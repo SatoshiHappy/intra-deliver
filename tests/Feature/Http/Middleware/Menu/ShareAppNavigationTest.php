@@ -32,6 +32,7 @@ final class ShareAppNavigationTest extends TransactionalTestCase
                 'currentApp' => null,
                 'currentItemPath' => null,
                 'showSitemap' => true,
+                'showSearch' => true,
             ])
         );
     }
@@ -75,8 +76,8 @@ final class ShareAppNavigationTest extends TransactionalTestCase
                 'description' => 'システムの設定',
                 'entry' => ['href' => '/authz/overview', 'isExternal' => false],
                 'children' => $this->items('global-nav-admin', [
-                    ['authz-overview', '認可設定', 'shield-check', '/authz/overview'],
-                    ['master-organization-chart', '組織図', 'network', '/master/organization-chart'],
+                    ['authz-settings-show', '認可設定', 'shield-check', '/authz/overview'],
+                    ['master-organization-chart-show', '組織図', 'network', '/master/organization-chart'],
                     ['records-admin-modules-index', '業務モジュール', 'database', '/records/admin/modules'],
                     ['records-admin-categories-index', 'モジュール分類', 'folder-tree', '/records/admin/categories'],
                     ['workflow-admin-flows-index', 'フロー定義', 'workflow', '/workflow/admin/flows'],
@@ -95,7 +96,8 @@ final class ShareAppNavigationTest extends TransactionalTestCase
     {
         $this->withoutVite();
         AuthzPolicy::query()->whereHas('authzResourceGroup', fn ($query) => $query->whereIn('code', [
-            'im-menu-group-global-nav-workflow', 'im-menu-group-global-nav-main', 'http-services.menu.sitemap',
+            'im-menu-group-global-nav-workflow', 'im-menu-group-global-nav-main',
+            'http-services-unmanaged.menu.sitemap',
         ]))->delete();
 
         $this->get('/')->assertInertia(fn (Assert $page) => $page

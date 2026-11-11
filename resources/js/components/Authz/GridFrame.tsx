@@ -3,7 +3,7 @@ import { TableBody, TableHeader } from '@/components/ui/table';
 
 /**
  * 見出しの行と先頭の列を止めるため、Table の入れ物を使わずページ側の div に table を置く。高さから引く 3rem は、ページを最後まで
- * 送ったときに枠の上端をヘッダーに隠さないため(枠の下の余白より少し大きくする。docs の 認可設定の画面.md 2.3)。
+ * 送ったときに枠の上端をヘッダーに隠さないため(枠の下の余白より少し大きくする。docs の 設計/共通マスタ/ロールと認可/認可の確認/認可設定の画面.md 2.3)。
  */
 export function GridFrame({
     head,

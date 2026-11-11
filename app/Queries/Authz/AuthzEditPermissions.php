@@ -14,13 +14,13 @@ use App\Support\AccessContext;
 class AuthzEditPermissions
 {
     /** 列を追加するルート */
-    public const SUBJECTS_STORE_ROUTE = 'authz.editor.subjects.store';
+    public const SUBJECTS_STORE_ROUTE = 'authz.settings.store-subject';
 
     /** 列を削除するルート */
-    public const SUBJECTS_DESTROY_ROUTE = 'authz.editor.subjects.destroy';
+    public const SUBJECTS_DESTROY_ROUTE = 'authz.settings.destroy-subject';
 
     /** 列を追加の候補のルート */
-    public const SUBJECT_CANDIDATES_ROUTE = 'authz.editor.subject-candidates';
+    public const SUBJECT_CANDIDATES_ROUTE = 'authz.settings.subject-candidates';
 
     public function __construct(private AuthzEditGuard $guard) {}
 

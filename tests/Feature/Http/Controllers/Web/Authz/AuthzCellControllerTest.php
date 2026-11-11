@@ -8,7 +8,11 @@ use App\Enums\Authz\SubjectGroupPurpose;
 use App\Models\Authz\AuthzPolicy;
 use App\Models\Authz\AuthzResourceGroup;
 use App\Models\Authz\AuthzSubjectGroup;
+use App\Queries\Authz\Api\Requester;
+use App\Queries\Authz\Api\RouteAuthorization;
 use Carbon\CarbonImmutable;
+use Illuminate\Routing\Route as RoutingRoute;
+use Illuminate\Support\Facades\Route;
 use PHPUnit\Framework\Attributes\TestWith;
 use Tests\Support\TransactionalTestCase;
 
@@ -21,7 +25,8 @@ final class AuthzCellControllerTest extends TransactionalTestCase
 {
     use EditsAuthz;
 
-    private const ROW = 'http-services.master.search';
+    /** 画面・処理の格子の行(ルートの束「組織図」。システム管理者は先頭から継承) */
+    private const ROW = 'http-services.master.organization-chart';
 
     protected function setUp(): void
     {
@@ -98,13 +103,27 @@ final class AuthzCellControllerTest extends TransactionalTestCase
         $this->assertSame('none', $this->directSetting(self::ROW, $selection->id));
     }
 
-    public function test_rejects_a_group_that_is_not_a_row_of_the_type(): void
+    /**
+     * 格子の行でないグループ(ほかのセットの先頭、設定不可のセットの先頭とその中のルート、画面・処理のルートの行)は 422 で、何も変わらない
+     * (行の出し方の表の #1・#5。認可設定の編集の 2.3 の 3)。
+     */
+    #[TestWith(['im-menu-group'])]
+    #[TestWith(['http-services-unmanaged'])]
+    #[TestWith(['http-services-unmanaged.master.search'])]
+    #[TestWith(['http-services.authz.settings.update-cell'])]
+    #[TestWith(['http-services.workflow.admin.cases.index'])]
+    public function test_rejects_a_group_that_is_not_a_row_of_the_type(string $groupCode): void
     {
         $column = $this->userColumn('u0001');
+        $guest = $this->guestColumn();
+        $policies = AuthzPolicy::query()->orderBy('id')->get(['id', 'effect'])->toArray();
 
-        $this->changeCell('im-menu-group', $column, 'none', 'permit')->assertSessionHasErrors('resource_group_id');
+        $notARow = ['resource_group_id' => 'この認可対象の種類の行ではありません'];
+        $this->changeCell($groupCode, $column, 'none', 'permit')->assertSessionHasErrors($notARow);
+        $this->changeCell($groupCode, $guest, $this->directSetting($groupCode, $guest), 'deny')
+            ->assertSessionHasErrors($notARow);
 
-        $this->assertSame('none', $this->directSetting('im-menu-group', $column));
+        $this->assertSame($policies, AuthzPolicy::query()->orderBy('id')->get(['id', 'effect'])->toArray());
     }
 
     public function test_rejects_a_type_or_an_action_missing_from_the_registered_types(): void
@@ -112,8 +131,11 @@ final class AuthzCellControllerTest extends TransactionalTestCase
         $column = $this->userColumn('u0001');
 
         $this->changeCell(self::ROW, $column, 'none', 'permit', ['type' => 'no-such-type'])
-            ->assertSessionHasErrors('type');
-        $this->changeCell(self::ROW, $column, 'none', 'permit', ['action' => 'read'])->assertSessionHasErrors('action');
+            ->assertSessionHasErrors(['type' => '認可対象の種類 no-such-type はありません']);
+        $this->changeCell(self::ROW, $column, 'none', 'permit', ['action' => 'read'])
+            ->assertSessionHasErrors(['action' => '認可対象の種類 service にアクション read はありません']);
+        $this->changeCell(self::ROW, $column, 'none', 'permit', ['type' => ''])
+            ->assertSessionHasErrors(['type' => '認可対象の種類の指定が正しくありません']);
 
         $this->assertSame(0, AuthzPolicy::query()->where('authz_subject_group_id', $column)->count());
     }
@@ -156,6 +178,31 @@ final class AuthzCellControllerTest extends TransactionalTestCase
 
         $this->assertSame('none', $this->directSetting('zz-no-resource', $column));
         $this->assertNotContains('zz-no-resource', $this->rowCodes());
+    }
+
+    /**
+     * ルートの束のセルは切り替えられ、配下のルートの判定に効く(8 節の行): 束「申請操作」を佐々木 陽太(u0001)の列で許可にすると、
+     * 配下の 6 ルートがすべて許可になる。
+     */
+    public function test_a_bundle_cell_changes_the_judgement_of_its_routes(): void
+    {
+        $routeNames = array_values(array_filter(
+            array_map(fn (RoutingRoute $route) => $route->getName(), Route::getRoutes()->getRoutes()),
+            fn (?string $name) => $name !== null && str_starts_with($name, 'workflow.admin.cases.'),
+        ));
+        $column = $this->userColumn('u0001');
+        $requester = new Requester($this->user('u0001')->id, null);
+        $allowed = fn () => array_map(
+            fn (string $name) => app(RouteAuthorization::class)->allows($requester, $name, CarbonImmutable::now()),
+            $routeNames,
+        );
+        $this->assertCount(6, $routeNames);
+        $this->assertSame(array_fill(0, 6, false), $allowed());
+
+        $this->changeCell('http-services.workflow.admin.cases', $column, 'none', 'permit')
+            ->assertSessionHasNoErrors();
+
+        $this->assertSame(array_fill(0, 6, true), $allowed());
     }
 
     public function test_a_guest_and_a_user_without_the_permission_are_forbidden(): void

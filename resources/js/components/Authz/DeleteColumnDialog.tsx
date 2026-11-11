@@ -45,7 +45,7 @@ export function DeleteColumnDialog({ subject, open, onOpenChange }: Props) {
                         </span>
                         <span>
                             この列に設定された {subject.policyCount}{' '}
-                            件の許可と禁止が、すべてのリソースの種類から削除されます。この操作は取り消せません。
+                            件の許可と禁止が、すべての認可対象の種類から削除されます。この操作は取り消せません。
                         </span>
                     </DialogDescription>
                 </DialogHeader>

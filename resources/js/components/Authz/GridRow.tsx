@@ -32,11 +32,11 @@ export function GridRow({ row, actions, tree, children }: Props) {
             )}
         >
             <ResourceCell
-                name={nameOrCode(row)}
+                label={{ name: nameOrCode(row), description: row.description }}
                 depth={row.depth}
                 hasChildren={hasChildren}
                 toggle={
-                    hasChildren && !tree.isSearching
+                    tree.toggleable.has(row.resourceGroupId)
                         ? {
                               isOpen: tree.isOpen(row.resourceGroupId),
                               onToggle: () => tree.toggle(row.resourceGroupId),

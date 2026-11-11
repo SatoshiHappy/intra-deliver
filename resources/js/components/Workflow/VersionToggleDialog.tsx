@@ -13,7 +13,7 @@ import {
     DialogTrigger,
 } from '@/components/ui/dialog';
 import { toastErrors } from '@/lib/flashToast';
-import { disable, enable } from '@/routes/workflow/admin/versions';
+import { disableVersion, enableVersion } from '@/routes/workflow/admin/flows';
 
 /** 無効にする / 有効にするの文言(確かめのダイアログ) */
 const TEXTS = {
@@ -36,7 +36,7 @@ const TEXTS = {
 function useToggle(flowCode: string, number: number, isDisabled: boolean) {
     const [open, setOpen] = useState(false);
     const [processing, setProcessing] = useState(false);
-    const route = isDisabled ? enable : disable;
+    const route = isDisabled ? enableVersion : disableVersion;
 
     const send = () =>
         router.post(

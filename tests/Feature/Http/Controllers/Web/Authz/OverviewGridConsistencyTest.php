@@ -14,6 +14,7 @@ use App\Enums\Authz\SelectionConditionKind;
 use App\Enums\Authz\SubjectCombination;
 use App\Enums\Authz\SubjectGroupPurpose;
 use App\Models\Authz\AuthzPolicy;
+use App\Models\Authz\AuthzResource;
 use App\Models\Authz\AuthzResourceGroup;
 use App\Models\Authz\AuthzSubjectGroup;
 use App\Models\Master\User;
@@ -26,7 +27,8 @@ use Tests\Support\TransactionalTestCase;
 /**
  * 認可設定の格子のセルと判定の口の一致(docs の 設計/共通マスタ/ロールと認可/認可の確認/README.md 4 節「Feature テスト」の判定の口との一致と、その入力。
  * 方針 3 = セルのたどり方が画面の読み取りと判定の口の 2 か所にあるのを止める検査): すべてのリソースタイプについて、判定のある行のアクションごとのセル
- * {(対象者, エフェクト, 置き場)} が、判定の口 explain の効いている設定のうち用途 policy の対象者のもの(置き場が行なら継承でない)と同じ。
+ * {(対象者, エフェクト, 置き場)} が、判定の口 explain の効いている設定のうち用途 policy の対象者のもの(置き場が行なら継承でない)と同じ
+ * (ルートの束は配下のすべてのルートの explain と照らす)。
  *
  * 入力 = 初期データ(ポリシーはすべて許可)に足す固定の木(メニューグループ im-menu-group の格子): 先頭 A に対象者 S1・S2 の read の許可、
  * A の子 B(リソースを持たない)に S1 の read の禁止(上書き)、B の子 C(リソースを持つ)は S1 の禁止を B から・S2 の許可を A から継承、
@@ -77,32 +79,53 @@ final class OverviewGridConsistencyTest extends TransactionalTestCase
             $this->assertNotEmpty($judgedRows, "{$resourceType} の判定のある行");
 
             foreach ($judgedRows as $row) {
-                $this->assertRowAgrees($row, $grid['actions']);
+                $this->assertRowAgrees($row, $grid['actions'], $resourceType);
             }
         }
     }
 
     /**
      * 行のアクションごとに、セルの {(対象者, エフェクト, 置き場のコード)} が explain の効いている設定の用途 policy の対象者のものと同じ。
+     * 照らす相手は、格子のタイプのリソースを持つ行ならその行、ルートの束なら配下のすべてのルート(ルートは設定を持たず、束の設定を継承する)。
      *
      * @param  array<string, mixed>  $row
      * @param  list<string>  $actions
      */
-    private function assertRowAgrees(array $row, array $actions): void
+    private function assertRowAgrees(array $row, array $actions, string $resourceType): void
     {
         $codes = AuthzResourceGroup::query()->pluck('code', 'id');
         $forPolicies = AuthzSubjectGroup::query()->where('purpose', SubjectGroupPurpose::Policy)->pluck('id')->all();
+        $holders = AuthzResource::query()->where('resource_type', $resourceType)
+            ->pluck('authz_resource_group_id')->all();
+        $targets = in_array($row['resourceGroupId'], $holders, true)
+            ? [$row['resourceGroupId']]
+            : array_values(array_intersect(
+                AuthzResourceGroup::query()->where('parent_id', $row['resourceGroupId'])->pluck('id')->all(),
+                $holders,
+            ));
+        $this->assertNotEmpty($targets, "{$row['code']} の照らす相手");
 
-        foreach ($actions as $action) {
-            $explanation = app(AuthorizationQuery::class)->explain(new Requester($this->administrator->id, null), $row['resourceGroupId'], $action, CarbonImmutable::now());
-            $expected = array_map(
-                fn (EffectivePolicy $policy) => "{$policy->subjectGroupId} {$policy->effect->value} {$codes->get($policy->resourceGroupId)}",
-                array_filter($explanation->policies, fn (EffectivePolicy $policy) => in_array($policy->subjectGroupId, $forPolicies, true)),
-            );
-            $actual = array_map(fn (array $cell) => "{$cell[0]} {$cell[1]} ".($cell[2] ?? $row['code']), $this->cells($row, $action));
-            sort($expected);
-            sort($actual);
-            $this->assertSame($expected, $actual, "{$row['code']} {$action}");
+        foreach ($targets as $target) {
+            foreach ($actions as $action) {
+                $requester = new Requester($this->administrator->id, null);
+                $explanation = app(AuthorizationQuery::class)
+                    ->explain($requester, $target, $action, CarbonImmutable::now());
+                $expected = array_map(
+                    fn (EffectivePolicy $policy) => "{$policy->subjectGroupId} {$policy->effect->value} "
+                        .$codes->get($policy->resourceGroupId),
+                    array_filter(
+                        $explanation->policies,
+                        fn (EffectivePolicy $policy) => in_array($policy->subjectGroupId, $forPolicies, true),
+                    ),
+                );
+                $actual = array_map(
+                    fn (array $cell) => "{$cell[0]} {$cell[1]} ".($cell[2] ?? $row['code']),
+                    $this->cells($row, $action),
+                );
+                sort($expected);
+                sort($actual);
+                $this->assertSame($expected, $actual, "{$row['code']} の {$codes->get($target)} {$action}");
+            }
         }
     }
 
