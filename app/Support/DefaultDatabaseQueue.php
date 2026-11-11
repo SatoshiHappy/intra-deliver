@@ -12,10 +12,21 @@ use Illuminate\Support\Facades\Config;
  */
 final class DefaultDatabaseQueue
 {
+    /** 既定のキューの接続の名前が文字列でないときの文 */
+    private const NO_DEFAULT = '既定のキューの接続の名前(config/queue.php の default = QUEUE_CONNECTION)が文字列でない';
+
     /** 既定のキューの接続の名前(config/queue.php の default) */
     public static function connection(): string
     {
         return Config::string('queue.default');
+    }
+
+    /** 既定のキューの接続の名前(文字列でなければ null。起動の時の確かめは投げずに文にする) */
+    private static function defaultName(): ?string
+    {
+        $name = Config::get('queue.default');
+
+        return is_string($name) ? $name : null;
     }
 
     /**
@@ -26,7 +37,13 @@ final class DefaultDatabaseQueue
      */
     public static function storeProblems(?string $connection = null): array
     {
-        $key = 'queue.connections.'.($connection ?? self::connection());
+        $name = $connection ?? self::defaultName();
+
+        if ($name === null) {
+            return [self::NO_DEFAULT];
+        }
+
+        $key = 'queue.connections.'.$name;
 
         if (Config::get("{$key}.driver") !== 'database') {
             return [$connection === null
@@ -40,14 +57,21 @@ final class DefaultDatabaseQueue
     }
 
     /**
-     * キューの接続(null = 既定のキューの接続)が、ジョブの投入をコミットの後に回す設定(after_commit)のときの文(偽なら空)。
+     * キューの接続(null = 既定のキューの接続)が、ジョブの投入をコミットの後に回す設定(after_commit)のときの文(偽なら空。既定のキューの接続の
+     * 名前が文字列でなければ空 = その文は {@see self::storeProblems()} が出す)。
      *
      * @param  string|null  $connection  キューの接続の名前(config/queue.php の connections の鍵)
      * @return list<string>
      */
     public static function afterCommitProblems(?string $connection = null): array
     {
-        $key = 'queue.connections.'.($connection ?? self::connection()).'.after_commit';
+        $name = $connection ?? self::defaultName();
+
+        if ($name === null) {
+            return [];
+        }
+
+        $key = 'queue.connections.'.$name.'.after_commit';
 
         return (bool) Config::get($key)
             ? ["設定 {$key}(config/queue.php)が真(ジョブの投入がコミットの後に回り、実行の記録と同じトランザクションに入らない)"]

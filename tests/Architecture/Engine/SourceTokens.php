@@ -2,12 +2,7 @@
 
 namespace Tests\Architecture\Engine;
 
-use FilesystemIterator;
 use InvalidArgumentException;
-use RecursiveCallbackFilterIterator;
-use RecursiveDirectoryIterator;
-use RecursiveIteratorIterator;
-use SplFileInfo;
 use UnexpectedValueException;
 
 /**
@@ -26,16 +21,23 @@ final class SourceTokens
      * @param  list<string>  $tokens
      * @param  list<string>  $excluded  走査から外すパスパターン(走査ルート起点。{@see Paths::matches()} の書き方)。
      *                                  末尾が `/**` のパターンに一致するディレクトリは中に入らない(依存物の巨大なディレクトリを辿らない)
+     * @param  list<string>  $links  たどるディレクトリのリンク(走査ルート起点。{@see SourceTree::files()})
      * @return list<Finding>
      *
      * @throws InvalidArgumentException パスが無いとき(対象の不在を対象 0 件にしない)
+     * @throws UnexpectedValueException 走査する木に、たどるリンクの一覧の外のディレクトリのリンクがあるとき
      */
-    public static function inPhpCode(string $root, array $paths, array $tokens, array $excluded = []): array
-    {
+    public static function inPhpCode(
+        string $root,
+        array $paths,
+        array $tokens,
+        array $excluded = [],
+        array $links = [],
+    ): array {
         $findings = [];
 
         foreach ($paths as $path) {
-            foreach (self::phpFiles($root, $path, $excluded) as $file) {
+            foreach (self::phpFiles($root, $path, $excluded, $links) as $file) {
                 $text = self::blankStringLiterals(self::read($root.'/'.$file));
                 array_push($findings, ...self::occurrences($text, $tokens, $file));
             }
@@ -64,16 +66,19 @@ final class SourceTokens
 
     /**
      * 走査ルート $root の配下で glob $patterns({@see Paths::matchesGlob()})のどれかに一致するファイル(走査ルート起点。名前順)。
-     * `.` で始まるファイル・ディレクトリには入らない。
+     * `.` で始まるファイル・ディレクトリには入らない({@see self::inPhpCode()} と同じ)。
      *
      * @param  list<string>  $patterns
      * @param  list<string>  $excluded  走査から外すパスパターン({@see self::inPhpCode()} と同じ)
+     * @param  list<string>  $links  たどるディレクトリのリンク({@see self::inPhpCode()} と同じ)
      * @return list<string>
+     *
+     * @throws UnexpectedValueException 走査する木に、たどるリンクの一覧の外のディレクトリのリンクがあるとき
      */
-    public static function globFiles(string $root, array $patterns, array $excluded = []): array
+    public static function globFiles(string $root, array $patterns, array $excluded = [], array $links = []): array
     {
         $files = array_values(array_filter(
-            self::filesUnder($root, $root, $excluded),
+            SourceTree::files($root, $root, $excluded, $links),
             fn (string $file): bool => ! self::isExcluded($file, $excluded)
                 && array_any($patterns, fn (string $pattern): bool => Paths::matchesGlob($pattern, $file)),
         ));
@@ -137,11 +142,12 @@ final class SourceTokens
 
     /**
      * @param  list<string>  $excluded
+     * @param  list<string>  $links
      * @return list<string>
      *
      * @throws InvalidArgumentException
      */
-    private static function phpFiles(string $root, string $path, array $excluded): array
+    private static function phpFiles(string $root, string $path, array $excluded, array $links): array
     {
         $relative = Paths::normalize($path);
         $absolute = $relative === '' ? $root : $root.'/'.$relative;
@@ -155,42 +161,12 @@ final class SourceTokens
         }
 
         $files = array_values(array_filter(
-            self::filesUnder($root, $absolute, $excluded),
+            SourceTree::files($root, $absolute, $excluded, $links),
             fn (string $file): bool => str_ends_with($file, '.php') && ! self::isExcluded($file, $excluded),
         ));
         sort($files, SORT_STRING);
 
         return $files;
-    }
-
-    /**
-     * ディレクトリ $absolute の配下のファイル(走査ルート起点)。`.` で始まるものと、除外で配下がすべて外れるディレクトリには入らない。
-     *
-     * @param  list<string>  $excluded
-     * @return list<string>
-     */
-    private static function filesUnder(string $root, string $absolute, array $excluded): array
-    {
-        $directories = new RecursiveCallbackFilterIterator(
-            new RecursiveDirectoryIterator($absolute, FilesystemIterator::SKIP_DOTS),
-            fn (SplFileInfo $entry): bool => ! str_starts_with($entry->getFilename(), '.')
-                && (! $entry->isDir() || ! self::isPrunedDirectory(self::relativeTo($root, $entry), $excluded)),
-        );
-        $files = [];
-
-        /** @var SplFileInfo $entry */
-        foreach (new RecursiveIteratorIterator($directories) as $entry) {
-            if ($entry->isFile()) {
-                $files[] = self::relativeTo($root, $entry);
-            }
-        }
-
-        return $files;
-    }
-
-    private static function relativeTo(string $root, SplFileInfo $entry): string
-    {
-        return Paths::normalize(substr($entry->getPathname(), strlen($root) + 1));
     }
 
     /**
@@ -200,24 +176,6 @@ final class SourceTokens
     {
         foreach ($excluded as $pattern) {
             if (Paths::matches($pattern, $file)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * ディレクトリ $directory の配下がすべて除外されるか(末尾が `/**` のパターンの前半に一致する)。
-     *
-     * @param  list<string>  $excluded
-     */
-    private static function isPrunedDirectory(string $directory, array $excluded): bool
-    {
-        foreach ($excluded as $pattern) {
-            $normalized = Paths::normalize($pattern);
-
-            if (str_ends_with($normalized, '/**') && Paths::matches(substr($normalized, 0, -3), $directory)) {
                 return true;
             }
         }

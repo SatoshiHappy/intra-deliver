@@ -18,10 +18,10 @@ parametersSchema:
 		roots: listOf(string()),
 		classDirectories: listOf(string()),
 	])
-	singleClassFile: structure([
+	singleClassFile: listOf(structure([
 		directory: string(),
 		namespace: string(),
-	])
+	]))
 	classOnlyFile: structure([
 		directories: listOf(string()),
 		returnClassDirectories: listOf(string()),
@@ -67,8 +67,7 @@ services:
 		arguments:
 			roots: %codeLayout.roots%
 			classDirectories: %codeLayout.classDirectories%
-			directory: %singleClassFile.directory%
-			namespace: %singleClassFile.namespace%
+			groups: %singleClassFile%
 		tags:
 			- phpstan.rules.rule
 	-

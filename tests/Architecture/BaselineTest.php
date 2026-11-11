@@ -7,7 +7,9 @@ use Tests\Architecture\Engine\Baseline;
 use Tests\Architecture\Engine\ExclusionLedger;
 use Tests\Architecture\Engine\Process;
 use Tests\Architecture\Engine\TempDirectory;
+use Tests\Architecture\Policy\Baselines;
 use Tests\Architecture\Policy\Licenses;
+use Tests\Architecture\Policy\SourceDirectories;
 use UnexpectedValueException;
 
 /**
@@ -104,6 +106,27 @@ final class BaselineTest extends BaselineTestCase
         $this->writeAndCommit('{"a.php": 1, "b.php": 2}', 'sort');
 
         $this->assertSame([], self::raisedFromBranch((string) $this->repository, self::FILE, 'main'));
+    }
+
+    public function test_tracked_baselines_have_no_path_under_the_private_root(): void
+    {
+        $root = dirname(__DIR__, 2);
+        $found = [];
+
+        foreach (Baselines::FILES as $file) {
+            $baseline = Baseline::fromJson((string) file_get_contents($root.'/'.$file), $file);
+            $keys = $baseline->keysUnder(SourceDirectories::PRIVATE_ROOT);
+            array_push($found, ...array_map(fn (string $key): string => "{$file}: {$key}", $keys));
+        }
+
+        $this->assertSame([], $found, '追跡するベースラインに手元だけのリポジトリの道がある(手元で直す)');
+    }
+
+    public function test_detects_a_path_under_the_private_root_in_a_baseline(): void
+    {
+        $baseline = Baseline::of(['ai-private/app/Long.php' => 1, 'app/Long.php' => 2, 'ai-privateer/x.php' => 1]);
+
+        $this->assertSame(['ai-private/app/Long.php'], $baseline->keysUnder(SourceDirectories::PRIVATE_ROOT));
     }
 
     public function test_rejects_a_malformed_baseline(): void

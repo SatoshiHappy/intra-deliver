@@ -29,6 +29,7 @@ final class CodeLayout
 
     /**
      * 置き場の規則(アプリのルート起点のパス → 置けるディレクトリとファイル。files が null ならファイルは何でも置ける)。
+     * app/ の規則は、App\ のクラスを置くディレクトリ({@see SourceDirectories::APP}。手元だけのリポジトリの移した版を含む)のどれにも同じに当てる。
      *
      * @param  list<string>  $baseDirectories  台帳① app/ の直下に置けるディレクトリ
      * @param  list<string>  $modules  宣言したモジュール({@see Modules::names()})
@@ -36,17 +37,19 @@ final class CodeLayout
      */
     public static function placements(array $baseDirectories, array $modules): array
     {
-        $rules = [
-            'app' => ['directories' => $baseDirectories, 'files' => []],
-            'app/Http' => ['directories' => self::HTTP_DIRECTORIES, 'files' => []],
-            'app/Http/Controllers' => ['directories' => self::CONTROLLERS_DIRECTORIES, 'files' => self::CONTROLLERS_FILES],
-        ];
+        $rules = [];
 
-        foreach (Modules::NAMESPACES as $namespace) {
-            $rules[self::directoryOf($namespace)] = [
-                'directories' => $modules,
-                'files' => in_array($namespace, self::MODULE_PLACES_WITH_FILES, true) ? null : [],
-            ];
+        foreach (SourceDirectories::APP as $app) {
+            $rules[$app] = ['directories' => $baseDirectories, 'files' => []];
+            $rules[$app.'/Http'] = ['directories' => self::HTTP_DIRECTORIES, 'files' => []];
+            $rules[$app.'/Http/Controllers'] = ['directories' => self::CONTROLLERS_DIRECTORIES, 'files' => self::CONTROLLERS_FILES];
+
+            foreach (Modules::NAMESPACES as $namespace) {
+                $rules[self::directoryOf($namespace, $app)] = [
+                    'directories' => $modules,
+                    'files' => in_array($namespace, self::MODULE_PLACES_WITH_FILES, true) ? null : [],
+                ];
+            }
         }
 
         $rules[Modules::PAGES_DIRECTORY] = ['directories' => $modules, 'files' => []];
@@ -59,10 +62,10 @@ final class CodeLayout
     }
 
     /**
-     * App\ の名前空間のディレクトリ(アプリのルート起点。App\ = app/)。
+     * App\ の名前空間の、クラスを置くディレクトリ $app(アプリのルート起点。例 = app)の下のディレクトリ。
      */
-    public static function directoryOf(string $namespace): string
+    public static function directoryOf(string $namespace, string $app): string
     {
-        return 'app/'.str_replace('\\', '/', substr($namespace, strlen('App\\')));
+        return $app.'/'.str_replace('\\', '/', substr($namespace, strlen(SourceDirectories::APP_NAMESPACE.'\\')));
     }
 }

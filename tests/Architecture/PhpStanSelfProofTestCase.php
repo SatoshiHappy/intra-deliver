@@ -34,7 +34,18 @@ abstract class PhpStanSelfProofTestCase extends SelfProofTestCase
      */
     protected static function analyse(string $fixtureRoot, string $configuration = self::CONFIGURATION): ProcessResult
     {
-        return self::$results[$configuration.' '.$fixtureRoot] ??= ExclusiveLock::run(self::lockFile(), static fn (): ProcessResult => Process::run(
+        return self::analysePath('tests/Architecture/fixtures/'.$fixtureRoot, $configuration);
+    }
+
+    /**
+     * 走査ルート $path(アプリのルートからの相対パスか絶対パス)に、設定 $configuration(tests/Architecture/fixtures からの相対パス)で
+     * phpstan を掛けた結果を返す。$environment は設定が読む環境変数(テストの中で作る一時の木の場所など)。
+     *
+     * @param  array<string, string>  $environment
+     */
+    protected static function analysePath(string $path, string $configuration, array $environment = []): ProcessResult
+    {
+        return self::$results[$configuration.' '.$path] ??= ExclusiveLock::run(self::lockFile(), static fn (): ProcessResult => Process::run(
             [
                 'vendor/bin/phpstan',
                 'analyse',
@@ -42,10 +53,10 @@ abstract class PhpStanSelfProofTestCase extends SelfProofTestCase
                 '--error-format=json',
                 '--no-progress',
                 '--memory-limit=1G',
-                'tests/Architecture/fixtures/'.$fixtureRoot,
+                $path,
             ],
             dirname(__DIR__, 2),
-            ['PHPSTAN_FIXTURES_TMP_DIR' => self::fixturesTmpDir()],
+            ['PHPSTAN_FIXTURES_TMP_DIR' => self::fixturesTmpDir(), ...$environment],
         ));
     }
 

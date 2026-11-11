@@ -5,7 +5,10 @@ namespace App\Queries\Ai;
 use LogicException;
 
 /**
- * モジュール Ai の設定 config/ai_runs.php を読む(docs の 設計/AI/実行と費用/接続先と費用.md 5 節)。形が合わない設定は作りの誤り(LogicException)。
+ * モジュール Ai の設定 config/ai_runs.php を読む(docs の 設計/AI/実行と費用/接続先と費用.md 5 節)。形が合わない設定は、値を使う所では作りの誤り
+ * (LogicException)、起動の時の確かめ(`*Problems`)では食い違いの文(ほかの確かめを続ける)。確かめの止め方 = docs の
+ * 設計/AI/実行と費用/接続先と費用.md 5.4。
+ * 形の規則は {@see AiSettingsShape} の 1 か所。
  * 種類の設定 kinds は {@see KindSettings}、種類によらない文字起こしの値 transcription は {@see TranscriptionSettings} が読み、ほかをここで読む。
  *
  * @phpstan-type PriceTier array{up_to_input_tokens: int|null, input: float, output: float, cache_read: float, cache_write: float}
@@ -13,8 +16,59 @@ use LogicException;
  */
 class AiSettings
 {
+    /** 予算の区分の期間(config/ai_runs.php の budget の区分の鍵 → 文の名前。短い順) */
+    public const BUDGET_PERIODS = ['daily_usd' => '日', 'monthly_usd' => '月', 'total_usd' => '累計'];
+
     /** 送り直しの待ちの上限(ライブラリは 10 秒以内の待ちの指示にだけ従う) */
     private const RETRY_WAIT_SECONDS = 10;
+
+    /**
+     * 起動の時の確かめの、種類によらない表の形の食い違い(docs の 設計/AI/データと失敗と検査.md 8 節)。
+     *
+     * @return list<string>
+     */
+    public function problems(): array
+    {
+        return AiSettingsShape::problems();
+    }
+
+    /**
+     * 起動の時の確かめ: 接続先・モデルの単価の形の食い違い。単価が無い・表が配列でない({@see self::problems()} が出す)なら空。
+     *
+     * @return list<string>
+     */
+    public function priceProblems(string $provider, string $model): array
+    {
+        return AiSettingsShape::entryProblems(AiSettingsShape::price($provider, $model)[0], "{$provider}.{$model}");
+    }
+
+    /** 形の判定: 予算の区分の表が配列か */
+    public function budgetTableFits(): bool
+    {
+        return self::fits(AiSettingsShape::table('budget'));
+    }
+
+    /** 形の判定: キューの配り直すまでの時間が正の整数か */
+    public function retryAfterFits(): bool
+    {
+        return self::fits(AiSettingsShape::retryAfter());
+    }
+
+    /** 形の判定: 見積もりの表が配列で、値がどれも数か */
+    public function estimateFits(): bool
+    {
+        $fits = fn (string $key): bool => self::fits(AiSettingsShape::estimate($key));
+
+        return array_all(AiSettingsShape::ESTIMATE_KEYS, $fits);
+    }
+
+    /** 形の判定: 予算の区分 $budget が表に在る配列で、期間の上限がどれも数か数の文字列か無し */
+    public function budgetLimitsFit(string $budget): bool
+    {
+        $periods = array_keys(self::BUDGET_PERIODS);
+
+        return array_all($periods, fn (string $period): bool => self::fits(AiSettingsShape::budget($budget, $period)));
+    }
 
     /**
      * 接続先(config/ai.php の providers の名前)の driver。無ければ null。
@@ -30,56 +84,73 @@ class AiSettings
      * 接続先・モデルの単価の段の一覧(入力のトークンの上限の小さい順)。単価が無ければ空。
      *
      * @return list<PriceTier>
+     *
+     * @throws LogicException 表が配列でない・段の形が合わないとき
      */
     public function priceTiers(string $provider, string $model): array
     {
-        $tiers = $this->price($provider, $model);
-
-        if (! is_array($tiers) || array_key_exists('per_audio_minute', $tiers)) {
-            return [];
-        }
-
-        return array_values(array_map(fn (mixed $tier): array => $this->priceTier($tier, "{$provider}.{$model}"), $tiers));
+        return self::tiersOf($this->checkedPrice($provider, $model));
     }
 
     /**
-     * 接続先・モデルのトークンの単価が、どの入力の量にも当たるか(段があり、最後の段に入力の上限が無い)。単価の段の規則の 1 か所
-     * (費用を 0 と数えて上限をすり抜けないため = docs の 設計/AI/実行と費用/接続先と費用.md 5 節。起動の時の確かめが使う)。
-     *
-     * @throws LogicException 段の形が合わないとき
+     * 起動の時の確かめ: トークンの単価が、どの入力の量にも当たるか(最後の段に入力の上限が無い。費用を 0 と数えて上限をすり抜けないため)。
+     * null = 確かめが止まる(docs の 設計/AI/実行と費用/接続先と費用.md 5.4)。
      */
-    public function pricesEveryInput(string $provider, string $model): bool
+    public function pricesEveryInput(string $provider, string $model): ?bool
     {
-        $tiers = $this->priceTiers($provider, $model);
+        if (! $this->priceFits($provider, $model)) {
+            return null;
+        }
+
+        $tiers = self::tiersOf(AiSettingsShape::price($provider, $model)[0]);
 
         return $tiers !== [] && end($tiers)['up_to_input_tokens'] === null;
+    }
+
+    /**
+     * 起動の時の確かめ: 音声の分単価があるか(費用を 0 と数えて上限をすり抜けないため)。null = 確かめが止まる(接続先と費用.md 5.4)。
+     */
+    public function pricesPerAudioMinute(string $provider, string $model): ?bool
+    {
+        if (! $this->priceFits($provider, $model)) {
+            return null;
+        }
+
+        $price = AiSettingsShape::price($provider, $model)[0];
+
+        return is_array($price) && AiSettingsShape::isAudioMinutePrice($price);
     }
 
     /**
      * 接続先・モデルの音声の分単価(1 分あたりの米ドル)。分単価でなければ null。
      *
      * @return AudioMinutePrice|null
+     *
+     * @throws LogicException 表が配列でない・分単価の形が合わないとき
      */
     public function audioMinutePrice(string $provider, string $model): ?array
     {
-        $price = $this->price($provider, $model);
-        $perMinute = is_array($price) ? ($price['per_audio_minute'] ?? null) : null;
-        $label = "pricing.{$provider}.{$model}.per_audio_minute";
+        $price = $this->checkedPrice($provider, $model);
 
-        return is_array($perMinute) ? [
-            'input' => $this->number($perMinute['input'] ?? null, "{$label}.input"),
-            'output' => $this->number($perMinute['output'] ?? null, "{$label}.output"),
-        ] : null;
+        if (! is_array($price) || ! AiSettingsShape::isAudioMinutePrice($price)) {
+            return null;
+        }
+
+        $perMinute = (array) $price['per_audio_minute'];
+
+        return ['input' => (float) $perMinute['input'], 'output' => (float) $perMinute['output']];
     }
 
     /**
      * 予算の区分の名前(設定 budget の鍵)。
      *
      * @return list<string>
+     *
+     * @throws LogicException 表が配列でないとき
      */
     public function budgetNames(): array
     {
-        return array_map('strval', array_keys($this->table('budget')));
+        return self::valueOf(AiSettingsShape::budgetNames());
     }
 
     /**
@@ -90,19 +161,7 @@ class AiSettings
      */
     public function budget(string $budget, string $period): ?float
     {
-        $limits = $this->table('budget')[$budget] ?? null;
-
-        if (! is_array($limits)) {
-            throw new LogicException("config/ai_runs.php の budget の区分 {$budget} が無いか配列でない");
-        }
-
-        $value = $limits[$period] ?? null;
-
-        if ($value === null) {
-            return null;
-        }
-
-        return $this->number(is_numeric($value) ? (float) $value : $value, "budget.{$budget}.{$period}");
+        return self::valueOf(AiSettingsShape::budget($budget, $period));
     }
 
     /**
@@ -120,25 +179,27 @@ class AiSettings
      */
     public function queueRetryAfter(): int
     {
-        $seconds = config('queue.connections.database.retry_after');
-
-        if (! is_int($seconds) || $seconds <= 0) {
-            throw new LogicException('config/queue.php の connections.database.retry_after が正の整数でない');
-        }
-
-        return $seconds;
+        return (int) self::valueOf(AiSettingsShape::retryAfter());
     }
 
-    /** 見積もりの係数(送る文の 1 文字あたりの入力のトークン) */
+    /**
+     * 見積もりの係数(送る文の 1 文字あたりの入力のトークン)。
+     *
+     * @throws LogicException 表が配列でない・数でないとき
+     */
     public function charsFactor(): float
     {
-        return $this->number($this->table('estimate')['chars_factor'] ?? null, 'estimate.chars_factor');
+        return (float) self::valueOf(AiSettingsShape::estimate('chars_factor'));
     }
 
-    /** 見積もりの上乗せ(入力のトークン) */
+    /**
+     * 見積もりの上乗せ(入力のトークン)。
+     *
+     * @throws LogicException 表が配列でない・数でないとき
+     */
     public function overheadTokens(): int
     {
-        return (int) $this->number($this->table('estimate')['overhead_tokens'] ?? null, 'estimate.overhead_tokens');
+        return (int) self::valueOf(AiSettingsShape::estimate('overhead_tokens'));
     }
 
     /**
@@ -153,52 +214,84 @@ class AiSettings
         return is_int($days) && $days > 0 ? $days : throw new LogicException('config/ai_runs.php の retention_days が正の整数でない');
     }
 
-    /** 接続先・モデルの単価の設定の値(段の一覧か分単価。無ければ null) */
-    private function price(string $provider, string $model): mixed
+    /**
+     * 接続先・モデルの単価の設定の値(段の一覧か分単価。無ければ null)。
+     *
+     * @throws LogicException 表が配列でない・形が合わないとき
+     */
+    private function checkedPrice(string $provider, string $model): mixed
     {
-        $byProvider = $this->table('pricing')[$provider] ?? null;
+        $price = self::valueOf(AiSettingsShape::price($provider, $model));
+        $problems = AiSettingsShape::entryProblems($price, "{$provider}.{$model}");
 
-        return is_array($byProvider) ? ($byProvider[$model] ?? null) : null;
+        return $problems === [] ? $price : throw new LogicException($problems[0]);
+    }
+
+    /** 単価の確かめの止めの判定(単価の表の形 → 項目の形。接続先と費用.md 5.4) */
+    private function priceFits(string $provider, string $model): bool
+    {
+        $checked = AiSettingsShape::price($provider, $model);
+
+        return self::fits($checked) && AiSettingsShape::entryProblems($checked[0], "{$provider}.{$model}") === [];
     }
 
     /**
-     * @return PriceTier
+     * 形を確かめた単価の設定の値の段の一覧(分単価・無いなら空)。
+     *
+     * @return list<PriceTier>
      */
-    private function priceTier(mixed $tier, string $label): array
+    private static function tiersOf(mixed $price): array
     {
-        if (! is_array($tier) || ! array_key_exists('up_to_input_tokens', $tier) || ! ($tier['up_to_input_tokens'] === null || is_int($tier['up_to_input_tokens']))) {
-            throw new LogicException("config/ai_runs.php の pricing.{$label} の段の形が合わない");
+        if (! is_array($price) || AiSettingsShape::isAudioMinutePrice($price)) {
+            return [];
         }
 
+        return array_values(array_map(fn (mixed $tier): array => self::tierOf((array) $tier), $price));
+    }
+
+    /**
+     * 値と形の食い違いの組の、形の判定(食い違いが無いか)。
+     *
+     * @param  array{mixed, list<string>}  $checked
+     */
+    private static function fits(array $checked): bool
+    {
+        return $checked[1] === [];
+    }
+
+    /**
+     * 形を確かめた段の値。
+     *
+     * @param  array<array-key, mixed>  $tier
+     * @return PriceTier
+     */
+    private static function tierOf(array $tier): array
+    {
+        $limit = $tier['up_to_input_tokens'];
+
         return [
-            'up_to_input_tokens' => $tier['up_to_input_tokens'],
-            'input' => $this->number($tier['input'] ?? null, "pricing.{$label}.input"),
-            'output' => $this->number($tier['output'] ?? null, "pricing.{$label}.output"),
-            'cache_read' => $this->number($tier['cache_read'] ?? null, "pricing.{$label}.cache_read"),
-            'cache_write' => $this->number($tier['cache_write'] ?? null, "pricing.{$label}.cache_write"),
+            'up_to_input_tokens' => is_int($limit) ? $limit : null,
+            'input' => (float) $tier['input'],
+            'output' => (float) $tier['output'],
+            'cache_read' => (float) $tier['cache_read'],
+            'cache_write' => (float) $tier['cache_write'],
         ];
     }
 
-    private function number(mixed $value, string $label): float
-    {
-        if (! is_int($value) && ! is_float($value)) {
-            throw new LogicException("config/ai_runs.php の {$label} が数でない");
-        }
-
-        return (float) $value;
-    }
-
     /**
-     * @return array<array-key, mixed>
+     * 値と食い違いの文の組の値(文があれば最初の文で作りの誤り)。
+     *
+     * @template T
+     *
+     * @param  array{T, list<string>}  $checked
+     * @return T
+     *
+     * @throws LogicException
      */
-    private function table(string $key): array
+    private static function valueOf(array $checked): mixed
     {
-        $value = config("ai_runs.{$key}");
+        [$value, $problems] = $checked;
 
-        if (! is_array($value)) {
-            throw new LogicException("config/ai_runs.php の {$key} が配列でない");
-        }
-
-        return $value;
+        return $problems === [] ? $value : throw new LogicException($problems[0]);
     }
 }

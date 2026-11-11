@@ -28,6 +28,7 @@ $fixtureExclusion = ['path' => 'tests/Architecture/fixtures/**', 'reason' => '�
 $analysisExclusions = [
     ['path' => 'bootstrap/cache/**', 'reason' => '生成物(Laravel が書くパッケージ・サービスのキャッシュ)'],
     ['path' => 'storage/**', 'reason' => '生成物(コンパイル済みのテンプレート・ログ・セッションなど。git 管理外)'],
+    ['path' => 'public/storage/**', 'reason' => 'storage:link が作るリンク(先の storage/app/public は storage/** で外す)'],
     ['path' => 'resources/views/**', 'reason' => 'Blade のテンプレート(phpstan が解析しない。置けるのは Inertia の根のテンプレートだけで、中身は検査しない = コード構成 4 節)'],
 ];
 

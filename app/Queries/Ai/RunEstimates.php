@@ -15,6 +15,7 @@ use LogicException;
  * @phpstan-import-type TranscriptionKindSettings from KindSettings
  * @phpstan-import-type ConversationKindSettings from KindSettings
  * @phpstan-import-type AnyKindSettings from KindSettings
+ * @phpstan-import-type AllKindSettings from KindSettings
  */
 class RunEstimates
 {
@@ -75,28 +76,29 @@ class RunEstimates
     /**
      * 予算の区分の見積もりの上限 = 区分に属する種類の 1 依頼の見積もりの上限({@see self::ceilingOfKind()})の最大。種類が無ければ 0。
      *
-     * @throws LogicException 単価が無いとき
+     * @throws LogicException 種類の設定の形が合わない・単価が無いとき
      */
     public function ceilingOf(string $budget): string
     {
-        $kinds = [];
-
-        foreach ($this->kinds->codes() as $code) {
-            $kinds[$code] = $this->kinds->settings($code);
-        }
-
-        return $this->ceilingAmong($budget, array_filter($kinds));
+        return $this->ceilingAmong($budget, $this->kinds->all());
     }
 
     /**
-     * 渡した種類の設定のうち、区分に属するものの 1 依頼の見積もりの上限の最大(種類が無ければ 0)。
+     * 全部の種類の設定({@see KindSettings::all()} の組)のうち、区分に属するものの 1 依頼の見積もりの上限の最大(種類が無ければ 0)。
+     * 形の合わない種類がその区分に属しうるなら数えられない(見積もりの上限を小さく数えない)。
      *
-     * @param  array<string, AnyKindSettings>  $kinds  コード → 設定
+     * @param  AllKindSettings  $all
      *
-     * @throws LogicException 単価が無いとき
+     * @throws LogicException 形の合わない種類が区分に属しうる・単価が無いとき
      */
-    public function ceilingAmong(string $budget, array $kinds): string
+    public function ceilingAmong(string $budget, array $all): string
     {
+        [$kinds, $problems, $unfitting] = $all;
+
+        if (in_array(null, $unfitting, true) || in_array($budget, $unfitting, true)) {
+            throw new LogicException(implode(' / ', $problems));
+        }
+
         $ceiling = 0;
 
         foreach ($kinds as $kind) {

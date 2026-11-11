@@ -41,7 +41,8 @@ final class LoopholeChecks
     public function suppressionTokens(): CheckResult
     {
         $excluded = $this->ledger()->paths(Verification::SUPPRESSION_CHECKS);
-        $occurrences = SourceTokens::inPhpCode($this->targetRoot, Verification::SUPPRESSION_PATHS, Verification::SUPPRESSION_TOKENS, $excluded);
+        $paths = Verification::SUPPRESSION_PATHS;
+        $occurrences = SourceTokens::inPhpCode($this->targetRoot, $paths, Verification::SUPPRESSION_TOKENS, $excluded, SourceDirectories::LINKS);
 
         return new CheckResult(
             $this->ledger()->uncovered(Verification::SUPPRESSION_CHECKS, $occurrences),

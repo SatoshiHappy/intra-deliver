@@ -7,6 +7,7 @@ use Tests\Architecture\Engine\InternalDependencies;
 use Tests\Architecture\Engine\SourceTokens;
 use Tests\Architecture\Policy\Baselines;
 use Tests\Architecture\Policy\ModuleInternals;
+use Tests\Architecture\Policy\SourceDirectories;
 
 /**
  * ほかのモジュールの内部への依存の数(docs の 設計/コード構成/検査/README.md 6.2)の照合と自己証明。
@@ -63,8 +64,9 @@ final class ModuleInternalsTest extends BaselineTestCase
     {
         $files = SourceTokens::globFiles(
             $root,
-            [ModuleInternals::APP_DIRECTORY.'/**/*.php'],
+            ModuleInternals::filePatterns(),
             self::ledger($root)->paths([Baselines::MODULE_INTERNALS_CHECK]),
+            SourceDirectories::LINKS,
         );
 
         return ModuleInternals::dependencies()->pairs($root, $files);

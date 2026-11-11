@@ -9,6 +9,7 @@ use Tests\Architecture\Engine\TrackedFiles;
 use Tests\Architecture\Engine\Values;
 use Tests\Architecture\Engine\ViteConfig;
 use Tests\Architecture\Policy\Baselines;
+use Tests\Architecture\Policy\SourceDirectories;
 
 /**
  * 行の長さ(docs の 設計/コード構成/検査/README.md 6.2)の照合と自己証明。判定は {@see LineLengths}。
@@ -54,7 +55,8 @@ final class LineLengthTest extends BaselineTestCase
      */
     private static function overLimit(string $root): array
     {
-        $php = SourceTokens::globFiles($root, ['**/*.php'], self::ledger($root)->paths([Baselines::LINE_LENGTH_CHECK]));
+        $excluded = self::ledger($root)->paths([Baselines::LINE_LENGTH_CHECK]);
+        $php = SourceTokens::globFiles($root, Baselines::LINE_LENGTH_PHP_FILES, $excluded, SourceDirectories::LINKS);
         $lint = ViteConfig::lintSettings(dirname(__DIR__, 2), $root.'/'.Baselines::VITE_CONFIG);
         $scripts = TrackedFiles::without(
             TrackedFiles::withExtensions(TrackedFiles::notIgnored($root), Baselines::SCRIPT_EXTENSIONS),

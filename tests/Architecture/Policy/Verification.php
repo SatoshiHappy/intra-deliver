@@ -29,7 +29,8 @@ final class Verification
     /**
      * #6 (a) 抑制トークンを走査するパス(アプリのルート起点。ディレクトリは配下の *.php を再帰的に、ファイルは拡張子を問わず走査する)。
      * phpstan の解析の対象(PHPSTAN_ANALYSED_PATHS)と同じにし、台帳⑧ #6 の path で外したものを除く(解析するのに抑制を数えない場所を作らない。
-     * docs の 設計/chatpinet_2からの流用.md 3 節の Verification の行)。
+     * docs の 設計/chatpinet_2からの流用.md 3 節の Verification の行)。phpstan が解析する手元だけのリポジトリのリンクもたどる
+     * ({@see SourceDirectories::LINKS})。
      */
     public const SUPPRESSION_PATHS = self::PHPSTAN_ANALYSED_PATHS;
 

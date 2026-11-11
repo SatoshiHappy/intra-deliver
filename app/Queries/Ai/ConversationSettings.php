@@ -195,8 +195,8 @@ class ConversationSettings
     }
 
     /**
-     * 形の合う用途の食い違い: 単価があり最後の段に入力の上限が無い、足す指定が実行ごとに入れる鍵を持たない。ファイルを作るは、加えて接続先が
-     * Anthropic で、コード実行の時間単価がある(接続先と費用.md 5 節・データと失敗と検査.md 8 節)。
+     * 形の合う用途の食い違い(費用を 0 と数えず、実行ごとに入れる鍵を設定で上書きしないため。単価の止め方 = 接続先と費用.md 5.4、
+     * ファイルを作る = 設計/AI/ファイルの作業場.md 12.2)。
      *
      * @param  ConversationPurpose  $values
      * @return list<string>
@@ -204,9 +204,11 @@ class ConversationSettings
     private function purposeProblems(string $purpose, array $values): array
     {
         $label = "会話の用途 {$purpose}";
-        $problems = $this->settings->pricesEveryInput($values['provider'], $values['model'])
-            ? []
-            : ["{$label} の接続先とモデルの単価が無いか、最後の段に入力の上限がある(config/ai_runs.php の pricing)"];
+        $short = "{$label} の接続先とモデルの単価が無いか、最後の段に入力の上限がある(config/ai_runs.php の pricing)";
+        $problems = [
+            ...$this->settings->priceProblems($values['provider'], $values['model']),
+            ...($this->settings->pricesEveryInput($values['provider'], $values['model']) === false ? [$short] : []),
+        ];
 
         foreach (self::RUN_OPTION_KEYS as $key => $meaning) {
             $problems = array_key_exists($key, $values['provider_options'])

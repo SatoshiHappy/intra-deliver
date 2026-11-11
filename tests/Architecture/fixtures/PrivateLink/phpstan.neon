@@ -1,0 +1,12 @@
+# 手元だけのリポジトリへのリンク(アプリのルートの ai-private)の自己証明の fixture 用の phpstan 設定。
+# fixture の共通の設定(../phpstan.neon)を取り込み、アプリのルートだけを、テストの中で作る一時の木(tree/ の写しと、
+# 木の外の linked/ を指すリンク ai-private)に差し替える。一時の木の場所は PrivateLinkSelfProofTest が環境変数で渡す
+# (値は絶対パス。未定義だと設定の読み込みで失敗する)。規則の登録・判定本体・クラスを置くディレクトリは通常と同じ。
+
+includes:
+	- ../phpstan.neon
+
+parameters:
+	codeLayout:
+		roots!:
+			- %env.PHPSTAN_PRIVATE_LINK_ROOT%

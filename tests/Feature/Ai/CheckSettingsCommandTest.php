@@ -3,7 +3,6 @@
 namespace Tests\Feature\Ai;
 
 use Illuminate\Support\Facades\Artisan;
-use LogicException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Support\TransactionalTestCase;
 
@@ -43,17 +42,15 @@ final class CheckSettingsCommandTest extends TransactionalTestCase
     }
 
     /**
-     * 日だけでなく月・累計の上限も、数でない値は起動の確かめで止まる(作りの誤り = docs の 設計/AI/実行と費用/接続先と費用.md の 5 節。
-     * コマンドの外では未処理の例外で終了コード 1)。
+     * 日だけでなく月・累計の上限も、数でない値は起動の確かめで止まる(上限なしに倒さない = docs の 設計/AI/実行と費用/接続先と費用.md の 5 節)。
+     * 確かめの中では投げずに食い違いの文にして終了コード 1(ほかの形の誤りの分 = SettingsShapeChecksTest)。
      */
     #[DataProvider('budgetPeriods')]
     public function test_a_non_numeric_budget_limit_of_any_period_stops_the_check(string $key): void
     {
         config(["ai_runs.budget.{$key}" => 'unlimited']);
 
-        $this->expectException(LogicException::class);
-        $this->expectExceptionMessage("config/ai_runs.php の budget.{$key} が数でない");
-
-        Artisan::call('ai:check-settings');
+        $this->assertSame(1, Artisan::call('ai:check-settings'));
+        $this->assertSame("config/ai_runs.php の budget.{$key} が数でない\n", Artisan::output());
     }
 }

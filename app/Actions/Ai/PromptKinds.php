@@ -4,6 +4,7 @@ namespace App\Actions\Ai;
 
 use App\Actions\Ai\Api\PromptKind;
 use App\Actions\Ai\Instructions\DefaultInstructionBuilder;
+use App\Actions\Ai\Instructions\InstructionBuilder;
 use App\Queries\Ai\ConversationSettings;
 use App\Queries\Ai\KindSettings;
 use App\Support\DefaultDatabaseQueue;
@@ -28,6 +29,7 @@ class PromptKinds
         private KindLimitChecks $limits,
         private ConversationSettings $conversation,
         private DefaultInstructionBuilder $instructions,
+        private InstructionBuilder $boundInstructions,
     ) {}
 
     /**
@@ -59,44 +61,24 @@ class PromptKinds
     }
 
     /**
-     * 登録と設定の食い違い(起動の時に確かめるもの = 設計/AI/データと失敗と検査.md 8 節。文章・文字起こし・会話の 3 つの型をまたいで見る。
-     * 種類と区分の分は {@see KindLimitChecks}、会話の接続と用途の分は {@see ConversationSettings}、指示の文の置き換え口と文の欠けは
-     * {@see DefaultInstructionBuilder})。無ければ空。設定の形が合わない種類があれば、単価と区分は見ない(形が無いと計算できない)。
-     * キューの置き場({@see DefaultDatabaseQueue})はどの環境も同じに見る(ジョブを実行の記録と同じトランザクションで入れる前提 =
-     * 設計/AI/実行と費用/README.md 4 節・4.5)。
+     * 登録と設定の食い違い(起動の時に確かめるもの = 設計/AI/データと失敗と検査.md 8 節。文章・文字起こし・会話の 3 つの型をまたいで見る)。無ければ空。
+     * 設定の値の形の誤りも投げずに文にし、ほかの確かめを続ける(起動を止めるのは ai:check-settings の終了コード)。
      *
      * @return list<string>
      */
     public function problems(): array
     {
-        $shape = [];
+        // 既定の結びでは口と代わりの版が同じ物なので、同じ確かめを 2 回走らせない
+        $bound = $this->boundInstructions === $this->instructions ? [] : $this->boundInstructions->problems();
 
-        foreach ($this->kindSettings->codes() as $code) {
-            $shape = [...$shape, ...$this->kindSettings->problems($code)];
-        }
-
-        $queue = [...DefaultDatabaseQueue::storeProblems(), ...DefaultDatabaseQueue::afterCommitProblems()];
-        $conversation = [...$this->conversation->problems(), ...$this->instructions->problems()];
-
-        if ($shape !== []) {
-            return [...$queue, ...$conversation, ...$this->registrationProblems(), ...$shape];
-        }
-
-        $problems = [...$queue, ...$conversation, ...$this->registrationProblems()];
-        $pricing = [];
-        $kinds = [];
-
-        foreach ($this->kindSettings->codes() as $code) {
-            $kind = $this->kindSettings->settings($code);
-
-            if ($kind !== null) {
-                $kinds[$code] = $kind;
-                $pricing = [...$pricing, ...$this->limits->pricingProblems($code, $kind)];
-                $problems = [...$problems, ...$this->limits->kindProblems($code, $kind)];
-            }
-        }
-
-        return [...$problems, ...$pricing, ...($pricing === [] ? $this->limits->budgetProblems($kinds) : [])];
+        return [
+            ...DefaultDatabaseQueue::storeProblems(),
+            ...DefaultDatabaseQueue::afterCommitProblems(),
+            ...$this->conversation->problems(),
+            ...array_values(array_unique([...$this->instructions->problems(), ...$bound])),
+            ...$this->registrationProblems(),
+            ...$this->limits->problems($this->kindSettings->all()),
+        ];
     }
 
     /**

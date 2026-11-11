@@ -125,7 +125,7 @@
     "app/Providers/AppServiceProvider.php": 1,
     "app/Queries/Account/Api/UserMenuSections.php": 1,
     "app/Queries/Account/CurrentAccountQuery.php": 6,
-    "app/Queries/Ai/AiSettings.php": 4,
+    "app/Queries/Ai/AiSettings.php": 2,
     "app/Queries/Ai/Api/RunQuery.php": 1,
     "app/Queries/Authz/Api/RoleCandidates.php": 2,
     "app/Queries/Authz/Api/SelectionSubjects.php": 10,

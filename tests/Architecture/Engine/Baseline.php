@@ -78,6 +78,19 @@ final readonly class Baseline
         return new self(self::entriesOf($decoded), $keys === $sortedKeys);
     }
 
+    /**
+     * ディレクトリ $directory(根からの相対パス)の下のファイルを指すキー(キーの並び)。
+     *
+     * @return list<string>
+     */
+    public function keysUnder(string $directory): array
+    {
+        return array_values(array_filter(
+            array_map(strval(...), array_keys($this->entries)),
+            fn (string $key): bool => str_starts_with($key, $directory.'/'),
+        ));
+    }
+
     public function total(): int
     {
         return array_sum(array_map(fn (array $values): int => array_sum($values), $this->entries));

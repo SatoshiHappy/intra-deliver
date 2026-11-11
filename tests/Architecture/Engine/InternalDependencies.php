@@ -9,7 +9,7 @@ use UnexpectedValueException;
  *
  * 依存する側 = 名前空間が置き場 `<置き場>\<M>`(またはその下)のファイル。依存される側の内部 = 内部の置き場 `<置き場>\<M>` の下のクラスで、
  * 公開の段 `<置き場>\<M>\<段>` の下でないもの(段の無い置き場は全部が内部)。M が依存する側と同じモジュールなら数えない。
- * 依存先は、アプリの名前空間の根から PSR-4 で決まるファイルが在るクラスだけ(名前空間だけの名前・在らない名前を数えない)。
+ * 依存先は、アプリの名前空間の根から PSR-4 で決まるファイルが、根のディレクトリのどれかに在るクラスだけ(名前空間だけの名前・在らない名前を数えない)。
  */
 final readonly class InternalDependencies
 {
@@ -18,14 +18,14 @@ final readonly class InternalDependencies
      * @param  list<string>  $dependentPlaces  依存する側の置き場
      * @param  list<array{place: string, modules: list<string>, public: string|null}>  $internalPlaces  依存される側の内部の置き場
      * @param  string  $appNamespace  アプリの名前空間の根(例 = App)
-     * @param  string  $appDirectory  その根のディレクトリ(根 $root からの相対パス。例 = app)
+     * @param  list<string>  $appDirectories  その根のディレクトリ(根 $root からの相対パス。例 = app。PSR-4 の 1 つの名前空間に複数のディレクトリ)
      */
     public function __construct(
         private array $modules,
         private array $dependentPlaces,
         private array $internalPlaces,
         private string $appNamespace,
-        private string $appDirectory,
+        private array $appDirectories,
     ) {}
 
     /**
@@ -85,7 +85,7 @@ final readonly class InternalDependencies
         foreach ($references['names'] as $class) {
             $to = $this->internalModuleOf($class);
 
-            if ($to !== null && $to !== $from && is_file($root.'/'.$this->pathOf($class))) {
+            if ($to !== null && $to !== $from && $this->isFileOf($root, $class)) {
                 $pairs[] = ['file' => $file, 'from' => $from, 'to' => $to, 'class' => $class];
             }
         }
@@ -132,14 +132,20 @@ final readonly class InternalDependencies
         return null;
     }
 
-    private function pathOf(string $class): string
+    /**
+     * クラス $class の PSR-4 のファイルが、根のディレクトリのどれかに在るか。
+     */
+    private function isFileOf(string $root, string $class): bool
     {
-        $relative = substr($class, strlen($this->appNamespace) + 1);
-
         if (! str_starts_with($class, $this->appNamespace.'\\')) {
-            return '';
+            return false;
         }
 
-        return $this->appDirectory.'/'.str_replace('\\', '/', $relative).'.php';
+        $relative = str_replace('\\', '/', substr($class, strlen($this->appNamespace) + 1)).'.php';
+
+        return array_any(
+            $this->appDirectories,
+            fn (string $directory): bool => is_file($root.'/'.$directory.'/'.$relative),
+        );
     }
 }

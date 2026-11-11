@@ -34,13 +34,15 @@ parameters:
         - artisan
 
     # 解析から外すもの。どれも台帳⑧(B1・#2・#3・#6)に同じ書き方で登録する(scripts/ci/verify が照合する)。
-    # 依存物(vendor・node_modules)・生成物(build・bootstrap/cache・storage)・Blade のテンプレート(resources/views)・自己証明の fixture。
+    # 依存物(vendor・node_modules)・生成物(build・bootstrap/cache・storage と、storage:link が作る public/storage のリンク)・
+    # Blade のテンプレート(resources/views)・自己証明の fixture。
     excludePaths:
         - vendor/**
         - node_modules/**
         - build/**
         - bootstrap/cache/**
         - storage/**
+        - public/storage/**
         - resources/views/**
         - tests/Architecture/fixtures/**
 
@@ -87,11 +89,18 @@ parameters:
             - database
             - tests
             - scripts
+            - ai-private/app
+            - ai-private/tests
 
-    # app/ のファイルは App\ の名前空間のクラスを 1 つだけ宣言し、匿名クラスとクラスの外の処理を書かない(コード構成 1 節)
+    # app/ のファイルは App\ の名前空間のクラスを 1 つだけ宣言し、匿名クラスとクラスの外の処理を書かない(コード構成 1 節)。
+    # 組(ディレクトリと名前空間)ごとに当てる。手元だけのリポジトリの移した版(ai-private/app。composer.json の App\ の 2 つ目のディレクトリ)も同じ
     singleClassFile:
-        directory: app
-        namespace: App
+        -
+            directory: app
+            namespace: App
+        -
+            directory: ai-private/app
+            namespace: App
 
     # database/ のファイルはクラスの外に処理を書かない(マイグレーションの return new class を除く。コード構成 2 節)
     classOnlyFile:
@@ -137,6 +146,7 @@ parameters:
             - database
             - tests
             - scripts
+            - ai-private/tests
 
 services:
     # B1 層ごとに依存してよい先とモジュールどうしの依存(Policy の phpat の規則クラス。docs の 設計/コード構成/README.md 2 節・3 節)。

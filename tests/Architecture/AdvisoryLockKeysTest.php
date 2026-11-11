@@ -11,16 +11,19 @@ use PHPUnit\Framework\TestCase;
 use RecursiveDirectoryIterator;
 use RecursiveIteratorIterator;
 use ReflectionClassConstant;
+use Tests\Architecture\Policy\SourceDirectories;
 
 /**
  * 勧告ロックの鍵が、モジュールをまたいで重ならないことの検査(docs の 設計/コード構成/検査/README.md 6.2。重なると、別の目的の処理どうしが
  * 互いを待つ。例: 初期化の鎖錠と添付の台帳が同じ鍵で、台帳を取る要求が初期化の手順 5 を待たせた)。
  *
- * 1. app/ の中で勧告ロックの関数(pg_advisory…・pg_try_advisory…)を呼ぶファイルは、一覧({@see self::declaredKeys()})にある。
+ * 1. App\ のクラスを置くディレクトリ({@see SourceDirectories::APP})の中で勧告ロックの関数(pg_advisory…・pg_try_advisory…)を呼ぶ
+ *    ファイルは、一覧({@see self::declaredKeys()})にある。
  *    一覧にあるファイルは、実際に勧告ロックを呼ぶ(鍵を取る箇所を足す・外すと、一覧の更新を強いる)。
  * 2. 一覧の鍵(単独の鍵は幅 1、起点 + id の鍵は起点以上・起点 + {@see self::RANGE_WIDTH} 未満)どうしが重ならない。
  * 3. 自己証明: 重なりと一覧に無いファイルを、1・2 の判定が見つける。
  *
+ * 手元だけのリポジトリの移した版は勧告ロックを直に取らず、公開の側の鍵の部品を使う(一覧は追跡するファイルなので、移した版の道を載せない)。
  * 鍵の値は定数(と config/reset.php)から読む。字句の照合なので、鍵を実行時に組み立てて別の関数で取る経路は止まらない(レビューで見る)。
  */
 final class AdvisoryLockKeysTest extends TestCase
@@ -34,7 +37,14 @@ final class AdvisoryLockKeysTest extends TestCase
     {
         $root = dirname(__DIR__, 2);
 
-        $calling = self::filesCalling($root.'/app', $root);
+        $calling = [];
+
+        foreach (SourceDirectories::APP as $directory) {
+            if (is_dir($root.'/'.$directory)) {
+                $calling = [...$calling, ...self::filesCalling($root.'/'.$directory, $root)];
+            }
+        }
+
         $declared = array_keys(self::declaredKeys($root));
         sort($calling);
         sort($declared);

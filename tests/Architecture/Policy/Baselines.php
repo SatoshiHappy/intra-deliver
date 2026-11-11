@@ -26,6 +26,20 @@ final class Baselines
 
     public const HISTORY_WORDS_CHECK = DocsReferences::EXCLUSION_CHECK;
 
+    /**
+     * 追跡するベースラインの全部。どれにも手元だけのリポジトリ({@see SourceDirectories::PRIVATE_ROOT})の下の道を置かない
+     * (移した版の違反をベースラインで許さず手元で直す。docs の ADR 0039 の決定 8 = 追跡するファイルに移した版の名前を書かない)。
+     */
+    public const FILES = [
+        self::LINE_LENGTH_FILE,
+        self::COMPONENT_SIZE_FILE,
+        self::MODULE_INTERNALS_FILE,
+        self::HISTORY_WORDS_FILE,
+    ];
+
+    /** 行の長さの対象の PHP のファイル(phpstan の解析の対象と同じ範囲。リンクの先 = 手元だけのリポジトリの移した版も含む) */
+    public const LINE_LENGTH_PHP_FILES = ['**/*.php'];
+
     /** 行の長さの対象の拡張子のうち、画面側(vp lint の対象と同じ範囲。PHP は .php = phpstan の解析の対象と同じ範囲) */
     public const SCRIPT_EXTENSIONS = ['ts', 'tsx', 'js', 'mjs', 'cjs'];
 

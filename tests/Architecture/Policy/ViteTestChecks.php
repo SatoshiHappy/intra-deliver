@@ -33,7 +33,8 @@ final class ViteTestChecks
     public function suppressionTokens(): CheckResult
     {
         $excluded = $this->ledger()->paths(Verification::SUPPRESSION_CHECKS);
-        $files = SourceTokens::globFiles($this->targetRoot, Verification::VITE_TEST_INCLUDE, $excluded);
+        $include = Verification::VITE_TEST_INCLUDE;
+        $files = SourceTokens::globFiles($this->targetRoot, $include, $excluded, SourceDirectories::LINKS);
         $occurrences = SourceTokens::inText($this->targetRoot, $files, Verification::VITE_TEST_SUPPRESSION_TOKENS);
 
         return new CheckResult(
