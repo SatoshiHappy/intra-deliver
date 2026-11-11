@@ -7,6 +7,7 @@ use App\Models\Master\CompanyPost;
 use App\Models\Master\Department;
 use App\Models\Master\DepartmentMembership;
 use App\Models\Master\User;
+use App\Queries\Authz\Api\AuthorizationReuse;
 use App\Queries\Authz\Api\Requester;
 use App\Queries\Master\DepartmentTreeQuery;
 use App\Queries\Master\MembershipQuery;
@@ -38,6 +39,7 @@ class SubjectQuery
         private MembershipQuery $memberships,
         private DepartmentTreeQuery $departmentTree,
         private RoleQuery $roles,
+        private AuthorizationMemo $memo,
     ) {}
 
     /**
@@ -83,10 +85,15 @@ class SubjectQuery
      * 判定を求める者の d の事実。どれも d に成り立つ関係だけから作る。ユーザーが d に有効でない・存在しないときは、ユーザーなし(事実は空)。
      * 所属から来る事実(組織・その上位と下位・役職)は、カレント組織の所属 1 つだけから作る(カレント組織が無ければ空)。
      * 同じインスタンスで同じ判定を求める者(3 つの値)と基準日には、1 回だけ組み立てて使い回す(1 回の表示で判定を数十回行う画面のため =
-     * docs の 設計/共通マスタ/ロールと認可/認可の確認/README.md 3.2)。
+     * docs の 設計/共通マスタ/ロールと認可/認可の確認/README.md 3.2)。使い回さない区間({@see AuthorizationReuse::without()})の中では覚えを使わず、入れない
+     * (今の権限で判定し直すため = docs の 設計/共通マスタ/ロールと認可/認可の確認/判定の使い回し.md 3.4 の事実の項)。
      */
     public function subjectOn(Requester $requester, DateTimeInterface $date): Subject
     {
+        if ($this->memo->bypassing()) {
+            return $this->buildSubjectOn($requester, $date);
+        }
+
         $key = implode('|', [$requester->userId ?? '', $requester->selectedDepartmentId ?? '', $requester->ipv4Address ?? '', $date->format('Y-m-d')]);
 
         return $this->requesterFacts[$key] ??= $this->buildSubjectOn($requester, $date);

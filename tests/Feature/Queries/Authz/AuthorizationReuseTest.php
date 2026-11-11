@@ -53,9 +53,11 @@ final class AuthorizationReuseTest extends TransactionalTestCase
         $this->assertSame([$outside, 0], [$first, $second]);
     }
 
-    /** 表の 2 行: 使い回さない区間の中は、外のまとまりの中でも、中で開いたまとまりでも判定し、覚えない。入る時に外の覚えを捨てる */
+    /** 表の 2 行: 使い回さない区間の中は、外のまとまりの中でも、中で開いたまとまりでも、事実から判定し、覚えない。入る時に外の覚えを捨てる */
     public function test_inside_the_bypass_it_decides_and_does_not_remember(): void
     {
+        $this->resetRequestScope();
+        $withFacts = $this->queriesOf(fn () => $this->allows());
         $counts = $this->reuse()->within(fn () => [
             'before' => $this->queriesOf(fn () => $this->allows()),
             'bypassed' => $this->reuse()->without(fn () => [
@@ -65,8 +67,9 @@ final class AuthorizationReuseTest extends TransactionalTestCase
             'after' => $this->queriesOf(fn () => $this->allows()),
         ]);
 
-        $this->assertSame([$counts['before'], $counts['before']], $counts['bypassed']);
+        $this->assertSame([$withFacts, $withFacts], $counts['bypassed']);
         $this->assertSame($counts['before'], $counts['after']);
+        $this->assertLessThan($withFacts, $counts['before']);
     }
 
     /** 表の 3 行: リソースグループ id を渡す判定は、中でも毎回判定する */
@@ -224,6 +227,7 @@ final class AuthorizationReuseTest extends TransactionalTestCase
 
         $this->assertSame('読み取りの失敗', $thrown->getMessage());
         $this->assertGreaterThan(0, $this->queriesOf(fn () => $this->allows()));
+        $this->assertGreaterThan(0, $this->reuse()->within(fn () => $this->queriesOf(fn () => $this->allows())));
     }
 
     /** 要求の寿命の区切りの後も、覚える側と捨てる側は同じ実体(書いた後の判定は判定し直す) */
