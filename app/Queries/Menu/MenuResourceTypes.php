@@ -7,7 +7,7 @@ use App\Queries\Authz\Api\ResourceTypes;
 
 /**
  * Menu が定義するリソースタイプ: メニューグループ im-menu-group(アクションは {@see MenuGroupAction})。起動がタグ {@see ResourceTypes::TAG} で登録する
- * (docs の 設計/メニュー/認可との結び付け.md 2.1)。
+ * (docs の 設計/メニュー/認可との結び付け/README.md 2.1)。
  */
 class MenuResourceTypes implements ResourceTypes
 {

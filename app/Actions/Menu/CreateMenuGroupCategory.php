@@ -11,7 +11,8 @@ use Illuminate\Validation\ValidationException;
 
 /**
  * メニューグループカテゴリを作る(docs の 設計/メニュー/表.md 1.7 の 1)。カテゴリと表示名を作り、同じトランザクションでカテゴリの認可のリソースを作る
- * (認可との結び付け.md 2.2: リソースグループ im-menu-group-cat-<カテゴリ ID>、親はセット im-menu-group、URI im-menu-group://category/<カテゴリ ID>、
+ * (設計/メニュー/認可との結び付け/README.md 2.2: リソースグループ im-menu-group-cat-<カテゴリ ID>、親はセット im-menu-group、
+ * URI im-menu-group://category/<カテゴリ ID>、
  * 表示名はカテゴリの表示名を写し、説明は NULL、並び順 0)。どちらかが失敗すれば両方が巻き戻る。認可の ID・URI は、読み直したカテゴリの
  * (保存された)コードから作る(長さを超えた部分が空白だけの値は DB が切り詰めて入れるので、入力の値で作ると表示判定・グループを作る業務処理が
  * 引く ID・URI と食い違う = docs の 設計/共通マスタ/共通の規則.md 5.5)。

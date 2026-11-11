@@ -14,7 +14,7 @@ use Inertia\Controller as InertiaController;
 use Tests\Architecture\Policy\Modules;
 
 /**
- * アプリのルートの規則の判定(docs の 設計/メニュー/認可との結び付け.md 2.3 の検査 1・2)。どれも、受けたルートのうち規則に合わないものの
+ * アプリのルートの規則の判定(docs の 設計/メニュー/認可との結び付け/ルートのリソース.md 2.3 の検査 1・2)。どれも、受けたルートのうち規則に合わないものの
  * URI(重複は名前)を返す。検査 1 = AppRoutesTest、検査 2 = AuthorizationSeedersTest が使い、既定と違う設定で起動したテストも同じ判定を使う
  * (判定を 1 か所に置き、写しを作らない)。
  */

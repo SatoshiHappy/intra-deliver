@@ -64,7 +64,7 @@ class AppServiceProvider extends ServiceProvider
         // 依存の逆転(docs の 設計/コード構成/README.md 3 節): Master の業務処理が、後ろのモジュールのユーザーを指す期間の行まで確かめる
         $this->app->tag([UserRoleReferences::class], UserReferences::TAG);
 
-        // 依存の逆転: 認可の業務処理が、各モジュールの定義するリソースタイプとアクションの一覧の和で検査する(docs の 設計/メニュー/認可との結び付け.md 2.1)
+        // 依存の逆転: 認可の業務処理が、各モジュールの定義するリソースタイプとアクションの一覧の和で検査する(docs の 設計/メニュー/認可との結び付け/README.md 2.1)
         $this->app->tag([ServiceResourceTypes::class, MenuResourceTypes::class, RecordModuleResourceTypes::class, WorkflowFlowResourceTypes::class], ResourceTypes::TAG);
 
         $this->tagRecordWriteGuards();

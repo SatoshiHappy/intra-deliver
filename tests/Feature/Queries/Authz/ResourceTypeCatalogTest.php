@@ -8,7 +8,7 @@ use LogicException;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * 認可のリソースタイプとアクションの一覧の和(docs の 設計/メニュー/認可との結び付け.md 2.1)。
+ * 認可のリソースタイプとアクションの一覧の和(docs の 設計/メニュー/認可との結び付け/README.md 2.1)。
  */
 final class ResourceTypeCatalogTest extends TransactionalTestCase
 {

@@ -21,7 +21,7 @@ use Tests\Support\AssertsRejectedByRule;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * 認可の対象者を、条件・表示名・説明と一緒に作る(docs の 設計/メニュー/認可との結び付け.md 2.4、設計/共通マスタ/ロールと認可/対象者.md の authz_subject_groups・
+ * 認可の対象者を、条件・表示名・説明と一緒に作る(docs の 設計/メニュー/認可との結び付け/業務処理と長さ.md 2.4、設計/共通マスタ/ロールと認可/対象者.md の authz_subject_groups・
  * authz_subject_conditions: 条件は 1 件以上、[m-n] は m ≤ n、
  * all では少なくとも 1 つの条件が除外でない、any では除外を置かない。カテゴリの行が無ければ全ロケールの表示名と一緒に並び順 0 で作る。
  * 用途は既定 policy、用途 selection の対象者を子にしない = 対象者.md の「用途 `selection` の規則」)。

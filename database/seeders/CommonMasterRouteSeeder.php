@@ -15,7 +15,7 @@ use Illuminate\Database\Seeder;
  * (CommonMasterSeeder)はセットと対象者より前に入るので、ルートの分を別の seeder にした。
  * - 組織図 master.organization-chart.show = http-services。接頭辞のリソースグループ http-services.master(フォルダ「基本データ」)と
  *   http-services.master.organization-chart(ルートの束「組織図」)と、ルートのリソース。許可はルートの束に置き、フォルダとルートには置かない
- *   (http-services の許可の置き場 = 設計/メニュー/認可との結び付け.md 2.3)
+ *   (http-services の許可の置き場 = 設計/メニュー/認可との結び付け/ルートのリソース.md 2.3)
  * - 共通マスタの検索 master.search = 設定不可のセット。接頭辞のリソースグループ http-services-unmanaged.master と、ルートのリソース。
  *   許可はルートに置き、接頭辞には置かない(設定不可のセットの中の置き方)
  *

@@ -10,7 +10,7 @@ use App\Queries\Authz\RouteResources;
 use Illuminate\Validation\ValidationException;
 
 /**
- * ルートの画面・処理のリソースを作る(docs の 設計/メニュー/認可との結び付け.md 2.3・2.4)。ルートの名前を受け、置き場をルートの定義の宣言から
+ * ルートの画面・処理のリソースを作る(docs の 設計/メニュー/認可との結び付け/ルートのリソース.md 2.3、設計/メニュー/認可との結び付け/業務処理と長さ.md 2.4)。ルートの名前を受け、置き場をルートの定義の宣言から
  * 決め({@see RouteResources::setOf()}。呼び手は渡さない)、リソースグループ ID = <セット>. + 名前、親 = 末端を除いた接頭辞のリソースグループ、
  * URI = service:// + 名前の . を / に換えたもの(置き場によらない)、タイプ service で {@see CreateResource} を通す。
  * リソースは初期データで作る(ルートから実行時に作らない)。

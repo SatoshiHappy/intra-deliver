@@ -12,7 +12,8 @@ use Tests\Support\AssertsRejectedByRule;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * 認可のポリシーを作る(docs の 設計/メニュー/認可との結び付け.md 2.4、設計/共通マスタ/ロールと認可/ポリシーと判定.md の authz_policies: (リソースタイプ, アクション)の組が列挙にある。
+ * 認可のポリシーを作る(docs の 設計/メニュー/認可との結び付け/業務処理と長さ.md 2.4、
+ * 設計/共通マスタ/ロールと認可/ポリシーと判定.md の authz_policies: (リソースタイプ, アクション)の組が列挙にある。
  * リソースを持たないリソースグループにも置ける。用途 selection の対象者は指さない = 設計/共通マスタ/ロールと認可/対象者.md の「用途 `selection` の規則」)。
  */
 final class CreatePolicyTest extends TransactionalTestCase

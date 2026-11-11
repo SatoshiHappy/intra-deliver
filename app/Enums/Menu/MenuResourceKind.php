@@ -3,7 +3,7 @@
 namespace App\Enums\Menu;
 
 /**
- * メニューの認可のリソースの種類と、その ID・URI の作り方(docs の 設計/メニュー/認可との結び付け.md 2.2)。作り方はここだけに置き、
+ * メニューの認可のリソースの種類と、その ID・URI の作り方(docs の 設計/メニュー/認可との結び付け/README.md 2.2)。作り方はここだけに置き、
  * 同期する業務処理と初期データが使う。
  *
  * セット im-menu-group の下に、カテゴリ(im-menu-group-cat-<カテゴリ ID>、URI im-menu-group://category/<カテゴリ ID>)、

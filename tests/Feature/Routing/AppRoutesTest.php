@@ -13,7 +13,7 @@ use Tests\Support\FindsAppRouteViolations;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * アプリのルートの付け忘れを止める検査(docs の 設計/メニュー/認可との結び付け.md 2.3 の検査 1): アプリのルートはすべて、ルータが実際に掛ける
+ * アプリのルートの付け忘れを止める検査(docs の 設計/メニュー/認可との結び付け/ルートのリソース.md 2.3 の検査 1): アプリのルートはすべて、ルータが実際に掛ける
  * ミドルウェア(withoutMiddleware で外したものを除いた後)に AuthorizeRoute を持ち、名前が規則(形・長さ・ほかの名前の接頭辞にならない・
  * アプリのルートの中で一意・先頭の区切りがそのルートの処理が属するモジュール)に合う。持ち主のモジュール = コントローラは名前空間
  * App\Http\Controllers\{Web,Api}\<M>\ の <M>、Route::inertia はページ名 <M>/… の <M>。Route::redirect・Route::view は処理から持ち主が決まらないので、
@@ -130,7 +130,7 @@ final class AppRoutesTest extends TransactionalTestCase
     }
 
     /**
-     * 置き場の宣言(docs の 設計/メニュー/認可との結び付け.md 2.3 の置き場): 固定値の 113 本(設定不可 60・http-services 53)が宣言のとおりで、
+     * 置き場の宣言(docs の 設計/メニュー/認可との結び付け/ルートのリソース.md 2.3 の置き場): 固定値の 113 本(設定不可 60・http-services 53)が宣言のとおりで、
      * ほかのアプリのルートは無い。
      */
     public function test_every_app_route_is_declared_in_the_set_of_the_table(): void

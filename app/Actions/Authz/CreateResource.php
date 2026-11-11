@@ -8,7 +8,7 @@ use App\Queries\Authz\ResourceTypeCatalog;
 use Illuminate\Validation\ValidationException;
 
 /**
- * 認可のリソースを、対になるリソースグループと一緒に作る(docs の 設計/メニュー/認可との結び付け.md 2.4、設計/共通マスタ/ロールと認可/リソース.md)。
+ * 認可のリソースを、対になるリソースグループと一緒に作る(docs の 設計/メニュー/認可との結び付け/業務処理と長さ.md 2.4、設計/共通マスタ/ロールと認可/リソース.md)。
  *
  * 止める規則: リソースグループの規則({@see CreateResourceGroup})に加えて、リソースタイプが列挙({@see ResourceTypeCatalog})にある。
  * URI は UTF-8 で 2,000 バイト以下(2.5。一意索引の行の上限に届かないように、圧縮前の長さで限る)。URI の長さ(1,000 文字)・リソースタイプと「:」で始まること・一意は DB が止める。

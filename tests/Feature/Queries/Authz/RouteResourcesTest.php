@@ -12,7 +12,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * アプリのルートと、ルートの画面・処理のリソース(docs の 設計/メニュー/認可との結び付け.md 2.3: アプリのルート = 処理が vendor/ の外にあるものと
+ * アプリのルートと、ルートの画面・処理のリソース(docs の 設計/メニュー/認可との結び付け/ルートのリソース.md 2.3: アプリのルート = 処理が vendor/ の外にあるものと
  * Route::inertia・redirect・view のもの。名前の規則、置き場の宣言、置き場と名前から決まるリソースグループ ID・URI、メソッドとアプリの中のパスでの
  * 照合と、アプリの中のパスの形 = 表.md 1.7)。
  *

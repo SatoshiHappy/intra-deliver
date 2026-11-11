@@ -10,7 +10,7 @@ use Tests\Support\AssertsRejectedByRule;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * 認可のリソースグループの表示名を変える(docs の 設計/メニュー/認可との結び付け.md 2.4): 入力にあるロケールは行があれば表示名を更新し(説明は変えない)、
+ * 認可のリソースグループの表示名を変える(docs の 設計/メニュー/認可との結び付け/業務処理と長さ.md 2.4): 入力にあるロケールは行があれば表示名を更新し(説明は変えない)、
  * 無ければ作る(説明は NULL)。入力に無いロケールの行・説明・並び順・ID・親は変えない。リソースグループか、ロケールが無ければ拒み、何も変えない。
  */
 final class RenameResourceGroupTest extends TransactionalTestCase

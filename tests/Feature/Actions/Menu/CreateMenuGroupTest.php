@@ -16,7 +16,7 @@ use Tests\Support\AssertsRejectedByRule;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * メニューグループを作る(docs の 設計/メニュー/表.md 1.7 の 2、認可との結び付け.md 2.2: ルートのメニュー(folder・親なし・ID = グループ ID)・表示名・
+ * メニューグループを作る(docs の 設計/メニュー/表.md 1.7 の 2、設計/メニュー/認可との結び付け/README.md 2.2: ルートのメニュー(folder・親なし・ID = グループ ID)・表示名・
  * グループ・カテゴリへの所属と、同じトランザクションでグループの認可のリソース(im-menu-group-<ID>、親は作る先のカテゴリのリソースグループ、
  * URI im-menu-group://group/<ID>、表示名を写す)。失敗ですべて巻き戻る)。ID は保存された(DB が長さを超えた空白を切り詰めた)グループ ID から作る。
  */

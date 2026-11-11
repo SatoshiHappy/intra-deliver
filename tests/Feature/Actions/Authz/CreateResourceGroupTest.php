@@ -12,7 +12,7 @@ use Tests\Support\AssertsRejectedByRule;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * 認可のリソースグループを作る(docs の 設計/メニュー/認可との結び付け.md 2.4、設計/共通マスタ/ロールと認可/リソース.md の閉塞の項: 親があれば親の閉塞を写す。
+ * 認可のリソースグループを作る(docs の 設計/メニュー/認可との結び付け/業務処理と長さ.md 2.4、設計/共通マスタ/ロールと認可/リソース.md の閉塞の項: 親があれば親の閉塞を写す。
  * 同じ文書の「並び順の入れ方」: 渡されなければ兄弟の最大 + 1)。
  */
 final class CreateResourceGroupTest extends TransactionalTestCase

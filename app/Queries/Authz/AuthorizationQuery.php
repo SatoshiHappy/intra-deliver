@@ -29,7 +29,7 @@ class AuthorizationQuery
 
     /**
      * 判定を求める者が d に、リソース URI のリソースのアクションを許されるか(本家の認可要求 = リソース URI とアクション。
-     * docs の 設計/メニュー/認可との結び付け.md 2.3 の読み取りの口)。URI のリソースが無ければ禁止、あればそのリソースグループで {@see self::allows()} と同じ判定。
+     * docs の 設計/メニュー/認可との結び付け/ルートのリソース.md 2.3 の読み取りの口)。URI のリソースが無ければ禁止、あればそのリソースグループで {@see self::allows()} と同じ判定。
      */
     public function allowsUri(Requester $requester, string $uri, string $action, DateTimeInterface $date): bool
     {

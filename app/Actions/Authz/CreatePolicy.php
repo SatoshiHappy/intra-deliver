@@ -11,7 +11,7 @@ use App\Queries\Authz\ResourceTypeCatalog;
 use Illuminate\Validation\ValidationException;
 
 /**
- * 認可のポリシーを作る(docs の 設計/メニュー/認可との結び付け.md 2.4、設計/共通マスタ/ロールと認可/ポリシーと判定.md の authz_policies)。
+ * 認可のポリシーを作る(docs の 設計/メニュー/認可との結び付け/業務処理と長さ.md 2.4、設計/共通マスタ/ロールと認可/ポリシーと判定.md の authz_policies)。
  *
  * 止める規則: (リソースタイプ, アクション)の組が列挙({@see ResourceTypeCatalog})にある。リソースを持つリソースグループにも持たないリソースグループにも、
  * どのリソースタイプのポリシーでも置ける(リソースのタイプと揃えることは求めない)。用途 selection の対象者は指さない(docs の

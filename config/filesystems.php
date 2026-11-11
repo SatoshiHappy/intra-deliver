@@ -33,7 +33,7 @@ return [
         'local' => [
             'driver' => 'local',
             'root' => storage_path('app/private'),
-            // ファイル配信のルート(storage.local・storage.local.upload)を出さない(docs の 設計/メニュー/認可との結び付け.md 2.3。
+            // ファイル配信のルート(storage.local・storage.local.upload)を出さない(docs の 設計/メニュー/認可との結び付け/ルートのリソース.md 2.3。
             // ファイルの保存先は未決で、いま配るものが無い)
             'serve' => false,
             'throw' => false,

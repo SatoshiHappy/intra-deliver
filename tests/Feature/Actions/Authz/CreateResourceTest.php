@@ -10,7 +10,7 @@ use Tests\Support\AssertsRejectedByRule;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * 認可のリソースを、対になるリソースグループと一緒に作る(docs の 設計/メニュー/認可との結び付け.md 2.4、
+ * 認可のリソースを、対になるリソースグループと一緒に作る(docs の 設計/メニュー/認可との結び付け/業務処理と長さ.md 2.4、
  * 設計/共通マスタ/ロールと認可/リソース.md の authz_resources: リソースグループの規則に加えて、
  * リソースタイプが列挙にある、URI は UTF-8 で 2,000 バイト以下。並び順はリソースグループの「並び順の入れ方」を通る)。
  */

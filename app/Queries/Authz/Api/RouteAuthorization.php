@@ -8,7 +8,7 @@ use App\Queries\Authz\RouteResources;
 use DateTimeInterface;
 
 /**
- * ルートの認可の判定(docs の 設計/メニュー/認可との結び付け.md の 2.3 節。ルートのミドルウェア AuthorizeRoute と同じ判定):
+ * ルートの認可の判定(docs の 設計/メニュー/認可との結び付け/ルートのリソース.md の 2.3 節。ルートのミドルウェア AuthorizeRoute と同じ判定):
  * 判定を求める者が d に、ルートの名前のリソース(URI の規則 = {@see RouteResources::uriOf()} の 1 か所)の execute を許されるか。
  * 画面の出し分け(業務モジュールによらない管理のルートの許可など)が、ルートの認可と同じ答えを得るために使う。
  *

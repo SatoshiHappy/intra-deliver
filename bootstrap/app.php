@@ -19,7 +19,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
-        // アプリのルートはすべて認可を通す(docs の 設計/メニュー/認可との結び付け.md 2.3): routes/web.php を web グループと
+        // アプリのルートはすべて認可を通す(docs の 設計/メニュー/認可との結び付け/ルートのリソース.md 2.3): routes/web.php を web グループと
         // ルートの認可を付けた 1 つのグループで読み込む(web: に渡すと認可の無いグループで読み込まれるので渡さない)。
         // 骨格の共有はルートの認可の後に付ける(docs の 設計/メニュー/表示.md 3.2)。今の利用者と利用者メニューの節の共有は
         // 骨格の共有の後(docs の 設計/デモユーザー切替/今の利用者.md 5.7)。通知の共有はそれらの後

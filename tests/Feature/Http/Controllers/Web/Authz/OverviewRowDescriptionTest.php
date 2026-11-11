@@ -10,7 +10,7 @@ use Tests\Support\TransactionalTestCase;
 
 /**
  * 認可設定の画面の行の説明(docs の 設計/共通マスタ/ロールと認可/認可の確認/認可設定の画面.md 1.2 の行の description と 2.3 の先頭の列、
- * 設計/メニュー/認可との結び付け.md 2.3 の束の規則 4): 初期データでは画面・処理のルートの束 8 つだけが説明を持ち、フォルダと先頭とほかの種類の行は null。
+ * 設計/メニュー/認可との結び付け/ルートのリソース.md 2.3 の束の規則 4): 初期データでは画面・処理のルートの束 8 つだけが説明を持ち、フォルダと先頭とほかの種類の行は null。
  * 説明はロケールの行のもの。初期データを入れ、システム管理者(u0004)で開く。
  */
 final class OverviewRowDescriptionTest extends TransactionalTestCase
