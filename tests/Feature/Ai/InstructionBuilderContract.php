@@ -17,9 +17,12 @@ use PHPUnit\Framework\Attributes\TestWith;
  * 指示の組み立ての口の約束のテスト(③ の公開の側の抽象。docs の 設計/AI/設定とプロンプト/README.md 11.4 の「守ること」と「約束のテスト」・
  * 使う文と組み立て.md 11.6 の約束のテスト)。2 つの版がこのトレイトを使うテストのクラスで流す(代わりの版 = {@see DefaultInstructionBuilderTest})。
  * 文の中身は写さず、渡した値が入ること・返す形・保存と送るだけの分けを見る。版は容器から引かずに直に作る。
+ * 置き換え口の当て方の分は {@see InstructionPlaceholderContract} に分けて置き、このトレイトが使う(使う側はこのトレイトだけを使う)。
  */
 trait InstructionBuilderContract
 {
+    use InstructionPlaceholderContract;
+
     /** 言葉の口に入れる見分けの値(文の中に出ない語。言葉の口に値が入ることと入らないことをこの値で見る) */
     private const LANGUAGE_MARKER = 'language-marker-x';
 
@@ -36,10 +39,9 @@ trait InstructionBuilderContract
         }
     }
 
-    /** 題のほかの呼び出しの種類では、日付の文は送るだけで先頭 */
+    /** 会話のステップ・要約・ファイルを作るでは、日付の文は送るだけで先頭 */
     #[TestWith([AiInstructionCall::ConversationStep])]
     #[TestWith([AiInstructionCall::Compaction])]
-    #[TestWith([AiInstructionCall::CompactionFallback])]
     #[TestWith([AiInstructionCall::CreateFile])]
     public function test_the_date_text_is_sent_only_at_the_start(AiInstructionCall $call): void
     {
@@ -68,9 +70,12 @@ trait InstructionBuilderContract
         $this->assertSame([], array_filter($history, fn (HistoryText $text): bool => $text->stored));
     }
 
-    public function test_the_title_has_no_date_text(): void
+    /** 要約の予備と題では、日付の文は送る履歴にもシステムの文にも無い(docs の 設計/AI/設定とプロンプト/使う文と組み立て.md 11.5 のほかの用途の呼び出し) */
+    #[TestWith([AiInstructionCall::CompactionFallback])]
+    #[TestWith([AiInstructionCall::Title])]
+    public function test_the_compaction_fallback_and_the_title_have_no_date_text(AiInstructionCall $call): void
     {
-        $built = $this->instructionBuilder()->build(self::request(AiInstructionCall::Title));
+        $built = $this->instructionBuilder()->build(self::request($call));
 
         $this->assertSame([], self::textsContaining($built, '2026-11-10'));
         $this->assertStringNotContainsString('2026-11-10', $built->system);
@@ -83,12 +88,10 @@ trait InstructionBuilderContract
         $this->assertStringContainsString($answer, $this->instructionBuilder()->compactSummary($answer));
     }
 
-    public function test_the_title_field_has_a_name_and_a_description(): void
+    /** 題の欄は名前を持つ。説明は空でもよい(docs の 設計/AI/設定とプロンプト/README.md 11.4 の「題の答えの形」。文字列であることは型が持つ) */
+    public function test_the_title_field_has_a_name(): void
     {
-        $field = $this->instructionBuilder()->titleField();
-
-        $this->assertNotSame('', $field->name);
-        $this->assertNotSame('', $field->description);
+        $this->assertNotSame('', $this->instructionBuilder()->titleField()->name);
     }
 
     /** 定義の指示文と言葉は会話のステップと要約のシステムの文に入る */
@@ -118,7 +121,10 @@ trait InstructionBuilderContract
         $this->assertNotSame('', trim($system));
     }
 
-    /** モデルの行: 表示名を渡せば表示名、無ければモデルの ID。知識の期限は渡したときだけ入る(docs の 設計/AI/設定とプロンプト/使う文と組み立て.md 11.6) */
+    /**
+     * モデルの行: 表示名を渡せば表示名、無ければモデルの ID(会話のステップのシステムの文にちょうど 1 回)。知識の期限は渡したときだけ入る
+     * (docs の 設計/AI/設定とプロンプト/使う文と組み立て.md 11.6)。
+     */
     public function test_the_model_line_uses_the_display_name_or_the_model_id_and_the_cutoff_only_when_given(): void
     {
         $call = AiInstructionCall::ConversationStep;
@@ -128,7 +134,7 @@ trait InstructionBuilderContract
         $withoutCutoff = $this->systemOf(self::request($call, cutoff: null));
 
         $this->assertStringContainsString('Model Display X', $named);
-        $this->assertStringContainsString('model-id-x', $unnamed);
+        $this->assertSame(1, substr_count($unnamed, 'model-id-x'));
         $this->assertStringContainsString('March 2031', $withCutoff);
         $this->assertStringNotContainsString('March 2031', $withoutCutoff);
         $this->assertLessThan(strlen($withCutoff), strlen($withoutCutoff));
@@ -173,66 +179,23 @@ trait InstructionBuilderContract
         $this->instructionBuilder()->template($template, []);
     }
 
-    /** 外から来る値に置き換え口の形の文字があっても、置き換えずにそのまま残す(docs の 設計/AI/設定とプロンプト/使う文と組み立て.md 11.6 の約束のテスト) */
-    public function test_placeholders_inside_outside_values_are_kept_as_they_are(): void
-    {
-        $outside = 'text {{x}} and {{language}}';
-        $builder = $this->instructionBuilder();
-        $templateWith = fn (AiInstructionTemplate $template, string $key): string => $builder->template(
-            $template,
-            [...self::templateValues(), $key => $key === 'problems' ? [$outside] : $outside],
-        );
-
-        $step = self::request(AiInstructionCall::ConversationStep, instructions: $outside);
-        $texts = [
-            'output_style_prompt' => $this->systemOf($step),
-            'user_feedback' => $templateWith(AiInstructionTemplate::ToolUseRejectedWithReason, 'user_feedback'),
-            'summary' => $builder->compactSummary($outside),
-            'preview' => $templateWith(AiInstructionTemplate::LargeResultRead, 'preview'),
-            'denial_detail' => $templateWith(AiInstructionTemplate::RuleDenied, 'denial_detail'),
-            'problems' => $templateWith(AiInstructionTemplate::ToolInputInvalid, 'problems'),
-        ];
-
-        foreach ($texts as $key => $text) {
-            $this->assertStringContainsString($outside, $text, $key);
-        }
-    }
-
-    /** 引数の誤りは、問題が 1 つ(型の食い違い)でも 2 つでも文が返り、渡した問題がすべて入る(言い方は見ない) */
-    public function test_invalid_input_with_one_or_two_problems_contains_every_problem(): void
-    {
-        $one = $this->instructionBuilder()->template(AiInstructionTemplate::ToolInputInvalid, [
-            'tool_name' => 'search_records',
-            'problems' => ['The limit field must be an integer.'],
-            'param' => ['limit'],
-            'expected_type' => ['integer'],
-            'received_type' => ['string'],
-        ]);
-        $two = $this->instructionBuilder()->template(AiInstructionTemplate::ToolInputInvalid, [
-            'tool_name' => 'search_records',
-            'problems' => ['The module field is required.', 'The limit field must be at most 50.'],
-            'param' => ['module', 'limit'],
-            'expected_type' => ['', ''],
-            'received_type' => ['', ''],
-        ]);
-
-        $this->assertStringContainsString('The limit field must be an integer.', $one);
-        $this->assertStringContainsString('The module field is required.', $two);
-        $this->assertStringContainsString('The limit field must be at most 50.', $two);
-    }
-
-    /** 呼び出しの値(指定の無い値は試す値の既定) */
+    /**
+     * 呼び出しの値(指定の無い値は試す値の既定)。
+     *
+     * @param  list<string>  $toolNames
+     */
     private static function request(
         AiInstructionCall $call,
         string $instructions = 'Answer as the sales desk.',
         ?string $displayName = 'Model Display X',
         ?string $cutoff = 'March 2031',
         string $startedAt = '2026-11-10T01:00:00Z',
+        array $toolNames = ['search_records', 'read_record'],
     ): InstructionRequest {
         return new InstructionRequest(
             call: $call,
             instructions: $instructions,
-            toolNames: ['search_records', 'read_record'],
+            toolNames: $toolNames,
             provider: 'test-provider',
             modelId: 'model-id-x',
             modelDisplayName: $displayName,
@@ -243,7 +206,7 @@ trait InstructionBuilderContract
     }
 
     /**
-     * どの定型にも足りる値(呼び手が渡す鍵の全部。引数の誤りの一覧は問題ごとに同じ長さ)。
+     * どの定型にも足りる値(呼び手が渡す鍵の全部)。
      *
      * @return array<string, string|list<string>>
      */
@@ -254,9 +217,6 @@ trait InstructionBuilderContract
             'tool_name' => 'search_records',
             'denial_detail' => 'Deals: you cannot edit this record.',
             'problems' => ['The module field is required.'],
-            'param' => ['module'],
-            'expected_type' => [''],
-            'received_type' => [''],
             'error' => 'The record was changed by someone else.',
             'original_length' => '120000',
             'preview_length' => '20000',

@@ -8,10 +8,11 @@ use Illuminate\Support\Facades\Artisan;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * 指示の組み立ての口の結び(docs の 設計/AI/設定とプロンプト/README.md 11.4 の 2 つの版)と、結んだ版の起動の時の確かめ(設計/AI/データと失敗と検査.md 8 節
- * の「手元の文と既定の文と ③ が持つ定型」): 既定の結びでは口と代わりの版が同じ 1 つ。代わりの版でない版が結ばれていれば、ai:check-settings は
- * その版の文の食い違いと代わりの版の確かめの結果を両方出して 1 で終わり、同じ文は 1 回だけ出る。代わりの版が結ばれていれば、その文は 1 回だけ出る。
- * 手元のリポジトリのプロバイダの登録は PrivateProvidersRegistrationTest。
+ * 指示の組み立ての口に結んだ版の起動の時の確かめ(docs の 設計/AI/設定とプロンプト/README.md 11.4 の 2 つの版・設計/AI/データと失敗と検査.md 8 節
+ * の「手元の文と既定の文と ③ が持つ定型」): 代わりの版でない版が結ばれていれば、ai:check-settings はその版の文の食い違いと代わりの版の確かめの
+ * 結果を両方出して 1 で終わり、同じ文は 1 回だけ出る。代わりの版が結ばれていれば、その文は 1 回だけ出る。どのテストも口をテストの中で結び、
+ * 容器の既定の結びに頼らない(手元のリポジトリのプロバイダの有無で結果が変わらない)。既定の結び(一覧が無ければ口と代わりの版が同じ 1 つ)と
+ * 手元のプロバイダの登録は PrivateProvidersRegistrationTest が一時の根で確かめる。
  */
 final class InstructionBuilderBindingTest extends TransactionalTestCase
 {
@@ -29,12 +30,6 @@ final class InstructionBuilderBindingTest extends TransactionalTestCase
         array_map(unlink(...), glob($this->directory.'/*') ?: []);
         rmdir($this->directory);
         parent::tearDown();
-    }
-
-    public function test_the_default_binding_is_one_instance(): void
-    {
-        $this->assertInstanceOf(DefaultInstructionBuilder::class, app(InstructionBuilder::class));
-        $this->assertSame(app(DefaultInstructionBuilder::class), app(InstructionBuilder::class));
     }
 
     public function test_a_bound_version_other_than_the_default_adds_its_problems_to_the_default_ones(): void
@@ -62,8 +57,8 @@ final class InstructionBuilderBindingTest extends TransactionalTestCase
     public function test_the_default_version_bound_is_checked_once(): void
     {
         $missing = $this->useDefaultWithMissingSharedTexts();
+        $this->app->instance(InstructionBuilder::class, app(DefaultInstructionBuilder::class));
 
-        $this->assertInstanceOf(DefaultInstructionBuilder::class, app(InstructionBuilder::class));
         $this->assertSame(1, Artisan::call('ai:check-settings'));
         $this->assertSame("指示の文のファイル {$missing} が無い\n", Artisan::output());
     }

@@ -11,7 +11,9 @@ use LogicException;
 final class InstructionPlaceholders
 {
     /**
-     * 許す置き換え口(docs の 設計/AI/設定とプロンプト/使う文と組み立て.md 11.6 の表の口と、実装で名前を決めた口)。
+     * 許す置き換え口。前の組 = docs の 設計/AI/設定とプロンプト/使う文と組み立て.md 11.6 の表の口(表の順。作ったファイルの一覧の口の名前は
+     * 実装で決めた)、後ろの組 = ③ の自前の定型の口で、実装で名前を決めた口(同じ 11.6 の表の後の段落の「口の名前と一覧は実装の依頼書」)。
+     * 引数の誤りの 3 つの行の形の口(param など)は表の口でなく、値を入れないで済む口として版が持つ。
      * 拡張点(ファイルを作るの子の環境の口を足すときはここ = 同じ 11.6 の表の「子の環境」の行)。
      */
     public const ALLOWED = [
@@ -32,15 +34,13 @@ final class InstructionPlaceholders
         'user_feedback',
         'tool_name',
         'problems',
-        'param',
-        'expected_type',
-        'received_type',
+        'error',
+        'denial_detail',
+        'is_git',
         'step_tool_names',
         'original_length',
         'preview_length',
         'preview',
-        'denial_detail',
-        'error',
         'unknown_calls',
     ];
 

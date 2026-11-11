@@ -100,7 +100,7 @@ enum AiInstructionTemplate: string
     }
 
     /**
-     * 呼び手がいつも渡す値の鍵(引数の誤りの一覧は問題ごとに同じ長さ)。起動の時の確かめは、文の置き換え口がこの中にあるかを見る。
+     * 呼び手がいつも渡す値の鍵(引数の誤りの問題の文は並びで渡す)。起動の時の確かめは、文の置き換え口がこの中にあるかを見る。
      *
      * @return list<string>
      */
@@ -109,7 +109,7 @@ enum AiInstructionTemplate: string
         return match ($this) {
             self::ToolUseRejectedWithReason => ['user_feedback'],
             self::RuleDenied => ['tool_name', 'denial_detail'],
-            self::ToolInputInvalid => ['tool_name', 'problems', 'param', 'expected_type', 'received_type'],
+            self::ToolInputInvalid => ['tool_name', 'problems'],
             self::UnknownTool, self::ToolException, self::EmptyResult => ['tool_name'],
             self::ToolError => ['error'],
             self::LargeResultSearch, self::LargeResultRead, self::LargeResultAggregate, self::LargeResultTruncated => [

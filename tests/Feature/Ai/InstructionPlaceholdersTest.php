@@ -51,6 +51,19 @@ final class InstructionPlaceholdersTest extends TestCase
         ]));
     }
 
+    /**
+     * 許す一覧は docs の 設計/AI/設定とプロンプト/使う文と組み立て.md 11.6 の表に合わせる: 会話の環境の is_git を持ち、引数の誤りの 3 つの行の形の
+     * 口は持たない(値を入れないで済む口として版が持つ)。
+     */
+    public function test_the_allowed_list_follows_the_placeholder_table(): void
+    {
+        $this->assertContains('is_git', InstructionPlaceholders::ALLOWED);
+        $this->assertSame([], array_values(array_intersect(
+            ['param', 'expected_type', 'received_type'],
+            InstructionPlaceholders::ALLOWED,
+        )));
+    }
+
     public function test_names_in_a_text_are_listed_once_in_order(): void
     {
         $text = '{{language}} {{nope}} {{language}} {{skip_me}}';

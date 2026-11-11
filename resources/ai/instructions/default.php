@@ -36,6 +36,11 @@ return [
         あなたはモデル {{model_marketing_name}}(モデル ID: {{model_id}})で動いている。
         TEXT,
 
+    'environment_without_display_name' => <<<'TEXT'
+        # 環境
+        あなたはモデル {{model_id}} で動いている。
+        TEXT,
+
     'compaction_instruction' => <<<'TEXT'
         あなたは、要約だけから作業を続けられるように、ここまでの会話の全体の要約を今から書く。
         道具は呼び出さず、文だけで答える。

@@ -11,8 +11,9 @@ use Illuminate\Support\Facades\Config;
 
 /**
  * 指示の組み立ての口の代わりの版(docs の 設計/AI/設定とプロンプト/README.md 11.4 の「2 つの版」): 呼び出しの種類ごとの自前の日本語の既定の文
- * (resources/ai/instructions/default.php)を読み、値を入れて返すだけ。持つ条件は、モデルの表示名が無ければ ID を入れる・知識の期限が
- * あるときだけ期限の文を足す・定義の指示文が空なら出力の形の部分を捨てる、の 3 つ。持ち主が ③ の文は {@see SharedInstructionTemplates} から引く。
+ * (resources/ai/instructions/default.php)を読み、値を入れて返すだけ。持つ条件は、モデルの表示名が無ければ表示名の無い環境の文を使う・
+ * 知識の期限があるときだけ期限の文を足す・定義の指示文が空なら出力の形の部分を捨てる、の 3 つ。持ち主が ③ の文は
+ * {@see SharedInstructionTemplates} から引く。
  */
 final readonly class DefaultInstructionBuilder implements InstructionBuilder
 {
@@ -25,8 +26,11 @@ final readonly class DefaultInstructionBuilder implements InstructionBuilder
     /** 出力の形の部分(定義の指示文が空なら捨てる) */
     public const OUTPUT_STYLE = 'output_style';
 
-    /** 環境の部分(モデルの行。会話とファイルを作る) */
+    /** 環境の部分(モデルの行。会話とファイルを作る。表示名があるとき) */
     public const ENVIRONMENT = 'environment';
+
+    /** 表示名の無いときの環境の部分(モデルの ID だけ) */
+    public const ENVIRONMENT_WITHOUT_DISPLAY_NAME = 'environment_without_display_name';
 
     /** 要約の指示(要約と要約の予備の履歴の末尾。追加の指示の口に ③ の決まった文を入れる) */
     public const COMPACTION_INSTRUCTION = 'compaction_instruction';
@@ -122,7 +126,8 @@ final readonly class DefaultInstructionBuilder implements InstructionBuilder
         $keys = [
             self::CONVERSATION_SYSTEM => $request,
             self::OUTPUT_STYLE => $request,
-            self::ENVIRONMENT => $request,
+            self::ENVIRONMENT => [...$request, 'model_marketing_name'],
+            self::ENVIRONMENT_WITHOUT_DISPLAY_NAME => $request,
             self::COMPACTION_INSTRUCTION => [...$request, 'custom_instructions'],
             self::COMPACTION_FALLBACK_SYSTEM => $request,
             self::COMPACT_CONTINUATION => ['summary'],
@@ -147,7 +152,8 @@ final readonly class DefaultInstructionBuilder implements InstructionBuilder
      */
     private static function systemParts(InstructionRequest $request): array
     {
-        $model = $request->knowledgeCutoff === null ? [self::ENVIRONMENT] : [self::ENVIRONMENT, self::KNOWLEDGE_CUTOFF];
+        $environment = $request->modelDisplayName === null ? self::ENVIRONMENT_WITHOUT_DISPLAY_NAME : self::ENVIRONMENT;
+        $model = $request->knowledgeCutoff === null ? [$environment] : [$environment, self::KNOWLEDGE_CUTOFF];
         $style = trim($request->instructions) === '' ? [] : [self::OUTPUT_STYLE];
 
         return match ($request->call) {
@@ -160,7 +166,8 @@ final readonly class DefaultInstructionBuilder implements InstructionBuilder
     }
 
     /**
-     * 送る履歴に足す文(題のほかは先頭に日付の文、要約と要約の予備は末尾に要約の指示。どれも送るときだけ)。
+     * 送る履歴に足す文(会話のステップ・要約・ファイルを作るは先頭に日付の文、要約と要約の予備は末尾に要約の指示。題には足さない。
+     * どれも送るときだけ)。
      *
      * @param  array<string, string>  $values
      * @return list<HistoryText>
@@ -168,35 +175,35 @@ final readonly class DefaultInstructionBuilder implements InstructionBuilder
     private function history(AiInstructionCall $call, array $values): array
     {
         $date = fn (): HistoryText => HistoryText::sentAtStart($this->filled(self::DATE, $values));
+        $compaction = fn (): HistoryText => HistoryText::sentAtEnd($this->filled(self::COMPACTION_INSTRUCTION, [
+            ...$values,
+            'custom_instructions' => $this->shared->compactionCustomInstructions(),
+        ]));
 
         return match ($call) {
             AiInstructionCall::Title => [],
             AiInstructionCall::ConversationStep, AiInstructionCall::CreateFile => [$date()],
-            AiInstructionCall::Compaction, AiInstructionCall::CompactionFallback => [
-                $date(),
-                HistoryText::sentAtEnd($this->filled(self::COMPACTION_INSTRUCTION, [
-                    ...$values,
-                    'custom_instructions' => $this->shared->compactionCustomInstructions(),
-                ])),
-            ],
+            AiInstructionCall::Compaction => [$date(), $compaction()],
+            AiInstructionCall::CompactionFallback => [$compaction()],
         };
     }
 
     /**
-     * 呼び出しの値(知識の期限は無ければ口ごと入れない)。
+     * 呼び出しの値(モデルの表示名と知識の期限は無ければ口ごと入れない)。
      *
      * @return array<string, string>
      */
     private static function values(InstructionRequest $request): array
     {
+        $name = $request->modelDisplayName === null ? [] : ['model_marketing_name' => $request->modelDisplayName];
         $cutoff = $request->knowledgeCutoff === null ? [] : ['knowledge_cutoff' => $request->knowledgeCutoff];
         $values = array_map(fn (Closure $value): string => $value($request), self::requestValues());
 
-        return [...$values, ...$cutoff];
+        return [...$values, ...$name, ...$cutoff];
     }
 
     /**
-     * 呼び出しの種類の文にいつも渡す値の鍵と作り方(表示名が無ければモデルの ID。日付は実行の始めの東京の日)。
+     * 呼び出しの種類の文にいつも渡す値の鍵と作り方(日付は実行の始めの東京の日)。
      *
      * @return array<string, Closure(InstructionRequest): string>
      */
@@ -206,8 +213,6 @@ final readonly class DefaultInstructionBuilder implements InstructionBuilder
             'agent_name' => fn (): string => Config::string('app.name'),
             'language' => fn (InstructionRequest $request): string => $request->language,
             'output_style_prompt' => fn (InstructionRequest $request): string => $request->instructions,
-            'model_marketing_name' => fn (InstructionRequest $request): string => $request->modelDisplayName
-                ?? $request->modelId,
             'model_id' => fn (InstructionRequest $request): string => $request->modelId,
             'current_date' => fn (InstructionRequest $request): string => CarbonImmutable::instance($request->startedAt)
                 ->setTimezone(AccessContext::TIMEZONE)

@@ -37,7 +37,7 @@ interface InstructionBuilder
     public function compactSummary(string $answer): string;
 
     /**
-     * 会話の題の答えの 1 欄の名前と説明。
+     * 会話の題の答えの 1 欄の名前と説明(説明は空でもよい = docs の 設計/AI/設定とプロンプト/README.md 11.4 の「題の答えの形」)。
      *
      * @throws LogicException 文が無いとき(作りの誤り)
      */
