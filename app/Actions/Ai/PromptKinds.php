@@ -3,6 +3,7 @@
 namespace App\Actions\Ai;
 
 use App\Actions\Ai\Api\PromptKind;
+use App\Actions\Ai\Instructions\DefaultInstructionBuilder;
 use App\Queries\Ai\ConversationSettings;
 use App\Queries\Ai\KindSettings;
 use App\Support\DefaultDatabaseQueue;
@@ -26,6 +27,7 @@ class PromptKinds
         private KindSettings $kindSettings,
         private KindLimitChecks $limits,
         private ConversationSettings $conversation,
+        private DefaultInstructionBuilder $instructions,
     ) {}
 
     /**
@@ -58,8 +60,8 @@ class PromptKinds
 
     /**
      * 登録と設定の食い違い(起動の時に確かめるもの = 設計/AI/データと失敗と検査.md 8 節。文章・文字起こし・会話の 3 つの型をまたいで見る。
-     * 種類と区分の分は {@see KindLimitChecks}、会話の接続と用途の分は {@see ConversationSettings})。無ければ空。設定の形が合わない種類があれば、
-     * 単価と区分は見ない(形が無いと計算できない)。
+     * 種類と区分の分は {@see KindLimitChecks}、会話の接続と用途の分は {@see ConversationSettings}、指示の文の置き換え口と文の欠けは
+     * {@see DefaultInstructionBuilder})。無ければ空。設定の形が合わない種類があれば、単価と区分は見ない(形が無いと計算できない)。
      * キューの置き場({@see DefaultDatabaseQueue})はどの環境も同じに見る(ジョブを実行の記録と同じトランザクションで入れる前提 =
      * 設計/AI/実行と費用/README.md 4 節・4.5)。
      *
@@ -74,7 +76,7 @@ class PromptKinds
         }
 
         $queue = [...DefaultDatabaseQueue::storeProblems(), ...DefaultDatabaseQueue::afterCommitProblems()];
-        $conversation = $this->conversation->problems();
+        $conversation = [...$this->conversation->problems(), ...$this->instructions->problems()];
 
         if ($shape !== []) {
             return [...$queue, ...$conversation, ...$this->registrationProblems(), ...$shape];
