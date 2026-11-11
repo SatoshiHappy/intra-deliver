@@ -5,7 +5,7 @@ namespace Tests\Feature\Queries\Records;
 use App\Enums\Records\RecordModuleAction;
 use App\Models\Records\Record;
 use App\Queries\Authz\Api\Requester;
-use App\Queries\Records\RecordListQuery;
+use App\Queries\Records\RecordListing;
 use App\Queries\Records\RecordPageQuery;
 use Carbon\CarbonImmutable;
 use Tests\Support\BuildsRecordModules;
@@ -50,6 +50,6 @@ final class RecordListPageTest extends TransactionalTestCase
         $date = CarbonImmutable::parse('2026-10-11');
         $opened = app(RecordPageQuery::class)->open($requester, $moduleCode, $date, RecordModuleAction::Read);
 
-        return app(RecordListQuery::class)->list($requester, $opened, [], null, $page, $date, 'ja');
+        return app(RecordListing::class)->list($requester, $opened, [], null, $page, $date, 'ja');
     }
 }

@@ -12,7 +12,7 @@ use App\Http\Requests\Records\RecordStoreRequest;
 use App\Http\Requests\Records\RecordUpdateRequest;
 use App\Queries\Authz\Api\Requester;
 use App\Queries\Records\Api\RecordShowPanelQuery;
-use App\Queries\Records\RecordListQuery;
+use App\Queries\Records\RecordListing;
 use App\Queries\Records\RecordPageQuery;
 use App\Queries\Records\RecordQuery;
 use App\Queries\Records\RecordRelatedProps;
@@ -40,7 +40,7 @@ use Inertia\Support\Header;
 class RecordController extends Controller
 {
     public function __construct(
-        private RecordListQuery $list,
+        private RecordListing $list,
         private RecordQuery $records,
         private RecordPageQuery $pages,
         private CreateRecord $createRecord,

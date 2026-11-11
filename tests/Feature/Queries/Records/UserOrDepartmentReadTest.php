@@ -20,7 +20,7 @@ use App\Queries\Records\Api\RecordConditions;
 use App\Queries\Records\Api\RecordDisplayQuery;
 use App\Queries\Records\Api\RecordFormQuery;
 use App\Queries\Records\RecordDefinitionQuery;
-use App\Queries\Records\RecordListQuery;
+use App\Queries\Records\RecordListing;
 use App\Queries\Records\RecordPageQuery;
 use App\Queries\Records\RecordQuery;
 use App\Queries\Records\RecordRevisionDiff;
@@ -186,7 +186,7 @@ final class UserOrDepartmentReadTest extends TransactionalTestCase
         $requester = $this->requester();
         $date = $this->today();
         $opened = $this->opened();
-        $listed = app(RecordListQuery::class)->list($requester, $opened, [], null, null, $date, 'ja');
+        $listed = app(RecordListing::class)->list($requester, $opened, [], null, null, $date, 'ja');
         $records = app(RecordQuery::class);
         $forms = app(RecordFormQuery::class);
         $display = app(RecordDisplayQuery::class);

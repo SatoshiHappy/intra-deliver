@@ -3,12 +3,13 @@
 namespace Tests\Unit\Support;
 
 use App\Support\PageNumbers;
+use LogicException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 /**
- * 一覧のページ番号の 1 か所(案件・通知・業務データの一覧): 1 から始まる 10 進の整数の文字列だけを読み(ほかは 1)、最後のページより大きければ
- * 最後のページに詰める(件数 0 なら 1)。
+ * 一覧のページの数え方の 1 か所(案件・通知・業務データの一覧と、業務データの公開の口): クエリの page の読み方、最後のページへの詰め方、
+ * 最後のページ(1 ページの件数が整数の最大でもあふれない)、1 ページの件数の確かめ。
  */
 final class PageNumbersTest extends TestCase
 {
@@ -85,5 +86,61 @@ final class PageNumbersTest extends TestCase
     public function test_clamp_limits_the_page_to_the_last_page(int $requested, int $total, int $expected): void
     {
         $this->assertSame($expected, PageNumbers::clamp($requested, $total, 20));
+    }
+
+    /**
+     * @return array<string, array{int, int<1, max>, int}>
+     */
+    public static function lastPages(): array
+    {
+        return [
+            '件数 0' => [0, 20, 1],
+            '件数 1' => [1, 20, 1],
+            'ちょうど割り切れる' => [40, 20, 2],
+            '割り切れない' => [41, 20, 3],
+            '1 ページの件数 1' => [3, 1, 3],
+            '1 ページの件数が整数の最大' => [41, PHP_INT_MAX, 1],
+            '件数が整数の最大' => [PHP_INT_MAX, 1, PHP_INT_MAX],
+            '件数も 1 ページの件数も整数の最大' => [PHP_INT_MAX, PHP_INT_MAX, 1],
+        ];
+    }
+
+    /**
+     * @param  int<1, max>  $perPage
+     */
+    #[DataProvider('lastPages')]
+    public function test_last_page_does_not_overflow(int $total, int $perPage, int $expected): void
+    {
+        $this->assertSame($expected, PageNumbers::lastPage($total, $perPage));
+    }
+
+    public function test_clamp_with_the_largest_number_a_page_is_the_first_page(): void
+    {
+        $this->assertSame(1, PageNumbers::clamp(5, 41, PHP_INT_MAX));
+    }
+
+    /**
+     * @return array<string, array{int, bool}>
+     */
+    public static function perPages(): array
+    {
+        return [
+            '負の数' => [-1, true],
+            '0 件' => [0, true],
+            '1 件' => [1, false],
+            '2 件' => [2, false],
+            '整数の最大' => [PHP_INT_MAX, false],
+        ];
+    }
+
+    #[DataProvider('perPages')]
+    public function test_a_number_a_page_below_one_is_a_logic_error(int $perPage, bool $rejected): void
+    {
+        if ($rejected) {
+            $this->expectException(LogicException::class);
+        }
+
+        PageNumbers::throwIfPerPageBelowOne($perPage);
+        $this->addToAssertionCount(1);
     }
 }

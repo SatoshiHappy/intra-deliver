@@ -15,7 +15,7 @@ use App\Queries\Authz\Api\Requester;
 use App\Queries\Records\Api\RecordConditions;
 use App\Queries\Records\Api\RecordDisplayQuery;
 use App\Queries\Records\Api\RecordFormQuery;
-use App\Queries\Records\RecordListQuery;
+use App\Queries\Records\RecordListing;
 use App\Queries\Records\RecordPageQuery;
 use App\Queries\Records\RecordQuery;
 use Carbon\CarbonImmutable;
@@ -136,7 +136,7 @@ final class MultipleReferenceReadTest extends TransactionalTestCase
         $requester = $this->requester();
         $date = $this->today();
         $opened = app(RecordPageQuery::class)->open($requester, 'projects', $date, RecordModuleAction::Read);
-        $listed = app(RecordListQuery::class)->list($requester, $opened, [], null, null, $date, 'ja');
+        $listed = app(RecordListing::class)->list($requester, $opened, [], null, null, $date, 'ja');
         $records = app(RecordQuery::class);
         $forms = app(RecordFormQuery::class);
         $display = app(RecordDisplayQuery::class);
@@ -161,7 +161,7 @@ final class MultipleReferenceReadTest extends TransactionalTestCase
         $requester = $this->requester();
         $opened = app(RecordPageQuery::class)->open($requester, 'projects', $this->today(), RecordModuleAction::Read);
         $filters = ['members' => $userIds];
-        $listed = app(RecordListQuery::class)->list($requester, $opened, $filters, null, null, $this->today(), 'ja');
+        $listed = app(RecordListing::class)->list($requester, $opened, $filters, null, null, $this->today(), 'ja');
 
         return array_column($listed['records']['data'], 'id');
     }

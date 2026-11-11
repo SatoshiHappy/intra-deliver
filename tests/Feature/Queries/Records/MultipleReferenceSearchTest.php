@@ -9,7 +9,7 @@ use App\Enums\Records\RecordModuleAction;
 use App\Models\Master\DepartmentSet;
 use App\Models\Master\User;
 use App\Queries\Authz\Api\Requester;
-use App\Queries\Records\RecordListQuery;
+use App\Queries\Records\RecordListing;
 use App\Queries\Records\RecordPageQuery;
 use Carbon\CarbonImmutable;
 use PHPUnit\Framework\Attributes\TestWith;
@@ -242,7 +242,7 @@ final class MultipleReferenceSearchTest extends TransactionalTestCase
         $requester = new Requester(null, null);
         $date = CarbonImmutable::parse(self::TODAY);
         $opened = app(RecordPageQuery::class)->open($requester, 'meetings', $date, RecordModuleAction::Read);
-        $listed = app(RecordListQuery::class)->list($requester, $opened, $filters, null, null, $date, 'ja');
+        $listed = app(RecordListing::class)->list($requester, $opened, $filters, null, null, $date, 'ja');
 
         return [array_column($listed['records']['data'], 'id'), $listed['query']['filters']];
     }

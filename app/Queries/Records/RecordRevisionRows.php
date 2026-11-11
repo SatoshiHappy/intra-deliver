@@ -5,16 +5,18 @@ namespace App\Queries\Records;
 use App\Enums\Records\RecordRevisionAction;
 use App\Models\Records\RecordRevision;
 use App\Queries\Authz\Api\Requester;
+use App\Queries\Records\Api\RecordActivityQuery;
 use App\Queries\Upload\Api\UploadFile;
 use App\Queries\Upload\Api\UploadQuery;
 use App\Queries\Upload\Api\UploadResponses;
+use App\Support\PageNumbers;
 use DateTimeInterface;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
 /**
- * サイドパネルの「更新履歴」の欄の版の行(docs の 設計/業務データの入れ物/レコードの共通機能/更新履歴.md の 5 節): 新しい版から、頭
- * (日時・操作した人・代理元・契機)と、1 つ前の版との差分({@see RecordRevisionDiff} = 差分の 1 か所)。判定は呼び手がしてから呼ぶ。
- * 差分の項目・明細の項目には、値を描くための後の版の定義の写し(型・複数行・参照先)を添える。
+ * 更新履歴の版の行(docs の 設計/業務データの入れ物/レコードの共通機能/更新履歴.md の 5 節)。サイドパネルの欄と公開の口が同じ行の中身に
+ * なるよう、行を 1 か所で作る(差分は {@see RecordRevisionDiff})。判定は呼び手がしてから呼ぶ。
  *
  * @phpstan-import-type ReferenceValue from RecordValueReader
  * @phpstan-import-type RowChange from RecordRevisionDiff
@@ -58,9 +60,66 @@ class RecordRevisionRows
     ): array {
         $before = RecordRevision::query()->select('revision')->where('record_id', $recordId)->whereKey($beforeId);
         // 1 つ多く読み、続きの有無と、最後の行の 1 つ前の版に使う
-        $revisions = RecordRevision::query()->where('record_id', $recordId)
+        $revisions = $this->revisionsOf($recordId)
             ->when($beforeId !== null, fn ($query) => $query->where('revision', '<', $before))
-            ->orderByDesc('revision')->limit($limit + 1)->get()->values();
+            ->limit($limit + 1)->get()->values();
+
+        return [
+            'rows' => $this->rows($revisions, $limit, $requester, $date, $localeCode),
+            'hasMore' => $revisions->count() > $limit,
+        ];
+    }
+
+    /**
+     * ページの番号で読む(公開の口 {@see RecordActivityQuery::revisions()} の中身。保証 = docs の
+     * 設計/ワークフロー/業務データとの接続/公開の口/表示と関係の口.md の 7.3)。判定とレコードの有無は呼び手が確かめてから呼ぶ。
+     *
+     * @param  int<1, max>  $perPage
+     * @return array{rows: list<RevisionRow>, total: int, currentPage: int, lastPage: int}
+     */
+    public function numberedPage(
+        Requester $requester,
+        int $recordId,
+        int $page,
+        int $perPage,
+        DateTimeInterface $date,
+        string $localeCode,
+    ): array {
+        $total = $this->revisionsOf($recordId)->count();
+        $current = PageNumbers::clamp($page, $total, $perPage);
+        // 1 つ多く読み、最後の行の 1 つ前の版に使う(続きの読み方と同じ)。件数を超える行は無いので、件数で抑えてあふれさせない
+        $revisions = $this->revisionsOf($recordId)
+            ->offset(($current - 1) * $perPage)->limit(min($perPage, $total) + 1)->get()->values();
+
+        return [
+            'rows' => $this->rows($revisions, $perPage, $requester, $date, $localeCode),
+            'total' => $total,
+            'currentPage' => $current,
+            'lastPage' => PageNumbers::lastPage($total, $perPage),
+        ];
+    }
+
+    /**
+     * @return Builder<RecordRevision>
+     */
+    private function revisionsOf(int $recordId): Builder
+    {
+        return RecordRevision::query()->where('record_id', $recordId)->orderByDesc('revision');
+    }
+
+    /**
+     * 先頭の $limit 件の行(1 つ多く読んだ版を、最後の行の差分の前の版に使う)。
+     *
+     * @param  Collection<int, RecordRevision>  $revisions
+     * @return list<RevisionRow>
+     */
+    private function rows(
+        Collection $revisions,
+        int $limit,
+        Requester $requester,
+        DateTimeInterface $date,
+        string $localeCode,
+    ): array {
         $users = $this->reader->users($this->userIds($revisions), $date, $localeCode);
         $rows = [];
 
@@ -69,7 +128,7 @@ class RecordRevisionRows
             $rows[] = $this->row($revision, $previous, $users, $requester, $date, $localeCode);
         }
 
-        return ['rows' => $this->withFiles($rows), 'hasMore' => $revisions->count() > $limit];
+        return $this->withFiles($rows);
     }
 
     /**

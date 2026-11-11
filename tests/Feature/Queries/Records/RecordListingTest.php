@@ -9,7 +9,7 @@ use App\Models\Records\RecordField;
 use App\Models\Records\RecordModule;
 use App\Models\Records\RecordReference;
 use App\Queries\Authz\Api\Requester;
-use App\Queries\Records\RecordListQuery;
+use App\Queries\Records\RecordListing;
 use App\Queries\Records\RecordPageQuery;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Access\AuthorizationException;
@@ -23,7 +23,7 @@ use Tests\Support\TransactionalTestCase;
  * 設計/業務データの入れ物/画面/業務の画面.md 2.1 の records・query、
  * 設計/業務データの入れ物/項目と規則/規則と業務処理/画面と検査.md 13 節の「一覧」。判定は 設計/業務データの入れ物/認可とメニュー/README.md 2.2 の一覧 = read)。
  */
-final class RecordListQueryTest extends TransactionalTestCase
+final class RecordListingTest extends TransactionalTestCase
 {
     use BuildsCommonMaster;
     use BuildsRecordModules;
@@ -45,10 +45,22 @@ final class RecordListQueryTest extends TransactionalTestCase
             '文字列の % は文字' => [['title' => '100%'], [2], ['title' => '100%']],
             '文字列の _ は文字' => [['title' => 'a_b'], [3], ['title' => 'a_b']],
             '整数の範囲の下限だけ' => [['budget' => ['from' => '200']], [3, 2], ['budget' => ['from' => '200', 'to' => null]]],
-            '整数の範囲の両端(含む)' => [['budget' => ['from' => '100', 'to' => '200']], [2, 1, 0], ['budget' => ['from' => '100', 'to' => '200']]],
+            '整数の範囲の両端(含む)' => [
+                ['budget' => ['from' => '100', 'to' => '200']],
+                [2, 1, 0],
+                ['budget' => ['from' => '100', 'to' => '200']],
+            ],
             '小数の範囲の上限だけ' => [['rate' => ['to' => '1.5']], [1, 0], ['rate' => ['from' => null, 'to' => '1.5']]],
-            '日付の範囲(下限・上限ちょうどを含み、上限の 1 日後を含まない)' => [['due' => ['from' => '2026-10-01', 'to' => '2026-10-02']], [2, 1], ['due' => ['from' => '2026-10-01', 'to' => '2026-10-02']]],
-            '日時の範囲(時差つき。下限・上限ちょうどを含み、上限の 1 秒後を含まない)' => [['starts_at' => ['from' => '2026-10-11T09:00:00+09:00', 'to' => '2026-10-11T09:59:59+09:00']], [2, 0], ['starts_at' => ['from' => '2026-10-11T09:00:00+09:00', 'to' => '2026-10-11T09:59:59+09:00']]],
+            '日付の範囲(下限・上限ちょうどを含み、上限の 1 日後を含まない)' => [
+                ['due' => ['from' => '2026-10-01', 'to' => '2026-10-02']],
+                [2, 1],
+                ['due' => ['from' => '2026-10-01', 'to' => '2026-10-02']],
+            ],
+            '日時の範囲(時差つき。下限・上限ちょうどを含み、上限の 1 秒後を含まない)' => [
+                ['starts_at' => ['from' => '2026-10-11T09:00:00+09:00', 'to' => '2026-10-11T09:59:59+09:00']],
+                [2, 0],
+                ['starts_at' => ['from' => '2026-10-11T09:00:00+09:00', 'to' => '2026-10-11T09:59:59+09:00']],
+            ],
             '日時の時差の無い値は指定なし' => [['starts_at' => ['from' => '2026-10-11T09:00']], [3, 2, 1, 0], []],
             'UTC で年が 0 になる日時は指定なし' => [['starts_at' => ['from' => '0001-01-01T05:00:00+09:00']], [3, 2, 1, 0], []],
             '真偽の真' => [['urgent' => 'true'], [1], ['urgent' => 'true']],
@@ -117,7 +129,8 @@ final class RecordListQueryTest extends TransactionalTestCase
 
         $listed = $this->list($filters);
 
-        $this->assertSame(array_map(fn (int $index) => $ids[$index], $expected), array_column($listed['records']['data'], 'id'));
+        $expectedIds = array_map(fn (int $index) => $ids[$index], $expected);
+        $this->assertSame($expectedIds, array_column($listed['records']['data'], 'id'));
         $this->assertSame($interpreted, $listed['query']['filters']);
     }
 
@@ -125,13 +138,17 @@ final class RecordListQueryTest extends TransactionalTestCase
      * @param  list<int>  $expected
      */
     #[DataProvider('sorts')]
-    public function test_sorts_by_a_listed_field_with_missing_values_last_and_ties_by_id_descending(mixed $sort, array $expected, string $interpreted): void
-    {
+    public function test_sorts_by_a_listed_field_with_missing_values_last_and_ties_by_id_descending(
+        mixed $sort,
+        array $expected,
+        string $interpreted,
+    ): void {
         $ids = $this->rows();
 
         $listed = $this->list([], $sort);
 
-        $this->assertSame(array_map(fn (int $index) => $ids[$index], $expected), array_column($listed['records']['data'], 'id'));
+        $expectedIds = array_map(fn (int $index) => $ids[$index], $expected);
+        $this->assertSame($expectedIds, array_column($listed['records']['data'], 'id'));
         $this->assertSame($interpreted, $listed['query']['sort']);
     }
 
@@ -140,22 +157,32 @@ final class RecordListQueryTest extends TransactionalTestCase
         $owner = $this->field($this->module, 'owner', RecordFieldType::User, ['is_searchable' => true]);
         $user = $this->user();
         $ids = $this->rows();
-        RecordReference::factory()->create(['record_module_id' => $this->module->id, 'record_id' => $ids[1], 'record_field_id' => $owner->id, 'user_id' => $user->id]);
+        RecordReference::factory()->create([
+            'record_module_id' => $this->module->id,
+            'record_id' => $ids[1],
+            'record_field_id' => $owner->id,
+            'user_id' => $user->id,
+        ]);
 
-        $this->assertSame([$ids[1]], array_column($this->list(['owner' => (string) $user->id])['records']['data'], 'id'));
+        $listed = $this->list(['owner' => (string) $user->id]);
+        $this->assertSame([$ids[1]], array_column($listed['records']['data'], 'id'));
     }
 
     public function test_returns_only_the_listed_values_and_pages_by_20(): void
     {
-        $records = Record::factory()->count(25)->create(['record_module_id' => $this->module->id, 'field_values' => [$this->fields['title']->id => 'a', $this->fields['note']->id => 'n']]);
+        $values = [$this->fields['title']->id => 'a', $this->fields['note']->id => 'n'];
+        $records = Record::factory()->count(25)
+            ->create(['record_module_id' => $this->module->id, 'field_values' => $values]);
         Record::factory()->detail()->create();
 
         $second = $this->list([], null, '2');
         $invalidPage = $this->list([], null, 'x');
 
-        $this->assertSame([2, 2, 25], [$second['records']['currentPage'], $second['records']['lastPage'], $second['records']['total']]);
-        $this->assertSame(array_reverse(array_slice($records->modelKeys(), 0, 5)), array_column($second['records']['data'], 'id'));
-        $this->assertSame(['title', 'budget', 'rate', 'due', 'starts_at', 'urgent', 'status'], array_keys($second['records']['data'][0]['values']));
+        $page = $second['records'];
+        $this->assertSame([2, 2, 25], [$page['currentPage'], $page['lastPage'], $page['total']]);
+        $this->assertSame(array_reverse(array_slice($records->modelKeys(), 0, 5)), array_column($page['data'], 'id'));
+        $listedCodes = ['title', 'budget', 'rate', 'due', 'starts_at', 'urgent', 'status'];
+        $this->assertSame($listedCodes, array_keys($page['data'][0]['values']));
         $this->assertSame(1, $invalidPage['records']['currentPage']);
     }
 
@@ -165,7 +192,8 @@ final class RecordListQueryTest extends TransactionalTestCase
 
         $this->expectException(AuthorizationException::class);
 
-        app(RecordPageQuery::class)->open(new Requester(null, null), 'secrets', CarbonImmutable::parse('2026-10-11'), RecordModuleAction::Read);
+        $date = CarbonImmutable::parse('2026-10-11');
+        app(RecordPageQuery::class)->open(new Requester(null, null), 'secrets', $date, RecordModuleAction::Read);
     }
 
     /**
@@ -177,23 +205,36 @@ final class RecordListQueryTest extends TransactionalTestCase
     private function rows(): array
     {
         $rows = [
-            ['title' => 'portal 刷新', 'budget' => 100, 'rate' => '1.5', 'due' => '2026-10-03', 'starts_at' => '2026-10-11T00:59:59Z', 'status' => 'done', 'urgent' => false],
-            ['title' => '社内portal', 'budget' => 150, 'rate' => '1.25', 'due' => '2026-10-01', 'starts_at' => '2026-10-11T01:00:00Z', 'urgent' => true, 'status' => 'open'],
-            ['title' => '100%達成', 'budget' => 200, 'due' => '2026-10-02', 'starts_at' => '2026-10-11T00:00:00Z', 'status' => 'hold'],
+            [
+                'title' => 'portal 刷新', 'budget' => 100, 'rate' => '1.5', 'due' => '2026-10-03',
+                'starts_at' => '2026-10-11T00:59:59Z', 'status' => 'done', 'urgent' => false,
+            ],
+            [
+                'title' => '社内portal', 'budget' => 150, 'rate' => '1.25', 'due' => '2026-10-01',
+                'starts_at' => '2026-10-11T01:00:00Z', 'urgent' => true, 'status' => 'open',
+            ],
+            [
+                'title' => '100%達成', 'budget' => 200, 'due' => '2026-10-02',
+                'starts_at' => '2026-10-11T00:00:00Z', 'status' => 'hold',
+            ],
             ['title' => 'a_b', 'budget' => 300, 'status' => 'hold'],
         ];
         $updatedAt = ['2026-10-01 00:00:00', '2026-10-03 00:00:00', '2026-10-04 00:00:00', '2026-10-02 00:00:00'];
 
         return array_map(fn (array $values, string $updated) => Record::factory()->create([
             'record_module_id' => $this->module->id,
-            'field_values' => array_combine(array_map(fn (string $code) => $this->fields[$code]->id, array_keys($values)), array_values($values)),
+            'field_values' => array_combine(
+                array_map(fn (string $code) => $this->fields[$code]->id, array_keys($values)),
+                array_values($values),
+            ),
             'updated_at' => $updated,
         ])->id, $rows, $updatedAt);
     }
 
     /**
      * @param  array<string, mixed>  $filters
-     * @return array{records: array{data: list<array{id: int, values: array<string, mixed>, updatedAt: string|null}>, currentPage: int, lastPage: int, total: int}, query: array{filters: array<string, mixed>, sort: string}}
+     * @return array{records: array{data: list<array{id: int, values: array<string, mixed>, updatedAt: string|null}>,
+     *     currentPage: int, lastPage: int, total: int}, query: array{filters: array<string, mixed>, sort: string}}
      */
     private function list(array $filters, mixed $sort = null, mixed $page = null): array
     {
@@ -201,6 +242,6 @@ final class RecordListQueryTest extends TransactionalTestCase
         $date = CarbonImmutable::parse('2026-10-11');
         $opened = app(RecordPageQuery::class)->open($requester, 'projects', $date, RecordModuleAction::Read);
 
-        return app(RecordListQuery::class)->list($requester, $opened, $filters, $sort, $page, $date, 'ja');
+        return app(RecordListing::class)->list($requester, $opened, $filters, $sort, $page, $date, 'ja');
     }
 }
