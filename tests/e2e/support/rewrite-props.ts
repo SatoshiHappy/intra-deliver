@@ -36,6 +36,12 @@ export async function rewriteProps<Props>(
     change: (props: Props) => void,
 ) {
     await page.route(matches, async (route: Route) => {
+        if (route.request().method() !== 'GET') {
+            await route.fallback();
+
+            return;
+        }
+
         const response = await route.fetch();
 
         if (route.request().headers()['x-inertia'] !== undefined) {

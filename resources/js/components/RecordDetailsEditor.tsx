@@ -1,6 +1,6 @@
 import { ArrowDown, ArrowUp, Trash2 } from 'lucide-react';
 import { ClearedReasonLine } from '@/components/ClearedNotice';
-import { formErrorId } from '@/components/FormBlock';
+import { formErrorId, labelId } from '@/components/FormBlock';
 import {
     DetailCell,
     detailClearedReasonId,
@@ -19,8 +19,8 @@ import {
 import { CLEARED_REASON_TEXTS } from '@/lib/clearedFields';
 import type { ClearedReason } from '@/lib/clearedFields';
 import type { RecordFieldDraft, RecordRowDraft } from '@/lib/recordForm';
-import { MAX_DETAIL_ROWS, newRow, valueFields } from '@/lib/recordForm';
 import { recordFieldId } from '@/lib/recordFieldId';
+import { MAX_DETAIL_ROWS, newRow, valueFields } from '@/lib/recordForm';
 import type { RecordFieldDefinition } from '@/types';
 
 type Props = {
@@ -103,7 +103,7 @@ export function RecordDetailsEditor({
     }
 
     const columns = valueFields(child);
-    const headingId = `${recordFieldId(field.code)}-label`;
+    const headingId = labelId(recordFieldId(field.code));
     const tableErrorId = formErrorId(recordFieldId(field.code));
     const tableError = errors[`details.${field.code}`];
     const rowsPrefix = `details.${field.code}.`;

@@ -8,6 +8,7 @@ import type {
     RecordFieldDefinition,
     RecordFieldType,
     RecordFieldValue,
+    RecordRevisionChanges,
     RecordRevisionField,
     RecordRevisionRowAccessChange,
 } from '@/types';
@@ -114,4 +115,25 @@ export function rowAccessLines(
     }
 
     return lines;
+}
+
+/**
+ * 変化の行(項目・明細の行・添付・参照制限)が 1 つでも描かれるか(描く行が無い版は箱を出さない。明細の更新の行は、変えた項目が
+ * 明細の項目に当たるものだけが 1 行になる = RecordRevisionList の DetailChanges と同じ数え方)。
+ */
+export function hasRevisionLines(changes: RecordRevisionChanges): boolean {
+    return (
+        changes.fields.length > 0 ||
+        changes.details.some((detail) =>
+            detail.rows.some(
+                (row) =>
+                    row.change !== 'changed' ||
+                    detail.fields.some((field) =>
+                        row.changedCodes.includes(field.code),
+                    ),
+            ),
+        ) ||
+        changes.attachments.length > 0 ||
+        rowAccessLines(changes.rowAccess).length > 0
+    );
 }
