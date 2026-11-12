@@ -98,6 +98,7 @@ const newProps = {
     case: null,
     recordId: null,
     targetEntry: null,
+    copy: null,
 };
 const recordProps = { ...newProps, mode: 'record', recordId: 7 };
 const reapplyProps = {

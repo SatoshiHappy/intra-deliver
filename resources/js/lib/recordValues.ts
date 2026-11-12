@@ -158,6 +158,22 @@ export function missingChoiceLabel(
         : `${value}(選択肢にありません)`;
 }
 
+/** 複数行の文字列の項目か(格子の 2 列分と、値の変化の上下の並びの 1 か所の判定) */
+export function isMultilineString(
+    field: Pick<RecordFieldDefinition, 'type' | 'isMultiline'>,
+): boolean {
+    return field.type === 'string' && field.isMultiline;
+}
+
+/** 値が空か(表示の空「—」と値の変化の「未設定」の 1 か所の判定) */
+export function isEmptyRecordValue(value: RecordFieldValue): boolean {
+    return (
+        value === null ||
+        value === '' ||
+        (Array.isArray(value) && value.length === 0)
+    );
+}
+
 /**
  * 値を表示の文字列にする(place = 出す場所。既定は詳細)。
  */
@@ -166,14 +182,12 @@ export function formatRecordValue(
     value: RecordFieldValue,
     place: RecordValuePlace = 'detail',
 ): string {
-    if (value === null || value === '') {
+    if (isEmptyRecordValue(value)) {
         return EMPTY_VALUE;
     }
 
     if (Array.isArray(value)) {
-        return value.length === 0
-            ? EMPTY_VALUE
-            : referencesText(field, value, place);
+        return referencesText(field, value, place);
     }
 
     if (isReferenceValue(value)) {

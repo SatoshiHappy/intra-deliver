@@ -18,7 +18,8 @@ export const demoGroups = [
         // zz-workflow-proxy は案件を足すだけで、前の spec の見本の案件に触れない。zz-workflow-proxy-screens・zz-workflow-proxy-admin は
         // 代理を足して消すだけ(代理先の通知が残る)で、案件と通知の件数を前提にしないので、この 3 つの順はどれでもよい。
         // 3 つとも zz-workflow-record-apply-* の前に置く。zz-workflow-record-apply-* は番号の順に流す(名前に target を含む 3 つは
-        // 申請対象からの申請で、プロジェクトを申請対象にするフローが 1 つのうちに流す。2 で 2 つ目のフローを足し、
+        // 申請対象からの申請で、プロジェクトを申請対象にするフローが 1 つのうちに流す。1e の案件からの複製も、見本の WF-000013 を写して
+        // 申請するだけで、同じ間に流す。2 で 2 つ目のフローを足し、
         // 3 で申請書の業務モジュールの更新の許可を外すので、最後に置く。名前に attachment を含む 4 つの spec は 2 で足した 2 つ目のフローの入口のダイアログと、
         // 申請書のレコードへの添付の追加(更新の許可)を使うので、2 と 3 の間に置く。名前の順に流れるので、番号をそう振る。処理のダイアログの
         // 添付の spec(名前に attachment-process を含む)は更新の許可が無くても付くことを確かめるので、3 の後に置く)。
@@ -39,6 +40,7 @@ export const demoGroups = [
             'tests/e2e/demo/zz-workflow-record-apply-1b-target-from-record.spec.ts',
             'tests/e2e/demo/zz-workflow-record-apply-1c-target-choose.spec.ts',
             'tests/e2e/demo/zz-workflow-record-apply-1d-target-proxy.spec.ts',
+            'tests/e2e/demo/zz-workflow-record-apply-1e-case-copy.spec.ts',
             'tests/e2e/demo/zz-workflow-record-apply-2-choose.spec.ts',
             'tests/e2e/demo/zz-workflow-record-apply-2b-attachment-draft.spec.ts',
             'tests/e2e/demo/zz-workflow-record-apply-2c-attachment-values.spec.ts',

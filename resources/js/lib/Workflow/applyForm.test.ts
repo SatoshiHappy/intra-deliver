@@ -19,6 +19,7 @@ function props(
         mode: 'new',
         case: null,
         module,
+        copy: null,
         ...overrides,
     } as WorkflowApplyProps;
 }

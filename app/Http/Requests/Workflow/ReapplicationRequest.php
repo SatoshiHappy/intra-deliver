@@ -68,4 +68,9 @@ class ReapplicationRequest extends FormRequest
     {
         return false;
     }
+
+    protected function acceptsCopyRowAccess(): bool
+    {
+        return false;
+    }
 }

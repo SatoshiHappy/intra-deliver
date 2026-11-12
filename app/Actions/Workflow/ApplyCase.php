@@ -219,8 +219,9 @@ class ApplyCase
         $origin = $this->records->origin(WorkflowAction::Apply, $this->records->applyNodeName($versionId), $actor);
         $moving = $this->draftAttachmentsToMove($flow, $draft, $input, $actor);
         $moduleCode = $this->records->moduleCodeOf($flow);
-        $restricted = $this->rowAccess->forRegistration($applicant, $flow, $input->record);
-        $record = $input->recordInput($this->attachments->uploadInputs($moving), $restricted);
+        $rowAccess = $this->rowAccess->forRegistration($context, $applicant, $flow, $input, $draft);
+        $uploads = $this->attachments->uploadInputs($moving);
+        $record = $input->recordInput($uploads, $rowAccess['restricted'], $rowAccess['viewers']);
         $recordId = $this->createRecord->execute($applicant, $moduleCode, $record, $origin);
         $this->attachments->forget($moving);
         $revisionId = $this->records->revisionOf($recordId);

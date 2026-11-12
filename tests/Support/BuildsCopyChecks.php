@@ -18,7 +18,7 @@ use Carbon\CarbonImmutable;
 use Illuminate\Contracts\Support\Arrayable;
 
 /**
- * 写す時の確かめのテストの手助け(docs の 設計/ワークフロー/申請の周辺/既存のデータからの申請/案件からの複製/写す値.md の 13.3 の確かめの表、
+ * 写す時の確かめのテストの手助け(docs の 設計/業務データの入れ物/項目と規則/README.md の 5 節の「開く時の確かめ」の表、
  * 設計/業務データの入れ物/レコードの共通機能/複製.md の 2 節)。写す元の業務モジュール m_src の項目を、確かめの表の値の種類ごとに並べる
  * (見出しの前 = note・choice、見出し H の後 = user・dept・party・ref・secret・self、明細 lines は sort_key が最小でも欄の最後)。
  * 参照先 = m_ref(read あり。今の利用者が作った見えるレコード ok と、ほかの人が作った参照制限の hidden)・m_secret(read なし)。

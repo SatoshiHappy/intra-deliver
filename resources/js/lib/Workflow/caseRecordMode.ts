@@ -47,3 +47,16 @@ export function reloadStepOf(
 ): { reload: boolean; reloaded: boolean } {
     return { reload: stale && !reloaded, reloaded: stale };
 }
+
+/**
+ * 申請の詳細に描く左右の枠と、処理のボタンの帯の置き場。帯はどの形でも出す(読み直しの間も処理のボタンを押せるように)。
+ */
+export type CaseLayout =
+    | { frame: ShownCaseRecordMode; actionBar: 'frameFooter' }
+    | { frame: null; actionBar: 'belowHeading' };
+
+export function caseLayoutOf(mode: CaseRecordMode): CaseLayout {
+    return mode.kind === 'reload'
+        ? { frame: null, actionBar: 'belowHeading' }
+        : { frame: mode, actionBar: 'frameFooter' };
+}

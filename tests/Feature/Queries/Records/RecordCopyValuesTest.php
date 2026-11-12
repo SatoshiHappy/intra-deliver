@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Queries\Records;
 
+use App\Enums\Records\RecordFieldType;
 use App\Models\Records\Record;
 use App\Models\Records\RecordModule;
 use App\Models\Records\RecordReference;
@@ -15,9 +16,10 @@ use Tests\Support\BuildsCopyChecks;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * 写しの初期値の公開の口「値から」と、確かめの 1 か所(docs の 設計/ワークフロー/申請の周辺/既存のデータからの申請/案件からの複製/写す値.md の
- * 13.3 の確かめの表と公開の口の表、検査.md の 14 節の 13.3): 今日に有効でない人と組織・読めない参照先・選択肢に無いコードを空にし、
- * 空にした項目の名前を画面の欄の順で返す。ほかの型は確かめない。判定をせず、鍵を取らず、書かない。
+ * 写しの初期値の公開の口「値から」と、確かめの 1 か所(docs の 設計/業務データの入れ物/項目と規則/README.md の 5 節の「開く時の確かめ」の表と
+ * 「確かめの 1 か所」、設計/ワークフロー/業務データとの接続/公開の口/画面の値の口.md の 7.2、
+ * 設計/ワークフロー/申請の周辺/既存のデータからの申請/案件からの複製/検査.md の 14 節の 13.3): 今日に有効でない人と組織・
+ * 読めない参照先・選択肢に無いコードを空にし、空にした欄を画面の欄の順で返す。ほかの型は確かめない。判定をせず、鍵を取らず、書かない。
  *
  * @phpstan-import-type CopyCheckFixture from BuildsCopyChecks
  */
@@ -50,7 +52,7 @@ final class RecordCopyValuesTest extends TransactionalTestCase
             ['type' => 'user', 'id' => $users['startsToday']->id],
             ['type' => 'department', 'id' => $departments['startsToday']->id],
         ], self::targetsOf($copied['values']['party']));
-        $this->assertSame(['dept', 'party'], $copied['clearedFields']);
+        $this->assertSame(['dept', 'party'], array_column($copied['clearedFields'], 'name'));
     }
 
     public function test_record_references_need_the_read_and_the_row_access_of_the_requester(): void
@@ -68,7 +70,8 @@ final class RecordCopyValuesTest extends TransactionalTestCase
         foreach ($cases as $label => [$given, $expected]) {
             $copied = $this->fromValues($fixture, ['ref' => $given]);
             $this->assertSame($expected, self::targetsOf($copied['values']['ref']), $label);
-            $this->assertSame($expected === null ? ['ref'] : [], $copied['clearedFields'], $label);
+            $names = array_column($copied['clearedFields'], 'name');
+            $this->assertSame($expected === null ? ['ref'] : [], $names, $label);
         }
 
         $secret = $this->fromValues($fixture, ['secret' => ['id' => $fixture['secret']->id]]);
@@ -84,9 +87,9 @@ final class RecordCopyValuesTest extends TransactionalTestCase
         $kept = $this->fromValues($fixture, ['choice' => ['code' => 'b', 'name' => '元の名前']]);
 
         $this->assertSame(['note' => $long, 'choice' => null], $copied['values']);
-        $this->assertSame(['choice'], $copied['clearedFields']);
+        $this->assertSame(['choice'], array_column($copied['clearedFields'], 'name'));
         $this->assertSame(['code' => 'b', 'name' => 'bの名称'], $kept['values']['choice']);
-        $this->assertSame([], $kept['clearedFields']);
+        $this->assertSame([], array_column($kept['clearedFields'], 'name'));
     }
 
     public function test_detail_rows_stay_when_their_values_are_cleared_and_names_follow_the_screen_order(): void
@@ -112,7 +115,33 @@ final class RecordCopyValuesTest extends TransactionalTestCase
         );
         $items = array_column(array_column($copied['details']['lines'], 'values'), 'item');
         $this->assertSame(['1 行目', '2 行目', '3 行目'], $items);
-        $this->assertSame(['choice', 'user', 'linesのwho'], $copied['clearedFields']);
+        $this->assertSame(['choice', 'user', 'linesのwho', 'linesのwho'], array_column($copied['clearedFields'], 'name'));
+        $cell = fn (array $entry) => [$entry['kind'], $entry['detail'], $entry['row'], $entry['field']];
+        $this->assertSame(
+            [['field', null, null, 'user'], ['cell', 'lines', 0, 'who'], ['cell', 'lines', 1, 'who']],
+            array_map($cell, array_slice($copied['clearedFields'], 1)),
+        );
+    }
+
+    public function test_cells_follow_the_field_order_within_a_row_and_the_details_follow_their_order(): void
+    {
+        $fixture = $this->copyCheckFixture();
+        ['users' => $users] = $this->people();
+        $tasks = $this->detailsField($fixture['module'], 'tasks', ['sort_key' => 6]);
+        $this->field($this->childOf($tasks), 'owner', RecordFieldType::User, ['sort_key' => 1]);
+        $disabled = ['id' => $users['disabled']->id];
+
+        // 値は定義の並びと逆の順で渡す(明細の項目も、行の中の項目も)
+        $copied = $this->fromValues($fixture, [], [
+            'tasks' => [['values' => ['owner' => $disabled]]],
+            'lines' => [['values' => ['parent_ref' => ['id' => 999_999_999], 'who' => $disabled]]],
+        ]);
+
+        $cell = fn (array $entry) => [$entry['kind'], $entry['detail'], $entry['row'], $entry['field']];
+        $this->assertSame(
+            [['cell', 'lines', 0, 'who'], ['cell', 'lines', 0, 'parent_ref'], ['cell', 'tasks', 0, 'owner']],
+            array_map($cell, $copied['clearedFields']),
+        );
     }
 
     public function test_the_target_record_cannot_be_pointed_by_its_own_values_or_its_rows(): void
@@ -131,9 +160,9 @@ final class RecordCopyValuesTest extends TransactionalTestCase
 
         $this->assertNull($toTarget['values']['self']);
         $this->assertNull($toTarget['details']['lines'][0]['values']['parent_ref']);
-        $this->assertSame(['self', 'linesのparent_ref'], $toTarget['clearedFields']);
+        $this->assertSame(['self', 'linesのparent_ref'], array_column($toTarget['clearedFields'], 'name'));
         $this->assertSame(['id' => $targetId], self::targetsOf($toNew['values']['self']));
-        $this->assertSame([], $toNew['clearedFields']);
+        $this->assertSame([], array_column($toNew['clearedFields'], 'name'));
     }
 
     public function test_only_the_given_fields_are_returned_and_unknown_codes_are_dropped(): void
@@ -193,7 +222,8 @@ final class RecordCopyValuesTest extends TransactionalTestCase
      * @param  array<string, mixed>  $values
      * @param  array<string, mixed>  $details
      * @return array{values: array<string, mixed>, details: array<string, list<array{values: array<string, mixed>}>>,
-     *     clearedFields: list<string>}
+     *     clearedFields: list<array{kind: string, field: string|null, detail: string|null, row: int|null,
+     *     name: string}>}
      */
     private function fromValues(array $fixture, array $values, array $details = []): array
     {

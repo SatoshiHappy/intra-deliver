@@ -32,8 +32,10 @@ class CaseShowProps
         'links',
     ];
 
-    /** 申請の層(つながる申請を含む) */
-    public const CASE_LAYER = [...self::DETAIL_LAYER, 'related'];
+    /**
+     * 申請の層(つながる申請と、ボタン「複製」を出すか = 設計/ワークフロー/申請の周辺/既存のデータからの申請/案件からの複製/README.md の 12.2 節を含む)。
+     */
+    public const CASE_LAYER = [...self::DETAIL_LAYER, 'related', 'canCopy'];
 
     /** レコードの層(props → recordAccess が偽のときの値) */
     public const RECORD_LAYER = [
@@ -62,6 +64,7 @@ class CaseShowProps
         private CaseRecordPanel $panel,
         private CaseRelatedRecords $relatedRecords,
         private RelatedCases $related,
+        private CaseCopyability $copyability,
     ) {}
 
     /**
@@ -82,6 +85,11 @@ class CaseShowProps
         if ($access && ! $this->canView($scope)) {
             $access = false;
             $props = [...$props, ...$this->layers(false, $scope)];
+        }
+
+        // レコードの中身を持たず recordAccess によらないので、伏せ直しても組み直さない(判定は 1 回)
+        if ($selection->wants('canCopy')) {
+            $props['canCopy'] = $this->copyability->canCopy($context, (int) $case->workflow_flow_id);
         }
 
         return [...$props, 'recordAccess' => $access];

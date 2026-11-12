@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vite-plus/test';
 import { recordField } from './recordField.testing';
 import {
     formatRecordValue,
+    isEmptyRecordValue,
+    isMultilineString,
     missingChoiceLabel,
     referenceLabel,
     shownReferences,
@@ -14,6 +16,35 @@ const choiceField = recordField('status', 'choice', {
         { code: 'open', name: '受付' },
         { code: 'done', name: '完了' },
     ],
+});
+
+describe('isEmptyRecordValue', () => {
+    it.each([
+        ['null', null],
+        ['空の文字列', ''],
+        ['空の並び', []],
+    ])('%s は空で、表示は「—」', (_, value) => {
+        expect(isEmptyRecordValue(value)).toBe(true);
+        expect(formatRecordValue(choiceField, value)).toBe('—');
+    });
+
+    it.each([
+        ['真偽の偽', false],
+        ['数の 0', 0],
+        ['空白だけの文字列', ' '],
+    ])('%s は値', (_, value) => {
+        expect(isEmptyRecordValue(value)).toBe(false);
+    });
+});
+
+describe('isMultilineString', () => {
+    it.each([
+        ['複数行の文字列', 'string', true, true],
+        ['1 行の文字列', 'string', false, false],
+        ['文字列でない型', 'integer', true, false],
+    ] as const)('%s', (_, type, isMultiline, expected) => {
+        expect(isMultilineString({ type, isMultiline })).toBe(expected);
+    });
 });
 
 describe('toTokyoLocal', () => {

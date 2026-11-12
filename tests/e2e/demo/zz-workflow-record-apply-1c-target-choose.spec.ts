@@ -122,7 +122,7 @@ test('写しの値の入口が 404 のとき、トーストが出て、申請対
     ).toBeEnabled();
 });
 
-test('写す時に空にした値は欄が空で、申請対象の値の 1 行に名前が出る', async ({
+test('写す時に空にした値は欄が空で、空にした欄の知らせと理由が出る', async ({
     page,
 }) => {
     await openAs(page, 'applicant', APPLY_URL);
@@ -140,7 +140,15 @@ test('写す時に空にした値は欄が空で、申請対象の値の 1 行�
             json: {
                 ...body,
                 values: { ...body.values, manager: null },
-                clearedFields: ['責任者'],
+                clearedFields: [
+                    {
+                        kind: 'field',
+                        field: 'manager',
+                        detail: null,
+                        row: null,
+                        name: '責任者',
+                    },
+                ],
             },
         });
     });
@@ -154,9 +162,14 @@ test('写す時に空にした値は欄が空で、申請対象の値の 1 行�
     ).not.toContainText(cleared.manager);
     await expect(
         page.getByText(
-            '申請対象の値のうち、責任者は、現在使用できない値を外しました。',
+            '今は使えない値を空にした項目が 1 件あります。⚠ の付いた欄を入力してください。',
             { exact: true },
         ),
+    ).toBeVisible();
+    await expect(
+        page.getByText('申請対象の今の値は、今は使えないため空にしました。', {
+            exact: true,
+        }),
     ).toBeVisible();
 });
 

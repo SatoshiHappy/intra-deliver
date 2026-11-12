@@ -8,10 +8,12 @@ import type {
     ApplicationTargetFailure,
     ApplicationTargetView,
 } from './applicationTargetFlow';
+import type { ClearedMark } from '@/lib/clearedFields';
 import { createFormData } from '@/lib/recordForm';
 import type { RecordFormData } from '@/lib/recordForm';
 import type { ApplicationTargetSnapshot } from '@/types/workflowApplyTarget';
 import type {
+    ClearedField,
     PickedReference,
     RecordFieldDefinition,
     RecordFieldType,
@@ -126,13 +128,42 @@ export function row(id: number, title: string, done = false) {
     return { key: `id-${id}`, id, values: { title, done } };
 }
 
-/** 写しの値(values の値は応答の形。details は行の値) */
+/** 親の項目を空にした欄の並び(名前 = コード) */
+export function clearedOf(codes: string[]): ClearedField[] {
+    return codes.map((code) => ({
+        kind: 'field',
+        field: code,
+        detail: null,
+        row: null,
+        name: code,
+    }));
+}
+
+/** 申請対象の値の写しで空にした親の欄の印(空にした直後の値 = 空) */
+export function markOf(code: string): ClearedMark {
+    return {
+        kind: 'field',
+        field: code,
+        detail: null,
+        rowKey: null,
+        reason: 'applicationTarget',
+        baseline: 'null',
+        gone: false,
+    };
+}
+
+/** 印の付いた欄のコード(並びのまま) */
+export function markedOf(marks: ClearedMark[] | undefined): string[] {
+    return (marks ?? []).map((mark) => mark.field ?? '');
+}
+
+/** 写しの値(values の値は応答の形。details は行の値。clearedFields = 空にした親の項目のコード) */
 export function snapshotOf(
     values: Record<string, RecordFieldValue> = {},
     details: ApplicationTargetSnapshot['details'] = {},
     clearedFields: string[] = [],
 ): ApplicationTargetSnapshot {
-    return { values, details, clearedFields };
+    return { values, details, clearedFields: clearedOf(clearedFields) };
 }
 
 /** 応答の処理(microtask)が済むまで待つ */

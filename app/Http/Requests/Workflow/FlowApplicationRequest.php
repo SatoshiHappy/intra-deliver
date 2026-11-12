@@ -118,6 +118,11 @@ class FlowApplicationRequest extends FormRequest
         return false;
     }
 
+    protected function acceptsCopyRowAccess(): bool
+    {
+        return ! $this->fromRecord();
+    }
+
     private function fromRecord(): bool
     {
         return $this->routeIs(self::APPLY_ROUTE) && $this->input('record_id') !== null;

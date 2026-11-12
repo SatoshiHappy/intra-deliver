@@ -8,6 +8,7 @@ use App\Models\Records\Record;
 use App\Models\Records\RecordField;
 use App\Support\AccessContext;
 use Carbon\CarbonImmutable;
+use Illuminate\Support\Collection;
 use Illuminate\Validation\ValidationException;
 use Inertia\Testing\AssertableInertia as Assert;
 use Tests\Support\BuildsCopyChecks;
@@ -16,7 +17,7 @@ use Tests\Support\TransactionalTestCase;
 /**
  * 業務データの画面の複製の、開く時の確かめ(docs の 設計/業務データの入れ物/レコードの共通機能/複製.md の 2 節・5 節の反映 =
  * 設計/ワークフロー/申請の周辺/既存の設計への反映/共通機能とほかの文書.md の 4 節): 今は使えない値と参照者を空にし、copySource.clearedFields に
- * 空にした項目の名前を画面の欄の順で返す(参照者は最後に「参照制限の参照者」)。残した値はそのまま登録でき、空にした値を戻すと保存の確かめで 422。
+ * 空にした欄の並び(画面の欄の順。参照者は最後)を返す。残した値はそのまま登録でき、空にした値を戻すと保存の確かめで 422。
  *
  * @phpstan-import-type CopyCheckFixture from BuildsCopyChecks
  */
@@ -49,6 +50,14 @@ final class RecordCopyClearingTest extends TransactionalTestCase
         $this->actingAs($fixture['me']);
         $party = [['type' => 'user', 'id' => $users['startsToday']->id]];
         $viewers = [['type' => 'user', 'id' => $users['endsTomorrow']->id]];
+        $field = fn (string $code) => [
+            'kind' => 'field', 'field' => $code, 'detail' => null, 'row' => null, 'name' => $code,
+        ];
+        $cleared = [
+            ...array_map($field, ['choice', 'user', 'party', 'ref']),
+            ['kind' => 'cell', 'field' => 'who', 'detail' => 'lines', 'row' => 0, 'name' => 'linesのwho'],
+            ['kind' => 'viewers', 'field' => null, 'detail' => null, 'row' => null, 'name' => '参照制限の参照者'],
+        ];
 
         $this->get("/records/data/m_src/create?copy={$record->id}")->assertOk()
             ->assertInertia(fn (Assert $page) => $page
@@ -60,7 +69,7 @@ final class RecordCopyClearingTest extends TransactionalTestCase
                 ->where('copySource.details.lines.0.values.who', null)
                 ->where('copySource.rowAccess.restricted', true)
                 ->where('copySource.rowAccess.viewers', fn ($value) => self::targetsOf($value) === $viewers)
-                ->where('copySource.clearedFields', ['choice', 'user', 'party', 'ref', 'linesのwho', '参照制限の参照者']));
+                ->where('copySource.clearedFields', fn (Collection $value) => $value->all() === $cleared));
     }
 
     public function test_a_copy_without_unusable_values_has_no_cleared_fields(): void

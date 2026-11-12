@@ -1,5 +1,5 @@
 import { router, useRemember } from '@inertiajs/react';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import {
     openedOf,
     rememberKeyOf,
@@ -13,10 +13,9 @@ import type { WorkflowApplyProps } from '@/types';
  * 戻る・進むでも戻るよう、履歴の項目に覚える(Inertia の remember。再読み込みでは消える)。
  */
 export function useApplyOpened(props: WorkflowApplyProps): WorkflowApplyProps {
-    const [opened] = useRemember(
-        openedOf(props),
-        `${rememberKeyOf(props)}:opened`,
-    );
+    // 覚える既定値は初めの描画で 1 回だけ作る
+    const [initial] = useState(() => openedOf(props));
+    const [opened] = useRemember(initial, `${rememberKeyOf(props)}:opened`);
 
     return withOpened(props, opened);
 }

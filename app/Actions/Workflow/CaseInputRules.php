@@ -55,15 +55,23 @@ class CaseInputRules
 
     /**
      * 一時保存の入力(draft_input に書く形)。案件名・コメント・値・明細の全体を入口と同じ変換(前後の空白を除き空なら null)に掛けてから、大きさと使えない文字を見る
-     * (HTTP の入口と直接の呼び出しで同じ結果にする)。
+     * (HTTP の入口と直接の呼び出しで同じ結果にする)。大きさはサーバーだけが書くキーを入れた後の全体で数える。
      *
-     * @return array{name: string|null, comment: string|null, values: stdClass, details: stdClass, base_date: string|null}
+     * @param  array<string, mixed>  $serverKeys  サーバーだけが書くキー(案件からの複製の copied_row_access。変換に掛けない)
+     * @return array<string, mixed>
      *
      * @throws ValidationException 使えない文字(U+0000・UTF-8 として正しくない文字列)・大きさの上限を超える(どちらも draft)
      */
-    public function draftInput(DraftInput $input): array
+    public function draftInput(DraftInput $input, array $serverKeys = []): array
     {
-        $draft = JsonObjectMaps::draftInput($this->normalized($input->name), $this->normalized($input->comment), InputText::normalize($input->values), InputText::normalize($input->details), $this->normalized($input->baseDate));
+        [$values, $details] = [InputText::normalize($input->values), InputText::normalize($input->details)];
+        $draft = [
+            ...JsonObjectMaps::draftInput(
+                $this->normalized($input->name), $this->normalized($input->comment), $values, $details,
+                $this->normalized($input->baseDate),
+            ),
+            ...$serverKeys,
+        ];
         $json = json_encode($draft, JSON_UNESCAPED_UNICODE);
 
         if ($json === false || $this->containsNul($draft)) {

@@ -5,6 +5,8 @@ import {
     applicationTargetOf,
 } from '@/lib/Workflow/applicationTargetSnapshot';
 import type { ApplicationTargetChange } from '@/lib/Workflow/applicationTargetSnapshot';
+import { clearedMarksOf } from '@/lib/clearedFields';
+import type { ClearedMark } from '@/lib/clearedFields';
 import type { RecordFormData } from '@/lib/recordForm';
 import type { ApplicationTargetSnapshot } from '@/types/workflowApplyTarget';
 import type { PickedReference, WorkflowApplyProps } from '@/types';
@@ -37,11 +39,11 @@ export type ApplicationTargetConfirm = {
     changes: ApplicationTargetChange[];
 };
 
-/** 開いた時のフォームの値と、開いた直後に確かめるものと、開いた時に写した値で空にした項目の名前 */
+/** 開いた時のフォームの値と、開いた直後に確かめるものと、開いた時に写した値で空にした欄の印 */
 export type ApplicationTargetOpening = {
     record: RecordFormData;
     confirm: ApplicationTargetConfirm | null;
-    cleared: string[];
+    cleared: ClearedMark[];
 };
 
 /**
@@ -152,15 +154,17 @@ export function confirmOf(
 
 /**
  * 開いた時の写し(docs の 設計/ワークフロー/申請の周辺/既存のデータからの申請/申請対象からの申請.md の 10.2 節の「開いた時」の行)。
- * 写しの値を持たない画面(null)は何もしない。
+ * 写しの値を持たない画面(null)と、開いた時に写す経路(業務レコードの詳細から・そのものを申請する・案件からの複製)でない画面は何もしない。
  */
 export function openingOf(
     props: WorkflowApplyProps,
     record: RecordFormData,
 ): ApplicationTargetOpening {
     const { module, targetField, targetValues, targetEntry, mode } = props;
+    const snapshotsOnOpen =
+        targetEntry !== null || mode === 'record' || props.copy !== null;
 
-    if (targetValues === null || (targetEntry === null && mode !== 'record')) {
+    if (targetValues === null || !snapshotsOnOpen) {
         return { record, confirm: null, cleared: [] };
     }
 
@@ -175,11 +179,27 @@ export function openingOf(
               )
             : null;
 
-    return confirm === null
-        ? {
-              record: snapshotRecordOf(module, record, targetValues),
-              confirm,
-              cleared: targetValues.clearedFields,
-          }
-        : { record, confirm, cleared: [] };
+    if (confirm !== null) {
+        return { record, confirm, cleared: [] };
+    }
+
+    const snapshotted = snapshotRecordOf(module, record, targetValues);
+
+    return {
+        record: snapshotted,
+        confirm,
+        cleared: targetMarksOf(targetValues, snapshotted),
+    };
+}
+
+/**
+ * 申請対象の値を写した直後の、空にした欄の印(理由 = 申請対象の値の文。写すたびに置き換える)。
+ */
+export function targetMarksOf(
+    snapshot: ApplicationTargetSnapshot,
+    snapshotted: RecordFormData,
+): ClearedMark[] {
+    return clearedMarksOf(snapshot.clearedFields, 'applicationTarget', {
+        record: snapshotted,
+    });
 }

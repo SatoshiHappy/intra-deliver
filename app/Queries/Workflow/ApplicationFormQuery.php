@@ -33,11 +33,14 @@ use LogicException;
  * @phpstan-import-type Applicant from ApplicationApplicants
  * @phpstan-import-type ApplicantProps from ApplicationApplicants
  * @phpstan-import-type Links from PersonLinks
+ * @phpstan-import-type ClearedField from RecordFormQuery
  *
+ * @phpstan-type ApplyCopy array{caseId: int, caseNumber: string, name: string, clearedFields: list<ClearedField>,
+ *     rowAccess: string}
  * @phpstan-type ApplyForm array{mode: string, flow: array{code: string, name: string, description: string|null}, case: array{id: int, number: string|null, revision: int}|null, module: array<string, mixed>, headings: list<array{id: int|null, name: string|null, fieldCodes: list<string>}>, initial: array{name: string|null, comment: string|null, values: array<string, mixed>, details: array<string, list<array<string, mixed>>>}|null, titleField: string|null, recordId: int|null, baseDate: string, baseDateRange: array{min: string|null, max: string|null}, next: Next, nameMaxLength: int, commentMaxLength: int, attachment: ApplyAttachment,
  *     recordVersion: string|null, recordTitle: string|null, targetField: string|null,
  *     targetValues: ApplicationTargetValueSet|null, targetEntry: array{module: string, record: int}|null,
- *     applicants: list<Applicant>, applicant: int|null, links: Closure(): Links}
+ *     copy: ApplyCopy|null, applicants: list<Applicant>, applicant: int|null, links: Closure(): Links}
  */
 class ApplicationFormQuery
 {
@@ -225,7 +228,8 @@ class ApplicationFormQuery
         );
         $applicationTarget = $this->applicationTargetValues->applicationTargetOf($flow);
         $copied = $applicationTarget === null ? null : $this->applicationTargetValues->valuesOfRecord(
-            $requester, $applicationTarget, $module, $read['values'], $recordId, $context->date, $context->localeCode,
+            $requester, $applicationTarget, $moduleCode, $module, $read['values'], $recordId, $context->date,
+            $context->localeCode,
         );
 
         return [...$form, 'recordVersion' => $read['version'], 'recordTitle' => $this->display->titleOf($recordId),
@@ -279,6 +283,7 @@ class ApplicationFormQuery
             'targetField' => $this->applicationTargetValues->applicationTargetOf($flow)['field'] ?? null,
             'targetValues' => null,
             'targetEntry' => null,
+            'copy' => null,
             ...$date,
             ...$applicants,
             'links' => $this->links->lazy($context),

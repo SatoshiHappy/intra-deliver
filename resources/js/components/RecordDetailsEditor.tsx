@@ -1,9 +1,10 @@
 import { ArrowDown, ArrowUp, Trash2 } from 'lucide-react';
+import { ClearedReasonLine } from '@/components/ClearedNotice';
 import { formErrorId } from '@/components/FormBlock';
 import {
-    hasCharacterCount,
-    RecordFieldInput,
-} from '@/components/RecordFieldInput';
+    DetailCell,
+    detailClearedReasonId,
+} from '@/components/RecordDetailCell';
 import { RecordColumnHeads } from '@/components/RecordFieldBadges';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -15,12 +16,11 @@ import {
     TableHeader,
     TableRow,
 } from '@/components/ui/table';
+import { CLEARED_REASON_TEXTS } from '@/lib/clearedFields';
+import type { ClearedReason } from '@/lib/clearedFields';
 import type { RecordFieldDraft, RecordRowDraft } from '@/lib/recordForm';
 import { MAX_DETAIL_ROWS, newRow, valueFields } from '@/lib/recordForm';
-import { fieldErrorOf, referenceItemErrors } from '@/lib/recordFormErrors';
-import { isRequiredNow } from '@/lib/recordRules';
-import { cn } from '@/lib/utils';
-import type { RecordFieldDefinition, RecordModuleDefinition } from '@/types';
+import type { RecordFieldDefinition } from '@/types';
 
 type Props = {
     /** 明細の項目(childModule を持つ) */
@@ -38,73 +38,47 @@ type Props = {
     isRequiredNow: boolean;
     /** 検証のエラー(キー → 文言) */
     errors: Record<string, string | undefined>;
-};
-
-type DetailCellProps = {
-    /** 明細の項目のコード */
-    detailsCode: string;
-    /** 明細のモジュール(行の必須の評価) */
-    child: RecordModuleDefinition;
-    column: RecordFieldDefinition;
-    row: RecordRowDraft;
-    /** 行の添字(誤りのキー) */
-    index: number;
-    recordId: number | null;
-    errors: Record<string, string | undefined>;
-    onChange: (draft: RecordFieldDraft) => void;
-    /** prefix で始まるキーの誤りを消す */
-    onClearErrors: (prefix: string) => void;
+    /** 今は使えない値を空にしたセル(行の key → 列のコード → 理由) */
+    cleared: Record<string, Record<string, ClearedReason>>;
 };
 
 /**
- * 行の 1 つの列のセル(入力・「必須」の札・誤りの文言)。
+ * 表の上の、今の行にある空にしたセルの理由(1 度ずつ、行の順)。
  */
-function DetailCell(props: DetailCellProps) {
-    const { column, row, index } = props;
-    const id = `record-detail-${props.detailsCode}-${row.key}-${column.code}`;
-    const key = `details.${props.detailsCode}.${index}.values.${column.code}`;
-    const error = fieldErrorOf(props.errors, key);
-    const required = isRequiredNow(props.child, column, row.values);
-    const counted = hasCharacterCount(column);
-    // 文字数は入力の下に出るので、数のある列だけ札を入力の行の高さに揃える
-    const align = counted ? 'items-start' : 'items-center';
+function ClearedReasonLines({
+    field,
+    rows,
+    cleared,
+}: {
+    field: RecordFieldDefinition;
+    rows: RecordRowDraft[];
+    cleared: Props['cleared'];
+}) {
+    const reasons = rows.flatMap((row) =>
+        Object.values(cleared[row.key] ?? {}),
+    );
 
+    return [...new Set(reasons)].map((reason) => (
+        <ClearedReasonLine
+            key={reason}
+            id={detailClearedReasonId(field.code, reason)}
+        >
+            {CLEARED_REASON_TEXTS[reason]}
+        </ClearedReasonLine>
+    ));
+}
+
+/** 行が無いときの 1 行 */
+function EmptyRow({ colSpan }: { colSpan: number }) {
     return (
-        <TableCell className="align-top">
-            <div className={cn('flex gap-2', align)}>
-                <RecordFieldInput
-                    id={id}
-                    field={column}
-                    recordId={props.recordId}
-                    draft={row.values[column.code] ?? null}
-                    onChange={props.onChange}
-                    isRequiredNow={required}
-                    invalid={error !== undefined}
-                    itemErrors={referenceItemErrors(
-                        props.errors,
-                        key,
-                        props.onClearErrors,
-                    )}
-                    ariaLabel={`${column.name}(${index + 1} 行目)`}
-                />
-                {required && (
-                    <Badge
-                        variant="secondary"
-                        className={counted ? 'mt-2' : undefined}
-                    >
-                        必須
-                    </Badge>
-                )}
-            </div>
-            {error !== undefined && (
-                <p
-                    id={formErrorId(id)}
-                    className="mt-1 text-xs whitespace-normal text-destructive"
-                >
-                    {error}
-                </p>
-            )}
-        </TableCell>
+        <TableRow>
+            <TableCell
+                colSpan={colSpan}
+                className="text-center text-muted-foreground"
+            >
+                明細はありません
+            </TableCell>
+        </TableRow>
     );
 }
 
@@ -119,6 +93,7 @@ export function RecordDetailsEditor({
     onRowsReordered,
     isRequiredNow: tableRequired,
     errors,
+    cleared,
 }: Props) {
     const child = field.childModule;
 
@@ -142,18 +117,15 @@ export function RecordDetailsEditor({
         onChange(rows.filter((_, position) => position !== index));
         onRowsReordered(rowsPrefix);
     };
-    const changeValue = (
-        index: number,
-        code: string,
-        draft: RecordFieldDraft,
-    ) =>
-        onChange(
-            rows.map((row, position) =>
-                position === index
-                    ? { ...row, values: { ...row.values, [code]: draft } }
-                    : row,
-            ),
-        );
+    const setCell =
+        (index: number, code: string) => (draft: RecordFieldDraft) =>
+            onChange(
+                rows.map((row, position) =>
+                    position === index
+                        ? { ...row, values: { ...row.values, [code]: draft } }
+                        : row,
+                ),
+            );
 
     return (
         <div
@@ -172,6 +144,7 @@ export function RecordDetailsEditor({
                     {tableError}
                 </p>
             )}
+            <ClearedReasonLines field={field} rows={rows} cleared={cleared} />
             <Table>
                 <TableHeader>
                     <TableRow>
@@ -183,14 +156,7 @@ export function RecordDetailsEditor({
                 </TableHeader>
                 <TableBody>
                     {rows.length === 0 && (
-                        <TableRow>
-                            <TableCell
-                                colSpan={columns.length + 1}
-                                className="text-center text-muted-foreground"
-                            >
-                                明細はありません
-                            </TableCell>
-                        </TableRow>
+                        <EmptyRow colSpan={columns.length + 1} />
                     )}
                     {rows.map((row, index) => {
                         const rowKey = `details.${field.code}.${index}`;
@@ -208,14 +174,9 @@ export function RecordDetailsEditor({
                                         index={index}
                                         recordId={recordId}
                                         errors={errors}
-                                        onChange={(draft) =>
-                                            changeValue(
-                                                index,
-                                                column.code,
-                                                draft,
-                                            )
-                                        }
+                                        onChange={setCell(index, column.code)}
                                         onClearErrors={onRowsReordered}
+                                        clearedColumns={cleared[row.key]}
                                     />
                                 ))}
                                 <TableCell className="align-top">

@@ -3,6 +3,7 @@ import { confirmOf, openingOf } from './applicationTarget';
 import {
     APPLICATION_TARGET_FIELD,
     flowSetup,
+    markedOf,
     opened,
     picked,
     planModule,
@@ -33,7 +34,9 @@ describe('写したときの 1 行', () => {
         } as WorkflowApplyProps;
         const typed = recordOf({ project: picked(5), name: '旧名' });
 
-        expect(openingOf(props, recordOf()).cleared).toEqual(['担当者']);
+        expect(markedOf(openingOf(props, recordOf()).cleared)).toEqual([
+            '担当者',
+        ]);
         expect(
             openingOf({ ...props, mode: 'record', targetEntry: null }, typed)
                 .cleared,
@@ -45,11 +48,11 @@ describe('写したときの 1 行', () => {
 
         choose(picked(5));
         await requests[0].succeed(clearedSnapshot('', ['担当者', '組織']));
-        expect(lastView()?.cleared).toEqual(['担当者', '組織']);
+        expect(markedOf(lastView()?.cleared)).toEqual(['担当者', '組織']);
 
         choose(picked(6));
         await requests[1].succeed(clearedSnapshot('', []));
-        expect(lastView()?.cleared).toEqual([]);
+        expect(markedOf(lastView()?.cleared)).toEqual([]);
     });
 });
 
@@ -61,14 +64,14 @@ describe('写したときの 1 行(確かめ・失敗)', () => {
 
         choose(picked(5));
         await requests[0].succeed(clearedSnapshot('新製品', ['担当者']));
-        expect(lastView()?.cleared).toEqual([]);
+        expect(markedOf(lastView()?.cleared)).toEqual([]);
         reflectApplicationTarget(applicationTarget, ports);
-        expect(lastView()?.cleared).toEqual(['担当者']);
+        expect(markedOf(lastView()?.cleared)).toEqual(['担当者']);
 
         choose(picked(6));
         await requests[1].succeed(clearedSnapshot('別の名前', ['組織']));
         cancelApplicationTarget(applicationTarget, ports);
-        expect(lastView()?.cleared).toEqual(['担当者']);
+        expect(markedOf(lastView()?.cleared)).toEqual(['担当者']);
     });
 
     it('取れなかったとき・申請対象を空にしたときは変わらない', async () => {
@@ -80,7 +83,7 @@ describe('写したときの 1 行(確かめ・失敗)', () => {
         await requests[1].fail('unavailable');
         choose(null);
 
-        expect(lastView()?.cleared).toEqual(['担当者']);
+        expect(markedOf(lastView()?.cleared)).toEqual(['担当者']);
     });
 });
 

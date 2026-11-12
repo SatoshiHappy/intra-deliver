@@ -119,13 +119,17 @@ function headingOf(props: Props): string {
 
 /**
  * 見出しの下の 1 行の頭の文(文の正本 = docs の 設計/ワークフロー/申請の周辺/画面.md の 8 節)。業務レコードの詳細から開いた画面は、
- * 今の申請対象の欄で決める(空になれば新規の申請の文)。
+ * 今の申請対象の欄で決める(空になれば新規の申請の文)。案件からの複製は開いた時のまま変えない(同じ 5 節)。
  */
 function headingLeadOf(
     props: Props,
     record: RecordFormData,
     operation: string,
 ): string {
+    if (props.copy !== null) {
+        return `${props.copy.name}(申請番号 ${props.copy.caseNumber})を複製して申請します。`;
+    }
+
     if (props.mode === 'record') {
         const title = props.recordTitle ?? `#${props.recordId}`;
 

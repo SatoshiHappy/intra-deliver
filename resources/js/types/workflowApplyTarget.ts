@@ -1,3 +1,4 @@
+import type { ClearedField } from './recordCopy';
 import type { RecordFieldValue } from './records';
 import type { WorkflowDetailRowInput } from './workflow';
 
@@ -7,7 +8,7 @@ import type { WorkflowDetailRowInput } from './workflow';
 export type ApplicationTargetSnapshot = {
     values: Record<string, RecordFieldValue>;
     details: Record<string, Omit<WorkflowDetailRowInput, 'id'>[]>; // 写しの行は id を持たない
-    clearedFields: string[]; // 写す時の確かめで空にした項目の名前(画面の欄の順。無ければ空 = 申請対象からの申請.md の 10.1)
+    clearedFields: ClearedField[]; // 写す時の確かめで空にした欄(画面の欄の順。無ければ空 = 申請対象からの申請.md の 10.1)
 };
 
 /**

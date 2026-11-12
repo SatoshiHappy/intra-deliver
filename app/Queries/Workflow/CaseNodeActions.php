@@ -36,7 +36,7 @@ use LogicException;
  */
 class CaseNodeActions
 {
-    /** 操作のキー → 操作(並び = 見出しの右のボタンの順 = 案件の画面.md の 4 節) */
+    /** 操作のキー → 操作(並び = 処理のボタンの順 = 案件の画面.md の 4 節。画面の帯は主の操作を右端にするため逆に並べる) */
     private const OPERATIONS = [
         'approve' => WorkflowOperation::Approve,
         'approveEarly' => WorkflowOperation::ApproveEarly,

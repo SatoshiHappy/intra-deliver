@@ -1,4 +1,8 @@
 import type { ReactNode } from 'react';
+import {
+    CLEARED_FRAME_CLASS,
+    ClearedReasonLine,
+} from '@/components/ClearedNotice';
 import { TipButton } from '@/components/TipButton';
 import { Label } from '@/components/ui/label';
 import { unshownErrorKeys } from '@/lib/formErrors';
@@ -18,6 +22,8 @@ type Props = {
     hint?: string;
     /** 入力の下のエラーの文言(text-destructive) */
     error?: string;
+    /** 今は使えない値を空にした理由(入力に注意の色の枠と、入力の下の 1 行 = {@link ClearedReasonLine}。入力は clearedReasonId(id) で結ぶ) */
+    cleared?: string;
     /** 欄の外側の追加の class(格子の中で 2 列分にするときなど) */
     className?: string;
     children: ReactNode;
@@ -28,6 +34,13 @@ type Props = {
  */
 export function formErrorId(id: string): string {
     return `${id}-error`;
+}
+
+/**
+ * 今は使えない値を空にした理由の 1 行の id(入力の aria-describedby に使う)。
+ */
+export function clearedReasonId(id: string): string {
+    return `${id}-cleared`;
 }
 
 /**
@@ -45,17 +58,20 @@ export function characterCountId(id: string): string {
 }
 
 /**
- * 入力に付ける属性。エラーがあれば aria-invalid とエラーの文言への aria-describedby、説明({@link FieldHelp})・文字数
- * があればそれらへの aria-describedby(エラー・説明・文字数の順)。どれも無ければ空。hasCount は {@link CountedTextInput} だけが使う。
+ * 入力に付ける属性。エラーがあれば aria-invalid とエラーの文言への aria-describedby、ほかの説明の要素(describedIds = 空にした理由の
+ * 1 行など)・説明({@link FieldHelp})・文字数があればそれらへの aria-describedby(エラー・ほかの説明・説明・文字数の順)。
+ * どれも無ければ空。hasCount は {@link CountedTextInput} だけが使う。
  */
 export function invalidProps(
     id: string,
     error: string | undefined,
     hasHelp = false,
     hasCount = false,
+    describedIds: string[] = [],
 ): { 'aria-invalid'?: true; 'aria-describedby'?: string } {
     const describedBy = [
         ...(error === undefined ? [] : [formErrorId(id)]),
+        ...describedIds,
         ...(hasHelp ? [fieldHelpId(id)] : []),
         ...(hasCount ? [characterCountId(id)] : []),
     ];
@@ -131,6 +147,26 @@ export function FieldHelp({
     );
 }
 
+/** 空にした欄の注意の色の枠と、入力の下の理由の 1 行(入力は clearedReasonId(id) で結ぶ) */
+function ClearedFrame({
+    id,
+    cleared,
+    children,
+}: {
+    id: string;
+    cleared: string;
+    children: ReactNode;
+}) {
+    return (
+        <>
+            <div className={CLEARED_FRAME_CLASS}>{children}</div>
+            <ClearedReasonLine id={clearedReasonId(id)}>
+                {cleared}
+            </ClearedReasonLine>
+        </>
+    );
+}
+
 /**
  * フォームの 1 つの欄(ラベル・ラベルの横の札・入力・説明・エラーを縦に並べる)。欄の全体を role="group" にしてラベルで
  * 名付ける(E2E と支援技術が欄の単位で引けるように)。業務のフォーム・管理のフォーム・規則の Dialog が使う。
@@ -143,6 +179,7 @@ export function FormBlock({
     help,
     hint,
     error,
+    cleared,
     className,
     children,
 }: Props) {
@@ -164,7 +201,13 @@ export function FormBlock({
                 )}
                 {labelAddon}
             </div>
-            {children}
+            {cleared === undefined ? (
+                children
+            ) : (
+                <ClearedFrame id={id} cleared={cleared}>
+                    {children}
+                </ClearedFrame>
+            )}
             {hint !== undefined && (
                 <p className="text-xs text-muted-foreground">{hint}</p>
             )}

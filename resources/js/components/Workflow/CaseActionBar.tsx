@@ -5,9 +5,10 @@ import type { OpenCaseAction } from '@/components/Workflow/CaseActionDialog';
 import { CaseConfirmButton } from '@/components/Workflow/CaseConfirmButton';
 import {
     caseActionTargetOf,
-    headerButtonsOf,
+    processButtonsOf,
 } from '@/lib/Workflow/caseActions';
-import type { HeaderButton } from '@/lib/Workflow/caseActions';
+import type { ProcessButton } from '@/lib/Workflow/caseActions';
+import { cn } from '@/lib/utils';
 import { create as reapply } from '@/routes/workflow/reapplications';
 import type { WorkflowCaseShowProps } from '@/types';
 
@@ -22,14 +23,14 @@ type Props = Pick<
 > & { onOpen: OpenCaseAction };
 
 /**
- * 見出しの右のボタン 1 つ(ダイアログを開く・再申請の画面へのリンク・押すと送る確認)。
+ * 処理のボタン 1 つ(ダイアログを開く・再申請の画面へのリンク・押すと送る確認)。
  */
 function BarButton({
     button,
     show,
     onOpen,
 }: {
-    button: HeaderButton;
+    button: ProcessButton;
     show: Omit<Props, 'onOpen'>;
     onOpen: OpenCaseAction;
 }) {
@@ -61,18 +62,25 @@ function BarButton({
 }
 
 /**
- * 見出しの右のボタンの並び(どれかのステップで許される操作だけ。並び = docs の 設計/ワークフロー/案件の運用/画面/案件の画面.md の 4 節。
- * 持ち主は {@link headerButtonsOf})。押すと処理のダイアログ、再申請は再申請の画面、確認は押すと送る。折り返しても右に寄るよう、根が ml-auto を持つ。
+ * 処理のボタンの帯(詳細のカードの列の幅で画面の下に固定し、スクロールしても見える。並び = {@link processButtonsOf}。
+ * docs の 設計/ワークフロー/案件の運用/画面/案件の画面.md の 4 節)。処理のボタンが無ければ帯を出さない。
  */
 export function CaseActionBar({ onOpen, ...show }: Props) {
-    const buttons = headerButtonsOf(show);
+    const buttons = processButtonsOf(show);
 
     if (buttons.length === 0) {
         return null;
     }
 
     return (
-        <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
+        <div
+            role="group"
+            aria-label="処理"
+            className={cn(
+                'sticky bottom-0 z-10 mt-4 flex flex-wrap items-center justify-end gap-2',
+                'border-t bg-background py-3',
+            )}
+        >
             {buttons.map((button) => (
                 <BarButton
                     key={

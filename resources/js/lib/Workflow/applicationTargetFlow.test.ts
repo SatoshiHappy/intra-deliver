@@ -10,6 +10,8 @@ import {
     APPLICATION_TARGET_FIELD,
     snapshotFor,
     flowSetup,
+    markOf,
+    markedOf,
     opened,
     picked,
     planModule,
@@ -225,7 +227,7 @@ describe('開いた時の確かめ', () => {
             ...applicationTargetFlowOf(APPLICATION_TARGET_FIELD, {
                 record: current,
                 confirm,
-                cleared: ['前の写しで空にした項目'],
+                cleared: [markOf('前の写しで空にした項目')],
             }),
         };
 
@@ -235,6 +237,8 @@ describe('開いた時の確かめ', () => {
         expect(applicationTarget.state).toEqual(
             initialApplicationTargetState(picked(5, 'P5')),
         );
-        expect(state.views.at(-1)?.cleared).toEqual(['前の写しで空にした項目']);
+        expect(markedOf(state.views.at(-1)?.cleared)).toEqual([
+            '前の写しで空にした項目',
+        ]);
     });
 });

@@ -151,6 +151,7 @@ const recordProps = (overrides: Partial<WorkflowApplyProps> = {}) =>
         mode: 'record',
         recordId: 7,
         recordTitle: '新製品の発売計画',
+        copy: null,
         titleField: null,
         flow: { code: 'project_plan', name: 'プロジェクト計画の承認' },
         next: next({

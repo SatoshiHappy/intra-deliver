@@ -2,6 +2,8 @@ import { openingOf } from '@/lib/Workflow/applicationTarget';
 import type { ApplicationTargetOpening } from '@/lib/Workflow/applicationTarget';
 import { withApplicationTarget } from '@/lib/Workflow/applicationTargetSnapshot';
 import { initialApplyFormOf } from '@/lib/Workflow/applyForm';
+import { clearedMarksOf } from '@/lib/clearedFields';
+import type { ClearedMark } from '@/lib/clearedFields';
 import type { ApplyForm } from '@/lib/Workflow/applyForm';
 import type { PickedReference, WorkflowApplyProps } from '@/types';
 
@@ -15,6 +17,8 @@ export type ApplyOpened = {
     mode: Props['mode'];
     caseId: number | null;
     targetEntry: Props['targetEntry'];
+    // 案件からの複製の前に覚えた履歴の項目には無い
+    copy?: Props['copy'];
 };
 
 /**
@@ -43,18 +47,26 @@ export function openedOf(props: Props): ApplyOpened {
         mode: props.mode,
         caseId: props.case?.id ?? null,
         targetEntry: props.targetEntry,
+        copy: props.copy,
     };
 }
 
 /**
  * 開いた時の props を保った props(同じ申請の画面 = mode と案件が開いた時と同じ。違えば今の props のまま)。
+ * 申請対象からの申請の targetEntry と案件からの複製の copy は同じ規則(docs の 設計/ワークフロー/申請の周辺/画面.md の 5 節)。
  */
 export function withOpened(props: Props, opened: ApplyOpened): Props {
     const isSameScreen =
         props.mode === opened.mode &&
         (props.case?.id ?? null) === opened.caseId;
 
-    return isSameScreen ? { ...props, targetEntry: opened.targetEntry } : props;
+    return isSameScreen
+        ? {
+              ...props,
+              targetEntry: opened.targetEntry,
+              copy: opened.copy ?? null,
+          }
+        : props;
 }
 
 /**
@@ -64,57 +76,106 @@ export function rememberKeyOf(props: Props): string {
     return `WorkflowApply:${props.mode}:${props.case?.id ?? ''}`;
 }
 
-/** 戻る・進むで覚える申請対象の写しの状態(settled = 最後に決まった申請対象、cleared = 申請対象の値の 1 行の名前) */
+/** 戻る・進むで覚える申請対象の写しの状態(settled = 最後に決まった申請対象) */
 export type RememberedTarget = {
     settled: PickedReference | null;
-    cleared: string[];
 };
+
+/** 戻る・進むで覚える空にした欄の印(copy = 元の申請の値、target = 申請対象の値の写し。消えたかを含む) */
+export type RememberedCleared = {
+    copy: ClearedMark[];
+    target: ClearedMark[];
+};
+
+/** 覚えた印か(印の形・消えたかの前に覚えた履歴の項目は違う形なので使わない) */
+function isRememberedCleared(value: unknown): value is RememberedCleared {
+    const isMarks = (marks: unknown) =>
+        Array.isArray(marks) &&
+        marks.every(
+            (mark) =>
+                typeof mark === 'object' &&
+                mark !== null &&
+                typeof (mark as { gone?: unknown }).gone === 'boolean',
+        );
+
+    return (
+        typeof value === 'object' &&
+        value !== null &&
+        isMarks((value as RememberedCleared).copy) &&
+        isMarks((value as RememberedCleared).target)
+    );
+}
+
+/** 元の申請の値の印(開いた時の申請対象の写しを当てる前の値 = 画面.md の 5 節の表 1。案件からの複製の画面だけ) */
+function copyMarksOf(props: Props, record: ApplyForm['record']): ClearedMark[] {
+    return props.copy === null
+        ? []
+        : clearedMarksOf(props.copy.clearedFields, 'copy', { record });
+}
 
 /**
  * 戻る・進むで来た時のフォームの値と開いた時の写し(docs の 設計/ワークフロー/申請の周辺/画面.md の 5 節の「戻る・進むと申請対象の写し」、
- * 申請対象からの申請.md の 10.2 の「戻る・進むで来た時」の行): 欄は離れた時の値のまま、開いた時の写しは再び当てず、確かめのダイアログは
- * 出さない。申請対象は最後に決まったものに戻す(取得・確かめの途中で離れたときは、確かめのキャンセルと同じ)。1 行は離れた時のまま。
+ * 申請対象からの申請.md の 10.2 の表の「戻る・進むで来た時」の行)。
  */
 export function restoredOf(
     data: ApplyForm,
     target: RememberedTarget | undefined,
     targetField: string | null,
-): { data: ApplyForm; opening: ApplicationTargetOpening } {
+    cleared: RememberedCleared,
+): OpenedForm {
     const record =
         targetField === null || target === undefined
             ? data.record
             : withApplicationTarget(data.record, targetField, target.settled);
 
     return {
+        restored: true,
         data: { ...data, record },
-        opening: { record, confirm: null, cleared: target?.cleared ?? [] },
+        opening: { record, confirm: null, cleared: cleared.target },
+        copyMarks: cleared.copy,
     };
 }
 
+/** 開いた時のフォームの値と写しと、元の申請の値の印 */
+type OpenedForm = {
+    restored: boolean;
+    data: ApplyForm;
+    opening: ApplicationTargetOpening;
+    copyMarks: ClearedMark[];
+};
+
 /**
- * 開いた時のフォームの値と写し。戻る・進むで来た(履歴の項目に覚えた入力がある)ときは {@link restoredOf}、ほかは開いた時の写し
- * (再読み込みでは Inertia が覚えた値を消す)。restore = 履歴の項目に覚えた値を鍵で引く口(Inertia の router.restore)。
+ * 開いた時のフォームの値と写しと印(docs の 設計/ワークフロー/申請の周辺/画面.md の 5 節の「写しのためだけのクエリ」)。印はフォームの値と
+ * 同じ分かれ道で取る(明細の行の key をフォームとそろえるため。印を覚えていない前の形の履歴の項目だけは key がそろわない)。
+ * restore = 履歴の項目に覚えた値を鍵で引く口(Inertia の router.restore)。
  */
 export function openedFormOf(
     props: Props,
     rememberKey: string,
     restore: (key: string) => unknown,
-): {
-    restored: boolean;
-    data: ApplyForm;
-    opening: ApplicationTargetOpening;
-} {
+): OpenedForm {
     const remembered = restore(`${rememberKey}:data`) as ApplyForm | undefined;
 
     if (remembered !== undefined) {
         const target = restore(`${rememberKey}:target`) as
             | RememberedTarget
             | undefined;
+        const cleared = restore(`${rememberKey}:cleared`);
 
-        return {
-            restored: true,
-            ...restoredOf(remembered, target, props.targetField),
-        };
+        return restoredOf(
+            remembered,
+            target,
+            props.targetField,
+            isRememberedCleared(cleared)
+                ? cleared
+                : {
+                      copy: copyMarksOf(
+                          props,
+                          initialApplyFormOf(props).record,
+                      ),
+                      target: [],
+                  },
+        );
     }
 
     const initial = initialApplyFormOf(props);
@@ -124,5 +185,6 @@ export function openedFormOf(
         restored: false,
         opening,
         data: { ...initial, record: opening.record },
+        copyMarks: copyMarksOf(props, initial.record),
     };
 }

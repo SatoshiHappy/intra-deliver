@@ -1,6 +1,7 @@
 import { ChevronRight } from 'lucide-react';
 import { useState } from 'react';
 import { RecordValue } from '@/components/RecordValue';
+import { ValueChange } from '@/components/ValueChange';
 import { Button } from '@/components/ui/button';
 import {
     Collapsible,
@@ -28,8 +29,12 @@ import type {
     ApplicationTargetChange,
 } from '@/lib/Workflow/applicationTargetSnapshot';
 import { valueFields } from '@/lib/recordForm';
-import { EMPTY_VALUE } from '@/lib/recordValues';
 import { cn } from '@/lib/utils';
+import {
+    UNSET_VALUE,
+    VALUE_AFTER_CLASS,
+    VALUE_BEFORE_CLASS,
+} from '@/lib/valueChange';
 import type { RecordModuleDefinition } from '@/types';
 
 /** 明細の行を開閉する見出しの見た目(明細の表の開閉と同じ作り) */
@@ -40,55 +45,76 @@ const TRIGGER_CLASS = cn(
 
 type DetailsChange = Extract<ApplicationTargetChange, { kind: 'details' }>;
 
-/** 明細の行の表(列 = 明細の項目)。行が無ければ空の印だけを出す */
+/** 明細の行の表(列 = 明細の項目)。行が無ければ「未設定」だけを出す(見せ方 = docs の 設計/画面の意匠/README.md の採った方針 15) */
 function RowsTable({
     title,
     child,
     rows,
+    cellClass,
 }: {
     title: string;
     child: RecordModuleDefinition;
     rows: ShownRow[];
+    /** 今の行(前)か反映する行(後)かの見分け */
+    cellClass: string;
 }) {
-    const fields = valueFields(child);
-
     return (
         <div className="flex flex-col gap-1">
             <p className="text-xs text-muted-foreground">{title}</p>
             {rows.length === 0 ? (
-                <p className="text-sm">{EMPTY_VALUE}</p>
+                <p className={cn('text-sm', cellClass)}>{UNSET_VALUE}</p>
             ) : (
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            {fields.map((field) => (
-                                <TableHead key={field.code}>
-                                    {field.name}
-                                </TableHead>
-                            ))}
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {rows.map((row, index) => (
-                            <TableRow key={index}>
-                                {fields.map((field) => (
-                                    <TableCell
-                                        key={field.code}
-                                        className="wrap-anywhere whitespace-normal"
-                                    >
-                                        <RecordValue
-                                            field={field}
-                                            value={row[field.code] ?? null}
-                                            place="diff"
-                                        />
-                                    </TableCell>
-                                ))}
-                            </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
+                <ValuesTable
+                    fields={valueFields(child)}
+                    rows={rows}
+                    cellClass={cellClass}
+                />
             )}
         </div>
+    );
+}
+
+/** 明細の行の値の表(列 = 値の項目) */
+function ValuesTable({
+    fields,
+    rows,
+    cellClass,
+}: {
+    fields: ReturnType<typeof valueFields>;
+    rows: ShownRow[];
+    cellClass: string;
+}) {
+    return (
+        <Table>
+            <TableHeader>
+                <TableRow>
+                    {fields.map((field) => (
+                        <TableHead key={field.code}>{field.name}</TableHead>
+                    ))}
+                </TableRow>
+            </TableHeader>
+            <TableBody>
+                {rows.map((row, index) => (
+                    <TableRow key={index}>
+                        {fields.map((field) => (
+                            <TableCell
+                                key={field.code}
+                                className={cn(
+                                    'wrap-anywhere whitespace-normal',
+                                    cellClass,
+                                )}
+                            >
+                                <RecordValue
+                                    field={field}
+                                    value={row[field.code] ?? null}
+                                    place="diff"
+                                />
+                            </TableCell>
+                        ))}
+                    </TableRow>
+                ))}
+            </TableBody>
+        </Table>
     );
 }
 
@@ -99,7 +125,7 @@ function DetailsRow({ change }: { change: DetailsChange }) {
     return (
         <TableRow>
             <TableCell className="align-top">{change.field.name}</TableCell>
-            <TableCell colSpan={2} className="whitespace-normal">
+            <TableCell className="whitespace-normal">
                 <Collapsible className="flex flex-col gap-2">
                     <CollapsibleTrigger className={TRIGGER_CLASS}>
                         <ChevronRight
@@ -113,11 +139,13 @@ function DetailsRow({ change }: { change: DetailsChange }) {
                             title="今の行"
                             child={change.child}
                             rows={change.current}
+                            cellClass={VALUE_BEFORE_CLASS}
                         />
                         <RowsTable
                             title="反映する行"
                             child={change.child}
                             rows={change.next}
+                            cellClass={VALUE_AFTER_CLASS}
                         />
                     </CollapsibleContent>
                 </Collapsible>
@@ -135,33 +163,25 @@ function ValueRow({ change }: { change: ApplicationTargetChange }) {
     return (
         <TableRow>
             <TableCell className="align-top">{change.field.name}</TableCell>
-            <TableCell className="align-top wrap-anywhere whitespace-normal">
-                <RecordValue
+            <TableCell className="align-top whitespace-normal">
+                <ValueChange
                     field={change.field}
-                    value={change.current}
-                    place="diff"
-                />
-            </TableCell>
-            <TableCell className="align-top wrap-anywhere whitespace-normal">
-                <RecordValue
-                    field={change.field}
-                    value={change.next}
-                    place="diff"
+                    before={change.current}
+                    after={change.next}
                 />
             </TableCell>
         </TableRow>
     );
 }
 
-/** 写すと変わる項目の表(項目・今の値・反映する値) */
+/** 写すと変わる項目の表(項目と、今の値 → 反映する値) */
 function ChangesTable({ changes }: { changes: ApplicationTargetChange[] }) {
     return (
         <Table>
             <TableHeader>
                 <TableRow>
                     <TableHead>項目</TableHead>
-                    <TableHead>今の値</TableHead>
-                    <TableHead>反映する値</TableHead>
+                    <TableHead>今の値 → 反映する値</TableHead>
                 </TableRow>
             </TableHeader>
             <TableBody>

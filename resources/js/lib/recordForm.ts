@@ -1,5 +1,9 @@
 import { hasPartyKind, partyKindOf } from '@/lib/recordParty';
-import { referenceLabel, toTokyoLocal } from '@/lib/recordValues';
+import {
+    isMultilineString,
+    referenceLabel,
+    toTokyoLocal,
+} from '@/lib/recordValues';
 import type {
     PickedReference,
     RecordEditable,
@@ -74,7 +78,7 @@ export function isReferenceField(field: RecordFieldDefinition): boolean {
  * 格子の中で 2 列分を使う項目(複数行の文字列。画面の意匠の README 方針 9 (c))。登録・編集の画面と詳細の画面で同じ。
  */
 export function isWideField(field: RecordFieldDefinition): boolean {
-    return field.type === 'string' && field.isMultiline;
+    return isMultilineString(field);
 }
 
 /**

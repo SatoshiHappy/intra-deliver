@@ -53,7 +53,7 @@ final class TargetValueClearingTest extends TransactionalTestCase
 
         $values = $copied['values'];
         $this->assertSame([null, null, null], [$values['kind'], $values['ref'], $values['person']]);
-        $this->assertSame(['kind', 'ref', 'person'], $copied['clearedFields']);
+        $this->assertSame(['kind', 'ref', 'person'], array_column($copied['clearedFields'], 'name'));
         $this->assertSame('プロジェクトX', $copied['values'][self::TARGET_FIELD]['label']);
     }
 
@@ -79,15 +79,15 @@ final class TargetValueClearingTest extends TransactionalTestCase
 
             $this->assertNull($toWritten['values']['back']);
             $this->assertNull($toWritten['details']['lines'][0]['values']['back_row']);
-            $this->assertSame(['back', 'linesのback_row'], $toWritten['clearedFields']);
+            $this->assertSame(['back', 'linesのback_row'], array_column($toWritten['clearedFields'], 'name'));
             $this->assertSame($written, $toNew['values']['back']['id']);
-            $this->assertSame([], $toNew['clearedFields']);
+            $this->assertSame([], array_column($toNew['clearedFields'], 'name'));
         }
 
         $this->pointTo($hub, $form);
         $response = $this->get('/workflow/flows/'.self::COPY_FLOW."/apply?record={$form}")->assertOk();
         $props = $response->viewData('page')['props'];
-        $this->assertSame(['back', 'linesのback_row'], $props['targetValues']['clearedFields']);
+        $this->assertSame(['back', 'linesのback_row'], array_column($props['targetValues']['clearedFields'], 'name'));
     }
 
     /**

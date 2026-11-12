@@ -20,6 +20,7 @@ final readonly class ApplicationInput
      * @param  RecordInput  $record  値と明細(添付を持たない)
      * @param  list<UploadedFile>  $attachFiles  この送信で足す添付(設計/ワークフロー/申請の周辺/添付/README.md の 3.1 節の attachments)
      * @param  list<int>  $removeAttachmentIds  外す一時保存の添付の行の id(一時保存からの申請だけが読む)
+     * @param  mixed  $copyRowAccess  案件からの複製の暗号化した値(受けたまま。新規の申請だけが読む = {@see ApplicationRowAccess})
      *
      * @throws InvalidArgumentException レコードの入力が添付を持つとき(呼び手の誤り)
      */
@@ -29,6 +30,7 @@ final readonly class ApplicationInput
         public RecordInput $record,
         public array $attachFiles = [],
         public array $removeAttachmentIds = [],
+        public mixed $copyRowAccess = null,
     ) {
         if ($record->attachFiles !== [] || $record->attachUploads !== []) {
             throw new InvalidArgumentException('添付はレコードの入力でなく attachFiles で渡す');
@@ -40,11 +42,16 @@ final readonly class ApplicationInput
      * 入口が受けた参照制限のキーはここで捨てる = {@see ApplicationRowAccess})。
      *
      * @param  list<RecordUploadInput>  $attachUploads
+     * @param  list<array{type: 'user'|'department', id: int}>|null  $rowAccessViewers
      */
-    public function recordInput(array $attachUploads = [], ?true $rowAccessRestricted = null): RecordInput
-    {
+    public function recordInput(
+        array $attachUploads = [],
+        ?true $rowAccessRestricted = null,
+        ?array $rowAccessViewers = null,
+    ): RecordInput {
         return new RecordInput(
             $this->record->values, $this->record->details, $this->attachFiles, $attachUploads, $rowAccessRestricted,
+            $rowAccessViewers,
         );
     }
 }

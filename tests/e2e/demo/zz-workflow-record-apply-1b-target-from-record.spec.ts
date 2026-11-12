@@ -127,7 +127,7 @@ test('開いた直後に target を外しても、戻る・進むのために覚
         );
 });
 
-test('開いた時に空にした項目がある画面で欄を変えて離れ、戻ると、変えた値と申請対象の値の 1 行が残る', async ({
+test('開いた時に空にした項目がある画面で欄を変えて離れ、戻ると、変えた値と空にした欄の知らせが残る', async ({
     page,
 }) => {
     // 開いた時の写しで空にした項目がある応答(写す時の確かめの結果。サーバーの確かめは Feature テスト)
@@ -136,16 +136,30 @@ test('開いた時に空にした項目がある画面で欄を変えて離れ�
         async (route) => {
             const response = await route.fetch();
             const body = await response.json();
-            body.props.targetValues.clearedFields = ['責任者'];
+            body.props.targetValues.values.manager = null;
+            body.props.targetValues.clearedFields = [
+                {
+                    kind: 'field',
+                    field: 'manager',
+                    detail: null,
+                    row: null,
+                    name: '責任者',
+                },
+            ];
             await route.fulfill({ response, json: body });
         },
     );
     const line = page.getByText(
-        '申請対象の値のうち、責任者は、現在使用できない値を外しました。',
+        '今は使えない値を空にした項目が 1 件あります。⚠ の付いた欄を入力してください。',
+        { exact: true },
+    );
+    const reason = page.getByText(
+        '申請対象の今の値は、今は使えないため空にしました。',
         { exact: true },
     );
     const form = await openApplyFromProject(page);
     await expect(line).toBeVisible();
+    await expect(reason).toBeVisible();
 
     await budgetField(form).fill('1500');
     await form.getByRole('link', { name: 'キャンセル', exact: true }).click();

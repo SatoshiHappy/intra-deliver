@@ -69,6 +69,8 @@ type WorkflowCaseShowCaseLayer = {
     canAttachOnWithdraw: boolean; // 取止めで添付を追加できる
     attachmentLimits: WorkflowAttachmentLimits | null; // どの入口も添付を受けなければ null
     links: WorkflowPersonLinks; // 名前の札の「…」のリンク
+    // ボタン「複製」を出すか(全体の応答だけで組む = 設計/ワークフロー/申請の周辺/既存のデータからの申請/案件からの複製/README.md の 12.2 節)
+    canCopy: boolean;
 };
 
 /** レコードの層(サイドパネルと関連レコードはレコードの詳細と同じ型) */

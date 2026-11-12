@@ -9,19 +9,20 @@ use App\Queries\Authz\Api\Requester;
 use App\Queries\Records\Api\RecordDisplayQuery;
 use App\Queries\Records\Api\RecordFormQuery;
 use App\Queries\Records\Api\RecordViewAccess;
-use App\Support\MixedValues;
 use DateTimeInterface;
 use LogicException;
 
 /**
  * 申請対象の写しの値を申請の画面の初期値の形で作る(docs の 設計/ワークフロー/申請の周辺/既存のデータからの申請/申請対象からの申請.md の 10.3 節)。
  * 申請の画面の GET と写しの値の入口が同じ口を通るので、主体の判定をしない値の口は閲覧の判定の後にしか呼ばれない。写した後の値には、写す先の
- * 項目の宣言で写す時の確かめ(写しの初期値の口の「値から」= 10.1 の写す時の確かめ)を当て、今は使えない値を空にして clearedFields に名前を返す。
+ * 項目の宣言で写す時の確かめ(写しの初期値の口の「値から」= 10.1 の写す時の確かめ)を当て、今は使えない値を空にして clearedFields に空にした欄を返す。
+ *
+ * @phpstan-import-type ClearedField from RecordFormQuery
  *
  * @phpstan-type ApplicationTarget array{field: string, module: string}
  * @phpstan-type ApplicationTargetRow array{values: array<string, mixed>}
  * @phpstan-type ApplicationTargetValueSet array{values: array<string, mixed>,
- *     details: array<string, list<ApplicationTargetRow>>, clearedFields: list<string>}
+ *     details: array<string, list<ApplicationTargetRow>>, clearedFields: list<ClearedField>}
  */
 class ApplicationTargetValues
 {
@@ -58,6 +59,7 @@ class ApplicationTargetValues
      * 判定を求める者が申請対象を閲覧できるときだけ写しの値(できなければ null)。
      *
      * @param  ApplicationTarget  $applicationTarget
+     * @param  string  $applicationModuleCode  申請書の業務モジュールのコード(呼び手が定義を引いたもの)
      * @param  array<string, mixed>  $applicationDefinition  申請書の業務モジュールの定義(呼び手が開けるアクションで引いたもの)
      * @param  int|null  $writtenRecordId  写す先の申請書のレコード(そのものを申請する・再申請。ほかは null = 10.3 の写す先のレコードの id)
      * @return ApplicationTargetValueSet|null
@@ -65,6 +67,7 @@ class ApplicationTargetValues
     public function valuesFor(
         Requester $requester,
         array $applicationTarget,
+        string $applicationModuleCode,
         array $applicationDefinition,
         int $applicationTargetId,
         ?int $writtenRecordId,
@@ -87,8 +90,8 @@ class ApplicationTargetValues
         );
 
         return $this->forms->copyFromValues(
-            $requester, MixedValues::stringOf($applicationDefinition['code'] ?? null), $writtenRecordId,
-            $snapshot['values'], $snapshot['details'], $date, $localeCode,
+            $requester, $applicationModuleCode, $writtenRecordId, $snapshot['values'], $snapshot['details'], $date,
+            $localeCode,
         );
     }
 
@@ -104,6 +107,7 @@ class ApplicationTargetValues
     public function valuesOfRecord(
         Requester $requester,
         array $applicationTarget,
+        string $applicationModuleCode,
         array $applicationDefinition,
         array $values,
         int $writtenRecordId,
@@ -115,8 +119,8 @@ class ApplicationTargetValues
         return $applicationTargetId === null
             ? null
             : $this->valuesFor(
-                $requester, $applicationTarget, $applicationDefinition, $applicationTargetId, $writtenRecordId,
-                $date, $localeCode,
+                $requester, $applicationTarget, $applicationModuleCode, $applicationDefinition, $applicationTargetId,
+                $writtenRecordId, $date, $localeCode,
             );
     }
 

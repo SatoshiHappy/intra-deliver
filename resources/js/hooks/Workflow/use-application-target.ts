@@ -81,16 +81,15 @@ function portsOf(
 }
 
 /**
- * 戻る・進むで来た時に、最後に決まった申請対象と 1 行を戻すため、履歴の項目に覚える(画面.md の 5 節)。
+ * 戻る・進むで来た時に、最後に決まった申請対象を戻すため、履歴の項目に覚える(docs の 設計/ワークフロー/申請の周辺/画面.md の 5 節。
+ * 空にした欄の印は useApplyForm が覚える)。
  */
 function rememberTarget(
     applicationTarget: ApplicationTargetFlow,
-    cleared: string[],
     rememberKey: string,
 ) {
     const remembered: RememberedTarget = {
         settled: applicationTarget.state.settled,
-        cleared,
     };
     router.remember(remembered, `${rememberKey}:target`);
 }
@@ -113,20 +112,19 @@ export function useApplicationTarget(
         confirm: opening.confirm,
         cleared: opening.cleared,
     });
-    const remember = (cleared: string[]) =>
-        rememberTarget(applicationTarget, cleared, rememberKey);
+    const remember = () => rememberTarget(applicationTarget, rememberKey);
     const ports = portsOf(form, props, {
         fetch: useApplicationTargetFetch(),
         publish: (next) => {
             setView(next);
-            remember(next.cleared);
+            remember();
         },
     });
 
-    useEffect(() => remember(opening.cleared), []);
+    useEffect(remember, []);
 
     return {
-        /** 写す前の確かめのダイアログと、取っている間の印と、空にした項目の 1 行の名前 */
+        /** 写す前の確かめのダイアログと、取っている間の印と、申請対象の値の写しで空にした欄の印 */
         dialog: {
             isBusy: view.busy,
             confirm: view.confirm,

@@ -21,8 +21,8 @@ use Tests\Support\BuildsCopyChecks;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * 写しの初期値の公開の口「版から」と「参照者の確かめ」(docs の 設計/ワークフロー/申請の周辺/既存のデータからの申請/案件からの複製/写す値.md の
- * 13.3 の公開の口の表、検査.md の 14 節の 13.3): 版の値と参照制限の参照者に保存と同じ確かめを当てる。版の後に消えた参照先・選択肢
+ * 写しの初期値の公開の口「版から」と「参照者の確かめ」(docs の 設計/ワークフロー/業務データとの接続/公開の口/画面の値の口.md の 7.2、
+ * 設計/ワークフロー/申請の周辺/既存のデータからの申請/案件からの複製/検査.md の 14 節の 13.3): 版の値と参照制限の参照者に保存と同じ確かめを当てる。版の後に消えた参照先・選択肢
  * (同じ要求の中の窓)は空になる。記録の無い版の参照制限は null。判定をせず、書かない。参照者の確かめは書き込みの参照者の確かめと結果が同じ。
  *
  * @phpstan-import-type CopyCheckFixture from BuildsCopyChecks
@@ -50,7 +50,7 @@ final class RecordCopyRevisionTest extends TransactionalTestCase
             ['type' => 'user', 'id' => $users['endsTomorrow']->id],
             ['type' => 'department', 'id' => $departments['startsToday']->id],
         ]], $copied['rowAccess']);
-        $this->assertSame(['user', '参照制限の参照者'], $copied['clearedFields']);
+        $this->assertSame(['user', '参照制限の参照者'], array_column($copied['clearedFields'], 'name'));
     }
 
     public function test_targets_and_options_gone_after_the_revision_are_cleared(): void
@@ -73,7 +73,7 @@ final class RecordCopyRevisionTest extends TransactionalTestCase
 
         $this->assertSame([null, null], [$copied['values']['choice'], $copied['values']['ref']]);
         $this->assertSame('残る', $copied['values']['note']);
-        $this->assertSame(['choice', 'ref'], $copied['clearedFields']);
+        $this->assertSame(['choice', 'ref'], array_column($copied['clearedFields'], 'name'));
         $this->assertNull($copied['rowAccess'], 'row_access の無い版');
     }
 
@@ -157,7 +157,8 @@ final class RecordCopyRevisionTest extends TransactionalTestCase
     /**
      * @param  CopyCheckFixture  $fixture
      * @return array{values: array<string, mixed>, details: array<string, list<array{values: array<string, mixed>}>>,
-     *     clearedFields: list<string>,
+     *     clearedFields: list<array{kind: string, field: string|null, detail: string|null, row: int|null,
+     *     name: string}>,
      *     rowAccess: array{restricted: bool, viewers: list<array{type: 'user'|'department', id: int}>}|null}
      */
     private function fromRevision(array $fixture, int $revisionId): array

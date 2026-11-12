@@ -160,15 +160,6 @@ export type RecordDetail = {
 /** 業務の画面の詳細 Records/Show の record(参照制限の今の値を足したもの = 設計/業務データの入れ物/画面/業務の画面.md の 2.3) */
 export type RecordShowDetail = RecordDetail & { rowAccess: RowAccessInput };
 
-/** 複製の登録の画面の初期値(Records/Create の copySource。明細の行は id を持たない = レコードの共通機能/複製.md の 1 節) */
-export type RecordCopySource = {
-    id: number;
-    values: Record<string, RecordFieldValue>;
-    details: Record<string, { values: Record<string, RecordFieldValue> }[]>;
-    clearedFields: string[]; // 今は使えない値を空にした項目の名前(画面の欄の順。無ければ空 = 複製.md の 2 節)
-    rowAccess: RowAccessInput; // 元のレコードの値(業務モジュールの既定を使わない = 設計/業務データの入れ物/レコードの共通機能/複製.md の 2 節)
-};
-
 /** レコードの持ち主(詳細・編集のページの hold。理由だけを出し、案件の番号や名前は出さない = 画面/業務の画面.md 2.2・2.3) */
 export type RecordHold = { reason: string };
 

@@ -32,6 +32,8 @@ use LogicException;
  * @phpstan-import-type Party from RecordParty
  *
  * @phpstan-type CopiedRows array<string, list<array{values: array<string, mixed>}>>
+ * @phpstan-type ClearedField array{kind: 'field'|'cell'|'viewers', field: string|null, detail: string|null,
+ *     row: int|null, name: string}
  */
 class RecordFormQuery
 {
@@ -122,10 +124,9 @@ class RecordFormQuery
     /**
      * 主体の判定をしない(業務モジュールの判定と、写す元のレコードの行の判定をしない)。呼び手が案件の閲覧の判定で守ってから呼ぶ。
      *
-     * 写しの初期値の「版から」(保証するもの = docs の 設計/ワークフロー/申請の周辺/既存のデータからの申請/案件からの複製/写す値.md の
-     * 13.3 の公開の口の表)。
+     * 写しの初期値の「版から」(保証するもの = docs の 設計/ワークフロー/業務データとの接続/公開の口/画面の値の口.md の 7.2)。
      *
-     * @return array{values: array<string, mixed>, details: CopiedRows, clearedFields: list<string>,
+     * @return array{values: array<string, mixed>, details: CopiedRows, clearedFields: list<ClearedField>,
      *     rowAccess: array{restricted: bool, viewers: list<Party>}|null}
      *
      * @throws ModelNotFoundException<RecordModule|RecordRevision> 業務モジュールが無い・明細のモジュールのとき、版が無いとき
@@ -147,12 +148,12 @@ class RecordFormQuery
     /**
      * 主体の判定をしない(業務モジュールの判定をしない)。写す元の判定は呼び手が済ませてから呼ぶ。
      *
-     * 写しの初期値の「値から」(保証するもの = 写す値.md の 13.3 の公開の口の表)。
+     * 写しの初期値の「値から」(保証するもの = 画面の値の口.md の 7.2)。
      *
      * @param  int|null  $targetRecordId  写す先のレコードの id
      * @param  array<array-key, mixed>  $values  項目のコード → 画面の初期値の形の値
      * @param  array<array-key, mixed>  $details  明細の項目のコード → 行(行 = values を持つ配列)
-     * @return array{values: array<string, mixed>, details: CopiedRows, clearedFields: list<string>}
+     * @return array{values: array<string, mixed>, details: CopiedRows, clearedFields: list<ClearedField>}
      *
      * @throws ModelNotFoundException<RecordModule> 業務モジュールが無い・明細のモジュールのとき
      */
@@ -178,7 +179,7 @@ class RecordFormQuery
     /**
      * 主体の判定をしない(人と組織が日に有効かは業務モジュールに依らない)。
      *
-     * 参照者の確かめ(保証するもの = 写す値.md の 13.3 の公開の口の表)。
+     * 参照者の確かめ(保証するもの = 画面の値の口.md の 7.2)。
      *
      * @param  list<Party>  $viewers
      * @return list<Party>

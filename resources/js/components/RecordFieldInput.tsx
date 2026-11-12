@@ -27,6 +27,8 @@ type Props = {
     ariaLabel?: string;
     /** 複数選べる参照の添字の誤り(複数の参照の欄だけが使う) */
     itemErrors?: ReferenceItemErrors;
+    /** 空にした理由の 1 行の id(誤りの有無によらず入力の aria-describedby に足す) */
+    clearedId?: string;
 };
 
 /**
@@ -37,8 +39,11 @@ function RecordReferenceInput({
     invalid,
     itemErrors,
     describedBy,
+    clearedId,
+    // 必須の印は参照の部品が項目の定義から決める
+    isRequiredNow: _isRequiredNow,
     ...props
-}: Omit<Props, 'isRequiredNow'> & { describedBy?: string }) {
+}: Props & { describedBy?: string }) {
     if (props.field.isMultiple) {
         return (
             <RecordMultipleReferencePicker
@@ -47,6 +52,7 @@ function RecordReferenceInput({
                 invalid={invalid}
                 itemErrors={itemErrors}
                 describedBy={describedBy}
+                clearedId={clearedId}
             />
         );
     }
@@ -108,12 +114,14 @@ function CountedStringInput({
     text,
     common,
     invalid,
+    describedIds,
     onChange,
 }: {
     max: number;
     text: string;
     common: InputAttributes;
     invalid: boolean;
+    describedIds: string[];
     onChange: (draft: RecordFieldDraft) => void;
 }) {
     // 数を出す欄は id と誤りの属性を部品が組み立てるので、残りだけを渡す
@@ -131,6 +139,7 @@ function CountedStringInput({
                 value={text}
                 max={max}
                 invalid={invalid}
+                describedIds={describedIds}
                 {...countedAttributes}
                 onChange={(event) => onChange(event.target.value)}
             />
@@ -148,6 +157,7 @@ function StringInput({
     onChange,
     isRequiredNow,
     invalid,
+    describedIds,
 }: {
     field: RecordFieldDefinition;
     text: string;
@@ -155,6 +165,8 @@ function StringInput({
     onChange: (draft: RecordFieldDraft) => void;
     isRequiredNow: boolean;
     invalid: boolean;
+    /** 誤りの文言のほかの説明の要素の id(文字数・複数行の部品は自分で属性を組むので渡す) */
+    describedIds: string[];
 }) {
     if (field.isMultiline) {
         return (
@@ -166,6 +178,7 @@ function StringInput({
                 invalid={invalid}
                 isRequiredNow={isRequiredNow}
                 ariaLabel={common['aria-label']}
+                describedIds={describedIds}
             />
         );
     }
@@ -176,6 +189,7 @@ function StringInput({
             text={text}
             common={common}
             invalid={invalid}
+            describedIds={describedIds}
             onChange={onChange}
         />
     ) : (
@@ -190,19 +204,18 @@ function StringInput({
 /**
  * フォームの 1 項目の入力(型ごとの部品 = docs の 設計/業務データの入れ物/画面/業務の画面.md 2.2 の表。複数行の文字列は札つきの {@link RichTextInput})。
  */
-export function RecordFieldInput({
-    id,
-    field,
-    recordId,
-    draft,
-    onChange,
-    isRequiredNow,
-    invalid,
-    ariaLabel,
-    itemErrors,
-}: Props) {
-    // invalidProps は誤りの文言の有無だけを見る(文言は使い手が描く)
-    const described = invalidProps(id, invalid ? '' : undefined);
+export function RecordFieldInput(props: Props) {
+    const { id, field, draft, onChange, invalid, ariaLabel } = props;
+    const { isRequiredNow, clearedId } = props;
+    // invalidProps は誤りの文言の有無だけを見る(文言は使い手が描く)。空にした理由は誤りが無くても読ませる
+    const describedIds = clearedId === undefined ? [] : [clearedId];
+    const described = invalidProps(
+        id,
+        invalid ? '' : undefined,
+        false,
+        false,
+        describedIds,
+    );
     const common = {
         id,
         'aria-label': ariaLabel,
@@ -214,15 +227,8 @@ export function RecordFieldInput({
     if (isReferenceField(field)) {
         return (
             <RecordReferenceInput
-                id={id}
-                field={field}
-                recordId={recordId}
-                draft={draft}
-                onChange={onChange}
-                invalid={invalid}
-                itemErrors={itemErrors}
+                {...props}
                 describedBy={described['aria-describedby']}
-                ariaLabel={ariaLabel}
             />
         );
     }
@@ -259,6 +265,7 @@ export function RecordFieldInput({
                     onChange={onChange}
                     isRequiredNow={isRequiredNow}
                     invalid={invalid}
+                    describedIds={describedIds}
                 />
             );
         case 'date':

@@ -56,7 +56,8 @@ class ApplicationTargetForm
             ?? throw new LogicException("フロー {$flow->code} のコンテンツの業務モジュールを読み込んでいない");
         $module = $this->forms->definition($requester, $moduleCode, RecordModuleAction::Create, $context->date);
         $values = $this->applicationTargetValues->valuesFor(
-            $requester, $applicationTarget, $module, $applicationTargetId, null, $context->date, $context->localeCode,
+            $requester, $applicationTarget, $moduleCode, $module, $applicationTargetId, null, $context->date,
+            $context->localeCode,
         ) ?? throw (new ModelNotFoundException)->setModel(Record::class, [$applicationTargetId]);
         $form = $this->applicationForms->newForm($context, $applicant, $flow, $module, $baseDate, $applicants);
         $entry = ['module' => $applicationTarget['module'], 'record' => $applicationTargetId];

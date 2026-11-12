@@ -5,6 +5,7 @@ import {
     applicationTargetAnswered,
     applicationTargetPicked,
     applicationTargetSettled,
+    targetMarksOf,
 } from '@/lib/Workflow/applicationTarget';
 import type {
     ApplicationTargetConfirm,
@@ -16,6 +17,7 @@ import {
     applicationTargetOf,
     withApplicationTarget,
 } from '@/lib/Workflow/applicationTargetSnapshot';
+import type { ClearedMark } from '@/lib/clearedFields';
 import type { RecordFormData } from '@/lib/recordForm';
 import type { ApplicationTargetSnapshot } from '@/types/workflowApplyTarget';
 import type { PickedReference, WorkflowApplyProps } from '@/types';
@@ -25,11 +27,11 @@ import type { PickedReference, WorkflowApplyProps } from '@/types';
  * 外の口(ports)を渡して確かめられるようにした。状態の移りは applicationTarget.ts。
  */
 
-/** 画面に見せる状態(busy = 写しの値を取っている間。confirm = 写す前の確かめ。cleared = 最後に写した値で空にした項目の名前) */
+/** 画面に見せる状態(busy = 写しの値を取っている間。confirm = 写す前の確かめ。cleared = 最後に写した値で空にした欄の印) */
 export type ApplicationTargetView = {
     busy: boolean;
     confirm: ApplicationTargetConfirm | null;
-    cleared: string[];
+    cleared: ClearedMark[];
 };
 
 /** 取れなかった理由(unavailable = 403・404、failed = ほかの応答の誤りと応答の無い失敗。トーストの文を分ける) */
@@ -55,12 +57,12 @@ export type ApplicationTargetPorts = {
     publish: (view: ApplicationTargetView) => void;
 };
 
-/** 写しの状態(申請対象の欄が無い画面は targetField が null で、何もしない。cleared = 写すたびに置き換える 1 行の名前) */
+/** 写しの状態(申請対象の欄が無い画面は targetField が null で、何もしない。cleared = 写すたびに置き換える空にした欄の印) */
 export type ApplicationTargetFlow = {
     targetField: string | null;
     state: ApplicationTargetState;
     confirm: ApplicationTargetConfirm | null;
-    cleared: string[];
+    cleared: ClearedMark[];
 };
 
 /** 画面に見せる状態を出す */
@@ -106,14 +108,14 @@ function offer(
     );
 
     if (confirm === null) {
-        ports.updateRecord((record) =>
+        const { after } = ports.updateRecord((record) =>
             snapshotRecordOf(ports.module, record, values),
         );
         applicationTarget.state = applicationTargetSettled(
             applicationTarget.state,
             picked,
         );
-        applicationTarget.cleared = values.clearedFields;
+        applicationTarget.cleared = targetMarksOf(values, after);
     } else {
         applicationTarget.confirm = confirm;
     }
@@ -216,14 +218,14 @@ export function reflectApplicationTarget(
         return;
     }
 
-    ports.updateRecord((record) =>
+    const { after } = ports.updateRecord((record) =>
         snapshotRecordOf(ports.module, record, confirm.snapshot),
     );
     applicationTarget.state = applicationTargetSettled(
         applicationTarget.state,
         confirm.applicationTarget,
     );
-    applicationTarget.cleared = confirm.snapshot.clearedFields;
+    applicationTarget.cleared = targetMarksOf(confirm.snapshot, after);
     applicationTarget.confirm = null;
     showApplicationTarget(applicationTarget, ports);
 }
