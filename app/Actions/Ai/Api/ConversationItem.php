@@ -2,6 +2,7 @@
 
 namespace App\Actions\Ai\Api;
 
+use App\Enums\Ai\AiInstructionTemplate;
 use App\Enums\Ai\ConversationItemDisplay;
 use App\Enums\Ai\ConversationItemType;
 use LogicException;
@@ -19,7 +20,9 @@ use LogicException;
  * @phpstan-type ToolCallBlock array{type: 'tool_call', id: string, name: string, arguments: array<string, mixed>}
  * @phpstan-type UserTextContent array{text: string}
  * @phpstan-type ModelTextContent array{blocks: list<TextBlock|ToolCallBlock>}
- * @phpstan-type ToolResultContent array{call_id: string, text: string, is_error: bool, reason: string|null}
+ * @phpstan-type TemplateValues array<string, string|list<string>>
+ * @phpstan-type ToolResultContent array{call_id: string, template: string|null, values: TemplateValues,
+ *     body: string|null, is_error: bool}
  * @phpstan-type InterruptionContent array{during_tool: bool}
  * @phpstan-type CompactSummaryContent array{text: string}
  * @phpstan-type ItemContent UserTextContent|ModelTextContent|ToolResultContent|InterruptionContent
@@ -28,12 +31,15 @@ use LogicException;
  */
 final readonly class ConversationItem
 {
-    /** 今の形の版 */
-    public const VERSION = 1;
+    /** 今の形の版(道具の結果を定型の種類・値・本文に分けた形。前の版の項目を書く物は無いので、前の版は読まない) */
+    public const VERSION = 2;
+
+    /** 理由つきの断りの理由を持つ定型の値の鍵(① は理由を利用者の文として出す) */
+    public const USER_FEEDBACK = 'user_feedback';
 
     /**
-     * @param  ItemContent  $content  種類ごとの中身(利用者の文・要約の文 = 文、モデルの文 = 確定したブロックの列、道具の結果 = 呼び出しの id・結果の文・
-     *                                失敗の印・理由つきの断りの理由、中断の印 = 道具の途中か、回数の上限の印・要約の境目 = 空)
+     * @param  ItemContent  $content  種類ごとの中身(利用者の文・要約の文 = 文、モデルの文 = 確定したブロックの列、道具の結果 = 呼び出しの id・定型の種類・
+     *                                定型に入れる値・本文・失敗の印、中断の印 = 道具の途中か、回数の上限の印・要約の境目 = 空)
      */
     private function __construct(
         public ConversationItemType $type,
@@ -98,18 +104,29 @@ final readonly class ConversationItem
     }
 
     /**
-     * 道具の結果(画面の履歴に出さない。① は道具の呼び出しを実行の読み取りの一覧から出す)。理由つきの断り(承認待ちへの理由つきの断り = 9.3 の H3)は
-     * 理由を持ち、理由を利用者の文として出す。
+     * 道具の結果(画面の履歴に出さない。① は道具の呼び出しを実行の読み取りの一覧から出す)。組んだ文は持たず、定型の種類・定型に入れる値・本文
+     * (長さの上限を当てた後)に分けて持ち、送るときに今の版で組む(9.13)。定型を使わない結果は種類が無しで本文だけ、空の結果は本文が無い。
+     * 理由つきの断り(承認待ちへの理由つきの断り = 9.3 の H3)は理由を値の {@see self::USER_FEEDBACK} に持ち、理由を利用者の文として出す。
+     *
+     * @param  TemplateValues  $values  置き換え口の名前 → 値
      */
-    public static function toolResult(string $callId, string $text, bool $isError, ?string $reason = null): self
-    {
-        $display = $reason === null ? ConversationItemDisplay::Hide : ConversationItemDisplay::ReasonAsUserText;
+    public static function toolResult(
+        string $callId,
+        ?AiInstructionTemplate $template,
+        array $values,
+        ?string $body,
+        bool $isError,
+    ): self {
+        $display = isset($values[self::USER_FEEDBACK])
+            ? ConversationItemDisplay::ReasonAsUserText
+            : ConversationItemDisplay::Hide;
 
         return self::of(ConversationItemType::ToolResult, $display, [
             'call_id' => $callId,
-            'text' => $text,
+            'template' => $template?->value,
+            'values' => $values,
+            'body' => $body,
             'is_error' => $isError,
-            'reason' => $reason,
         ]);
     }
 
@@ -197,7 +214,11 @@ final readonly class ConversationItem
             ConversationItemType::UserText => self::userText($content['text']),
             ConversationItemType::ModelText => self::modelText(array_values($content['blocks'])),
             ConversationItemType::ToolResult => self::toolResult(
-                $content['call_id'], $content['text'], $content['is_error'], $content['reason'],
+                $content['call_id'],
+                $content['template'] === null ? null : AiInstructionTemplate::from($content['template']),
+                $content['values'],
+                $content['body'],
+                $content['is_error'],
             ),
             ConversationItemType::Interruption => self::interruption($content['during_tool']),
             ConversationItemType::TurnLimit => self::turnLimit(),
@@ -218,10 +239,13 @@ final readonly class ConversationItem
             ConversationItemType::CompactSummary => self::hasOnly($content, ['text' => 'string']),
             ConversationItemType::ModelText => self::hasOnly($content, ['blocks' => 'array'])
                 && self::blocksFit($content['blocks']),
-            ConversationItemType::ToolResult => self::hasOnly(
-                $content,
-                ['call_id' => 'string', 'text' => 'string', 'is_error' => 'bool', 'reason' => '?string'],
-            ),
+            ConversationItemType::ToolResult => self::hasOnly($content, [
+                'call_id' => 'string',
+                'template' => '?template',
+                'values' => 'values',
+                'body' => '?string',
+                'is_error' => 'bool',
+            ]),
             ConversationItemType::Interruption => self::hasOnly($content, ['during_tool' => 'bool']),
             ConversationItemType::TurnLimit, ConversationItemType::CompactBoundary => $content === [],
         };
@@ -253,7 +277,8 @@ final readonly class ConversationItem
     }
 
     /**
-     * 配列が渡した鍵だけを持ち(順は問わない)、値が形(string・?string・bool・array)に合うか。
+     * 配列が渡した鍵だけを持ち(順は問わない)、値が形(string・?string・bool・array・?template = 定型の種類の値か null・values = 定型の値)に
+     * 合うか。
      *
      * @param  array<array-key, mixed>  $values
      * @param  array<string, string>  $forms
@@ -270,8 +295,30 @@ final readonly class ConversationItem
                 'string' => is_string($value),
                 '?string' => $value === null || is_string($value),
                 'bool' => is_bool($value),
+                '?template' => $value === null
+                    || (is_string($value) && AiInstructionTemplate::tryFrom($value) !== null),
+                'values' => self::valuesFit($value),
                 default => is_array($value),
             };
+
+            if (! $fits) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /** 定型の値が、文字列の鍵 → 文字列か文字列の列か */
+    private static function valuesFit(mixed $values): bool
+    {
+        if (! is_array($values)) {
+            return false;
+        }
+
+        foreach ($values as $key => $value) {
+            $fits = is_string($key) && (is_string($value) || (is_array($value) && array_is_list($value)
+                && array_filter($value, is_string(...)) === $value));
 
             if (! $fits) {
                 return false;

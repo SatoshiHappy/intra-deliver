@@ -170,6 +170,53 @@ services:
         tags:
             - phpat.test
 
+    # 機械検査 (b) 道具の名前空間と判定の関数の名前空間が依存できる口(docs の 設計/業務ツール/機械検査.md、正本 = 設計/AI/道具と権限/道具の判定と今の権限.md の 10.4。
+    # 一覧と規則 = tests/Architecture/Policy/AgentToolDependencies.php)
+    -
+        class: Tests\Architecture\Policy\AgentToolDependencies
+        tags:
+            - phpat.test
+
+    # 機械検査 (b) 道具の名前空間から呼べる Records の口の操作と更新の持ち主の鍵の引数、判定の関数の名前空間から呼べる RecordFormQuery の操作
+    # (クラスの単位の依存の規則の上に重ねる操作の単位の規則。組と一覧は Policy の AgentToolDependencies)
+    -
+        class: Tests\Architecture\Engine\PhpStan\AllowedOperationsRule
+        arguments:
+            groups: Tests\Architecture\Policy\AgentToolDependencies::OPERATION_GROUPS
+            callableFunctions: Tests\Architecture\Policy\AgentToolDependencies::CALLABLE_FUNCTIONS
+            callableMethods: Tests\Architecture\Policy\AgentToolDependencies::CALLABLE_METHODS
+            reflective: Tests\Architecture\Policy\AgentToolDependencies::REFLECTIVE_CALLS
+        tags:
+            - phpstan.rules.rule
+
+    # 上の規則を first-class callable にも掛ける(phpstan は first-class callable を仮の節に置き換え、元の呼び出しを規則に渡さないため)
+    -
+        class: Tests\Architecture\Engine\PhpStan\AllowedMethodCallablesRule
+        tags:
+            - phpstan.rules.rule
+    -
+        class: Tests\Architecture\Engine\PhpStan\AllowedStaticMethodCallablesRule
+        tags:
+            - phpstan.rules.rule
+    -
+        class: Tests\Architecture\Engine\PhpStan\AllowedFunctionCallablesRule
+        tags:
+            - phpstan.rules.rule
+
+    # 機械検査 (b) 道具の約束を実装するクラスは道具の名前空間にだけ置ける(依存の規則は名前空間の中のクラスにだけ掛かり、外に置いた実装を止めないため)。
+    # 照合しないディレクトリは自分の一覧(理由 = Policy の AgentToolDependencies::PLACEMENT_EXEMPT_DIRECTORIES。副作用の規則の一覧は配備に載る
+    # database を外すので使わない)。名前を付けるのは、自己証明の fixture 用の設定(tests/Architecture/fixtures/AgentTools/phpstan.neon)がルートを差し替えるため
+    interfacePlacementRule:
+        class: Tests\Architecture\Engine\PhpStan\InterfacePlacementRule
+        arguments:
+            roots: %codeLayout.roots%
+            classDirectories: %codeLayout.classDirectories%
+            exemptDirectories: Tests\Architecture\Policy\AgentToolDependencies::PLACEMENT_EXEMPT_DIRECTORIES
+            interfaces: Tests\Architecture\Policy\AgentToolDependencies::TOOL_CONTRACTS
+            namespaces: Tests\Architecture\Policy\AgentToolDependencies::TOOL_NAMESPACES
+        tags:
+            - phpstan.rules.rule
+
     # B1 配線のファイルが依存してよいのは入口・共有・起動・コマンド・外部(DB を除く)と、config/ の永続化のクラス名だけ(docs の 設計/コード構成/README.md 2 節)。
     # 層と DB の定義は層の規則(LayerRules)の定数を使う(同じ定義を 2 か所に書かない)
     -

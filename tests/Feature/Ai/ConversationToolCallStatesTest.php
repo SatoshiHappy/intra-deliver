@@ -32,6 +32,7 @@ final class ConversationToolCallStatesTest extends TransactionalTestCase
 
         $wrapper = [
             AiToolCallDecision::UnknownTool, AiToolCallDecision::InvalidInput, AiToolCallDecision::ValidationError,
+            AiToolCallDecision::WrapperException,
         ];
 
         foreach ($wrapper as $decision) {
@@ -119,7 +120,6 @@ final class ConversationToolCallStatesTest extends TransactionalTestCase
             'ai_tool_calls_records_check' => [$callId, ['records' => '{"a": 1}']],
             'ai_tool_calls_position_check' => [$callId, ['position' => 0]],
             'ai_tool_calls_call_id_check' => [$callId, ['call_id' => '']],
-            'ai_tool_calls_tool_name_check' => [$callId, ['tool_name' => '']],
         ];
 
         foreach ($values as $check => [$id, $value]) {

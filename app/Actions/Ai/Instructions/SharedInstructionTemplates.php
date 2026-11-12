@@ -58,6 +58,18 @@ final readonly class SharedInstructionTemplates
     }
 
     /**
+     * ③ の文の全部(文の鍵 → 置き換え口を入れる前の文)。
+     *
+     * @return array<string, string>
+     *
+     * @throws LogicException ファイルが無い・読めない・形が合わないとき
+     */
+    public function texts(): array
+    {
+        return $this->texts->all();
+    }
+
+    /**
      * 起動の時の確かめ(文の欠けと、許す一覧と呼び手が渡す鍵に無い置き換え口)。無ければ空。
      *
      * @return list<string>

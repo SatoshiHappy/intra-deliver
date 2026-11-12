@@ -34,6 +34,24 @@ final class InstructionTextFile
     }
 
     /**
+     * 文の鍵と文の全部(読んだ順)。
+     *
+     * @return array<string, string>
+     *
+     * @throws LogicException ファイルが無い・読めない・形が合わないとき
+     */
+    public function all(): array
+    {
+        [$texts, $error] = $this->loaded();
+
+        if (is_string($texts)) {
+            throw new LogicException($texts, 0, $error);
+        }
+
+        return $texts;
+    }
+
+    /**
      * 起動の時の確かめ: ファイルが無い・読めない・形が合わない・要る鍵が無い・置き換え口が許す一覧(docs の
      * 設計/AI/設定とプロンプト/使う文と組み立て.md 11.6)と値を入れないで済む口に無い・置き換え口がその文に呼び手が渡す鍵と値を入れないで済む口に
      * 無い。無ければ空。

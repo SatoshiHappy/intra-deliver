@@ -4,6 +4,7 @@ namespace Tests\Feature\Ai;
 
 use App\Actions\Ai\Api\ConversationItem;
 use App\Actions\Ai\Api\ConversationStore;
+use App\Enums\Ai\AiInstructionTemplate;
 use Illuminate\Support\Facades\DB;
 use Throwable;
 
@@ -105,7 +106,7 @@ trait ConversationStoreContract
             ConversationItem::compactBoundary(),
             ConversationItem::compactSummary('後の要約'),
             ConversationItem::userText('後の文'),
-            ConversationItem::toolResult('call_1', '結果', false),
+            ConversationItem::toolResult('call_1', null, [], '結果', false),
         ];
         $this->conversationStore()->append($second, [ConversationItem::userText('境目の前'), ...$after]);
 
@@ -113,7 +114,10 @@ trait ConversationStoreContract
         $this->assertEquals($after, $this->conversationStore()->read($first));
     }
 
-    /** 読むは足した写しを値と鍵の順のまま返す(道具の呼び出しの引数の入れ子と、最上位と入れ子の空の配列を含む) */
+    /**
+     * 読むは足した写しを値と鍵の順のまま返す(道具の呼び出しの引数の入れ子と、最上位と入れ子の空の配列を含む。形の版 2 の境目のほかの種類と、
+     * 道具の結果の定型の値の鍵の順と列を含む)
+     */
     public function test_read_returns_the_copies_with_the_same_values_and_key_order(): void
     {
         $runId = $this->runInNewConversation();
@@ -124,7 +128,19 @@ trait ConversationStoreContract
                 ConversationItem::toolCallBlock('call_2', 'list_modules', []),
                 ConversationItem::textBlock('探します'),
             ]),
-            ConversationItem::toolResult('call_1', '結果', false),
+            ConversationItem::toolResult('call_1', AiInstructionTemplate::LargeResultSearch, [
+                'zeta' => '1',
+                'alpha' => ['b', 'a'],
+                'empty' => [],
+            ], '先頭', false),
+            ConversationItem::toolResult('c2', AiInstructionTemplate::EmptyResult, ['tool_name' => 'x'], null, false),
+            ConversationItem::toolResult('call_3', AiInstructionTemplate::ToolUseRejectedWithReason, [
+                ConversationItem::USER_FEEDBACK => '別の件で',
+            ], null, true),
+            ConversationItem::userText('文'),
+            ConversationItem::interruption(true),
+            ConversationItem::turnLimit(),
+            ConversationItem::compactSummary('要約'),
         ];
         $this->conversationStore()->append($runId, $items);
 

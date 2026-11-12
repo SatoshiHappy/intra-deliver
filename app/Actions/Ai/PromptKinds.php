@@ -5,6 +5,7 @@ namespace App\Actions\Ai;
 use App\Actions\Ai\Api\PromptKind;
 use App\Actions\Ai\Instructions\DefaultInstructionBuilder;
 use App\Actions\Ai\Instructions\InstructionBuilder;
+use App\Actions\Ai\ToolCalls\AgentTools;
 use App\Queries\Ai\ConversationSettings;
 use App\Queries\Ai\KindSettings;
 use App\Support\DefaultDatabaseQueue;
@@ -13,7 +14,7 @@ use LogicException;
 
 /**
  * AI の実行の種類の全体 = タグ {@see PromptKind::TAG} で束ねた実装を引く 1 か所(内部。docs の 設計/AI/公開の口.md 3.1)。
- * Ai の業務処理は種類の実装を直接呼ばずにここを通す。登録と設定の食い違い({@see self::problems()}。文字起こしと会話の型の種類を含む)は
+ * Ai の業務処理は種類の実装を直接呼ばずにここを通す。登録と設定の食い違い({@see self::problems()}。文字起こしと会話の型の種類と道具の登録を含む)は
  * `ai:check-settings` とテストが落とす。
  */
 class PromptKinds
@@ -30,6 +31,7 @@ class PromptKinds
         private ConversationSettings $conversation,
         private DefaultInstructionBuilder $instructions,
         private InstructionBuilder $boundInstructions,
+        private AgentTools $agentTools,
     ) {}
 
     /**
@@ -77,6 +79,7 @@ class PromptKinds
             ...$this->conversation->problems(),
             ...array_values(array_unique([...$this->instructions->problems(), ...$bound])),
             ...$this->registrationProblems(),
+            ...$this->agentTools->problems(),
             ...$this->limits->problems($this->kindSettings->all()),
         ];
     }

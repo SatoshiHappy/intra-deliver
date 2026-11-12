@@ -41,6 +41,11 @@ final class ProblemInstructionBuilder implements InstructionBuilder
         throw new LogicException('使わない');
     }
 
+    public function conversationMarkerForms(): array
+    {
+        throw new LogicException('使わない');
+    }
+
     public function problems(): array
     {
         return $this->problems;

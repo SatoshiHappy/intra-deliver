@@ -3,6 +3,7 @@
 namespace Tests\Feature\Ai;
 
 use App\Actions\Ai\Api\ConversationItem;
+use App\Enums\Ai\AiInstructionTemplate;
 use App\Enums\Ai\ConversationItemDisplay;
 use App\Enums\Ai\ConversationItemType;
 use LogicException;
@@ -30,10 +31,32 @@ final class ConversationItemTest extends TestCase
         return [
             '利用者の文' => [ConversationItem::userText('会議を探して'), 'user_text', 'show'],
             'モデルの文' => [ConversationItem::modelText($blocks), 'model_text', 'show'],
-            '道具の結果' => [ConversationItem::toolResult('call_1', '3 件', false), 'tool_result', 'hide'],
-            '道具の失敗の結果' => [ConversationItem::toolResult('call_1', '誤り', true), 'tool_result', 'hide'],
+            '道具の結果(本文だけ)' => [ConversationItem::toolResult('call_1', null, [], '3 件', false), 'tool_result', 'hide'],
+            '道具の失敗の結果(定型と値)' => [
+                ConversationItem::toolResult('call_1', AiInstructionTemplate::ToolInputInvalid, [
+                    'tool_name' => 'search_records',
+                    'problems' => ['module: 欠けている', 'page: 型が違う(integer)'],
+                ], null, true),
+                'tool_result',
+                'hide',
+            ],
+            '大きい結果(定型と値と本文)' => [
+                ConversationItem::toolResult('call_1', AiInstructionTemplate::LargeResultRead, [
+                    'original_length' => '60000',
+                    'preview_length' => '2000',
+                ], '先頭', false),
+                'tool_result',
+                'hide',
+            ],
+            '空の結果(本文が無い)' => [
+                ConversationItem::toolResult('c', AiInstructionTemplate::EmptyResult, ['k' => 't'], null, false),
+                'tool_result',
+                'hide',
+            ],
             '理由つきの断り' => [
-                ConversationItem::toolResult('call_1', '断られた', true, '先に別の件を'),
+                ConversationItem::toolResult('call_1', AiInstructionTemplate::ToolUseRejectedWithReason, [
+                    ConversationItem::USER_FEEDBACK => '先に別の件を',
+                ], null, true),
                 'tool_result',
                 'reason_as_user_text',
             ],
@@ -55,15 +78,16 @@ final class ConversationItemTest extends TestCase
 
         $this->assertIsArray($copy);
         $this->assertEquals($item, ConversationItem::fromArray($copy));
-        $expected = [ConversationItemType::from($type), ConversationItemDisplay::from($display), 1];
+        $expected = [ConversationItemType::from($type), ConversationItemDisplay::from($display), 2];
         $this->assertSame($expected, [$item->type, $item->display, $item->version]);
-        $this->assertSame(['type' => $type, 'display' => $display, 'version' => 1], array_slice($copy, 0, 3));
+        $this->assertSame(['type' => $type, 'display' => $display, 'version' => 2], array_slice($copy, 0, 3));
     }
 
     /** 写しを持つ側が中身の鍵の順を変えても(jsonb は鍵を並べ替える)、読むと同じ値になる */
     public function test_a_copy_with_its_keys_reordered_reads_as_the_same_item(): void
     {
-        $item = ConversationItem::toolResult('call_1', '結果', false);
+        $values = ['tool_name' => 'a', 'denial_detail' => 'b'];
+        $item = ConversationItem::toolResult('call_1', AiInstructionTemplate::RuleDenied, $values, null, true);
         $copy = $item->toArray();
         $copy['content'] = array_reverse($copy['content'], true);
 
@@ -92,9 +116,17 @@ final class ConversationItemTest extends TestCase
     public static function unreadableCopies(): array
     {
         $copy = ConversationItem::userText('文')->toArray();
+        $result = ConversationItem::toolResult('call_1', null, [], '結果', false)->toArray();
 
         return [
-            '知らない形の版' => [[...$copy, 'version' => 2]],
+            '形の版 1 の道具の結果(前の形の固定の写し)' => [[
+                'type' => 'tool_result',
+                'display' => 'hide',
+                'version' => 1,
+                'content' => ['call_id' => 'call_1', 'text' => '結果', 'is_error' => false, 'reason' => null],
+            ]],
+            '形の版 1 の利用者の文' => [[...$copy, 'version' => 1]],
+            '知らない形の版' => [[...$copy, 'version' => 3]],
             '形の版が無い' => [array_diff_key($copy, ['version' => true])],
             '知らない種類' => [[...$copy, 'type' => 'image']],
             '知らない出し方' => [[...$copy, 'display' => 'blink']],
@@ -104,7 +136,11 @@ final class ConversationItemTest extends TestCase
                 ...ConversationItem::modelText([])->toArray(),
                 'content' => ['blocks' => [['type' => 'x']]],
             ]],
-            '出し方が中身と合わない' => [[...ConversationItem::toolResult('call_1', '結果', false)->toArray(), 'display' => 'show']],
+            '出し方が中身と合わない' => [[...$result, 'display' => 'show']],
+            '知らない定型の種類' => [[...$result, 'content' => [...$result['content'], 'template' => 'nope']]],
+            '定型の値が文字列でない' => [[...$result, 'content' => [...$result['content'], 'values' => ['a' => 1]]]],
+            '定型の値の列に文字列でない物' => [[...$result, 'content' => [...$result['content'], 'values' => ['a' => ['x', 2]]]]],
+            '定型の値の鍵が文字列でない' => [[...$result, 'content' => [...$result['content'], 'values' => ['x']]]],
             '境目に中身' => [[...ConversationItem::compactBoundary()->toArray(), 'content' => ['text' => '文']]],
         ];
     }

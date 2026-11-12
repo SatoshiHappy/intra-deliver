@@ -1,0 +1,14 @@
+# 機械検査 (b) の道具の規則の自己証明の fixture 用の phpstan 設定。
+# fixture の共通の設定(../phpstan.neon)を取り込み、置き場の規則(interfacePlacementRule)のアプリのルートだけを、この検査の fixture のディレクトリに
+# 差し替える(規則の作り方・一覧・照合しないディレクトリは通常と同じ。依存の規則と操作の単位の規則は名前空間で掛かるので差し替えない)。
+
+includes:
+	- ../phpstan.neon
+
+services:
+	interfacePlacementRule:
+		arguments:
+			roots:
+				- %rootDir%/../../../tests/Architecture/fixtures/AgentTools/violating
+				- %rootDir%/../../../tests/Architecture/fixtures/AgentTools/passing
+				- %rootDir%/../../../tests/Architecture/fixtures/AgentTools/passing-writes

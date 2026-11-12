@@ -59,6 +59,9 @@ final readonly class DefaultInstructionBuilder implements InstructionBuilder
     /** 題の 1 欄の名前 */
     public const TITLE_FIELD = 'title';
 
+    /** この版の会話の印の書き方(行の全体を角かっこで囲む = 中断の印・外した印・落とした印・応答が無い旨の印) */
+    public const MARKER_LINE = '/^\[[^\[\]]+\]$/uD';
+
     /** 値を入れないで済む口(代わりの版の文は、持つ口にいつも値を入れる) */
     private const OPTIONAL_PLACEHOLDERS = [];
 
@@ -105,6 +108,22 @@ final readonly class DefaultInstructionBuilder implements InstructionBuilder
     public function titleField(): TitleField
     {
         return new TitleField(self::TITLE_FIELD, $this->texts->text(self::TITLE_FIELD_DESCRIPTION));
+    }
+
+    /** この版の文と ③ の文のうち、行の全体が {@see self::MARKER_LINE} に当たる行(重ねない。文の順) */
+    public function conversationMarkerForms(): array
+    {
+        $forms = [];
+
+        foreach ([...array_values($this->texts->all()), ...array_values($this->shared->texts())] as $text) {
+            foreach (preg_split('/\R/u', $text) ?: [] as $line) {
+                if (preg_match(self::MARKER_LINE, trim($line)) === 1) {
+                    $forms[] = trim($line);
+                }
+            }
+        }
+
+        return array_values(array_unique($forms));
     }
 
     public function problems(): array

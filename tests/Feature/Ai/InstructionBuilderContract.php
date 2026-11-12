@@ -17,10 +17,12 @@ use PHPUnit\Framework\Attributes\TestWith;
  * 指示の組み立ての口の約束のテスト(③ の公開の側の抽象。docs の 設計/AI/設定とプロンプト/README.md 11.4 の「守ること」と「約束のテスト」・
  * 使う文と組み立て.md 11.6 の約束のテスト)。2 つの版がこのトレイトを使うテストのクラスで流す(代わりの版 = {@see DefaultInstructionBuilderTest})。
  * 文の中身は写さず、渡した値が入ること・返す形・保存と送るだけの分けを見る。版は容器から引かずに直に作る。
- * 置き換え口の当て方の分は {@see InstructionPlaceholderContract} に分けて置き、このトレイトが使う(使う側はこのトレイトだけを使う)。
+ * 置き換え口の当て方の分は {@see InstructionPlaceholderContract} に、会話の印の形の一覧の分は {@see InstructionMarkerContract} に分けて置き、
+ * このトレイトが使う(使う側はこのトレイトだけを使う)。
  */
 trait InstructionBuilderContract
 {
+    use InstructionMarkerContract;
     use InstructionPlaceholderContract;
 
     /** 言葉の口に入れる見分けの値(文の中に出ない語。言葉の口に値が入ることと入らないことをこの値で見る) */

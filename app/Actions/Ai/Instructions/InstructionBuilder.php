@@ -44,6 +44,17 @@ interface InstructionBuilder
     public function titleField(): TitleField;
 
     /**
+     * その版の文が使う会話の印の形の一覧(会話の印の文字列そのもの。docs の 設計/AI/設定とプロンプト/README.md 11.4 の返す物)。版ごとに 1 つで、
+     * 受け取る物によらず同じ一覧を返す。ループが送る履歴を組む時に、道具の結果の本文と定型に入れる値の中の同じ形の文字列を直すのに使う
+     * (設計/AI/道具と権限/まとめた実行と送るデータ.md 10.6 の (1))。
+     *
+     * @return list<string>
+     *
+     * @throws LogicException 文が無いとき(作りの誤り)
+     */
+    public function conversationMarkerForms(): array;
+
+    /**
      * 起動の時の確かめ(docs の 設計/AI/データと失敗と検査.md 8 節): その版の文と共有の定型の、許す一覧に無い置き換え口と、定型の種類と
      * 呼び出しの種類に文が無いこと。投げずに文にする。無ければ空。
      *

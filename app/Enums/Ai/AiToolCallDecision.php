@@ -17,6 +17,9 @@ enum AiToolCallDecision: string
     /** 包みの結果: 道具の検証の誤り */
     case ValidationError = 'validation_error';
 
+    /** 包みの結果: 包みの中の例外(docs の 設計/AI/エージェントの実行/道具の包みと止める.md 9.4) */
+    case WrapperException = 'wrapper_exception';
+
     /** 判定の関数: 許す */
     case Allow = 'allow';
 

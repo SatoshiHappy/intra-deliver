@@ -24,6 +24,12 @@ final class DefaultInstructionBuilderTest extends TestCase
         return new DefaultInstructionBuilder;
     }
 
+    /** 代わりの版の会話の印 = 組んだ文の中の、行の全体が角かっこで囲まれた行 */
+    protected function conversationMarkerPattern(): string
+    {
+        return '/^\[[^\[\]\r\n]+\]$/mu';
+    }
+
     public function test_the_compact_summary_only_trims_the_answer(): void
     {
         $text = $this->instructionBuilder()->compactSummary("\n  Draft: kept as it is.\nThe summary.  \n");
