@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vite-plus/test';
 import { openedFormOf } from './applyOpened';
 import type { RememberedCleared } from './applyOpened';
 import { targetMarksOf } from './applicationTarget';
-import { planModule, reference } from './applicationTarget.testing';
+import { markedOf, planModule, reference } from './applicationTarget.testing';
 import { snapshotRecordOf } from './applicationTargetSnapshot';
 import {
     clearedStateOf,
@@ -117,7 +117,7 @@ describe('元の申請の値の印と開いた時・反映した申請対象の�
         );
 
         expect(opened.data.record.values.budget).toBe('100');
-        expect(shownOf(opened).map((mark) => mark.field)).toEqual(['title']);
+        expect(markedOf(shownOf(opened))).toEqual(['title']);
     });
 
     it('写しが明細を置き換える(確かめて反映した)と元の申請の値のセルの印は外れ、写しが空にしたセルの印は新しい行の key に付く', () => {

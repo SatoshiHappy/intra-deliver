@@ -60,7 +60,9 @@ const marks = clearedMarksOf(
 );
 
 const goneOf = (settled: ClearedMark[]) =>
-    settled.filter((mark) => mark.gone).map((mark) => mark.field);
+    settled
+        .filter((mark) => mark.gone)
+        .map((mark) => (mark.kind === 'viewers' ? null : mark.field));
 
 describe('表 1: 開いた時・戻った時(初めの 1 回)', () => {
     it('親の欄と明細の空にした行のそのセルに印を付け、参照者は欄の無い画面では印にしない', () => {

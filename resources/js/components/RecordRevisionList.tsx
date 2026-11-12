@@ -181,6 +181,7 @@ function RowAccessChanges({ row }: { row: RecordRevisionRow }) {
     ));
 }
 
+/** 1 回の保存の変化の並び(薄い地・枠・角丸の箱で囲む = 画面の意匠の方針 15。頭だけの版・前の記録の無い版は箱を出さない) */
 function Changes({ row }: { row: RecordRevisionRow }) {
     if (row.noPreviousRecord) {
         return (
@@ -195,7 +196,7 @@ function Changes({ row }: { row: RecordRevisionRow }) {
     }
 
     return (
-        <ul className="mt-1.5 grid gap-2">
+        <ul className="mt-2 grid gap-2 rounded-lg border bg-muted/50 p-3">
             {row.changes.fields.map((change) => (
                 <Change key={change.code} change="changed" label={change.name}>
                     <RecordRevisionValueChange

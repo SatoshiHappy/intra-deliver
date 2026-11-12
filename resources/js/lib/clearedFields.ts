@@ -20,11 +20,7 @@ export const CLEARED_REASON_TEXTS: Record<ClearedReason, string> = {
  * 空にした欄の印 1 つ(画面.md の 5 節の表 1)。baseline = 空にした直後の値(JSON)、gone = 消えた。明細のセルは行の key で引く
  * (行を並べ替えても同じ行を指すため)。
  */
-export type ClearedMark = {
-    kind: 'field' | 'cell' | 'viewers';
-    field: string | null;
-    detail: string | null;
-    rowKey: string | null;
+export type ClearedMark = Position & {
     reason: ClearedReason;
     baseline: string;
     gone: boolean;
@@ -43,7 +39,11 @@ export type FieldMarks = {
     viewers?: ClearedReason;
 };
 
-type Position = Pick<ClearedMark, 'kind' | 'field' | 'detail' | 'rowKey'>;
+/** 印の位置(kind ごとに持つ値が違う。viewers は位置を持たない) */
+type Position =
+    | { kind: 'field'; field: string }
+    | { kind: 'cell'; field: string; detail: string; rowKey: string }
+    | { kind: 'viewers' };
 
 /** 印の位置の今の値(明細の行が無くなったら undefined) */
 function valueOf(
@@ -55,16 +55,14 @@ function valueOf(
     }
 
     if (mark.kind === 'field') {
-        return current.record.values[mark.field ?? ''] ?? null;
+        return current.record.values[mark.field] ?? null;
     }
 
-    const row = (current.record.details[mark.detail ?? ''] ?? []).find(
+    const row = (current.record.details[mark.detail] ?? []).find(
         (candidate) => candidate.key === mark.rowKey,
     );
 
-    return row === undefined
-        ? undefined
-        : (row.values[mark.field ?? ''] ?? null);
+    return row === undefined ? undefined : (row.values[mark.field] ?? null);
 }
 
 /** サーバーの 1 件を印の位置にする(明細の行の添字は行の key に。行が無ければ null = 印にしない) */
@@ -73,26 +71,21 @@ function positionOf(
     current: ClearedValues,
 ): Position | null {
     if (entry.kind === 'viewers') {
-        return current.viewers === undefined
-            ? null
-            : { kind: 'viewers', field: null, detail: null, rowKey: null };
+        return current.viewers === undefined ? null : { kind: 'viewers' };
     }
+
+    const field = entry.field ?? '';
 
     if (entry.kind === 'field') {
-        return {
-            kind: 'field',
-            field: entry.field,
-            detail: null,
-            rowKey: null,
-        };
+        return { kind: 'field', field };
     }
 
-    const rowKey =
-        current.record.details[entry.detail ?? '']?.[entry.row ?? -1]?.key;
+    const detail = entry.detail ?? '';
+    const rowKey = current.record.details[detail]?.[entry.row ?? -1]?.key;
 
     return rowKey === undefined
         ? null
-        : { kind: 'cell', field: entry.field, detail: entry.detail, rowKey };
+        : { kind: 'cell', field, detail, rowKey };
 }
 
 /**
@@ -197,9 +190,16 @@ export function nextClearedStateOf(
 }
 
 function keyOf(mark: ClearedMark): string {
-    return [mark.kind, mark.detail ?? '', mark.rowKey ?? '', mark.field].join(
-        '\u0000',
-    );
+    switch (mark.kind) {
+        case 'viewers':
+            return mark.kind;
+        case 'field':
+            return [mark.kind, mark.field].join('\u0000');
+        case 'cell':
+            return [mark.kind, mark.detail, mark.rowKey, mark.field].join(
+                '\u0000',
+            );
+    }
 }
 
 /**
@@ -228,10 +228,10 @@ export function fieldMarksOf(marks: ClearedMark[]): FieldMarks {
         if (mark.kind === 'viewers') {
             result.viewers = mark.reason;
         } else if (mark.kind === 'field') {
-            result.fields[mark.field ?? ''] = mark.reason;
+            result.fields[mark.field] = mark.reason;
         } else {
-            const rows = (result.cells[mark.detail ?? ''] ??= {});
-            (rows[mark.rowKey ?? ''] ??= {})[mark.field ?? ''] = mark.reason;
+            const rows = (result.cells[mark.detail] ??= {});
+            (rows[mark.rowKey] ??= {})[mark.field] = mark.reason;
         }
     }
 

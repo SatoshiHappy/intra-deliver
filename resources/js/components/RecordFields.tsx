@@ -20,6 +20,7 @@ import {
 import { CLEARED_REASON_TEXTS } from '@/lib/clearedFields';
 import type { ClearedReason, FieldMarks } from '@/lib/clearedFields';
 import { isRequiredNow } from '@/lib/recordRules';
+import { recordFieldId } from '@/lib/recordFieldId';
 import type {
     RecordFieldDefinition,
     RecordHeadingGroup,
@@ -98,7 +99,7 @@ function FieldRow({
     fixed,
     cleared,
 }: FieldRowProps) {
-    const id = `record-field-${field.code}`;
+    const id = recordFieldId(field.code);
     const key = `values.${field.code}`;
     const required = isRequiredNow(module, field, values);
     const error = fieldErrorOf(errors, key);

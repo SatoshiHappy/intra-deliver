@@ -20,6 +20,7 @@ import { CLEARED_REASON_TEXTS } from '@/lib/clearedFields';
 import type { ClearedReason } from '@/lib/clearedFields';
 import type { RecordFieldDraft, RecordRowDraft } from '@/lib/recordForm';
 import { MAX_DETAIL_ROWS, newRow, valueFields } from '@/lib/recordForm';
+import { recordFieldId } from '@/lib/recordFieldId';
 import type { RecordFieldDefinition } from '@/types';
 
 type Props = {
@@ -102,8 +103,8 @@ export function RecordDetailsEditor({
     }
 
     const columns = valueFields(child);
-    const headingId = `record-field-${field.code}-label`;
-    const tableErrorId = formErrorId(`record-field-${field.code}`);
+    const headingId = `${recordFieldId(field.code)}-label`;
+    const tableErrorId = formErrorId(recordFieldId(field.code));
     const tableError = errors[`details.${field.code}`];
     const rowsPrefix = `details.${field.code}.`;
     const move = (from: number, to: number) => {
