@@ -144,8 +144,6 @@ export function markOf(code: string): ClearedMark {
     return {
         kind: 'field',
         field: code,
-        detail: null,
-        rowKey: null,
         reason: 'applicationTarget',
         baseline: 'null',
         gone: false,
@@ -154,7 +152,9 @@ export function markOf(code: string): ClearedMark {
 
 /** 印の付いた欄のコード(並びのまま) */
 export function markedOf(marks: ClearedMark[] | undefined): string[] {
-    return (marks ?? []).map((mark) => mark.field ?? '');
+    return (marks ?? []).map((mark) =>
+        mark.kind === 'viewers' ? '' : mark.field,
+    );
 }
 
 /** 写しの値(values の値は応答の形。details は行の値。clearedFields = 空にした親の項目のコード) */

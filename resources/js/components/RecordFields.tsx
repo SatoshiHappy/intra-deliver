@@ -19,6 +19,7 @@ import {
 } from '@/lib/recordFormErrors';
 import { CLEARED_REASON_TEXTS } from '@/lib/clearedFields';
 import type { ClearedReason, FieldMarks } from '@/lib/clearedFields';
+import { recordFieldId } from '@/lib/recordFieldId';
 import { isRequiredNow } from '@/lib/recordRules';
 import type {
     RecordFieldDefinition,
@@ -28,7 +29,7 @@ import type {
 
 type Props = {
     module: RecordModuleDefinition;
-    /** 見出しのまとまり(欄を見出しごとに畳める。レコードの共通機能/詳細の画面/見出し.md の 3 節) */
+    /** 見出しのまとまり(欄を見出しごとに畳める。docs の 設計/業務データの入れ物/レコードの共通機能/詳細の画面/見出し.md の 3 節) */
     headings: RecordHeadingGroup[];
     /** 送信の失敗ごとに増える合図(誤りの項目を含む見出しを開く。使い手が同じ合図で最初の誤りの欄へフォーカスを移す) */
     revealRequest: number;
@@ -45,7 +46,7 @@ type Props = {
     onRowsReordered: (prefix: string) => void;
     /** 検証のエラー(キー → 文言。values.<コード>・details.<コード>…) */
     errors: Record<string, string | undefined>;
-    /** 変えられない欄(関連レコードの新規の入口の項目 = レコードの共通機能/関連レコード.md の 4.2 節)。text = 見せる値、hint = 下の 1 行 */
+    /** 変えられない欄(関連レコードの新規の入口の項目 = docs の 設計/業務データの入れ物/レコードの共通機能/関連レコード.md の 4.2 節)。text = 見せる値、hint = 下の 1 行 */
     fixedField?: FixedField;
     /** 今は使えない値を空にした欄の印(写して開いた画面だけ) */
     marks?: FieldMarks;
@@ -60,7 +61,7 @@ function clearedTextOf(reason: ClearedReason | undefined): string | undefined {
 }
 
 /**
- * 欄に結びつく値の誤り(欄に結びつかない誤りは入力欄の上に出す = 業務の画面.md 2.2「エラー」)。
+ * 欄に結びつく値の誤り(欄に結びつかない誤りは入力欄の上に出す = docs の 設計/業務データの入れ物/画面/業務の画面.md 2.2「エラー」)。
  */
 function fieldErrorsOf(errors: Props['errors']): Props['errors'] {
     return Object.fromEntries(
@@ -98,7 +99,7 @@ function FieldRow({
     fixed,
     cleared,
 }: FieldRowProps) {
-    const id = `record-field-${field.code}`;
+    const id = recordFieldId(field.code);
     const key = `values.${field.code}`;
     const required = isRequiredNow(module, field, values);
     const error = fieldErrorOf(errors, key);
@@ -182,7 +183,7 @@ function FieldsGrid({
 }
 
 /**
- * 明細の表(全部の見出しの後に全幅で、畳めない = 見出し.md の 1・3 節)。
+ * 明細の表(全部の見出しの後に全幅で、畳めない = docs の 設計/業務データの入れ物/レコードの共通機能/詳細の画面/見出し.md の 1・3 節)。
  */
 function DetailsEditors({
     module,
@@ -223,7 +224,8 @@ function DetailsEditors({
 }
 
 /**
- * 業務データの登録・編集の欄(業務の画面.md 2.2、見出しのまとまり = 見出し.md の 3 節)。値と誤りは props で受け、変更を上げる。
+ * 業務データの登録・編集の欄(docs の 設計/業務データの入れ物/画面/業務の画面.md 2.2、見出しのまとまり =
+ * 設計/業務データの入れ物/レコードの共通機能/詳細の画面/見出し.md の 3 節)。値と誤りは props で受け、変更を上げる。
  * 送信は使い手(RecordForm と、ワークフローの申請の画面)が持つので、2 つの画面で同じ欄を使える。明細の表は全部の見出しの後に全幅で、畳めない。
  */
 export function RecordFields(props: Props) {

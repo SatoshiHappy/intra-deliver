@@ -11,7 +11,11 @@ import {
     revisionOperation,
 } from '@/lib/recordShow';
 import type { DetailRowCell } from '@/lib/recordRevisions';
-import { detailRowCells, rowAccessLines } from '@/lib/recordRevisions';
+import {
+    detailRowCells,
+    hasRevisionLines,
+    rowAccessLines,
+} from '@/lib/recordRevisions';
 import { formatDate, formatDatetime } from '@/lib/recordValues';
 import { cn } from '@/lib/utils';
 import type {
@@ -181,6 +185,7 @@ function RowAccessChanges({ row }: { row: RecordRevisionRow }) {
     ));
 }
 
+/** 1 回の保存の変化の並び(箱で囲む = docs の 設計/画面の意匠/README.md の採った方針 15。描く行が無い版は箱を出さない) */
 function Changes({ row }: { row: RecordRevisionRow }) {
     if (row.noPreviousRecord) {
         return (
@@ -190,12 +195,12 @@ function Changes({ row }: { row: RecordRevisionRow }) {
         );
     }
 
-    if (row.changes === null) {
+    if (row.changes === null || !hasRevisionLines(row.changes)) {
         return null;
     }
 
     return (
-        <ul className="mt-1.5 grid gap-2">
+        <ul className="mt-2 grid gap-2 rounded-lg border bg-muted/50 p-3">
             {row.changes.fields.map((change) => (
                 <Change key={change.code} change="changed" label={change.name}>
                     <RecordRevisionValueChange
@@ -220,7 +225,7 @@ function Changes({ row }: { row: RecordRevisionRow }) {
     );
 }
 
-/** 時系列の 1 行(左の線と丸 = モック 2) */
+/** 時系列の 1 行(左の線と丸 = docs の 設計/業務データの入れ物/レコードの共通機能/更新履歴.md の 5.1 節のモック 2) */
 const TIMELINE_ITEM = cn(
     'relative pb-5 pl-7 last:pb-0',
     'before:absolute before:top-5 before:-bottom-0.5 before:left-[7px] before:w-0.5',

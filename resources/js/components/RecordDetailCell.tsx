@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge';
 import { TableCell } from '@/components/ui/table';
 import type { ClearedReason } from '@/lib/clearedFields';
 import type { RecordFieldDraft, RecordRowDraft } from '@/lib/recordForm';
+import { recordFieldId } from '@/lib/recordFieldId';
 import { fieldErrorOf, referenceItemErrors } from '@/lib/recordFormErrors';
 import { isRequiredNow } from '@/lib/recordRules';
 import { cn } from '@/lib/utils';
@@ -49,7 +50,7 @@ export function detailClearedReasonId(
     detailsCode: string,
     reason: ClearedReason,
 ): string {
-    return `${clearedReasonId(`record-field-${detailsCode}`)}-${reason}`;
+    return `${clearedReasonId(recordFieldId(detailsCode))}-${reason}`;
 }
 
 /** セルの誤りの文言(入力の aria-describedby が指す id) */

@@ -30,6 +30,13 @@ type Props = {
 };
 
 /**
+ * 欄のラベルの要素の id(欄の group の aria-labelledby が指す)。
+ */
+export function labelId(id: string): string {
+    return `${id}-label`;
+}
+
+/**
  * エラーの文言の要素の id(入力の aria-describedby に使う)。
  */
 export function formErrorId(id: string): string {
@@ -85,8 +92,8 @@ export function invalidProps(
 }
 
 /**
- * 欄の下に出さないキーの誤りをフォームの先頭に出す(管理の画面.md 3 節の冒頭)。shownKeys = その画面が欄の下に出すキー。
- * tabIndex は、送った後に最初の誤りへ focus() で移せるように(業務のフォーム。業務の画面.md 2.2)いつも付ける。
+ * 欄の下に出さないキーの誤りをフォームの先頭に出す(docs の 設計/業務データの入れ物/画面/管理の画面.md 3 節の冒頭)。shownKeys = その画面が欄の下に出すキー。
+ * tabIndex は、送った後に最初の誤りへ focus() で移せるように(業務のフォーム。docs の 設計/業務データの入れ物/画面/業務の画面.md 2.2)いつも付ける。
  */
 export function UnshownErrors({
     errors,
@@ -186,11 +193,11 @@ export function FormBlock({
     return (
         <div
             role="group"
-            aria-labelledby={`${id}-label`}
+            aria-labelledby={labelId(id)}
             className={cn('flex flex-col gap-2', className)}
         >
             <div className="flex items-center gap-2">
-                <Label id={`${id}-label`} htmlFor={id}>
+                <Label id={labelId(id)} htmlFor={id}>
                     {label}
                 </Label>
                 {isRequired && <RequiredMark />}
