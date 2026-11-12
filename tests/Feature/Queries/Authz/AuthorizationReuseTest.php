@@ -53,7 +53,10 @@ final class AuthorizationReuseTest extends TransactionalTestCase
         $this->assertSame([$outside, 0], [$first, $second]);
     }
 
-    /** 表の 2 行: 使い回さない区間の中は、外のまとまりの中でも、中で開いたまとまりでも、事実から判定し、覚えない。入る時に外の覚えを捨てる */
+    /**
+     * 表の 2 行: 使い回さない区間の中は、外のまとまりの中でも、中で開いたまとまりでも、設定から判定し、結果を覚えない。入る時に外の覚えを捨てる。
+     * 判定を求める者の事実は、区間に入った後の最初の判定で作り、捨てる場面を挟まない後の判定で使い回す。
+     */
     public function test_inside_the_bypass_it_decides_and_does_not_remember(): void
     {
         $this->resetRequestScope();
@@ -67,7 +70,7 @@ final class AuthorizationReuseTest extends TransactionalTestCase
             'after' => $this->queriesOf(fn () => $this->allows()),
         ]);
 
-        $this->assertSame([$withFacts, $withFacts], $counts['bypassed']);
+        $this->assertSame([$withFacts, $counts['before']], $counts['bypassed']);
         $this->assertSame($counts['before'], $counts['after']);
         $this->assertLessThan($withFacts, $counts['before']);
     }
@@ -228,6 +231,26 @@ final class AuthorizationReuseTest extends TransactionalTestCase
         $this->assertSame('読み取りの失敗', $thrown->getMessage());
         $this->assertGreaterThan(0, $this->queriesOf(fn () => $this->allows()));
         $this->assertGreaterThan(0, $this->reuse()->within(fn () => $this->queriesOf(fn () => $this->allows())));
+    }
+
+    /** 使い回さない区間は結果と例外をそのまま返し、例外で区間を出た後のまとまりの中の同じ組は、また覚えて使い回す */
+    public function test_the_bypass_returns_and_throws_as_is_and_an_exception_leaves_it(): void
+    {
+        $failure = new RuntimeException('判定の失敗');
+        $results = $this->reuse()->within(function () use ($failure) {
+            $returned = $this->reuse()->without(fn () => '結果');
+            $caught = null;
+
+            try {
+                $this->reuse()->without(fn () => throw $failure);
+            } catch (RuntimeException $e) {
+                $caught = $e;
+            }
+
+            return [$returned, $caught, $this->allows(), $this->queriesOf(fn () => $this->allows())];
+        });
+
+        $this->assertSame(['結果', $failure, true, 0], $results);
     }
 
     /** 要求の寿命の区切りの後も、覚える側と捨てる側は同じ実体(書いた後の判定は判定し直す) */

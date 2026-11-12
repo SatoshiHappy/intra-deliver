@@ -70,6 +70,9 @@ class CaseDetailQuery
     ) {}
 
     /**
+     * まとまりの中から呼ぶと最後の 2 回目の判定は使い回されるので、判定し直しは呼び手が区間で行う({@see CaseShowProps::of()}。docs の
+     * 設計/業務データの入れ物/レコードの共通機能/詳細の画面/申請の詳細.md の 4.2 節)。
+     *
      * @return Detail
      *
      * @throws ModelNotFoundException<WorkflowCase> 案件が無い・閲覧できない・一時保存のとき(組み立ての後の 2 回目の閲覧の判定で見えなくなったときを含む)
@@ -115,7 +118,7 @@ class CaseDetailQuery
      * 処理の操作の props(can・nodeActions と指定の欄・引戻せるノード・casePrincipal・代理の 1 行・添付の可否)。
      *
      * @param  Collection<int, WorkflowCaseNode>  $nodes  写した並びのノード
-     * @param  bool  $canOperate  申請操作の面を出すか(面のボタンのどれかが真 = 認可と一覧.md の 3 節)
+     * @param  bool  $canOperate  申請操作の面を出すか(面のボタンのどれかが真 = 設計/ワークフロー/案件の運用/認可と一覧.md の 3 節)
      * @return Processing
      */
     private function processingOf(

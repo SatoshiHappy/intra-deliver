@@ -8,7 +8,9 @@ use App\Models\Authz\UserRole;
 use App\Models\Master\DepartmentMembership;
 use App\Models\Master\DepartmentSet;
 use App\Models\Master\UserTerm;
+use App\Queries\Authz\Api\Authorization;
 use App\Queries\Authz\Api\AuthorizationReuse;
+use App\Queries\Authz\Api\Requester;
 use App\Queries\Authz\Api\SubjectGroupMembership;
 use App\Queries\Authz\AuthorizationQuery;
 use Illuminate\Database\Events\QueryExecuted;
@@ -78,8 +80,8 @@ final class AuthorizationReuseFactsTest extends TransactionalTestCase
         $this->assertSame($allowed, $result);
     }
 
-    /** 表の 2 行: 1 つの区間の中でも事実を覚えない(区間の中で外したロールが、同じ区間の後の判定に効く) */
-    public function test_inside_one_bypass_each_decision_makes_the_facts(): void
+    /** 表の 2 行: 区間の中で事実の元を書くと(捨てる場面)、同じ区間の後の判定は書いた後の事実で判定する */
+    public function test_inside_one_bypass_a_write_makes_the_facts_again(): void
     {
         $results = $this->reuse()->without(function () {
             $before = $this->allows();
@@ -91,18 +93,46 @@ final class AuthorizationReuseFactsTest extends TransactionalTestCase
         $this->assertSame([true, false], $results);
     }
 
-    /** 表の 2 行: 区間の中で要求の寿命を区切った後も、区間の中は今の事実で判定する */
-    public function test_inside_the_bypass_the_facts_stay_current_across_the_end_of_a_request_scope(): void
+    /** 表の 2 行: 入れ子の区間に入ると(捨てる場面)、書き換えずに判定しても事実を作り直す */
+    public function test_entering_a_nested_bypass_makes_the_facts_again(): void
     {
-        $results = $this->reuse()->without(function () {
-            $this->resetRequestScope();
-            $before = $this->allows();
-            $this->revokeRole();
+        $this->resetRequestScope();
+        $withFacts = $this->queriesOf(fn () => $this->allows());
 
-            return [$before, $this->allows()];
+        $counts = $this->reuse()->without(fn () => [
+            $this->queriesOf(fn () => $this->allows()),
+            $this->reuse()->without(fn () => $this->queriesOf(fn () => $this->allows())),
+        ]);
+
+        $this->assertSame([$withFacts, $withFacts], $counts);
+    }
+
+    /** 表の 2 行: 区間の中の事実は判定を求める者ごと(ある人の事実を、別の人の判定に使わない) */
+    public function test_inside_one_bypass_the_facts_are_per_requester(): void
+    {
+        $other = new Requester($this->user()->id, null);
+        $decideOther = fn (): bool => app(Authorization::class)
+            ->allowsUri($other, $this->uri, 'read', self::day(self::DATE));
+
+        $results = $this->reuse()->without(fn () => [$this->allows(), $decideOther(), $this->allows()]);
+
+        $this->assertSame([true, false, true], $results);
+    }
+
+    /** 表の 2 行: 区間の中で要求の寿命を区切ると、その後の判定は事実を今の DB から作り直す */
+    public function test_inside_the_bypass_the_end_of_a_request_scope_makes_the_facts_again(): void
+    {
+        $this->resetRequestScope();
+        $withFacts = $this->queriesOf(fn () => $this->allows());
+
+        $counts = $this->reuse()->without(function () {
+            $first = $this->queriesOf(fn () => $this->allows());
+            $this->resetRequestScope();
+
+            return [$first, $this->queriesOf(fn () => $this->allows())];
         });
 
-        $this->assertSame([true, false], $results);
+        $this->assertSame([$withFacts, $withFacts], $counts);
     }
 
     /** 表の 6 行: まとまりの中で判定の途中に捨てる場面があっても、事実は要求の中の覚え(覚えた後に外したロールは効かない) */

@@ -11,7 +11,7 @@ use Illuminate\Container\Attributes\Singleton;
  * 判定の使い回し({@see AuthorizationReuse})の覚え(規則 = docs の 設計/共通マスタ/ロールと認可/認可の確認/判定の使い回し.md 3.4)。
  * 実体は 1 つ(#[Singleton]): 覚える側(注入で持つ判定の口)と捨てる側(リスナー)が要求の寿命の区切りで別の実体に分かれないため。
  * 覚えはいちばん外のまとまりを出たら空にするので、要求(キューのジョブ)をまたいで残らない。
- * 開いている区間の数は、判定を求める者の d の事実の覚え({@see SubjectQuery::subjectOn()})も読む(3.4 の事実の項)。
+ * 開いている区間の数と世代は、判定を求める者の d の事実の覚え({@see SubjectQuery::subjectOn()})も読む(3.4 の事実の項)。
  */
 #[Singleton]
 class AuthorizationMemo

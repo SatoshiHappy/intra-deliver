@@ -62,7 +62,7 @@ class AuthorizationQuery
 
         $since = $this->memo->generation();
 
-        $decided = $this->allowsEachUriFromSettings($requester, array_keys($unknown), $action, $date);
+        $decided = $this->allowsEachUriWithoutMemo($requester, array_keys($unknown), $action, $date);
 
         foreach ($decided as $uri => $allowed) {
             $this->memo->remember($requester, $uri, $action, $date, $allowed, $since);
@@ -73,12 +73,12 @@ class AuthorizationQuery
     }
 
     /**
-     * 渡した URI(重ねない)の判定。URI のリソースが無ければ禁止。
+     * 渡した URI(重ねない)の判定(判定の使い回しの覚えを見ない)。URI のリソースが無ければ禁止。
      *
      * @param  list<string>  $uris
      * @return array<string, bool>
      */
-    private function allowsEachUriFromSettings(
+    private function allowsEachUriWithoutMemo(
         Requester $requester,
         array $uris,
         string $action,

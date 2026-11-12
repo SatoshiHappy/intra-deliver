@@ -6,6 +6,7 @@ use App\Models\Records\Record;
 use App\Models\Records\RecordModule;
 use App\Models\Workflow\WorkflowCase;
 use App\Models\Workflow\WorkflowCaseHistory;
+use App\Queries\Authz\Api\AuthorizationReuse;
 use App\Queries\Authz\Api\Requester;
 use App\Queries\Records\Api\RecordDisplayQuery;
 use App\Queries\Records\Api\RecordRevisionQuery;
@@ -65,6 +66,7 @@ class CaseShowProps
         private CaseRelatedRecords $relatedRecords,
         private RelatedCases $related,
         private CaseCopyability $copyability,
+        private AuthorizationReuse $reuse,
     ) {}
 
     /**
@@ -75,24 +77,47 @@ class CaseShowProps
     public function of(AccessContext $context, int $caseId, CaseShowSelection $selection): array
     {
         $requester = Requester::fromAccessContext($context);
+        $assemble = fn () => $this->assemble($context, $requester, $caseId, $selection);
+        [$scope, $access, $props] = $this->reuse->within($assemble);
+
+        return $this->reuse->without(function () use ($context, $requester, $caseId, $scope, $access, $props) {
+            $this->detail->visibleCase($requester, $context, $caseId);
+
+            if ($access && ! $this->canView($scope)) {
+                $access = false;
+                $props = [...$props, ...$this->layers(false, $scope)];
+            }
+
+            return [...$props, 'recordAccess' => $access];
+        });
+    }
+
+    /**
+     * 最初の組み立て({@see self::of()} が判定の使い回しのまとまりで囲む。囲み方 = docs の
+     * 設計/業務データの入れ物/レコードの共通機能/詳細の画面/申請の詳細.md の 4.2 節)。
+     *
+     * @return array{CaseShowScope, bool, array<string, mixed>} 範囲・最初のレコードの閲覧の判定・求められた props
+     *
+     * @throws ModelNotFoundException<WorkflowCase> 案件が無い・閲覧できない・一時保存のとき
+     */
+    private function assemble(
+        AccessContext $context,
+        Requester $requester,
+        int $caseId,
+        CaseShowSelection $selection,
+    ): array {
         $case = $this->detail->visibleCase($requester, $context, $caseId);
         $scope = $this->scopeOf($context, $requester, $case, $selection);
         $access = $this->canView($scope);
         $props = $selection->wantsAny(self::DETAIL_LAYER) ? $this->detail->show($context, $caseId) : [];
         $props = [...$props, ...$this->layers($access, $scope)];
-        $this->detail->visibleCase($requester, $context, $caseId);
-
-        if ($access && ! $this->canView($scope)) {
-            $access = false;
-            $props = [...$props, ...$this->layers(false, $scope)];
-        }
 
         // レコードの中身を持たず recordAccess によらないので、伏せ直しても組み直さない(判定は 1 回)
         if ($selection->wants('canCopy')) {
             $props['canCopy'] = $this->copyability->canCopy($context, (int) $case->workflow_flow_id);
         }
 
-        return [...$props, 'recordAccess' => $access];
+        return [$scope, $access, $props];
     }
 
     /**

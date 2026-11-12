@@ -3,6 +3,7 @@
 namespace Tests\Feature\Queries\Authz;
 
 use App\Queries\Authz\Api\AuthorizationReuse;
+use Closure;
 use Illuminate\Support\Facades\DB;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Support\TransactionalTestCase;
@@ -38,7 +39,8 @@ final class AuthorizationReuseStatementsTest extends TransactionalTestCase
     }
 
     /**
-     * 見分けに迷う読み取り(3.4 の「見分けに迷う文は捨てる側」。語を語の境界で見るので、文字列の値に書き込みの語を含む読み取りも捨てる)。
+     * 見分けに迷う読み取り(判定の使い回し.md 3.4 の「見分けに迷う文は捨てる側」。文字列のリテラルを見分けないので、文字列の値に書き込みの語や
+     * 勧告ロックの語を含む読み取りも捨てる)。
      *
      * @return array<string, array{string}>
      */
@@ -46,6 +48,7 @@ final class AuthorizationReuseStatementsTest extends TransactionalTestCase
     {
         return [
             '文字列の値に書き込みの語を含む読み取り' => ["SELECT count(*) FROM authz_policies WHERE action = 'update'"],
+            '文字列の値に勧告ロックの語を含む読み取り' => ["SELECT count(*) FROM pg_locks WHERE locktype = 'advisory'"],
         ];
     }
 
@@ -72,41 +75,35 @@ final class AuthorizationReuseStatementsTest extends TransactionalTestCase
     }
 
     #[DataProvider('discardingStatements')]
-    public function test_a_statement_that_writes_or_locks_within_discards_the_memo(string $sql): void
+    public function test_a_statement_that_is_not_a_read_within_discards_the_memo(string $sql): void
     {
-        $queries = $this->reuse()->within(function () use ($sql) {
-            $this->allows();
-            DB::statement($sql);
-
-            return $this->queriesOf(fn () => $this->allows());
-        });
-
-        $this->assertGreaterThan(0, $queries);
+        $this->assertGreaterThan(0, $this->queriesAfterSending(fn () => DB::statement($sql)));
     }
 
     #[DataProvider('hardToTellStatements')]
     public function test_a_statement_hard_to_tell_from_a_write_discards_the_memo(string $sql): void
     {
-        $queries = $this->reuse()->within(function () use ($sql) {
-            $this->allows();
-            DB::select($sql);
-
-            return $this->queriesOf(fn () => $this->allows());
-        });
-
-        $this->assertGreaterThan(0, $queries);
+        $this->assertGreaterThan(0, $this->queriesAfterSending(fn () => DB::select($sql)));
     }
 
     #[DataProvider('readingStatements')]
     public function test_a_read_within_keeps_the_memo(string $sql): void
     {
-        $queries = $this->reuse()->within(function () use ($sql) {
+        $this->assertSame(0, $this->queriesAfterSending(fn () => DB::select($sql)));
+    }
+
+    /**
+     * まとまりの中で 1 回判定し、文を送った後の同じ判定の問い合わせの数(0 = 覚えた結果を返した)。
+     *
+     * @param  Closure(): mixed  $send
+     */
+    private function queriesAfterSending(Closure $send): int
+    {
+        return $this->reuse()->within(function () use ($send) {
             $this->allows();
-            DB::select($sql);
+            $send();
 
             return $this->queriesOf(fn () => $this->allows());
         });
-
-        $this->assertSame(0, $queries);
     }
 }
