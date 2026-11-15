@@ -3,7 +3,7 @@ import { RecordDetailTabs } from '@/components/RecordDetailTabs';
 import { RecordRevisionTabs } from '@/components/RecordRevisionTabs';
 import { RecordTabNotice } from '@/components/RecordTabNotice';
 import { CaseApplicationTab } from '@/components/Workflow/CaseApplicationTab';
-import type { OpenCaseAction } from '@/components/Workflow/CaseActionDialog';
+import { CaseFlowTab } from '@/components/Workflow/CaseFlowTab';
 import { useRecordRelated } from '@/hooks/use-record-related';
 import type {
     CaseRecordContent,
@@ -12,6 +12,7 @@ import type {
 } from '@/lib/Workflow/caseRecordMode';
 import {
     APPLICATION_TAB,
+    FLOW_TAB,
     MASKED_NOTICE,
     SUBMITTED_SNAPSHOT_NOTICE,
     UPDATED_AFTER_SUBMISSION,
@@ -21,15 +22,22 @@ import { recordHeading } from '@/lib/recordValues';
 import { show, store } from '@/routes/records/data';
 import type { WorkflowCaseShowProps } from '@/types';
 
-type Props = WorkflowCaseShowProps & { onOpenAction: OpenCaseAction };
+type Props = WorkflowCaseShowProps;
 
-/** 詳細の後ろに差し込む申請タブ(中身は {@link CaseApplicationTab}) */
-function applicationTab(props: Props) {
-    return {
-        key: APPLICATION_TAB,
-        label: '申請',
-        body: <CaseApplicationTab {...props} />,
-    };
+/** 詳細の後ろに順に差し込む申請タブ(中身は {@link CaseApplicationTab})とフロータブ({@link CaseFlowTab})。今の値の形と写しの形で同じ */
+function caseTabs(props: Props) {
+    return [
+        {
+            key: APPLICATION_TAB,
+            label: '申請',
+            body: <CaseApplicationTab {...props} />,
+        },
+        {
+            key: FLOW_TAB,
+            label: 'フロー',
+            body: <CaseFlowTab {...props} />,
+        },
+    ];
 }
 
 /**
@@ -59,7 +67,7 @@ function LiveTabs({
                     rowHref: (moduleCode, recordId) =>
                         show.url({ module: moduleCode, record: recordId }),
                 }}
-                extraTab={applicationTab(props)}
+                extraTabs={caseTabs(props)}
                 fieldsNotice={
                     content.updatedAfterSubmission && (
                         <RecordTabNotice tone="warning">
@@ -100,7 +108,7 @@ function SnapshotTabs({
             fieldsNotice={
                 <RecordTabNotice>{SUBMITTED_SNAPSHOT_NOTICE}</RecordTabNotice>
             }
-            extraTab={applicationTab(props)}
+            extraTabs={caseTabs(props)}
             viewersNote={VIEWERS_NOTE}
             lastTab={
                 maskedRelatedTab === null

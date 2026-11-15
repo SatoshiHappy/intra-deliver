@@ -2,7 +2,7 @@ import { expect } from './test';
 import type { Page } from '@playwright/test';
 import { openApplicationTab } from './workflow-operations';
 
-// 申請の詳細の左のタブ「申請」の面のうち、フロー情報の図・合議の進み具合・現在のステップを引く手助け
+// 申請の詳細の左のタブ「フロー」のフロー情報の図・合議の進み具合(ここの手助けを使う前に openFlowTab で開く)と、タブ「申請」の現在のステップを引く手助け
 // (workflow-route.spec.ts。docs の 設計/ワークフロー/ルートの深さ/画面/図と意匠とE2E.md の 10 節)。
 
 /**

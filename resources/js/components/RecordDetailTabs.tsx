@@ -174,8 +174,8 @@ function relatedTabs(related: RelatedTabState): RecordFrameTab[] {
 
 /** 呼び手(申請の詳細など)が足す、汎用の受け口 */
 type Additions = {
-    /** 詳細の後ろに差し込むタブ(中身は呼び手が持つ) */
-    extraTab?: { key: string; label: string; body: ReactNode };
+    /** 詳細の後ろに順に差し込むタブ(中身は呼び手が持つ。既定は無し) */
+    extraTabs?: { key: string; label: string; body: ReactNode }[];
     /** 詳細タブの先頭の 1 行 */
     fieldsNotice?: ReactNode;
     /** タブ「参照制限」の項目「参照者」の名前の横の注の文 */
@@ -191,7 +191,7 @@ export function RecordDetailTabs({
     record,
     fieldNotes = {},
     related,
-    extraTab,
+    extraTabs = [],
     fieldsNotice,
     viewersNote,
 }: Omit<TabProps, 'notes' | 'notice'> & {
@@ -211,7 +211,7 @@ export function RecordDetailTabs({
                 />
             ),
         },
-        ...(extraTab === undefined ? [] : [extraTab]),
+        ...extraTabs,
         {
             key: ACCESS_TAB,
             label: '参照制限',

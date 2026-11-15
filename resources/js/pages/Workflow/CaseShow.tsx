@@ -5,9 +5,11 @@ import {
     useCaseActionDialog,
 } from '@/components/Workflow/CaseActionDialog';
 import { CaseActionBar } from '@/components/Workflow/CaseActionBar';
+import { CaseOperationDialog } from '@/components/Workflow/CaseOperationDialog';
 import { CaseHeading } from '@/components/Workflow/CaseHeading';
 import { CaseRecordFrame } from '@/components/Workflow/CaseRecordFrame';
 import { useRecordSidePanel } from '@/hooks/use-record-side-panel';
+import { useOperationDialog } from '@/hooks/Workflow/use-operation-dialog';
 import { PersonLinksContext } from '@/hooks/Workflow/use-person-links';
 import { showAttachOf } from '@/lib/Workflow/caseActionAttach';
 import {
@@ -38,12 +40,13 @@ function useReloadWhenStale(stale: boolean) {
 }
 
 /**
- * 申請の詳細(設計/業務データの入れ物/レコードの共通機能/詳細の画面/申請の詳細.md)。見出しの下の左のタブとサイドパネルは
- * {@link CaseRecordFrame}、処理のボタンの帯はどの形でも出す({@link caseLayoutOf})。処理のダイアログは描き分けの外に 1 つ
- * (誤りの後に can が偽になっても閉じない = CaseActionDialog)。名前の札の「…」のリンクは props の links をページ全体(ダイアログを含む)へ渡す。
+ * 申請の詳細(設計/業務データの入れ物/レコードの共通機能/詳細の画面/申請の詳細.md)。処理と申請操作のダイアログを描き分けの外に置くのは、
+ * 誤りの後に can や operation が偽になっても閉じないため。名前の札の「…」のリンクは props の links をページ全体(ダイアログを含む)へ渡す。
  */
 export default function CaseShow(props: Props) {
     const { openAction, dialogProps } = useCaseActionDialog();
+    const { openOperation, dialogProps: operationDialogProps } =
+        useOperationDialog();
     const mode = caseRecordModeOf(props);
     const panel = useRecordSidePanel(
         mode.kind === 'live' ? (props.panel?.items ?? []) : [],
@@ -51,7 +54,14 @@ export default function CaseShow(props: Props) {
     );
     useReloadWhenStale(mode.kind === 'reload');
     const layout = caseLayoutOf(mode);
-    const actionBar = <CaseActionBar {...props} onOpen={openAction} />;
+    const actionBar = (
+        <CaseActionBar
+            {...props}
+            onOpen={openAction}
+            onOpenOperation={openOperation}
+            placement={layout.actionBar === 'belowHeading' ? 'alone' : 'inCard'}
+        />
+    );
 
     return (
         <PersonLinksContext value={props.links}>
@@ -68,13 +78,13 @@ export default function CaseShow(props: Props) {
                         show={props}
                         mode={layout.frame}
                         panel={panel}
-                        onOpenAction={openAction}
                         heading={<CaseHeading {...props} />}
                         footer={actionBar}
                     />
                 )}
             </div>
             <CaseActionDialog {...dialogProps} attach={showAttachOf(props)} />
+            <CaseOperationDialog {...operationDialogProps} />
         </PersonLinksContext>
     );
 }

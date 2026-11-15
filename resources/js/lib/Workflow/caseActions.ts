@@ -83,7 +83,7 @@ export const OPERATION_TEXTS: Record<CaseOperation, OperationText> = {
     pullBack: {
         trigger: '引戻し',
         title: '引戻す',
-        note: '次のステップの承認者が処理する前に、自分のステップへ戻します。',
+        note: '後の処理が行われる前に、自分の処理を引戻します。',
         callout: null,
         isDestructive: false,
     },

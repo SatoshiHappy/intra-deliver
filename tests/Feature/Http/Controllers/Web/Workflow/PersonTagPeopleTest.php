@@ -27,7 +27,7 @@ final class PersonTagPeopleTest extends TransactionalTestCase
     }
 
     /**
-     * 申請の画面の次の処理担当者・申請の詳細のフロー情報の処理担当者・申請操作の面の今の処理担当者。
+     * 申請の画面の次の処理担当者・申請の詳細のフロー情報の処理担当者・申請操作のメニューの今の処理担当者。
      */
     public function test_the_people_on_the_pages_carry_their_main_department(): void
     {

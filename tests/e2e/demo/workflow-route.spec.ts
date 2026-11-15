@@ -19,7 +19,11 @@ import {
     diagramStep,
     expectInsideDiagram,
 } from '../support/workflow-case-flow';
-import { openApplicationTab } from '../support/workflow-operations';
+import {
+    flowTable,
+    openApplicationTab,
+    openFlowTab,
+} from '../support/workflow-operations';
 
 // ワークフローのルートの深さの画面(docs の 設計/ワークフロー/ルートの深さ/画面/図と意匠とE2E.md 10 節の demo): 申請の画面の申請基準日、承認のダイアログの
 // 指定するステップ、差戻し先の制限、古い画面、申請者承認防止(送る前に知らせる)と、詳細のフロー図(既定)・図と表の切替・合議の進み具合・通らなかった枝。
@@ -282,7 +286,8 @@ test('申請者: 申請の画面に申請基準日(既定は今日)と担当組�
     await expect(basic).toContainText('版 3');
     await expect(await currentSteps(page)).toHaveText('課長');
 
-    // フロー情報の既定は図: 凡例の札 4 つ・課長が承認待ち・未到達の責任者・最後の「終了」(画面/案件の側の画面.md 7 節・画面/図と意匠とE2E.md 8 節)
+    // フロー情報(タブ「フロー」)の既定は図: 凡例の札 4 つ・課長が承認待ち・未到達の責任者・最後の「終了」(画面/案件の側の画面.md 7 節・画面/図と意匠とE2E.md 8 節)
+    await openFlowTab(page);
     await expect(
         page.getByRole('list', { name: '凡例' }).getByRole('listitem'),
     ).toHaveText(['処理済み', '承認待ち', '保留中', '到達していない']);
@@ -303,13 +308,7 @@ test('申請者: 申請の画面に申請基準日(既定は今日)と担当組�
     ).toBeVisible();
 
     // 「表」に切り替えると同じ情報を表で見られ(状態の語は図と同じ)、凡例は図のときだけ
-    await page
-        .getByRole('group', { name: 'フロー情報の表示' })
-        .getByRole('button', { name: '表', exact: true })
-        .click();
-    const rows = page
-        .getByRole('table', { name: 'フロー情報' })
-        .getByRole('row');
+    const rows = (await flowTable(page)).getByRole('row');
     await expect(rows.filter({ hasText: '課長' }).first()).toContainText(
         '承認待ち',
     );
@@ -393,6 +392,7 @@ test('上長: 承認のダイアログに指定するステップが 2 つ出て
         '指定: 責任者 = 高橋 誠',
     ]);
     // 指定した後は、合議に到達する前(子の箱がまだ無い間)でも指定の前の文を出さない
+    await openFlowTab(page);
     await expect(diagram(page)).toContainText('並列承認「関係部署の合議」');
     await expect(
         diagram(page).getByText('承認者はまだ選択されていません'),
@@ -469,7 +469,8 @@ test('部長: 承認すると合議の 3 人が承認待ちになり、現在の
         '関係部署の合議(承認 1、承認 2、承認 3)',
     );
 
-    // 図: 予算 350 なので「予算 300 万円未満」の枝(点線の札)と「何もしない」の箱が通らなかった枝、部長は処理済み、縦配置の枠に完了の条件。合議は 0 人が承認・必要 2 人
+    // 図(タブ「フロー」): 予算 350 なので「予算 300 万円未満」の枝(点線の札)と「何もしない」の箱が通らなかった枝、部長は処理済み、縦配置の枠に完了の条件。合議は 0 人が承認・必要 2 人
+    await openFlowTab(page);
     await expect(diagram(page)).toContainText('予算(万円) < 300');
     await expect(diagramStep(page, '何もしない')).toContainText(
         '通らなかった枝',
@@ -535,18 +536,16 @@ test('古い画面: 合議の 2 人が同じ詳細を開き、先に 1 人が承
         .click();
 
     // 再表示した詳細の合議の進み具合: 1 人(吉田 達也)が承認・必要 2 人、自分(山田 恵)の行に「自分」の札(画面/図と意匠とE2E.md 10 節)
-    await openApplicationTab(stale);
+    await openFlowTab(stale);
     const progress = councilProgress(stale);
+    const member = (name: string) =>
+        progress.getByRole('listitem').filter({ hasText: name });
     await expect(progress).toContainText('1 人が承認　必要 2 人');
     await expect(progress).toContainText(
         '未処理 2 人。2 人が承認すると、合議は完了します。',
     );
-    await expect(
-        progress.getByRole('listitem').filter({ hasText: '吉田 達也' }),
-    ).toContainText('処理済み(承認)');
-    await expect(
-        progress.getByRole('listitem').filter({ hasText: '山田 恵' }),
-    ).toContainText('自分');
+    await expect(member('吉田 達也')).toContainText('処理済み(承認)');
+    await expect(member('山田 恵')).toContainText('自分');
 
     const again = await openActionDialog(stale, '承認', '承認する');
     await submitAndExpectUrl(
@@ -557,12 +556,11 @@ test('古い画面: 合議の 2 人が同じ詳細を開き、先に 1 人が承
         stale.getByText('承認しました', { exact: true }),
     ).toBeVisible();
     await expect(await currentSteps(stale)).toHaveText('責任者');
+    await openFlowTab(stale);
     // 可決: 合議は完了し(残りの子 = 清水 美穂は省略)、責任者の箱が承認待ち
     await expect(progress).toContainText('2 人が承認　必要 2 人');
     await expect(progress).toContainText('合議は完了しました。');
-    await expect(
-        progress.getByRole('listitem').filter({ hasText: '清水 美穂' }),
-    ).toContainText('省略');
+    await expect(member('清水 美穂')).toContainText('省略');
     await expect(diagramStep(stale, '責任者')).toContainText('承認待ち');
     await stale.context().close();
 });
@@ -593,7 +591,7 @@ test('通らなかった枝: 予算 120 の見本 WF-000010 の詳細の図で�
         })
         .click();
 
-    await openApplicationTab(page);
+    await openFlowTab(page);
     await expect(diagramStep(page, '課長')).toContainText('処理済み(承認)');
     await expect(diagramStep(page, '部長')).toContainText('省略');
     await expect(diagram(page)).toContainText('予算(万円) ≧ 300');
@@ -625,7 +623,7 @@ test('否認の票と通らなかった枝: 見本 WF-000011(合議が可決で�
         })
         .click();
 
-    await openApplicationTab(page);
+    await openFlowTab(page);
     await expect(diagramStep(page, '吉田 達也(自分)')).toContainText(
         '処理済み(否認)',
     );

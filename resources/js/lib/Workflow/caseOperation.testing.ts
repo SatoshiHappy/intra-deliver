@@ -8,7 +8,7 @@ import type {
 } from '@/types';
 
 /**
- * 申請操作の単体テストが使う面の props の部品(テストごとに違う値は overrides で渡す)。
+ * 申請操作の単体テストが使うメニューの props の部品(テストごとに違う値は overrides で渡す)。
  * 名前が `.testing.ts` のファイルは `*.test.ts` からだけ import できる(deps:check が止める)。
  */
 

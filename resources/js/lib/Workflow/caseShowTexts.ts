@@ -28,3 +28,6 @@ export const VIEWERS_NOTE =
 
 /** 申請タブのキー(クエリ tab の値 = 設計/業務データの入れ物/レコードの共通機能/詳細の画面/README.md の 3 節) */
 export const APPLICATION_TAB = 'application';
+
+/** フロータブのキー(同上) */
+export const FLOW_TAB = 'flow';

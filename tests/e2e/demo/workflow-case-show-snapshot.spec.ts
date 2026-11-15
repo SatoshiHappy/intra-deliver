@@ -69,6 +69,12 @@ test('申請書の業務モジュールの参照を持たない申請者が完�
         'aria-selected',
         'true',
     );
+    // タブの並びは今の値の形と同じ(詳細 / 申請 / フロー / 参照制限。関連レコードは見える入口があるときだけ最後に伏せて出る)
+    const tabs = card.getByRole('tab');
+    await expect(tabs.nth(0)).toHaveText('詳細');
+    await expect(tabs.nth(1)).toHaveText('申請');
+    await expect(tabs.nth(2)).toHaveText('フロー');
+    await expect(tabs.nth(3)).toHaveText('参照制限');
     await expect(
         card.getByText(SNAPSHOT_NOTICE, { exact: true }),
     ).toBeVisible();

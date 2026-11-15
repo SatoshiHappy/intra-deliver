@@ -12,7 +12,7 @@ use LogicException;
 
 /**
  * 再展開の人(docs の 設計/ワークフロー/案件の運用/案件の操作/案件操作.md の 15.4 節・15.1 節の 1)。鍵を取らない(案件の行の鍵の下で呼ぶ)。
- * 展開し直す人は詳細の申請操作の面と同じ {@see ReexpandedTargets} で求め、ここは拒否を足す。
+ * 展開し直す人は詳細の申請操作のメニューと同じ {@see ReexpandedTargets} で求め、ここは拒否を足す。
  */
 class ReexpansionTargets
 {

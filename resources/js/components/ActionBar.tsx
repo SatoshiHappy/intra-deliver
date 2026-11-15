@@ -2,15 +2,18 @@ import type { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
 
 /**
- * 保存・処理のボタンの帯(docs の 設計/画面の意匠/README.md の方針 14・11)。raised = 帯の下に中身が続くとき。
+ * 保存・処理のボタンの帯(docs の 設計/画面の意匠/README.md の方針 14・11。start = 左端の中身)。raised = 帯の下に中身が続くとき。
  * 下の角は欄の角丸から枠の 1px を引いた値(欄の枠の内側に収めるため)。上向きの影はトークンに無いので、shadow-md の値を上向きにした任意値。
  */
 export function ActionBar({
     raised,
+    start,
     className,
     children,
 }: {
     raised: boolean;
+    /** 左端に置く中身(方針 14。右寄せの並び = children は方針 11 のまま) */
+    start?: ReactNode;
     className?: string;
     children: ReactNode;
 }) {
@@ -24,6 +27,7 @@ export function ActionBar({
                 className,
             )}
         >
+            {start !== undefined && <div className="mr-auto">{start}</div>}
             {children}
         </div>
     );

@@ -24,8 +24,8 @@ use LogicException;
  * 失って取り戻した場合は返す(受け入れた代償)。
  * 引戻し・取止めの入口の添付の可否と attachmentLimits = 設計/ワークフロー/申請の周辺/添付/README.md の 5 節({@see CaseAttachEntries})。
  * だれとして処理するか(処理担当者の選択肢・引戻しと取止めの処理者・代理の 1 行)は {@see CaseProcessorChoices}、確認の面は
- * {@see CaseConfirmationPanel}、申請情報の期限は {@see CaseDeadlines}、申請操作の面(can.operate と operation)は {@see CaseOperationPanel}
- * (設計/ワークフロー/案件の運用/画面/案件の画面.md の 4 節)。
+ * {@see CaseConfirmationPanel}、申請情報の期限は {@see CaseDeadlines}、申請操作のメニュー(can.operate と operation)は
+ * {@see CaseOperationPanel}(設計/ワークフロー/案件の運用/画面/案件の画面.md の 4 節)。
  *
  * @phpstan-import-type Person from WorkflowPeople
  * @phpstan-import-type History from CaseHistories
@@ -118,7 +118,7 @@ class CaseDetailQuery
      * 処理の操作の props(can・nodeActions と指定の欄・引戻せるノード・casePrincipal・代理の 1 行・添付の可否)。
      *
      * @param  Collection<int, WorkflowCaseNode>  $nodes  写した並びのノード
-     * @param  bool  $canOperate  申請操作の面を出すか(面のボタンのどれかが真 = 設計/ワークフロー/案件の運用/認可と一覧.md の 3 節)
+     * @param  bool  $canOperate  申請操作のメニューを出すか(メニューの項目のどれかが真 = 設計/ワークフロー/案件の運用/認可と一覧.md の 3 節)
      * @return Processing
      */
     private function processingOf(

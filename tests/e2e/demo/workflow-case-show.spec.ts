@@ -10,6 +10,7 @@ import {
     SECOND_QUARTER,
     openApplicationTab,
     openAs,
+    openFlowTab,
 } from '../support/workflow-operations';
 
 // 申請の詳細の左のタブとサイドパネル(docs の 設計/業務データの入れ物/レコードの共通機能/詳細の画面/申請の詳細.md の 8 節の「E2E」「写し(E2E)」)。
@@ -35,7 +36,7 @@ async function openAsManager(page: Page) {
     return { heading, card: tabsCard(page, SECOND_QUARTER) };
 }
 
-test('処理担当者: 見出しの横に状態の札と現在のステップが出て、開くと詳細タブで値が見え、タブは 詳細 / 申請 / 参照制限 の順', async ({
+test('処理担当者: 見出しの横に状態の札と現在のステップが出て、開くと詳細タブで値が見え、タブは 詳細 / 申請 / フロー / 参照制限 の順', async ({
     page,
 }) => {
     const { heading, card } = await openAsManager(page);
@@ -46,7 +47,8 @@ test('処理担当者: 見出しの横に状態の札と現在のステップが
     const tabs = card.getByRole('tab');
     await expect(tabs.nth(0)).toHaveText('詳細');
     await expect(tabs.nth(1)).toHaveText('申請');
-    await expect(tabs.nth(2)).toHaveText('参照制限');
+    await expect(tabs.nth(2)).toHaveText('フロー');
+    await expect(tabs.nth(3)).toHaveText('参照制限');
     await expect(tabs.nth(0)).toHaveAttribute('aria-selected', 'true');
     await expect(
         card.getByText('プロジェクト名', { exact: true }),
@@ -81,7 +83,7 @@ test('処理担当者: 帯の「添付ファイル」で表示だけの添付の
     );
 });
 
-test('処理担当者: 申請タブに面が決まった順で並び、タブ「参照制限」の項目「参照者」の注がフォーカスで出る', async ({
+test('処理担当者: 申請タブとフロータブに面が決まった順で並び、タブ「参照制限」の項目「参照者」の注がフォーカスで出る', async ({
     page,
 }) => {
     const { card } = await openAsManager(page);
@@ -89,18 +91,42 @@ test('処理担当者: 申請タブに面が決まった順で並び、タブ「
     await openApplicationTab(page);
     await expect(card.getByRole('heading', { level: 2 })).toHaveText([
         '申請情報',
-        'フロー情報',
         '処理履歴',
-        '確認',
         'つながる申請',
     ]);
     await expect(
         card.getByRole('region', { name: '処理履歴', exact: true }),
     ).toContainText('申請');
 
+    await openFlowTab(page);
+    await expect(card.getByRole('heading', { level: 2 })).toHaveText([
+        'フロー情報',
+        '確認',
+    ]);
+
     await card.getByRole('tab', { name: '参照制限', exact: true }).click();
     await card.getByRole('button', { name: '参照者の注', exact: true }).focus();
     await expect(page.getByRole('tooltip')).toContainText(VIEWERS_NOTE);
+});
+
+test('処理担当者: 処理のボタンの帯はカードの下端の中にあり、カードの下端が画面の下にあるときだけ影が付く', async ({
+    page,
+}) => {
+    const { card } = await openAsManager(page);
+    await page.setViewportSize({ width: 1280, height: 300 });
+    const group = card.getByRole('group', { name: '処理', exact: true });
+    const bar = group.locator('xpath=..');
+
+    await expect(
+        group.getByRole('button', { name: '承認', exact: true }),
+    ).toBeVisible();
+    await expect(bar).toHaveAttribute('data-raised', 'true');
+    await expect(
+        card.getByRole('button', { name: '申請操作', exact: true }),
+    ).toHaveCount(0);
+
+    await card.evaluate((element) => element.scrollIntoView({ block: 'end' }));
+    await expect(bar).not.toHaveAttribute('data-raised');
 });
 
 test('処理担当者: 画面の下の帯の「承認」で承認のダイアログが開く(決定しない)', async ({

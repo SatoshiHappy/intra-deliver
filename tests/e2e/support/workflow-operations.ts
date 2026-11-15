@@ -143,20 +143,52 @@ export async function submitApplication(page: Page, form: Locator) {
 }
 
 /**
- * 申請の詳細で左のタブ「申請」を開き、面「申請情報」を返す(申請情報・フロー情報・処理履歴・確認・つながる申請・申請操作の面はこのタブの中。
- * 既定は詳細タブ)。開いていれば何もしない。処理や再申請の後は詳細の URL に戻って既定の詳細タブになるので、面を引く前にもう一度呼ぶ。
+ * 申請の詳細で左のタブ name を開き、その先頭の面 face を返す。開いていれば何もしない。
  */
-export async function openApplicationTab(page: Page): Promise<Locator> {
-    const tab = page.getByRole('tab', { name: '申請', exact: true });
-    const basic = page.getByRole('region', { name: '申請情報' });
+async function openCaseTab(
+    page: Page,
+    name: string,
+    face: string,
+): Promise<Locator> {
+    const tab = page.getByRole('tab', { name, exact: true });
+    const first = page.getByRole('region', { name: face });
 
     await expect(tab).toBeVisible();
     if ((await tab.getAttribute('aria-selected')) !== 'true') {
         await tab.click();
     }
-    await expect(basic).toBeVisible();
+    await expect(first).toBeVisible();
 
-    return basic;
+    return first;
+}
+
+/**
+ * 申請の詳細で左のタブ「申請」を開き、面「申請情報」を返す(申請情報・処理履歴・つながる申請の面はこのタブの中。フロー情報・確認はタブ「フロー」
+ * = {@link openFlowTab}。申請操作は面でなく下の帯のボタン。既定は詳細タブ)。開いていれば何もしない。処理や再申請の後は詳細の URL に戻って
+ * 既定の詳細タブになるので、面を引く前にもう一度呼ぶ。
+ */
+export function openApplicationTab(page: Page): Promise<Locator> {
+    return openCaseTab(page, '申請', '申請情報');
+}
+
+/**
+ * 申請の詳細で左のタブ「フロー」を開き、面「フロー情報」を返す(フロー情報・確認の面はこのタブの中)。{@link openApplicationTab} と同じ使い方。
+ */
+export function openFlowTab(page: Page): Promise<Locator> {
+    return openCaseTab(page, 'フロー', 'フロー情報');
+}
+
+/**
+ * 申請の詳細のタブ「フロー」を開き、フロー情報を表に切り替えて、その表を返す(既定は図 = 設計/ワークフロー/ルートの深さ/画面/案件の側の画面.md 7 節)。
+ */
+export async function flowTable(page: Page): Promise<Locator> {
+    await openFlowTab(page);
+    await page
+        .getByRole('group', { name: 'フロー情報の表示' })
+        .getByRole('button', { name: '表', exact: true })
+        .click();
+
+    return page.getByRole('table', { name: 'フロー情報' });
 }
 
 /**

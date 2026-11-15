@@ -59,7 +59,7 @@ type WorkflowCaseShowCaseLayer = {
     histories: WorkflowCaseHistory[]; // 処理履歴(値の差分は持たない = サイドパネルの更新履歴)
     related: { heading: string; cases: WorkflowCaseRow[] }[]; // つながる申請の群(並び・見出し = 業務データとの接続の 6 節。空の群は入れない)
     can: WorkflowCaseCan;
-    operation: WorkflowCaseOperationPanel | null; // 申請操作の面(can.operate が偽なら null)
+    operation: WorkflowCaseOperationPanel | null; // 申請操作のメニュー(can.operate が偽なら null)
     nodeActions: WorkflowNodeAction[]; // 自分が処理対象者の現在のステップごと
     pullBackNodes: WorkflowCasePullBackNode[]; // 自分か代理元として引戻せるステップ(写した並び。未完了だけ)
     casePrincipal: number | null; // 再申請・取止めで送る処理者(自分が申請者なら null、ほかは申請者)

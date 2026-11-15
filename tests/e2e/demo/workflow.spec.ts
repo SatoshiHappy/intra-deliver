@@ -7,7 +7,7 @@ import {
 import { submitAndExpectUrl } from '../support/submit';
 import { sidebarHeading, sidebarLink } from '../support/app-navigation';
 import * as home from '../support/workflow-home';
-import { openApplicationTab } from '../support/workflow-operations';
+import { flowTable, openApplicationTab } from '../support/workflow-operations';
 import { pane, railButton } from '../support/workflow-case-show';
 
 // ワークフローの画面(docs の 設計/ワークフロー/画面/ホームと意匠とE2E.md 9 節の demo)。デモユーザー切替で利用者を替え、初期データの案件の見本(設計/ワークフロー/ルートの深さ/初期データ.md 4 節)と、
@@ -100,19 +100,6 @@ async function openActionDialog(page: Page, trigger: string, title: string) {
         .click();
 
     return page.getByRole('dialog', { name: title });
-}
-
-/**
- * 案件の詳細のフロー情報(左のタブ「申請」の面)を表に切り替えて、その表を返す(既定は図 = 設計/ワークフロー/ルートの深さ/画面/案件の側の画面.md 7 節)。
- */
-async function flowTable(page: Page) {
-    await openApplicationTab(page);
-    await page
-        .getByRole('group', { name: 'フロー情報の表示' })
-        .getByRole('button', { name: '表', exact: true })
-        .click();
-
-    return page.getByRole('table', { name: 'フロー情報' });
 }
 
 /**
@@ -377,7 +364,7 @@ test('初期データの見本: 部長の承認待ちを上長が引戻せる', 
     const detailUrl = page.url();
     const dialog = await openActionDialog(page, '引戻し', '引戻す');
     await expect(dialog).toContainText(
-        '次のステップの承認者が処理する前に、自分のステップへ戻します。',
+        '後の処理が行われる前に、自分の処理を引戻します。',
     );
     await submitAndExpectUrl(
         page,
@@ -558,10 +545,8 @@ test('申請者が一時保存すると一時保存のタブの件数が 1 増�
         page.getByRole('heading', { level: 1, name: CASE_NAME }),
     ).toBeVisible();
     caseUrl = page.url();
+    await expect(await openApplicationTab(page)).toContainText(/WF-\d{6}/);
     const flowRows = (await flowTable(page)).getByRole('row');
-    await expect(page.getByRole('region', { name: '申請情報' })).toContainText(
-        /WF-\d{6}/,
-    );
     await expect(flowRows.nth(1)).toContainText('処理済み(申請)');
     await expect(flowRows.filter({ hasText: '課長の承認' })).toContainText(
         '承認待ち',

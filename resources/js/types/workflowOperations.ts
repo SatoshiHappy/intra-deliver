@@ -5,7 +5,7 @@ import type { WorkflowCaseRow, WorkflowLinkedPerson } from './workflowRows';
  * CaseOperationList・CaseOperationPanel の形)。
  */
 
-/** 案件の詳細の案件に 1 つの操作の可否(状態 × 役割 × 入口の 403 の判定。operate = 申請操作の面のボタンがどれか真) */
+/** 案件の詳細の案件に 1 つの操作の可否(状態 × 役割 × 入口の 403 の判定。operate = 申請操作のメニューの項目がどれか真) */
 export type WorkflowCaseCan = {
     pullBack: boolean;
     reapply: boolean;
@@ -14,7 +14,7 @@ export type WorkflowCaseCan = {
     operate: boolean;
 };
 
-/** 申請操作の面のボタン 6 つの可否 */
+/** 申請操作のメニューの項目 6 つの可否 */
 type WorkflowCaseOperationButtons = {
     retarget: boolean;
     reexpand: boolean;
@@ -65,7 +65,7 @@ export type WorkflowCaseAssignNode = {
     assigned: WorkflowLinkedPerson[];
 };
 
-/** 詳細の props operation(申請操作の面。ボタンがどれも偽なら null) */
+/** 詳細の props operation(申請操作のメニュー。項目がどれも偽なら null) */
 export type WorkflowCaseOperationPanel = {
     caseName: string;
     buttons: WorkflowCaseOperationButtons;

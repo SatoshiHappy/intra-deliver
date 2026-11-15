@@ -1,5 +1,6 @@
 import { router } from '@inertiajs/react';
 import { useState } from 'react';
+import type { RefObject } from 'react';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -14,13 +15,7 @@ import {
 import { toastErrors } from '@/lib/flashToast';
 import type { RouteDefinition } from '@/wayfinder';
 
-type Props = {
-    /** 開くボタンの見た目の文字(省くと「削除」。ワークフローの一時保存の画面 =「一時保存を削除」) */
-    triggerText?: string;
-    /** 開くボタンの読み上げの名前(省くと見た目の文字) */
-    triggerLabel?: string;
-    /** 開くボタンの見た目(詳細の画面の「削除」= destructive、表の行の操作 = outline sm) */
-    triggerVariant?: 'destructive' | 'outline';
+type Common = {
     title: string;
     description: string;
     /** 削除の後も今のスクロール位置を保つか(同じ画面に戻る管理の表 = true、別の画面へ移るレコードの削除 = false。既定 false) */
@@ -34,28 +29,80 @@ type Props = {
     data?: Record<string, string | number>;
 };
 
-/**
- * 削除の確かめ(docs の 設計/業務データの入れ物/画面/業務の画面.md 2.4・設計/業務データの入れ物/画面/管理の画面.md 3.3。レコード・項目・規則で 1 つ = 修正方針 C5): Dialog に影響を書き、
- * 「削除」(destructive)で送る。成功は移り先の画面へ(トーストはサーバーの flash。Dialog も閉じる)。業務処理が拒んだとき
- * (参照されているレコード = キー record、規則が使う項目 = キー field)は Dialog を閉じ、文言をトーストで出す。
- */
-export function ConfirmDeleteDialog({
+/** 開閉を内側で持ち、開くボタンを出す形 */
+type WithTrigger = Common & {
+    /** 開くボタンの見た目の文字(省くと「削除」。ワークフローの一時保存の画面 =「一時保存を削除」) */
+    triggerText?: string;
+    /** 開くボタンの読み上げの名前(省くと見た目の文字) */
+    triggerLabel?: string;
+    /** 開くボタンの見た目(詳細の画面の「削除」= destructive、表の行の操作 = outline sm) */
+    triggerVariant?: 'destructive' | 'outline';
+    open?: never;
+    onOpenChange?: never;
+    returnFocusTo?: never;
+};
+
+/** 開閉を呼び手が持つ形(申請の詳細のメニューの項目から開く。開くボタンは呼び手の側にある) */
+type Controlled = Common & {
+    open: boolean;
+    onOpenChange: (open: boolean) => void;
+    /** 閉じた後にフォーカスを戻す要素(残っていれば) */
+    returnFocusTo?: RefObject<HTMLElement | null>;
+    triggerText?: never;
+    triggerLabel?: never;
+    triggerVariant?: never;
+};
+
+type Props = WithTrigger | Controlled;
+
+/** 開くボタン(開閉を内側で持つ形だけ) */
+function DeleteTrigger({
     triggerText = '削除',
     triggerLabel,
     triggerVariant = 'outline',
-    preserveScroll = false,
-    title,
-    description,
-    action,
-    data,
-}: Props) {
-    const [open, setOpen] = useState(false);
+}: Pick<WithTrigger, 'triggerText' | 'triggerLabel' | 'triggerVariant'>) {
+    return (
+        <DialogTrigger asChild>
+            <Button
+                variant={triggerVariant}
+                size={triggerVariant === 'outline' ? 'sm' : 'default'}
+                aria-label={triggerLabel}
+            >
+                {triggerText}
+            </Button>
+        </DialogTrigger>
+    );
+}
+
+/** 閉じた後のフォーカスを target へ(DOM に残っていれば)。省くと Dialog の既定(開いたボタンへ) */
+function focusBackTo(target: RefObject<HTMLElement | null> | undefined) {
+    if (target === undefined) {
+        return undefined;
+    }
+
+    return (event: Event) => {
+        event.preventDefault();
+
+        if (target.current?.isConnected === true) {
+            target.current.focus();
+        }
+    };
+}
+
+/**
+ * 削除の確かめ(docs の 設計/業務データの入れ物/画面/業務の画面.md 2.4・設計/業務データの入れ物/画面/管理の画面.md 3.3)。
+ * レコード・項目・規則・申請の削除で同じ部品を使い、確かめの形をそろえる。
+ */
+export function ConfirmDeleteDialog(props: Props) {
+    const [innerOpen, setInnerOpen] = useState(false);
+    const open = props.open ?? innerOpen;
+    const setOpen = props.onOpenChange ?? setInnerOpen;
     const [processing, setProcessing] = useState(false);
 
     const remove = () =>
-        router.delete(action.url, {
-            data,
-            preserveScroll,
+        router.delete(props.action.url, {
+            data: props.data,
+            preserveScroll: props.preserveScroll ?? false,
             onStart: () => setProcessing(true),
             onFinish: () => setProcessing(false),
             onSuccess: () => setOpen(false),
@@ -67,19 +114,17 @@ export function ConfirmDeleteDialog({
 
     return (
         <Dialog open={open} onOpenChange={setOpen}>
-            <DialogTrigger asChild>
-                <Button
-                    variant={triggerVariant}
-                    size={triggerVariant === 'outline' ? 'sm' : 'default'}
-                    aria-label={triggerLabel}
-                >
-                    {triggerText}
-                </Button>
-            </DialogTrigger>
-            <DialogContent>
+            {props.open === undefined && (
+                <DeleteTrigger
+                    triggerText={props.triggerText}
+                    triggerLabel={props.triggerLabel}
+                    triggerVariant={props.triggerVariant}
+                />
+            )}
+            <DialogContent onCloseAutoFocus={focusBackTo(props.returnFocusTo)}>
                 <DialogHeader>
-                    <DialogTitle>{title}</DialogTitle>
-                    <DialogDescription>{description}</DialogDescription>
+                    <DialogTitle>{props.title}</DialogTitle>
+                    <DialogDescription>{props.description}</DialogDescription>
                 </DialogHeader>
                 <DialogFooter>
                     <DialogClose asChild>

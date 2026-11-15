@@ -8,7 +8,7 @@ import type { WorkflowCaseOperationsProps } from '@/types';
 
 /**
  * 申請操作の一覧(docs の 設計/ワークフロー/案件の運用/画面/管理と通知の画面.md の 7.1 節): 見出し・絞り込みの行・申請の表(20 件ずつ)。
- * 絞り込みとページ送りは部分の再読み込みで URL に残る。行から詳細へ移り、申請操作の面は詳細に出る。
+ * 絞り込みとページ送りは部分の再読み込みで URL に残る。行から詳細へ移り、申請操作のメニューは詳細に出る。
  */
 export default function CaseOperations({
     query,

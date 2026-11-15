@@ -83,7 +83,7 @@ final class StepDescriptions
     }
 
     /**
-     * 要約の「が承認します。」「が申請できます。」の前の部分(可変部。申請操作の面の再展開の「?」も使う)。
+     * 要約の「が承認します。」「が申請できます。」の前の部分(可変部。申請操作のメニューの再展開の「?」も使う)。
      */
     public static function targetPhrase(StepTarget $target): string
     {

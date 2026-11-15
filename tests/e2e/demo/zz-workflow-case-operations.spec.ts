@@ -10,7 +10,7 @@ import {
     submitApplication,
 } from '../support/workflow-operations';
 
-// 案件の運用の画面(docs の 設計/ワークフロー/案件の運用/画面/README.md の 9 節)の筋のうち、システム管理者の申請操作(一覧と詳細の面)。
+// 案件の運用の画面(docs の 設計/ワークフロー/案件の運用/画面/README.md の 9 節)の筋のうち、システム管理者の申請操作(一覧と詳細の帯のメニュー)。
 // 案件を変える筋は筋の中で申請した案件だけを使う(見本の案件は前の spec が変えた後の状態に依らない)。期限超過の見本は前の spec が承認して無くなりうるので、
 // 申請した案件の課長のステップの到達を 10 日前にして作る。筋は前の筋の結果を使うので順に走らせる。
 test.use({ viewport: { width: 1280, height: 720 } });
@@ -25,22 +25,18 @@ const CASE_NAME = `プロジェクト計画の承認 ${PROJECT_NAME}`;
 let caseUrl = '';
 
 /**
- * システム管理者の詳細で、申請操作の面(見出し「申請操作」の領域)を返す。
+ * システム管理者の詳細で、下に固定した帯の左端のボタン「申請操作」を押してメニューを開き、メニューを返す(どのタブからも押せるので、
+ * 既定の詳細タブのまま。先頭の 1 行の説明も確かめる)。
  */
-async function openOperationSurface(page: Page): Promise<Locator> {
+async function openOperationMenu(page: Page): Promise<Locator> {
     await openAsAdministrator(page, new URL(caseUrl).pathname);
-    await openApplicationTab(page);
-    const surface = page.getByRole('region', { name: '申請操作', exact: true });
-    // 面の説明は見出しの横の「?」(フォーカスで開く Tooltip。docs の 設計/画面の意匠/README.md 方針 9(d))。見たら閉じる
-    await surface
-        .getByRole('button', { name: '申請操作の説明', exact: true })
-        .focus();
-    await expect(page.getByRole('tooltip')).toHaveText(
+    await page.getByRole('button', { name: '申請操作', exact: true }).click();
+    const menu = page.getByRole('menu');
+    await expect(menu.locator(':scope > *').first()).toHaveText(
         '申請操作の権限がある人だけに表示されます。',
     );
-    await page.keyboard.press('Escape');
 
-    return surface;
+    return menu;
 }
 
 /**
@@ -143,12 +139,49 @@ test('システム管理者: 「期限超過だけ」を入れると行がすべ
     await expect(overdueOnly).toBeDisabled();
 });
 
-test('システム管理者: 詳細の申請操作の面から処理担当者を変更すると、トーストが出て履歴に「処理担当者の変更」の行が付く', async ({
+test('システム管理者: 帯の「申請操作」のメニューは先頭に説明の 1 行、項目は決まった順で、申請の削除が区切りの後の最後。ダイアログと削除の確かめを閉じるとフォーカスがボタンへ戻る', async ({
     page,
 }) => {
-    const surface = await openOperationSurface(page);
-    await surface
-        .getByRole('button', { name: '処理担当者の変更', exact: true })
+    const menu = await openOperationMenu(page);
+    const trigger = page.getByRole('button', { name: '申請操作', exact: true });
+
+    // 課長の承認待ち(保留でない・指定するステップが未処理)なので、保留解除と指定の変更は出ない
+    await expect(menu.getByRole('menuitem')).toHaveText([
+        '処理担当者の変更',
+        '再展開',
+        'ステップの移動',
+        '申請の削除',
+    ]);
+    await expect(
+        menu.getByRole('separator').locator('xpath=following-sibling::*[1]'),
+    ).toHaveText('申請の削除');
+    await menu
+        .getByRole('menuitem', { name: '処理担当者の変更', exact: true })
+        .click();
+    const dialog = page.getByRole('dialog', { name: '処理担当者を変更する' });
+    await expect(dialog).toBeVisible();
+    await page.keyboard.press('Escape');
+    await expect(dialog).toHaveCount(0);
+    await expect(trigger).toBeFocused();
+
+    await trigger.click();
+    await menu
+        .getByRole('menuitem', { name: '申請の削除', exact: true })
+        .click();
+    const confirm = page.getByRole('dialog', { name: '申請の削除' });
+    await confirm
+        .getByRole('button', { name: 'キャンセル', exact: true })
+        .click();
+    await expect(confirm).toHaveCount(0);
+    await expect(trigger).toBeFocused();
+});
+
+test('システム管理者: 詳細の申請操作のメニューから処理担当者を変更すると、トーストが出て履歴に「処理担当者の変更」の行が付く', async ({
+    page,
+}) => {
+    const menu = await openOperationMenu(page);
+    await menu
+        .getByRole('menuitem', { name: '処理担当者の変更', exact: true })
         .click();
     const dialog = page.getByRole('dialog', { name: '処理担当者を変更する' });
     await expect(dialog).toContainText(`${CASE_NAME}　課長`);
@@ -185,9 +218,9 @@ test('システム管理者: 詳細の申請操作の面から処理担当者を
 test('システム管理者: ステップの移動(戻る)で申請のステップへ戻すと、トーストが出て履歴に「ステップの移動(戻る)」と「戻り先」が付く', async ({
     page,
 }) => {
-    const surface = await openOperationSurface(page);
-    await surface
-        .getByRole('button', { name: 'ステップの移動', exact: true })
+    const menu = await openOperationMenu(page);
+    await menu
+        .getByRole('menuitem', { name: 'ステップの移動', exact: true })
         .click();
     const dialog = page.getByRole('dialog', { name: 'ステップを移動する' });
     await expect(dialog).toContainText(CASE_NAME);
@@ -224,9 +257,9 @@ test('システム管理者: ステップの移動(戻る)で申請のステッ�
 test('システム管理者: 申請の削除は確かめのダイアログを経て一覧へ移り、トーストが出て、一覧にも詳細にも残らない', async ({
     page,
 }) => {
-    const surface = await openOperationSurface(page);
-    await surface
-        .getByRole('button', { name: '申請の削除', exact: true })
+    const menu = await openOperationMenu(page);
+    await menu
+        .getByRole('menuitem', { name: '申請の削除', exact: true })
         .click();
     const confirm = page.getByRole('dialog', { name: '申請の削除' });
     await expect(confirm).toContainText(

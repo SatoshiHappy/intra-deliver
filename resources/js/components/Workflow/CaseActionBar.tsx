@@ -1,14 +1,18 @@
 import { Link } from '@inertiajs/react';
+import { ActionBar } from '@/components/ActionBar';
 import { Button } from '@/components/ui/button';
 import { CaseActionButton } from '@/components/Workflow/CaseActionDialog';
 import type { OpenCaseAction } from '@/components/Workflow/CaseActionDialog';
 import { CaseConfirmButton } from '@/components/Workflow/CaseConfirmButton';
+import { CaseOperationMenu } from '@/components/Workflow/CaseOperationMenu';
+import { useEdgeBelow } from '@/hooks/use-edge-below';
+import type { OpenCaseOperation } from '@/hooks/Workflow/use-operation-dialog';
+import { caseBarOf } from '@/lib/Workflow/caseBar';
 import {
     caseActionTargetOf,
     processButtonsOf,
 } from '@/lib/Workflow/caseActions';
 import type { ProcessButton } from '@/lib/Workflow/caseActions';
-import { cn } from '@/lib/utils';
 import { create as reapply } from '@/routes/workflow/reapplications';
 import type { WorkflowCaseShowProps } from '@/types';
 
@@ -20,7 +24,13 @@ type Props = Pick<
     | 'pullBackNodes'
     | 'casePrincipal'
     | 'commentMaxLength'
-> & { onOpen: OpenCaseAction };
+    | 'operation'
+> & {
+    onOpen: OpenCaseAction;
+    onOpenOperation: OpenCaseOperation;
+    /** inCard = 詳細のカードの下端の中(CaseRecordFrame の MainCard が受ける)、alone = 見出しの下に単独(カードを読み直している間) */
+    placement: 'inCard' | 'alone';
+};
 
 /**
  * 処理のボタン 1 つ(ダイアログを開く・再申請の画面へのリンク・押すと送る確認)。
@@ -31,7 +41,7 @@ function BarButton({
     onOpen,
 }: {
     button: ProcessButton;
-    show: Omit<Props, 'onOpen'>;
+    show: Omit<Props, 'onOpen' | 'onOpenOperation' | 'placement'>;
     onOpen: OpenCaseAction;
 }) {
     switch (button.kind) {
@@ -61,25 +71,21 @@ function BarButton({
     }
 }
 
-/**
- * 処理のボタンの帯(詳細のカードの列の幅で画面の下に固定し、スクロールしても見える。並び = {@link processButtonsOf}。
- * docs の 設計/ワークフロー/案件の運用/画面/案件の画面.md の 4 節)。処理のボタンが無ければ帯を出さない。
- */
-export function CaseActionBar({ onOpen, ...show }: Props) {
-    const buttons = processButtonsOf(show);
-
-    if (buttons.length === 0) {
-        return null;
-    }
-
+/** 右寄せの処理のボタンの並び({@link processButtonsOf}) */
+function ProcessButtons({
+    buttons,
+    show,
+    onOpen,
+}: {
+    buttons: ProcessButton[];
+    show: Omit<Props, 'onOpen' | 'onOpenOperation' | 'placement'>;
+    onOpen: OpenCaseAction;
+}) {
     return (
         <div
             role="group"
             aria-label="処理"
-            className={cn(
-                'sticky bottom-0 z-10 mt-4 flex flex-wrap items-center justify-end gap-2',
-                'border-t bg-background py-3',
-            )}
+            className="flex flex-wrap items-center justify-end gap-2"
         >
             {buttons.map((button) => (
                 <BarButton
@@ -94,5 +100,66 @@ export function CaseActionBar({ onOpen, ...show }: Props) {
                 />
             ))}
         </div>
+    );
+}
+
+/** inCard はカードの左右の余白(px-5)を打ち消し、カードの幅いっぱいにする */
+const BAR_CLASS = {
+    inCard: 'sticky bottom-0 z-10 -mx-5 flex-wrap',
+    alone: 'sticky bottom-0 z-10 flex-wrap rounded-xl border',
+} as const;
+
+/**
+ * 下に固定した処理のボタンの帯(docs の 設計/業務データの入れ物/レコードの共通機能/詳細の画面/申請の詳細.md の 1 節、画面の意匠の方針 14)。
+ * 影はカードの下端の印が画面に見えないときだけ付ける(帯の下にまだ中身が続く合図。印を置くためカードの section は relative)。
+ */
+export function CaseActionBar({
+    onOpen,
+    onOpenOperation,
+    placement,
+    ...show
+}: Props) {
+    const { markRef, isBelow } = useEdgeBelow();
+    const buttons = processButtonsOf(show);
+    const parts = caseBarOf(buttons.length > 0, show.operation);
+
+    if (parts === null) {
+        return null;
+    }
+
+    const bar = (
+        <ActionBar
+            raised={placement === 'inCard' && isBelow}
+            className={BAR_CLASS[placement]}
+            start={
+                parts.operate === null ? undefined : (
+                    <CaseOperationMenu
+                        case={show.case}
+                        nodeActions={show.nodeActions}
+                        commentMaxLength={show.commentMaxLength}
+                        operation={parts.operate}
+                        onOpenOperation={onOpenOperation}
+                        onOpenAction={onOpen}
+                    />
+                )
+            }
+        >
+            {parts.process && (
+                <ProcessButtons buttons={buttons} show={show} onOpen={onOpen} />
+            )}
+        </ActionBar>
+    );
+
+    return placement === 'inCard' ? (
+        <>
+            {bar}
+            <div
+                ref={markRef}
+                aria-hidden="true"
+                className="pointer-events-none absolute inset-x-0 bottom-0 h-px"
+            />
+        </>
+    ) : (
+        bar
     );
 }

@@ -111,7 +111,7 @@ class MoveCaseNode
     }
 
     /**
-     * 指定するノードは進めない(指定の入力が要る = 15.5 節。一括承認と同じ規則。式は詳細の申請操作の面と同じ {@see DesignatorNodeGuard})。
+     * 指定するノードは進めない(指定の入力が要る = 15.5 節。一括承認と同じ規則。式は詳細の申請操作のメニューと同じ {@see DesignatorNodeGuard})。
      *
      * @throws ValidationException
      */

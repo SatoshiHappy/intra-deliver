@@ -49,7 +49,7 @@ export function reloadStepOf(
 }
 
 /**
- * 申請の詳細に描く左右の枠と、処理のボタンの帯の置き場。帯はどの形でも出す(読み直しの間も処理のボタンを押せるように)。
+ * 申請の詳細に描く左右の枠と、下に固定した帯の置き場。帯はどの形でも出す(読み直しの間も処理のボタンと申請操作を押せるように)。
  */
 export type CaseLayout =
     | { frame: ShownCaseRecordMode; actionBar: 'frameFooter' }

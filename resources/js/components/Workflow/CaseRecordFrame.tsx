@@ -1,7 +1,6 @@
 import type { ReactNode } from 'react';
 import { RecordShowLayout } from '@/components/RecordShowLayout';
 import { RecordTabNotice } from '@/components/RecordTabNotice';
-import type { OpenCaseAction } from '@/components/Workflow/CaseActionDialog';
 import { CaseRecordTabs } from '@/components/Workflow/CaseRecordTabs';
 import { CaseSidePanel } from '@/components/Workflow/CaseSidePanel';
 import type { useRecordSidePanel } from '@/hooks/use-record-side-panel';
@@ -11,22 +10,28 @@ import type { WorkflowCaseShowProps } from '@/types';
 
 type Panel = ReturnType<typeof useRecordSidePanel>;
 
-/** 左のタブを入れるカード */
+/**
+ * 左のタブを入れるカード。bar = 下端の中に置く帯。section を relative にするのは、帯の影を決める下端の印を置くため
+ * (最後の面と帯の間の 24px はタブの下の余白が持つ = 画面の意匠の方針 14)。
+ */
 function MainCard({
     show,
     mode,
-    onOpenAction,
+    bar,
 }: {
     show: WorkflowCaseShowProps;
     mode: ShownCaseRecordMode;
-    onOpenAction: OpenCaseAction;
+    bar: ReactNode;
 }) {
     return (
         <section
             aria-label={`${show.case.name}の詳細`}
-            className="rounded-xl border bg-card px-5 pt-1 pb-5 text-card-foreground"
+            className="relative rounded-xl border bg-card px-5 pt-1 text-card-foreground"
         >
-            <CaseRecordTabs {...show} mode={mode} onOpenAction={onOpenAction} />
+            <div className="pb-6">
+                <CaseRecordTabs {...show} mode={mode} />
+            </div>
+            {bar}
         </section>
     );
 }
@@ -58,29 +63,22 @@ function MaskedFrame({
 /**
  * 申請の詳細の左右の枠(設計/業務データの入れ物/レコードの共通機能/詳細の画面/申請の詳細.md の 4.2)。写しの形はサイドパネルの中身を
  * 読みに行かない(伏せた中身の帯を出さない)ので、レコードの詳細の枠を使わずここで組む。見出しは左の列の上、処理のボタンの帯は
- * 詳細のカードの下(どちらも詳細のカードの幅。サイドパネルはカードの上端から = ユーザーの決定)。
+ * 詳細のカードの下端の中(footer = 帯。見出しと帯は詳細のカードの幅。サイドパネルはカードの上端から = ユーザーの決定)。
  */
 export function CaseRecordFrame({
     show,
     mode,
     panel,
-    onOpenAction,
     heading,
     footer,
 }: {
     show: WorkflowCaseShowProps;
     mode: ShownCaseRecordMode;
     panel: Panel;
-    onOpenAction: OpenCaseAction;
     heading: ReactNode;
     footer: ReactNode;
 }) {
-    const main = (
-        <>
-            <MainCard show={show} mode={mode} onOpenAction={onOpenAction} />
-            {footer}
-        </>
-    );
+    const main = <MainCard show={show} mode={mode} bar={footer} />;
 
     if (mode.kind === 'live') {
         return (

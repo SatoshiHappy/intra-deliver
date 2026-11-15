@@ -182,7 +182,7 @@ final class StepDescriptionsTest extends TestCase
     }
 
     /**
-     * 可変部 = 要約の「が承認します。」「が申請できます。」の前(申請操作の面の再展開の {要約})。
+     * 可変部 = 要約の「が承認します。」「が申請できます。」の前(申請操作のメニューの再展開の {要約})。
      */
     public function test_the_target_phrase_is_the_variable_part_of_the_summary(): void
     {

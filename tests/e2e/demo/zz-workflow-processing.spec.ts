@@ -11,6 +11,7 @@ import {
     daysSince,
     openApplicationTab,
     openAs,
+    openFlowTab,
 } from '../support/workflow-operations';
 
 // 案件の運用の画面(docs の 設計/ワークフロー/案件の運用/画面/README.md の 9 節)の筋のうち、申請の詳細と処理のダイアログ。初期データの見本
@@ -89,9 +90,10 @@ async function searchUsers(page: Page, field: Locator, word: string) {
 }
 
 /**
- * フロー情報を表に切り替えて、その表の行を返す。
+ * タブ「フロー」を開き、フロー情報を表に切り替えて、その表の行を返す。
  */
 async function flowRows(page: Page) {
+    await openFlowTab(page);
     await page
         .getByRole('group', { name: 'フロー情報の表示' })
         .getByRole('button', { name: '表', exact: true })
@@ -258,13 +260,13 @@ test('担当変更: u0002 が課長のステップを松本 さくらへ変更�
     await expect(caseRow(page, '未処理の申請', INVENTORY_BUG)).toHaveCount(0);
 });
 
-test('確認の面: u0010 が未確認の申請の詳細で確認すると、トーストが出て、確認する人の状態が確認済みになり、確認済のタブに出る', async ({
+test('確認の面(タブ「フロー」): u0010 が未確認の申請の詳細で確認すると、トーストが出て、確認する人の状態が確認済みになり、確認済のタブに出る', async ({
     page,
 }) => {
     await openAs(page, 'accounting', '/workflow/cases?tab=unconfirmed');
     await openCase(page, SECOND_QUARTER, '未確認の申請');
     const detailUrl = page.url();
-    await openApplicationTab(page);
+    await openFlowTab(page);
     const panel = page.getByRole('region', { name: '確認', exact: true });
     // 面の説明は見出しの横の「?」(フォーカスで開く Tooltip。docs の 設計/画面の意匠/README.md 方針 9(d))
     await panel
@@ -289,7 +291,7 @@ test('確認の面: u0010 が未確認の申請の詳細で確認すると、ト
         detailUrl,
     );
     await expect(page.getByText('確認しました', { exact: true })).toBeVisible();
-    await openApplicationTab(page);
+    await openFlowTab(page);
     await expect(rows.filter({ hasText: '課長' })).toContainText('確認済');
     await page.goto('/workflow/cases?tab=confirmed');
     await expect(caseRow(page, '確認済の申請', SECOND_QUARTER)).toHaveCount(1);

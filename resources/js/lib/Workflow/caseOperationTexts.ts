@@ -5,13 +5,13 @@ import type {
 } from '@/types';
 
 /**
- * 申請操作の面とダイアログの文言(docs の 設計/ワークフロー/案件の運用/画面/管理と通知の画面.md の 7.2 節)。
+ * 申請操作のメニューとダイアログの文言(docs の 設計/ワークフロー/案件の運用/画面/管理と通知の画面.md の 7.2 節)。
  */
 
-/** ダイアログで行う申請操作(面のボタンの順) */
+/** ダイアログで行う申請操作(メニューの項目の順) */
 export type OperationKind = 'retarget' | 'reexpand' | 'move' | 'assign';
 
-/** 面のボタンの語 */
+/** メニューの項目の語 */
 export const OPERATION_LABELS = {
     retarget: '処理担当者の変更',
     reexpand: '再展開',
@@ -29,7 +29,7 @@ export const OPERATION_TITLES: Record<OperationKind, string> = {
     assign: '指定を変更する',
 };
 
-/** 面の見出しの横の「?」の説明 */
+/** メニューの先頭の 1 行(操作の項目ではない説明) */
 export const OPERATION_SURFACE_NOTE =
     '申請操作の権限がある人だけに表示されます。';
 

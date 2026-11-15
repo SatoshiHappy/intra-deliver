@@ -15,7 +15,7 @@ use Illuminate\Database\Eloquent\Collection;
 use LogicException;
 
 /**
- * 詳細の申請操作の面の props operation(docs の 設計/ワークフロー/案件の運用/画面/管理と通知の画面.md の 7.2 節、画面/案件の画面.md の 4 節)。
+ * 詳細の申請操作のメニューの props operation(docs の 設計/ワークフロー/案件の運用/画面/管理と通知の画面.md の 7.2 節、画面/案件の画面.md の 4 節)。
  * ボタン = 案件のフローの operate ∧ そのボタンの管理のルートの execute(保留解除は operate だけ)∧ 状態 × 操作の表(認可と一覧.md の 3 節)。
  * 表は業務処理の判定と同じ {@see CaseOperationDecider::permitsIn()}、表の外の前提は {@see DesignatorNodeGuard}・{@see ReassignCandidates}、
  * 人数の上限は {@see RetargetUserLimit}、展開し直す人は {@see ReexpandedTargets}、

@@ -20,7 +20,6 @@
     "database/seeders/SeedsWorkflowRouteVersions.php": 2,
     "resources/css/app.css": 1,
     "resources/js/components/Authz/SettingsHead.tsx": 2,
-    "resources/js/components/ConfirmDeleteDialog.tsx": 1,
     "resources/js/components/Menu/HomeTable.tsx": 1,
     "resources/js/components/Workflow/WorkflowStatusBadge.tsx": 2,
     "resources/js/lib/Authz/gridView.ts": 1,
