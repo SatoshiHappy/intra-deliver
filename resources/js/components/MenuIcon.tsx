@@ -1,4 +1,5 @@
 import {
+    BellRing,
     BookOpen,
     Briefcase,
     Building2,
@@ -85,6 +86,7 @@ const ICONS: Record<string, LucideIcon> = {
     'list-checks': ListChecks,
     'user-cog': UserCog,
     workflow: Workflow,
+    'bell-ring': BellRing,
 };
 
 /**

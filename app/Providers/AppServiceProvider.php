@@ -16,6 +16,7 @@ use App\Queries\Authz\AuthorizationMemo;
 use App\Queries\Authz\ServiceResourceTypes;
 use App\Queries\Authz\UserRoleReferences;
 use App\Queries\Master\UserReferences;
+use App\Queries\Meeting\MeetingNoticeTypes;
 use App\Queries\Meeting\MeetingScreenAddons;
 use App\Queries\Meeting\MeetingTranscriptSection;
 use App\Queries\Menu\Api\HomeSections;
@@ -23,6 +24,8 @@ use App\Queries\Menu\Api\MenuItemVisibility;
 use App\Queries\Menu\MenuResourceTypes;
 use App\Queries\Menu\QuickActionsHomeSection;
 use App\Queries\Notice\Api\NoticeTargets;
+use App\Queries\Notice\Api\NoticeTypes;
+use App\Queries\Notice\NoticeUserMenuSection;
 use App\Queries\Records\Api\RecordAccessGrants;
 use App\Queries\Records\Api\RecordApplyEntries;
 use App\Queries\Records\Api\RecordHolds;
@@ -32,6 +35,7 @@ use App\Queries\Records\Api\RecordShowSections;
 use App\Queries\Records\RecordMenuItemVisibility;
 use App\Queries\Records\RecordModuleResourceTypes;
 use App\Queries\Records\RecordNoticeTargets;
+use App\Queries\Records\RecordNoticeTypes;
 use App\Queries\Reset\ResetSettings;
 use App\Queries\Workflow\ActiveApplicationsHomeSection;
 use App\Queries\Workflow\CaseRecordAccessGrants;
@@ -46,6 +50,7 @@ use App\Queries\Workflow\WorkflowFlowResourceTypes;
 use App\Queries\Workflow\WorkflowHomeSections;
 use App\Queries\Workflow\WorkflowLeadHomeSection;
 use App\Queries\Workflow\WorkflowNoticeTargets;
+use App\Queries\Workflow\WorkflowNoticeTypes;
 use App\Queries\Workflow\WorkflowRecordApplyEntries;
 use App\Queries\Workflow\WorkflowRecordHolds;
 use App\Queries\Workflow\WorkflowRecordModuleVisibilityStops;
@@ -95,9 +100,7 @@ class AppServiceProvider extends ServiceProvider
         // 初期化で消えては困る表を持つモジュールが実装をここに足す
         $this->app->tag([CarryOverSpending::class], ResetParticipant::TAG);
 
-        // 依存の逆転: 通知の行の移り先を、対象の種類を持つモジュールの実装が答える(docs の 設計/ワークフロー/案件の運用/通知.md の 5 節)。
-        // 対象の種類を持つモジュールが実装をここに足す(実装の無い対象の種類の行は共通の 1 行になる)
-        $this->app->tag([WorkflowNoticeTargets::class, RecordNoticeTargets::class], NoticeTargets::TAG);
+        $this->tagNoticeImplementations();
 
         // 依存の逆転: レコードの詳細のサイドパネルに、後ろのモジュールが節を足す(docs の
         // 設計/業務データの入れ物/レコードの共通機能/詳細の画面/節の口.md の 2 節。並び = この配列の順)。節を足すモジュールが実装をここに足す
@@ -148,12 +151,30 @@ class AppServiceProvider extends ServiceProvider
     }
 
     /**
-     * 依存の逆転: 利用者メニューに、後ろのモジュールが節を足す(docs の 設計/ワークフロー/案件の運用/認可と一覧.md の 5 節)。
+     * 通知のモジュールの依存の逆転の口(行の移り先・種類の一覧)を、後ろのモジュールの実装で登録する。
+     */
+    private function tagNoticeImplementations(): void
+    {
+        // 依存の逆転: 通知の行の移り先を、対象の種類を持つモジュールの実装が答える(docs の 設計/ワークフロー/案件の運用/通知.md の 5 節)。
+        // 対象の種類を持つモジュールが実装をここに足す(実装の無い対象の種類の行は共通の 1 行になる)
+        $this->app->tag([WorkflowNoticeTargets::class, RecordNoticeTargets::class], NoticeTargets::TAG);
+
+        // 依存の逆転: 通知の種類の一覧を、通知を送るモジュールの実装が答える(docs の
+        // 設計/ワークフロー/申請の周辺/通知の受け取りの設定/種類と作る規則.md の 1 節。並び = この配列の順 = 画面の見出しの順)
+        $this->app->tag(
+            [WorkflowNoticeTypes::class, RecordNoticeTypes::class, MeetingNoticeTypes::class],
+            NoticeTypes::TAG,
+        );
+    }
+
+    /**
+     * 依存の逆転: 利用者メニューに、後ろのモジュールが節を足す(docs の 設計/ワークフロー/案件の運用/認可と一覧.md の 5 節、
+     * 設計/ワークフロー/申請の周辺/通知の受け取りの設定/利用者と管理の画面.md の 3.1。並び = この配列の順)。
      * ほかのプロバイダより先に登録するので、利用者の切替の節より前に並ぶ。
      */
     private function tagUserMenuSections(): void
     {
-        $this->app->tag([WorkflowUserMenuSection::class], UserMenuSections::TAG);
+        $this->app->tag([WorkflowUserMenuSection::class, NoticeUserMenuSection::class], UserMenuSections::TAG);
     }
 
     /**

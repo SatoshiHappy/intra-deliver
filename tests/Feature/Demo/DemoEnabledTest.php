@@ -8,6 +8,8 @@ use App\Models\Authz\AuthzPolicy;
 use App\Models\Authz\AuthzResourceGroup;
 use App\Models\Authz\AuthzSubjectCondition;
 use App\Models\Master\User;
+use App\Models\Notice\NoticeOptOut;
+use App\Models\Notice\NoticeRequiredType;
 use App\Queries\Account\Api\UserMenuSections;
 use App\Queries\Demo\DemoResetSeeder;
 use App\Queries\Demo\LeadHomeSection;
@@ -89,12 +91,14 @@ final class DemoEnabledTest extends TransactionalTestCase
     }
 
     /**
-     * 利用者の切替の節は、main のワークフローの節(ゲストには項目なし = docs の 設計/ワークフロー/案件の運用/認可と一覧.md の 5 節)の後に並ぶ。
+     * 利用者の切替の節は、main のワークフローの節と通知の節(どちらもゲストには項目なし = docs の 設計/ワークフロー/案件の運用/認可と一覧.md の 5 節、
+     * 設計/ワークフロー/申請の周辺/通知の受け取りの設定/利用者と管理の画面.md の 3.1)の後に並ぶ。
      */
     public function test_shares_the_section_with_the_candidates_effective_today_in_the_order_of_the_users(): void
     {
         $workflow = ['heading' => 'ワークフロー', 'items' => []];
-        $this->get('/')->assertInertia(fn (Assert $page) => $page->where('userMenuSections', [$workflow, [
+        $notice = ['heading' => '通知', 'items' => []];
+        $this->get('/')->assertInertia(fn (Assert $page) => $page->where('userMenuSections', [$workflow, $notice, [
             'heading' => self::HEADING,
             'items' => $this->expectedItems([
                 ['u0001', '佐々木 陽太', '申請者'],
@@ -112,7 +116,7 @@ final class DemoEnabledTest extends TransactionalTestCase
         config(['demo.users' => ['u0014' => ['role' => '退職者', 'can' => '退職者の文'], 'u0001' => ['role' => '申請者', 'can' => '申請者の文']]]);
 
         $this->get('/')->assertInertia(fn (Assert $page) => $page
-            ->where('userMenuSections.1.items', $this->expectedItems([['u0001', '佐々木 陽太', '申請者']]))
+            ->where('userMenuSections.2.items', $this->expectedItems([['u0001', '佐々木 陽太', '申請者']]))
             ->where('sections.1.items', [$this->expectedCard('u0001', '佐々木 陽太', '東京営業課', '申請者', '申請者の文')])
         );
     }
@@ -219,10 +223,19 @@ final class DemoEnabledTest extends TransactionalTestCase
     {
         $this->get('/')->assertInertia(fn (Assert $page) => $page
             ->reloadOnly('appNavigation', fn (Assert $reload) => $reload
-                ->where('userMenuSections.1.heading', self::HEADING)
-                ->count('userMenuSections.1.items', 6)
+                ->where('userMenuSections.2.heading', self::HEADING)
+                ->count('userMenuSections.2.items', 6)
             )
         );
+    }
+
+    /**
+     * オンのときの初期データ(main の初期データと上の seeder)を入れた後も、通知の受け取りの設定と必須の印の表は 0 行(docs の
+     * 設計/ワークフロー/申請の周辺/通知の受け取りの設定/ルートと文言と検査.md の 6 節)。
+     */
+    public function test_the_seeded_data_has_no_notice_setting_and_no_required_notice_type(): void
+    {
+        $this->assertSame([0, 0], [NoticeOptOut::query()->count(), NoticeRequiredType::query()->count()]);
     }
 
     /**

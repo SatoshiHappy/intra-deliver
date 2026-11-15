@@ -36,7 +36,8 @@ final class CurrentAppOnSeededDataTest extends TransactionalTestCase
     private const ADMIN = 'global-nav-admin';
 
     /**
-     * 当てはめの表の各行(システム管理者)。
+     * 当てはめの表の各行(システム管理者)。通知の画面は管理のアイテム /notices/admin と先頭の区分が同じなので管理(docs の
+     * 設計/ワークフロー/申請の周辺/通知の受け取りの設定/利用者と管理の画面.md の 4.1)。
      *
      * @return array<string, array{string, string|null}>
      */
@@ -45,7 +46,9 @@ final class CurrentAppOnSeededDataTest extends TransactionalTestCase
         return [
             '/' => ['/', null],
             '/menu/sitemap' => ['/menu/sitemap', null],
-            '/notices' => ['/notices', null],
+            '/notices' => ['/notices', self::ADMIN],
+            '/notices/settings' => ['/notices/settings', self::ADMIN],
+            '/notices/admin' => ['/notices/admin', self::ADMIN],
             '/master/organization-chart' => ['/master/organization-chart', self::ADMIN],
             '/authz/overview' => ['/authz/overview', self::ADMIN],
             '/records/admin/modules/project/fields/create' => [
@@ -88,6 +91,18 @@ final class CurrentAppOnSeededDataTest extends TransactionalTestCase
     public function test_the_organization_chart_has_no_current_app_without_the_admin_app(?string $user): void
     {
         $this->assertNull($this->navigationOf($user, '/master/organization-chart')['currentApp']);
+    }
+
+    /**
+     * 管理のグループを読めない人(ゲストと u0001)では、通知の一覧と通知の設定の今のアプリも無し(同じ 4.1)。
+     */
+    #[TestWith([null, '/notices'])]
+    #[TestWith([null, '/notices/settings'])]
+    #[TestWith(['u0001', '/notices'])]
+    #[TestWith(['u0001', '/notices/settings'])]
+    public function test_the_notice_screens_have_no_current_app_without_the_admin_app(?string $user, string $path): void
+    {
+        $this->assertNull($this->navigationOf($user, $path)['currentApp']);
     }
 
     /**

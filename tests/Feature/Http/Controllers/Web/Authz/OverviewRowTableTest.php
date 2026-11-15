@@ -36,13 +36,13 @@ final class OverviewRowTableTest extends TransactionalTestCase
 
     /** 上のフォルダ(#3) */
     private const FOLDERS = [
-        'http-services.authz', 'http-services.master', 'http-services.records', 'http-services.records.admin',
-        'http-services.workflow', 'http-services.workflow.admin',
+        'http-services.authz', 'http-services.master', 'http-services.notice', 'http-services.records',
+        'http-services.records.admin', 'http-services.workflow', 'http-services.workflow.admin',
     ];
 
     /** ルートの束(#4) */
     private const BUNDLES = [
-        'http-services.authz.settings', 'http-services.master.organization-chart',
+        'http-services.authz.settings', 'http-services.master.organization-chart', 'http-services.notice.admin',
         'http-services.records.admin.categories', 'http-services.records.admin.comments',
         'http-services.records.admin.modules', 'http-services.workflow.admin.cases',
         'http-services.workflow.admin.flows', 'http-services.workflow.admin.proxies',
@@ -97,7 +97,7 @@ final class OverviewRowTableTest extends TransactionalTestCase
         sort($sorted);
 
         $this->assertSame($expected, $sorted);
-        $this->assertCount(15, $rows);
+        $this->assertCount(17, $rows);
 
         foreach ($rows as $row) {
             $isBundle = in_array($row['code'], self::BUNDLES, true);
@@ -110,14 +110,14 @@ final class OverviewRowTableTest extends TransactionalTestCase
     }
 
     /**
-     * 「表示の範囲」の選択肢の元 = 深さ 1 の行(行の並びのまま。4 つともフォルダなので登録した順)。
+     * 「表示の範囲」の選択肢の元 = 深さ 1 の行(行の並びのまま。5 つともフォルダなので登録した順)。
      */
-    public function test_the_rows_of_depth_one_are_the_four_modules_in_order(): void
+    public function test_the_rows_of_depth_one_are_the_five_modules_in_order(): void
     {
         $rows = $this->grid($this->actingAs($this->administrator)->get(self::URL))['rows'];
         $depthOne = array_values(array_filter($rows, fn (array $row) => $row['depth'] === 1));
 
-        $this->assertSame(['認可', '基本データ', '業務データ', 'ワークフロー'], array_column($depthOne, 'name'));
+        $this->assertSame(['認可', '基本データ', '業務データ', '通知', 'ワークフロー'], array_column($depthOne, 'name'));
     }
 
     /**
@@ -208,7 +208,7 @@ final class OverviewRowTableTest extends TransactionalTestCase
             }
         }
 
-        $this->assertSame(53, $checked);
+        $this->assertSame(55, $checked);
     }
 
     /**

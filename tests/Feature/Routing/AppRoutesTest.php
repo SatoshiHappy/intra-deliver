@@ -32,12 +32,13 @@ final class AppRoutesTest extends TransactionalTestCase
     use FindsAppRouteViolations;
 
     /**
-     * 置き場が設定不可のセットのアプリのルートの固定値(既定の起動の 60 本。取り外せるモジュールの切替の 1 本は、そのモジュールのテストが確かめる)。
+     * 置き場が設定不可のセットのアプリのルートの固定値(既定の起動の 62 本。取り外せるモジュールの切替の 1 本は、そのモジュールのテストが確かめる)。
      * 並びは routes/web.php の順。
      */
     private const UNMANAGED_ROUTES = [
         'menu.home', 'menu.sitemap', 'account.logout', 'account.current-department', 'master.search', 'notice.index',
-        'notice.latest', 'notice.read-all', 'notice.read', 'meeting.store', 'meeting.regenerate',
+        'notice.latest', 'notice.read-all', 'notice.read', 'notice.settings.show', 'notice.settings.update',
+        'meeting.store', 'meeting.regenerate',
         'records.data.index', 'records.data.create', 'records.data.store', 'records.data.candidates',
         'records.data.show', 'records.data.edit', 'records.data.update', 'records.data.destroy',
         'records.data.attachments.store', 'records.data.attachments.destroy', 'records.data.attachments.show',
@@ -55,11 +56,12 @@ final class AppRoutesTest extends TransactionalTestCase
         'workflow.proxies.store', 'workflow.proxies.destroy',
     ];
 
-    /** 置き場が http-services のアプリのルート(53 本。並びは routes/web.php の順) */
+    /** 置き場が http-services のアプリのルート(55 本。並びは routes/web.php の順) */
     private const MANAGED_ROUTES = [
         'authz.settings.show', 'authz.settings.update-cell', 'authz.settings.store-subject',
         'authz.settings.destroy-subject', 'authz.settings.subject-candidates', 'master.organization-chart.show',
-        'records.admin.comments.destroy', 'records.admin.modules.index', 'records.admin.modules.create',
+        'notice.admin.show', 'notice.admin.update', 'records.admin.comments.destroy', 'records.admin.modules.index',
+        'records.admin.modules.create',
         'records.admin.modules.store', 'records.admin.modules.show', 'records.admin.modules.edit',
         'records.admin.categories.reorder-uncategorized', 'records.admin.modules.update',
         'records.admin.categories.update-module-categories', 'records.admin.modules.create-field',
@@ -101,8 +103,9 @@ final class AppRoutesTest extends TransactionalTestCase
             Route::redirect('/test/undeclared', '/')->name('undeclared.test_undeclared'),
             Route::inertia('/test/own-page', 'Menu/Home')->name('menu.test_own_page'),
             Route::get('/test/own-controller', SitemapController::class)->name('menu.test_own_controller'),
-            Route::redirect('/test/moved', '/')->name('notice.test_moved'),
-            Route::view('/test/view', 'app')->name('notice.test_view'),
+            // redirect・view は http-services に置かれるので、http-services に接頭辞を持たないモジュールの名前にする(束と混ぜないため)
+            Route::redirect('/test/moved', '/')->name('account.test_moved'),
+            Route::view('/test/view', 'app')->name('account.test_view'),
         ];
 
         $this->assertSame(['test/menu-page', 'test/menu-controller', 'test/closure', 'test/undeclared'], $this->routesAgainstTheNameRules($routes));
@@ -130,7 +133,7 @@ final class AppRoutesTest extends TransactionalTestCase
     }
 
     /**
-     * 置き場の宣言(docs の 設計/メニュー/認可との結び付け/ルートのリソース.md 2.3 の置き場): 固定値の 113 本(設定不可 60・http-services 53)が宣言のとおりで、
+     * 置き場の宣言(docs の 設計/メニュー/認可との結び付け/ルートのリソース.md 2.3 の置き場): 固定値の 117 本(設定不可 62・http-services 55)が宣言のとおりで、
      * ほかのアプリのルートは無い。
      */
     public function test_every_app_route_is_declared_in_the_set_of_the_table(): void

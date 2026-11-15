@@ -30,7 +30,8 @@ final class Modules
      * 初期データの seeder の名前の口を実装するので Reset に依存する。
      * どのモジュールも依存先に書かない = docs の 設計/デモユーザー切替/デモの取り付け.md 6.1、設計/ワークフロー/申請の周辺/README.md の「コードのモジュール」)。
      * Notice = 画面内通知(通知の行・自分宛の一覧と既読・行の移り先を答える口。宛先と起こした人の名前をユーザーから引くので Master に依存する。
-     * ワークフローと業務データの入れ物が送り手と移り先の実装になる基盤なので、それらより前に置く = docs の 設計/ワークフロー/案件の運用/通知.md の 1 節)。
+     * ワークフローと業務データの入れ物が送り手と移り先の実装になる基盤なので、それらより前に置く = docs の 設計/ワークフロー/案件の運用/通知.md の 1 節。
+     * 利用者メニューの節の口を実装するので Account にも依存する = 設計/ワークフロー/申請の周辺/通知の受け取りの設定/利用者と管理の画面.md の 3.1)。
      * Upload = アップロードの実体と合計の台帳(持ち主を知らない土台なので、上げた人をユーザーから引く Master だけに依存する。
      * Records・Workflow・業務ツールが添付を持つ基盤なので、使う最初のモジュール Records の前に置く = docs の
      * 設計/業務データの入れ物/レコードの共通機能/添付ファイル/README.md の 1 節)。
@@ -64,7 +65,7 @@ final class Modules
         'Account' => ['Master'],
         'Reset' => [],
         'Demo' => ['Master', 'Authz', 'Account', 'Menu', 'Reset'],
-        'Notice' => ['Master'],
+        'Notice' => ['Master', 'Account'],
         'Upload' => ['Master'],
         'Records' => ['Master', 'Authz', 'Menu', 'Notice', 'Upload'],
         'Ai' => ['Master', 'Authz', 'Upload', 'Records', 'Reset'],

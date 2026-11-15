@@ -10,7 +10,7 @@ use Tests\Support\TransactionalTestCase;
 
 /**
  * 認可設定の画面の行の説明(docs の 設計/共通マスタ/ロールと認可/認可の確認/認可設定の画面.md 1.2 の行の description と 2.3 の先頭の列、
- * 設計/メニュー/認可との結び付け/ルートのリソース.md 2.3 の束の規則 4): 初期データでは画面・処理のルートの束 8 つだけが説明を持ち、フォルダと先頭とほかの種類の行は null。
+ * 設計/メニュー/認可との結び付け/ルートのリソース.md 2.3 の束の規則 4): 初期データでは画面・処理のルートの束 9 つだけが説明を持ち、フォルダと先頭とほかの種類の行は null。
  * 説明はロケールの行のもの。初期データを入れ、システム管理者(u0004)で開く。
  */
 final class OverviewRowDescriptionTest extends TransactionalTestCase
@@ -23,6 +23,7 @@ final class OverviewRowDescriptionTest extends TransactionalTestCase
     private const BUNDLES = [
         'http-services.authz.settings' => '認可対象ごとの許可と禁止を表示し、変更できます',
         'http-services.master.organization-chart' => '組織の階層と、組織に所属するユーザーを表示できます',
+        'http-services.notice.admin' => '通知の種類ごとに、必須にするかを変更できます',
         'http-services.records.admin.categories' => 'モジュール分類を作成・変更し、業務モジュールを分類できます',
         'http-services.records.admin.comments' => 'すべての業務モジュールで、ほかの人のコメントも削除できます',
         'http-services.records.admin.modules' => '業務モジュールを作成し、項目・見出し・規則などの定義を変更できます',

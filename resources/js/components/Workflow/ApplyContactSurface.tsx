@@ -3,6 +3,7 @@ import { FormSurface } from '@/components/FormLayout';
 import { HeadingHelp } from '@/components/HeadingHelp';
 import { CaseActionContactField } from '@/components/Workflow/CaseActionContactField';
 import type { ApplyForm } from '@/lib/Workflow/applyForm';
+import { CONTACT_HELP } from '@/lib/Workflow/caseActionForm';
 
 /**
  * 連絡の面(申請・一時保存からの申請・再申請の画面。docs の 設計/ワークフロー/案件の運用/画面/案件の画面.md の 6.1 節): 見出し「連絡」(横の「?」に説明)、
@@ -22,9 +23,7 @@ export function ApplyContactSurface({
                 >
                     連絡
                 </h2>
-                <HeadingHelp label="連絡">
-                    選択した人へ、ひと言を添えた通知を送ります。履歴には残らず、申請を閲覧できる人は変わりません。
-                </HeadingHelp>
+                <HeadingHelp label="連絡">{CONTACT_HELP}</HeadingHelp>
             </div>
             <CaseActionContactField
                 users={form.data.contact_users}

@@ -4,6 +4,7 @@ import {
     bellLabel,
     noticeSubLine,
     noticeTemplate,
+    noticeTypeLabel,
     unreadBadgeText,
 } from './noticeText';
 
@@ -195,5 +196,14 @@ describe('noticeSubLine', () => {
         ).toBe('見積');
         expect(noticeSubLine(row({ unavailableText: '不可' }))).toBe('不可');
         expect(noticeSubLine(row())).toBeNull();
+    });
+});
+
+describe('noticeTypeLabel', () => {
+    it('3 つのモジュールの種類を 1 つずつ引き、無い種類は既定の「通知」', () => {
+        expect(noticeTypeLabel('workflow.process_request')).toBe('処理依頼');
+        expect(noticeTypeLabel('records.comment')).toBe('コメント');
+        expect(noticeTypeLabel('meeting.minutes_created')).toBe('議事録の完了');
+        expect(noticeTypeLabel('unknown.kind')).toBe('通知');
     });
 });

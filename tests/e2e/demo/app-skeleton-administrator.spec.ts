@@ -46,6 +46,7 @@ test('システム管理者: 全体のホームのサイドバーはアプリの
         'フロー定義',
         '申請操作',
         '代理の管理',
+        '通知の管理',
     ]);
     await page.keyboard.press('Escape');
     await expect(menu).toHaveCount(0);

@@ -3,10 +3,13 @@
 namespace Tests\Support;
 
 use App\Models\Notice\Notice;
+use App\Models\Notice\NoticeOptOut;
+use App\Models\Notice\NoticeRequiredType;
 use Illuminate\Database\Eloquent\Model;
 
 /**
- * 通知の表 notices の設計どおりの列・外部キー(docs の 設計/ワークフロー/案件の運用/通知.md の 2 節)。
+ * 通知の表 notices の設計どおりの列・外部キー(docs の 設計/ワークフロー/案件の運用/通知.md の 2 節)と、受け取りの設定と必須の印の
+ * 2 つの表(ADR 0045 の決定 1)。
  * 列の書き方は {@see WorkflowSchema} と同じ(列 → PostgreSQL の format_type と NOT NULL・既定値。
  * id・created_at・updated_at は SchemaTest が足す)。
  */
@@ -15,6 +18,8 @@ final class NoticeSchema
     /** 表 → モデル(テストのデータを factory で作るため) */
     public const MODELS = [
         'notices' => Notice::class,
+        'notice_opt_outs' => NoticeOptOut::class,
+        'notice_required_types' => NoticeRequiredType::class,
     ];
 
     /**
@@ -32,6 +37,13 @@ final class NoticeSchema
             'params' => 'jsonb not null',
             'read_at' => 'timestamp(0) with time zone',
         ],
+        'notice_opt_outs' => [
+            'user_id' => 'bigint not null',
+            'type' => 'character varying(100) not null',
+        ],
+        'notice_required_types' => [
+            'type' => 'character varying(100) not null',
+        ],
     ];
 
     /**
@@ -44,5 +56,6 @@ final class NoticeSchema
     public const FOREIGN_KEYS = [
         [Notice::class, null, ['user_id'], 'users', ['id'], 'restrict', 'user', null],
         [Notice::class, 'withActor', ['actor_user_id'], 'users', ['id'], 'restrict', 'actor', null],
+        [NoticeOptOut::class, null, ['user_id'], 'users', ['id'], 'restrict', 'user', null],
     ];
 }

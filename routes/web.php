@@ -11,7 +11,9 @@ use App\Http\Controllers\Web\Master\SearchController;
 use App\Http\Controllers\Web\Meeting\MeetingController;
 use App\Http\Controllers\Web\Menu\HomeController;
 use App\Http\Controllers\Web\Menu\SitemapController;
+use App\Http\Controllers\Web\Notice\NoticeAdminController;
 use App\Http\Controllers\Web\Notice\NoticeController;
+use App\Http\Controllers\Web\Notice\NoticeSettingController;
 use App\Http\Controllers\Web\Records\FieldController;
 use App\Http\Controllers\Web\Records\HeadingController;
 use App\Http\Controllers\Web\Records\ModuleCategoryController;
@@ -87,6 +89,9 @@ Route::metadata(RoutePlacement::UNMANAGED)->group(function (): void {
     Route::post('/notices/read-all', [NoticeController::class, 'readAll'])->name('notice.read-all');
     Route::post('/notices/{notice}/read', [NoticeController::class, 'read'])
         ->name('notice.read')->where('notice', '[0-9]{1,18}');
+    // 通知の受け取りの設定(docs の 設計/ワークフロー/申請の周辺/通知の受け取りの設定/ルートと文言と検査.md の 5 節)。
+    Route::get('/notices/settings', [NoticeSettingController::class, 'show'])->name('notice.settings.show');
+    Route::put('/notices/settings', [NoticeSettingController::class, 'update'])->name('notice.settings.update');
 
     // 会議の作成(テキスト・貼り付け)と書き起こしからの再作成(docs の 設計/業務ツール/会議/処理.md の 3.2・3.7)。{meeting} = 会議のレコードの id。
     Route::post('/meetings', [MeetingController::class, 'store'])
@@ -105,6 +110,11 @@ Route::metadata(RoutePlacement::UNMANAGED)->group(function (): void {
     Route::put('/records/data/{module}/{record}', [RecordController::class, 'update'])->name('records.data.update')->where(['module' => '[a-z][a-z0-9_]{0,49}', 'record' => '[0-9]{1,18}']);
     Route::delete('/records/data/{module}/{record}', [RecordController::class, 'destroy'])->name('records.data.destroy')->where(['module' => '[a-z][a-z0-9_]{0,49}', 'record' => '[0-9]{1,18}']);
 });
+
+// 通知の管理(docs の 設計/ワークフロー/申請の周辺/通知の受け取りの設定/ルートと文言と検査.md の 5 節。ルートの束「通知の管理」)。
+// システム管理者だけ(ポリシーを置かず、http-services の先頭の許可を継承する)。
+Route::get('/notices/admin', [NoticeAdminController::class, 'show'])->name('notice.admin.show');
+Route::put('/notices/admin', [NoticeAdminController::class, 'update'])->name('notice.admin.update');
 
 // レコードの添付と外した時点のファイル(docs の 設計/業務データの入れ物/レコードの共通機能/認可と初期データ.md の 2.1 節)。
 // {attachment} = record_attachments.id、{upload} = uploads.id、{comment} = record_comments.id

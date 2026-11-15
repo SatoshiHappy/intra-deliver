@@ -22,6 +22,10 @@ export type PickedUser = WorkflowLinkedPerson & {
 /** 連絡の人数の上限(業務処理の ContactValidator と同じ値。超える分は送った時の 422 が正本) */
 export const CONTACT_USER_MAX = 10;
 
+/** 連絡の説明(連絡の欄の「?」と、申請の画面の連絡の面の「?」が同じ文を出す) */
+export const CONTACT_HELP =
+    '選択した人へ通知を送ります。履歴には残らず、申請を閲覧できる人は変わりません。';
+
 /** 連絡のひと言の文字数の上限 */
 export const CONTACT_MESSAGE_MAX = 1000;
 

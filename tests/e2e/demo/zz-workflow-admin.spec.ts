@@ -31,7 +31,12 @@ test('システム管理者: 歯車の「管理」に「フロー定義」が「
     const links = (await menu.getByRole('menuitem').allTextContents()).map(
         (text) => text.trim(),
     );
-    expect(links.slice(-3)).toEqual(['フロー定義', '申請操作', '代理の管理']);
+    expect(links.slice(-4)).toEqual([
+        'フロー定義',
+        '申請操作',
+        '代理の管理',
+        '通知の管理',
+    ]);
 
     await menu
         .getByRole('menuitem', { name: 'フロー定義', exact: true })

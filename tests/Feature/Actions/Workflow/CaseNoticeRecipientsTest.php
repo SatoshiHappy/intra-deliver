@@ -10,6 +10,7 @@ use App\Actions\Workflow\SendCaseNotices;
 use App\Actions\Workflow\TransferCase;
 use App\Enums\Workflow\WorkflowNodeKind;
 use App\Enums\Workflow\WorkflowNoticeType;
+use App\Models\Notice\NoticeOptOut;
 use App\Models\Workflow\WorkflowCase;
 use Carbon\CarbonImmutable;
 use Illuminate\Validation\ValidationException;
@@ -94,6 +95,31 @@ final class CaseNoticeRecipientsTest extends TransactionalTestCase
         $revision = $this->revisionOf($byProxy);
         app(ApproveCase::class)->execute($context, $byProxy->id, $revision, $firstId, null, [], $chief->id);
         $expected = [$this->caseNotice(self::PROCESS, 'u0017', 'u0016', $byProxy, $request)];
+        $this->assertSame($expected, $this->noticesSince($lastId));
+    }
+
+    /**
+     * 受け取らないにした人を、送る口が最後に除く(docs の 設計/ワークフロー/申請の周辺/通知の受け取りの設定/種類と作る規則.md の 2 節):
+     * 処理依頼を受け取らないにした u0002 には届かず、u0002 の代理先は自分の設定で決まる(u0016 は受け取る、u0017 は受け取らない)。
+     */
+    public function test_a_person_who_opted_out_is_left_out_and_the_proxies_follow_their_own_settings(): void
+    {
+        $this->addVersion([[
+            $this->applyNode(),
+            $this->approveNode('first', 'u0002', ['apply']),
+        ], $this->chain(['apply', 'first'])]);
+        $chief = $this->seededUser('u0002');
+        $this->addProxy($chief, $this->seededUser('u0016'));
+        $this->addProxy($chief, $this->seededUser('u0017'));
+        foreach ([$chief, $this->seededUser('u0017')] as $optedOut) {
+            NoticeOptOut::query()->create(['user_id' => $optedOut->id, 'type' => self::PROCESS->value]);
+        }
+        $lastId = $this->lastNoticeId();
+
+        [$case] = $this->applyOnRoute([]);
+
+        $request = ['step_name' => 'first', 'step_kind' => 'approve'];
+        $expected = [$this->caseNotice(self::PROCESS, 'u0016', 'u0001', $case, $request)];
         $this->assertSame($expected, $this->noticesSince($lastId));
     }
 

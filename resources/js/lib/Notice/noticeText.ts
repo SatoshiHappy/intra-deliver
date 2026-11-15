@@ -50,6 +50,24 @@ export function noticeTemplate(row: NoticeRow): NoticeTemplate {
     }
 }
 
+/** 種類の札の語だけを引くための、中身の無い行(文は使わない) */
+const EMPTY_ROW: NoticeRow = {
+    id: 0,
+    type: '',
+    params: {},
+    actor: null,
+    createdAt: '',
+    readAt: null,
+    url: null,
+    targetLabel: null,
+    unavailableText: null,
+};
+
+/** 種類の札の語(通知の設定の画面の行の語。鈴・一覧の札と同じ雛形から引く) */
+export function noticeTypeLabel(type: string): string {
+    return noticeTemplate({ ...EMPTY_ROW, type }).label;
+}
+
 /**
  * ワークフローの通知の雛形(docs の 設計/ワークフロー/案件の運用/通知.md の 3 節)。ワークフローの種類でなければ null。
  */

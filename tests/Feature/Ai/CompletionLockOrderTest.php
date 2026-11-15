@@ -20,6 +20,7 @@ use Illuminate\Support\Facades\DB;
 use Laravel\Ai\Transcription;
 use RuntimeException;
 use Tests\Support\BuildsRecordModules;
+use Tests\Support\RegistersNoticeTypes;
 use Tests\Support\TransactionalTestCase;
 
 /**
@@ -32,6 +33,7 @@ use Tests\Support\TransactionalTestCase;
 final class CompletionLockOrderTest extends TransactionalTestCase
 {
     use BuildsRecordModules;
+    use RegistersNoticeTypes;
     use UsesTestPromptKinds;
     use UsesTestTranscriptionKinds;
 
@@ -41,6 +43,9 @@ final class CompletionLockOrderTest extends TransactionalTestCase
 
     /** 失敗の受け手の書き込み(通知の行) */
     private const NOTICE_WRITE = '/^insert into "notices"/';
+
+    /** 失敗の受け手が書く通知の種類(テストの中だけの種類の一覧の実装が答える) */
+    private const NOTICE_TYPE = 'test.failed';
 
     /** @var list<string> LLM の呼び出しの後に送った文 */
     private array $statements = [];
@@ -52,6 +57,7 @@ final class CompletionLockOrderTest extends TransactionalTestCase
         parent::setUp();
         $this->registerTestPromptKinds();
         $this->registerTestTranscriptionKind();
+        $this->registerNoticeTypes([self::NOTICE_TYPE => true]);
     }
 
     protected function tearDown(): void
@@ -120,7 +126,7 @@ final class CompletionLockOrderTest extends TransactionalTestCase
         $runId = $this->queuedRun();
         $receiverEnd = null;
         $this->recordingKind->onFailed = function (FailedRun $run) use (&$receiverEnd): void {
-            $message = new NoticeMessage('test.failed', null, null, null, []);
+            $message = new NoticeMessage(self::NOTICE_TYPE, null, null, null, []);
             app(SendNotices::class)->execute($message, [$run->requesterUserId]);
             $receiverEnd = count($this->statements);
         };

@@ -34,14 +34,15 @@ final class ModulesTest extends TestCase
     }
 
     /**
-     * 通知のモジュールは共通マスタだけに依存し、送り手と移り先の実装になるワークフロー・業務データの入れ物より前に置く
-     * (docs の 設計/ワークフロー/案件の運用/通知.md の 1 節。後ろのモジュールには依存の順序の照合が依存させない)。
+     * 通知のモジュールは共通マスタと、利用者メニューの節の口を持つ今の利用者だけに依存し、送り手と移り先の実装になるワークフロー・
+     * 業務データの入れ物より前に置く(docs の 設計/ワークフロー/案件の運用/通知.md の 1 節、
+     * 設計/ワークフロー/申請の周辺/通知の受け取りの設定/利用者と管理の画面.md の 3.1。後ろのモジュールには依存の順序の照合が依存させない)。
      */
-    public function test_notice_depends_only_on_master_and_precedes_records_and_workflow(): void
+    public function test_notice_depends_only_on_master_and_account_and_precedes_records_and_workflow(): void
     {
         $names = Modules::names();
 
-        $this->assertSame(['Master'], Modules::DECLARATION['Notice']);
+        $this->assertSame(['Master', 'Account'], Modules::DECLARATION['Notice']);
         $this->assertLessThan(array_search('Records', $names, true), array_search('Notice', $names, true));
         $this->assertLessThan(array_search('Workflow', $names, true), array_search('Notice', $names, true));
     }

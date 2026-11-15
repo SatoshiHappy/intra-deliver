@@ -61,7 +61,7 @@ final class OverviewRowOrderTest extends TransactionalTestCase
     }
 
     /**
-     * 初期データの画面・処理の格子: 先頭の下は、上のフォルダ(認可・基本データ・業務データ・ワークフロー)が登録した順。束は子を持たない
+     * 初期データの画面・処理の格子: 先頭の下は、上のフォルダ(認可・基本データ・業務データ・通知・ワークフロー)が登録した順。束は子を持たない
      * (ルートの行は出ない)。フォルダ「基本データ」の子は束「組織図」だけ。設定不可のセットは出ない。
      */
     public function test_in_the_seeded_data_the_folders_come_in_registration_order_and_bundles_have_no_children(): void
@@ -71,9 +71,13 @@ final class OverviewRowOrderTest extends TransactionalTestCase
         $id = fn (string $code) => $this->row($response, $code)['resourceGroupId'];
 
         $this->assertSame(
-            ['http-services.authz', 'http-services.master', 'http-services.records', 'http-services.workflow'],
+            [
+                'http-services.authz', 'http-services.master', 'http-services.records', 'http-services.notice',
+                'http-services.workflow',
+            ],
             $this->childCodes($rows, $id('http-services')),
         );
+        $this->assertSame(['http-services.notice.admin'], $this->childCodes($rows, $id('http-services.notice')));
         $this->assertSame(['http-services.authz.settings'], $this->childCodes($rows, $id('http-services.authz')));
         $chart = 'http-services.master.organization-chart';
         $this->assertSame([$chart], $this->childCodes($rows, $id('http-services.master')));

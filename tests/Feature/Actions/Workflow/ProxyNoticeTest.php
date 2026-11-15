@@ -9,6 +9,7 @@ use App\Actions\Workflow\ProxyInput;
 use App\Actions\Workflow\RegisterProxy;
 use App\Models\Master\User;
 use App\Models\Notice\Notice;
+use App\Models\Notice\NoticeOptOut;
 use App\Models\Workflow\WorkflowProxy;
 use App\Queries\Notice\NoticeList;
 use App\Queries\Workflow\WorkflowNoticeTargets;
@@ -43,6 +44,25 @@ final class ProxyNoticeTest extends TransactionalTestCase
 
         $this->assertSame([[
             'u0009', 'workflow.proxy', WorkflowNoticeTargets::PROXY_TARGET_TYPE, $id, 'u0003',
+        ]], $this->notices());
+    }
+
+    /**
+     * 代理を受け取らないにした代理先には作らず、ほかの代理先には作る(送る口が除く = docs の
+     * 設計/ワークフロー/申請の周辺/通知の受け取りの設定/種類と作る規則.md の 2 節)。登録は成功する。
+     */
+    public function test_a_proxy_who_opted_out_of_the_proxy_notice_gets_nothing(): void
+    {
+        $principal = $this->seededUser('u0003');
+        $optedOut = $this->seededUser('u0009');
+        NoticeOptOut::query()->create(['user_id' => $optedOut->id, 'type' => 'workflow.proxy']);
+
+        $kept = $this->register($principal, $principal, $optedOut);
+        $id = $this->register($principal, $principal, $this->seededUser('u0002'));
+
+        $this->assertTrue(WorkflowProxy::query()->whereKey($kept)->exists());
+        $this->assertSame([[
+            'u0002', 'workflow.proxy', WorkflowNoticeTargets::PROXY_TARGET_TYPE, $id, 'u0003',
         ]], $this->notices());
     }
 

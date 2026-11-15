@@ -83,6 +83,7 @@ final class ShareAppNavigationTest extends TransactionalTestCase
                     ['workflow-admin-flows-index', 'フロー定義', 'workflow', '/workflow/admin/flows'],
                     ['workflow-admin-cases-index', '申請操作', 'list-checks', '/workflow/admin/cases'],
                     ['workflow-admin-proxies-index', '代理の管理', 'user-cog', '/workflow/admin/proxies'],
+                    ['notice-admin-show', '通知の管理', 'bell-ring', '/notices/admin'],
                 ]),
             ]])
         );

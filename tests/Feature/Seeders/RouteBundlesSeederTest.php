@@ -8,7 +8,7 @@ use Tests\Support\TransactionalTestCase;
 
 /**
  * 初期データの http-services の形(docs の 設計/メニュー/認可との結び付け/ルートのリソース.md 2.3 のルートの束と許可の置き場、ADR 0033 の決定 4・6): 接頭辞のリソースグループは
- * 上のフォルダ 6 とルートの束 8 の 14 で、束の子はルートだけ(数は束ごとの固定値)、上のフォルダの子は接頭辞だけ。束と上のフォルダの表示名(ja・en)は
+ * 上のフォルダ 7 とルートの束 9 の 16 で、束の子はルートだけ(数は束ごとの固定値)、上のフォルダの子は接頭辞だけ。束と上のフォルダの表示名(ja・en)は
  * 各モジュールの文書の表のとおり。改名の前の接頭辞のリソースグループは無い。設定不可のセットと、その共通マスタの接頭辞の表示名。
  */
 final class RouteBundlesSeederTest extends TransactionalTestCase
@@ -17,6 +17,7 @@ final class RouteBundlesSeederTest extends TransactionalTestCase
     private const BUNDLES = [
         'http-services.authz.settings' => ['認可設定', 'Authorization settings', 5],
         'http-services.master.organization-chart' => ['組織図', 'Organization chart', 1],
+        'http-services.notice.admin' => ['通知の管理', 'Notification administration', 2],
         'http-services.records.admin.categories' => ['モジュール分類', 'Module categories', 9],
         'http-services.records.admin.comments' => ['コメントの管理', 'Comment administration', 1],
         'http-services.records.admin.modules' => ['業務モジュール', 'Record modules', 19],
@@ -29,6 +30,7 @@ final class RouteBundlesSeederTest extends TransactionalTestCase
     private const FOLDERS = [
         'http-services.authz' => ['認可', 'Authorization'],
         'http-services.master' => ['基本データ', 'Basic data'],
+        'http-services.notice' => ['通知', 'Notifications'],
         'http-services.records' => ['業務データ', 'Records'],
         'http-services.records.admin' => ['業務データの管理', 'Records administration'],
         'http-services.workflow' => ['ワークフロー', 'Workflow'],
@@ -44,7 +46,7 @@ final class RouteBundlesSeederTest extends TransactionalTestCase
         'http-services.workflow.admin.versions', 'http-services.workflow.admin.nodes',
     ];
 
-    public function test_the_prefixes_of_http_services_are_the_six_folders_and_the_eight_bundles(): void
+    public function test_the_prefixes_of_http_services_are_the_seven_folders_and_the_nine_bundles(): void
     {
         $expected = [...array_keys(self::FOLDERS), ...array_keys(self::BUNDLES)];
         $actual = array_keys($this->prefixesOf('http-services'));
@@ -67,7 +69,7 @@ final class RouteBundlesSeederTest extends TransactionalTestCase
         }
 
         $this->assertSame(array_map(fn (array $bundle) => [$bundle[2], $bundle[2]], self::BUNDLES), $children);
-        $this->assertSame(53, array_sum(array_column(self::BUNDLES, 2)));
+        $this->assertSame(55, array_sum(array_column(self::BUNDLES, 2)));
     }
 
     public function test_every_folder_above_the_bundles_has_only_prefixes_as_its_children(): void

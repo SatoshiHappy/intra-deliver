@@ -40,3 +40,37 @@ export type NoticeIndexProps = {
         total: number;
     };
 };
+
+/**
+ * 通知の設定の 2 つの画面の面(docs の 設計/ワークフロー/申請の周辺/通知の受け取りの設定/利用者と管理の画面.md の 3.2・4.2。
+ * サーバーの App\Queries\Notice\NoticeSettingsQuery が返す形)。面は種類の接頭辞ごとで、見出しと種類の語は渡さない(語の正本 = 種類と作る規則.md の 1 節の表)。
+ * 行は切り替えられる種類だけ。
+ */
+export type NoticeSettingSurface<TRow> = {
+    /** 種類の値の `.` の前(例: 'workflow') */
+    prefix: string;
+    rows: TRow[];
+};
+
+/** 利用者の画面の 1 行(必須の種類は本人の設定によらず receives = true) */
+export type NoticeOwnSettingRow = {
+    type: string;
+    receives: boolean;
+    isRequiredType: boolean;
+};
+
+/** 管理の画面の 1 行 */
+export type NoticeAdminSettingRow = {
+    type: string;
+    isRequiredType: boolean;
+};
+
+/** 利用者の画面「通知の設定」のページの props(ゲストは surfaces が空) */
+export type NoticeSettingsProps = {
+    surfaces: NoticeSettingSurface<NoticeOwnSettingRow>[];
+};
+
+/** 管理の画面「通知の管理」のページの props */
+export type NoticeAdminProps = {
+    surfaces: NoticeSettingSurface<NoticeAdminSettingRow>[];
+};

@@ -80,6 +80,7 @@ final class SitemapControllerTest extends TransactionalTestCase
                     ),
                     $this->item('sitemap-admin-workflow-admin-cases-index', '申請操作', 'list-checks', '/workflow/admin/cases'),
                     $this->item('sitemap-admin-workflow-admin-proxies-index', '代理の管理', 'user-cog', '/workflow/admin/proxies'),
+                    $this->item('sitemap-admin-notice-admin-show', '通知の管理', 'bell-ring', '/notices/admin'),
                 ],
             ])
         );

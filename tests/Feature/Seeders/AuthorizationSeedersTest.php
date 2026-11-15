@@ -74,17 +74,20 @@ final class AuthorizationSeedersTest extends TransactionalTestCase
             ...$this->recordsPolicySummaries(),
             ...$this->workflowPolicySummaries(),
             ...$this->permits('workflow-flows', ['workflow-flow:read', 'workflow-flow:operate'], ['システム管理者']),
-            ...$this->everyonePolicySummaries('notice', 'index', 'read', 'read-all', 'latest'),
+            ...$this->everyonePolicySummaries(
+                'notice', 'index', 'read', 'read-all', 'latest', 'settings.show', 'settings.update',
+            ),
             ...$this->everyonePolicySummaries('meeting', 'store', 'regenerate'),
         ], $this->policySummaries());
     }
 
     /**
      * 後の seeder は対象者を条件で引き直し、同じ対象者を作り足さない(FindsAuthzSubjects)。対象者 = ポリシーの 3 と、ワークフローの処理対象者・参照者・確認する人の 6(用途 selection。
-     * ルート・フローの業務処理が作る = 設計/ワークフロー/初期データ.md 2 節)の計 9。ポリシー = 165(57(設定不可のセットの先頭のシステム管理者の 1 を含む)
+     * ルート・フローの業務処理が作る = 設計/ワークフロー/初期データ.md 2 節)の計 9。ポリシー = 169(57(設定不可のセットの先頭のシステム管理者の 1 を含む)
      * + メニューのワークフローのグループ 4 + ホームの主な操作のグループ 1 + ワークフローのルート
      * 64 = ルートの深さ/初期データ.md 6 節と案件の運用の 11 本の 22・写しの値の入口 2・ワークフローのホーム 2
      * = 設計/ワークフロー/認可と一覧.md 4 節。通知のルート 8・フローのセット 2 = 設計/ワークフロー/案件の運用/認可と一覧.md の 4 節・3 節。
+     * 通知の設定のルート 4 = 設計/ワークフロー/申請の周辺/通知の受け取りの設定/ルートと文言と検査.md の 5 節。
      * 業務モジュールの全件の参照 1 = 設計/業務データの入れ物/認可とメニュー/README.md の 3 節。添付と外した時点のファイルのルート 6 × 2 = 12、コメントのルート 3 × 2 = 6 =
      * 設計/業務データの入れ物/レコードの共通機能/認可と初期データ.md の 2.3 節。組み込みの会議の業務モジュール 8 =
      * 設計/業務ツール/モジュール境界/組み込みの業務モジュールの置き場.md の「組み込みの業務モジュールの置き場」。
@@ -93,7 +96,7 @@ final class AuthorizationSeedersTest extends TransactionalTestCase
     public function test_the_seeders_reuse_the_subjects(): void
     {
         $this->assertEquals(['policy' => 3, 'selection' => 6], AuthzSubjectGroup::query()->groupBy('purpose')->orderBy('purpose')->selectRaw('purpose, count(*) as subject_groups')->pluck('subject_groups', 'purpose')->all());
-        $this->assertCount(165 + 16, $this->policySummaries());
+        $this->assertCount(169 + 16, $this->policySummaries());
     }
 
     public function test_a_guest_sees_the_home_and_the_sitemap(): void

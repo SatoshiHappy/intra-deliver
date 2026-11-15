@@ -58,7 +58,7 @@ final class RouteResourceSeedersTest extends TransactionalTestCase
             fn (AuthzResourceGroup $group) => $group->authz_resource_group_attributes_count > 0,
         );
 
-        $this->assertSame(53, $routeGroups->count());
+        $this->assertSame(55, $routeGroups->count());
         $this->assertSame([], $withPolicies->pluck('code')->values()->all());
         $this->assertSame([], $blocked->pluck('code')->values()->all());
     }
@@ -81,7 +81,7 @@ final class RouteResourceSeedersTest extends TransactionalTestCase
             ->filter(fn (AuthzResourceGroup $group) => $group->authz_policies_count > 0);
 
         $this->assertCount(2, $everyone);
-        $this->assertSame(60, $routeGroups->count());
+        $this->assertSame(62, $routeGroups->count());
         $this->assertSame([], $withoutPermit->pluck('code')->values()->all());
         $this->assertSame([], $prefixesWithPolicies->pluck('code')->values()->all());
     }

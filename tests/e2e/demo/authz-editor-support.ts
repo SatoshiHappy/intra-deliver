@@ -23,7 +23,7 @@ export const BUILTIN_COLUMNS = [
     'システム管理者',
 ];
 
-export const toasts = (page: Page) => page.locator('[data-sonner-toast]');
+export { toasts } from '../support/toasts';
 
 function userMenu(page: Page, label: string) {
     return page.getByRole('button', {

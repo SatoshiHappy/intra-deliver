@@ -23,11 +23,11 @@ enum WorkflowNoticeType: string
     /** 確認依頼 */
     case ConfirmRequest = 'workflow.confirm_request';
 
-    /** 連絡 */
-    case Contact = 'workflow.contact';
-
     /** 代理(代理の登録) */
     case Proxy = 'workflow.proxy';
+
+    /** 連絡 */
+    case Contact = 'workflow.contact';
 
     /**
      * 文の値に操作のコメントを持つ種類か(担当変更・処理担当者の変更 = 通知.md の 3 節の表)。

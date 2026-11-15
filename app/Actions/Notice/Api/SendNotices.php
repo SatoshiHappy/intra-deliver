@@ -3,36 +3,55 @@
 namespace App\Actions\Notice\Api;
 
 use App\Models\Notice\Notice;
+use App\Queries\Notice\NoticeReceivingQuery;
+use App\Queries\Notice\NoticeTypeCatalog;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
+use LogicException;
 
 /**
- * 通知を送る(Notice の公開の口。保証の正本 = docs の 設計/ワークフロー/案件の運用/通知.md の 1 節と、そこが指す ADR 0012 の決定 3)。
- * 認可を見ない(宛先は呼び手が決める)。宛先の重複を除いて 1 人 1 行を書き、宛先が 0 人なら何も書かない。
+ * 通知を送る(Notice の公開の口。保証の正本 = docs の 設計/ワークフロー/案件の運用/通知.md の 1 節と、そこが指す ADR 0012 の決定 3・
+ * ADR 0045 の決定 3)。認可を見ない(宛先は呼び手が決める)。宛先の重複を除き、受け取らないにした人を除いて 1 人 1 行を書き、0 人なら何も書かない。
  * 自分で DB::transaction を持ち、呼び手のトランザクションの中では savepoint で含まれる(呼び手が巻き戻すと通知も残らない)。
  */
 class SendNotices
 {
-    /** 種類「モジュール.種類」の書式(表 notices の検査制約と同じ) */
-    private const TYPE_PATTERN = '/^[a-z][a-z0-9_]*\.[a-z][a-z0-9_]*$/D';
-
     /** 対象の種類の書式(表 notices の検査制約と同じ) */
     private const TARGET_TYPE_PATTERN = '/^[a-z][a-z0-9-]*$/D';
 
-    /** 種類と対象の種類の長さの上限(列 varchar(100)) */
-    private const MAX_LENGTH = 100;
+    /** 対象の種類の長さの上限(列 varchar(100)) */
+    private const MAX_TARGET_TYPE_LENGTH = 100;
+
+    public function __construct(
+        private NoticeTypeCatalog $types,
+        private NoticeReceivingQuery $receiving,
+    ) {}
 
     /**
+     * 主体の判定をしない。呼び手が宛先を決めてから(除く人と今日に有効でない人を除いてから)呼ぶ。設定と必須の印は呼ばれた時に読む
+     * (呼び手のトランザクションの中なら、その中で読む)。
+     *
+     * 宛先を作るかの表(docs の 設計/ワークフロー/申請の周辺/通知の受け取りの設定/種類と作る規則.md の 2 節)で絞る。
+     * 誰を除いたかは返さない。
+     *
      * @param  list<int>  $recipientUserIds  宛先のユーザー(users.id)。重ねてよい
      *
-     * @throws InvalidArgumentException 種類・対象の書式か params の形が違うとき(呼び手の誤り)
+     * @throws InvalidArgumentException 種類・対象の書式か params の形が違うとき、種類が種類の一覧に無いとき(宛先の数によらない。呼び手の誤り)
      * @throws QueryException 宛先・起こした人のユーザーが無いとき(外部キー。呼び手の誤り)
+     * @throws LogicException 種類の一覧の実装の答えが規則に外れるとき
      */
     public function execute(NoticeMessage $message, array $recipientUserIds): void
     {
         $this->assertWellFormed($message);
+        $entry = $this->types->find($message->type)
+            ?? throw new InvalidArgumentException("通知の種類「{$message->type}」が種類の一覧に無い");
         $recipients = array_values(array_unique($recipientUserIds));
+
+        if ($entry->switchable) {
+            $optedOut = $this->receiving->optedOutAmong($message->type, $recipients);
+            $recipients = array_values(array_diff($recipients, $optedOut));
+        }
 
         if ($recipients === []) {
             return;
@@ -58,7 +77,7 @@ class SendNotices
      */
     private function assertWellFormed(NoticeMessage $message): void
     {
-        if (! self::matches(self::TYPE_PATTERN, $message->type)) {
+        if (! NoticeTypeCatalog::isWellFormed($message->type)) {
             throw new InvalidArgumentException("通知の種類「{$message->type}」が「モジュール.種類」の書式でない");
         }
 
@@ -66,7 +85,7 @@ class SendNotices
             throw new InvalidArgumentException('通知の対象の種類と id は、両方を渡すか両方を null にする');
         }
 
-        if ($message->targetType !== null && ! self::matches(self::TARGET_TYPE_PATTERN, $message->targetType)) {
+        if ($message->targetType !== null && ! self::isWellFormedTargetType($message->targetType)) {
             throw new InvalidArgumentException("通知の対象の種類「{$message->targetType}」の書式が違う");
         }
 
@@ -91,8 +110,9 @@ class SendNotices
         }
     }
 
-    private static function matches(string $pattern, string $value): bool
+    private static function isWellFormedTargetType(string $targetType): bool
     {
-        return strlen($value) <= self::MAX_LENGTH && preg_match($pattern, $value) === 1;
+        return strlen($targetType) <= self::MAX_TARGET_TYPE_LENGTH
+            && preg_match(self::TARGET_TYPE_PATTERN, $targetType) === 1;
     }
 }

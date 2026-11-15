@@ -33,6 +33,7 @@ use LogicException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use RuntimeException;
 use Tests\Support\BuildsRecordModules;
+use Tests\Support\RegistersNoticeTypes;
 use Tests\Support\TransactionalTestCase;
 use Throwable;
 
@@ -43,17 +44,19 @@ use Throwable;
 final class FailedRunReceiverTest extends TransactionalTestCase
 {
     use BuildsRecordModules;
+    use RegistersNoticeTypes;
     use UsesTestPromptKinds;
 
     private const MESSAGES_URL = 'https://api.anthropic.com/v1/messages';
 
-    /** 受け手が書く通知の種類 */
+    /** 受け手が書く通知の種類(テストの中だけの種類の一覧の実装が答える) */
     private const NOTICE_TYPE = 'test.failed';
 
     protected function setUp(): void
     {
         parent::setUp();
         $this->registerTestPromptKinds();
+        $this->registerNoticeTypes([self::NOTICE_TYPE => true]);
     }
 
     /**

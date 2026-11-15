@@ -3,6 +3,7 @@
 namespace Tests\Feature\Actions\Records;
 
 use App\Models\Master\User;
+use App\Models\Notice\NoticeOptOut;
 use App\Models\Records\Record;
 use App\Models\Records\RecordComment;
 use App\Models\Records\RecordCommentMention;
@@ -122,6 +123,22 @@ final class PostRecordCommentMentionsTest extends TransactionalTestCase
         $this->assertNull($notices->first()?->read_at);
         $params = DB::table('notices')->whereIn('id', $notices->modelKeys())->orderBy('id')->pluck('params');
         $this->assertSame(['{}', '{}'], $params->map(fn ($value) => (string) $value)->all());
+    }
+
+    /**
+     * コメントを受け取らないにした宛先には作らず、ほかの宛先には作る(送る口が除く = docs の
+     * 設計/ワークフロー/申請の周辺/通知の受け取りの設定/種類と作る規則.md の 2 節)。コメントは保存される。
+     */
+    public function test_a_mentioned_person_who_opted_out_of_comments_gets_no_notice(): void
+    {
+        $fixture = $this->rowAccessFixture();
+        ['creator' => $creator, 'attendee' => $attendee, 'member' => $member] = $fixture['people'];
+        NoticeOptOut::query()->create(['user_id' => $attendee->id, 'type' => 'records.comment']);
+
+        $id = $this->postComment($creator->id, $fixture['recordId'], mentions: [$attendee->id, $member->id]);
+
+        $this->assertTrue(RecordComment::query()->whereKey($id)->exists());
+        $this->assertSame([$member->id], $this->commentNotices()->pluck('user_id')->all());
     }
 
     public function test_no_notice_without_a_mention_or_with_only_the_writer_and_none_after_a_failed_post(): void

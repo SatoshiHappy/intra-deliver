@@ -15,7 +15,8 @@ use Tests\Support\TransactionalTestCase;
 /**
  * 今の利用者と利用者メニューの節の共有(docs の 設計/デモユーザー切替/今の利用者.md 5.7・5.9): 全ページの共有プロパティ account と
  * userMenuSections。account の currentDepartment と departments の id は組織の ID。節はタグ UserMenuSections::TAG に登録した実装を
- * 登録の順に呼んだ一覧で、main だけではワークフローの節(ゲストには項目なし = docs の 設計/ワークフロー/案件の運用/認可と一覧.md の 5 節)だけ。
+ * 登録の順に呼んだ一覧で、main だけではワークフローの節と通知の節(どちらもゲストには項目なし = docs の 設計/ワークフロー/案件の運用/認可と一覧.md の 5 節、
+ * 設計/ワークフロー/申請の周辺/通知の受け取りの設定/利用者と管理の画面.md の 3.1)だけ。
  * どちらも部分再読み込みの応答にも入る。
  * 初期データ(兼務の u0009 = 総務部が主所属、人事部を兼務)を入れ、今日を 2026-10-10 に固定し、ルートの認可を外さずに開く。
  */
@@ -25,6 +26,12 @@ final class ShareCurrentAccountTest extends TransactionalTestCase
     private const PROXY_ITEM = [
         'code' => 'workflow-proxies', 'name' => '代理の設定', 'note' => null,
         'url' => '/workflow/proxies', 'method' => 'get', 'data' => [],
+    ];
+
+    /** 通知の節の項目「通知の設定」 */
+    private const NOTICE_SETTINGS_ITEM = [
+        'code' => 'notice-settings', 'name' => '通知の設定', 'note' => null,
+        'url' => '/notices/settings', 'method' => 'get', 'data' => [],
     ];
 
     protected function setUp(): void
@@ -42,7 +49,7 @@ final class ShareCurrentAccountTest extends TransactionalTestCase
             ->component($component)
             ->where('name', config('app.name'))
             ->where('account', ['user' => null, 'currentDepartment' => null, 'departments' => []])
-            ->where('userMenuSections', [self::workflowSection([])])
+            ->where('userMenuSections', self::mainSections(false))
         );
     }
 
@@ -82,7 +89,7 @@ final class ShareCurrentAccountTest extends TransactionalTestCase
 
         $this->actingAs($user)->get('/')->assertInertia(fn (Assert $page) => $page
             ->where('userMenuSections', [
-                self::workflowSection([self::PROXY_ITEM]), ...$this->expectedSections("user {$user->id}"),
+                ...self::mainSections(true), ...$this->expectedSections("user {$user->id}"),
             ])
         );
     }
@@ -94,7 +101,7 @@ final class ShareCurrentAccountTest extends TransactionalTestCase
         $this->get('/')->assertInertia(fn (Assert $page) => $page
             ->reloadOnly('appNavigation', fn (Assert $reload) => $reload
                 ->where('account.user', null)
-                ->where('userMenuSections', [self::workflowSection([]), ...$this->expectedSections('guest')])
+                ->where('userMenuSections', [...self::mainSections(false), ...$this->expectedSections('guest')])
             )
         );
     }
@@ -121,14 +128,16 @@ final class ShareCurrentAccountTest extends TransactionalTestCase
     }
 
     /**
-     * main のワークフローの節(項目は利用者だけ)。
+     * main の節(ワークフロー → 通知の順。項目は利用者だけ)。
      *
-     * @param  list<array<string, mixed>>  $items
-     * @return array<string, mixed>
+     * @return list<array<string, mixed>>
      */
-    private static function workflowSection(array $items): array
+    private static function mainSections(bool $isUser): array
     {
-        return ['heading' => 'ワークフロー', 'items' => $items];
+        return [
+            ['heading' => 'ワークフロー', 'items' => $isUser ? [self::PROXY_ITEM] : []],
+            ['heading' => '通知', 'items' => $isUser ? [self::NOTICE_SETTINGS_ITEM] : []],
+        ];
     }
 
     private function departmentId(string $code): int

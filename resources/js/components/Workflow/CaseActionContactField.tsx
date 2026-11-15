@@ -2,6 +2,7 @@ import { CountedTextInput } from '@/components/CountedTextInput';
 import { FormBlock } from '@/components/FormBlock';
 import { UserPickerField } from '@/components/Workflow/UserPickerField';
 import {
+    CONTACT_HELP,
     CONTACT_MESSAGE_MAX,
     CONTACT_USER_MAX,
 } from '@/lib/Workflow/caseActionForm';
@@ -34,7 +35,7 @@ export function CaseActionContactField({
             <UserPickerField
                 id={CONTACT_ID}
                 label="連絡する人"
-                help="選択した人へ、ひと言を添えた通知を送ります。履歴には残らず、申請を閲覧できる人は変わりません。"
+                help={CONTACT_HELP}
                 hint={`${CONTACT_USER_MAX} 人まで`}
                 error={errors['contact.user_ids']}
                 caseId={null}
