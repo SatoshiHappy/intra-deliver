@@ -20,14 +20,17 @@ return [
 
     'large_result_search' => <<<'TEXT'
         結果が長すぎる({{original_length}} 文字)。先頭の {{preview_length}} 文字だけを示す。
-        あなたは、残りを得るには、検索の条件を絞るか、次のページを求める。
+        長さで切れた行は、次のページに無い。あなたは、`fields` で返す項目を減らすか条件を絞って、同じページを読み直す。
+        件数が多いときは、`page` で次のページを求める。
 
         {{preview}}
         TEXT,
 
     'large_result_read' => <<<'TEXT'
         結果が長すぎる({{original_length}} 文字)。先頭の {{preview_length}} 文字だけを示す。
-        あなたは、残りを得るには、コメントと変更の履歴をページごとに読む。
+        あなたは、`parts` で返す部分を絞って、同じページを読み直す。
+        古いコメント・更新履歴・明細の行は、`comments_page`・`revisions_page`・`details_page` のページの番号で読む。
+        1 つの部分だけで切れたら、切れた所は読めないので、読めなかったことを答えに書く。
 
         {{preview}}
         TEXT,

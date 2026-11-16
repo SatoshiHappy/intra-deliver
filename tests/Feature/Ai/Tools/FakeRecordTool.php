@@ -3,19 +3,21 @@
 namespace Tests\Feature\Ai\Tools;
 
 use App\Actions\Ai\Api\AgentRecordTool;
+use App\Actions\Ai\Api\AgentToolParties;
 use App\Actions\Ai\Api\AgentToolResult;
 use App\Actions\Ai\Api\AgentToolScope;
 use App\Actions\Ai\Api\AgentToolSubject;
 use App\Actions\Ai\Api\PriorToolCall;
 use App\Enums\Ai\AiInstructionTemplate;
 use App\Enums\Ai\AiToolAction;
+use App\Enums\Ai\AiToolPartyForm;
 use Closure;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\JsonSchema\Types\Type;
 
 /**
  * テストの中だけの偽の道具(読む・作る・直すを性質の値で分ける)。引数の形の既定 = 業務モジュール(必須)・id・札の列。引数の形・形の外の検証・
- * 実行・呼び出しが指す業務モジュールは関数で差し替え、受けた前の呼び出しと実行の回数を残す。汎用か製品かは置いた名前空間で決まる({@see FakeTools::NAMESPACES})。
+ * 実行・呼び出しが指す業務モジュールは関数で差し替え、受けた前の呼び出しと実行の回数と相手を残す。汎用か製品かは置いた名前空間で決まる({@see FakeTools::NAMESPACES})。
  */
 abstract class FakeRecordTool implements AgentRecordTool
 {
@@ -24,6 +26,9 @@ abstract class FakeRecordTool implements AgentRecordTool
 
     public int $executions = 0;
 
+    /** 実行が受けた相手(最後の実行。実行の前は null) */
+    public ?AgentToolParties $receivedParties = null;
+
     /**
      * @param  list<string>  $aliases
      * @param  list<string>|null  $targets
@@ -31,6 +36,7 @@ abstract class FakeRecordTool implements AgentRecordTool
      * @param  (Closure(array<string, mixed>, AgentToolSubject, AgentToolScope): AgentToolResult)|null  $executor
      * @param  (Closure(array<string, mixed>): ?string)|null  $module
      * @param  (Closure(JsonSchema): array<string, Type>)|null  $shape  引数の形(null = 業務モジュール・id・札の列)
+     * @param  array<string, AiToolPartyForm>  $parties  相手を名前か候補の id で書ける引数の鍵と形
      */
     public function __construct(
         public string $name,
@@ -45,6 +51,7 @@ abstract class FakeRecordTool implements AgentRecordTool
         public ?Closure $executor = null,
         public ?Closure $module = null,
         public ?Closure $shape = null,
+        public array $parties = [],
     ) {}
 
     public function name(): string
@@ -112,13 +119,23 @@ abstract class FakeRecordTool implements AgentRecordTool
         return $this->largeTemplate;
     }
 
-    public function execute(array $arguments, AgentToolSubject $subject, AgentToolScope $scope): AgentToolResult
-    {
+    public function execute(
+        array $arguments,
+        AgentToolSubject $subject,
+        AgentToolScope $scope,
+        AgentToolParties $parties,
+    ): AgentToolResult {
         $this->executions++;
+        $this->receivedParties = $parties;
 
         return $this->executor === null
             ? new AgentToolResult(['module' => $arguments['module'] ?? null, 'done' => true])
             : ($this->executor)($arguments, $subject, $scope);
+    }
+
+    public function partyArguments(): array
+    {
+        return $this->parties;
     }
 
     public function moduleOf(array $arguments): ?string

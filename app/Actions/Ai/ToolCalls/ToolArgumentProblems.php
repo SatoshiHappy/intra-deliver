@@ -6,7 +6,7 @@ use App\Actions\Ai\Api\AgentTool;
 
 /**
  * 引数の形の誤り(docs の 設計/AI/道具と権限/道具の判定と今の権限.md 10.3 の B11)を、道具の schema の JSON Schema から 1 行ずつ組む。
- * JSON Schema の型を PHP の値の型で照らし、変換しない(型の違う値が道具に届いて道具の例外にならないように)。
+ * JSON Schema の型を PHP の値の型で照らし、変換しない(型の違う値が道具に届いて道具の例外にならないように)。列挙の形は、選べる値に無い値も誤りにする。
  */
 class ToolArgumentProblems
 {
@@ -76,7 +76,7 @@ class ToolArgumentProblems
         }
 
         if (! is_array($value)) {
-            return [];
+            return self::enumProblems($schema, $value, $path);
         }
 
         if ($type === 'object') {
@@ -84,6 +84,25 @@ class ToolArgumentProblems
         }
 
         return is_array($schema['items'] ?? null) ? self::itemProblems($schema['items'], $value, $path) : [];
+    }
+
+    /**
+     * 列挙の形の値が、選べる値に無いときの誤り(選べる値を並べる)。
+     *
+     * @param  array<array-key, mixed>  $schema
+     * @return list<string>
+     */
+    private static function enumProblems(array $schema, mixed $value, string $path): array
+    {
+        $enum = is_array($schema['enum'] ?? null) ? $schema['enum'] : null;
+
+        if ($enum === null || in_array($value, $enum, true)) {
+            return [];
+        }
+
+        $allowed = implode('・', array_map(fn (mixed $item): string => is_scalar($item) ? (string) $item : '', $enum));
+
+        return ["{$path}: 選べない値(選べる値: {$allowed})"];
     }
 
     /**

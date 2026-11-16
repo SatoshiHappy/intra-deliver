@@ -3,6 +3,7 @@
 namespace Tests\Feature\Ai\Tools\Generic;
 
 use App\Actions\Ai\Api\AgentTool;
+use App\Actions\Ai\Api\AgentToolParties;
 use App\Actions\Ai\Api\AgentToolResult;
 use App\Actions\Ai\Api\AgentToolScope;
 use App\Actions\Ai\Api\AgentToolSubject;
@@ -70,8 +71,12 @@ final class PlainTool implements AgentTool
         return AiInstructionTemplate::LargeResultTruncated;
     }
 
-    public function execute(array $arguments, AgentToolSubject $subject, AgentToolScope $scope): AgentToolResult
-    {
+    public function execute(
+        array $arguments,
+        AgentToolSubject $subject,
+        AgentToolScope $scope,
+        AgentToolParties $parties,
+    ): AgentToolResult {
         return new AgentToolResult(['done' => true]);
     }
 }

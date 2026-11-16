@@ -73,7 +73,13 @@ interface AgentTool
     /**
      * 実行。業務データの読み書きは $subject を主体にして入れ物の判定する口だけを通す(10.4)。
      *
-     * @param  array<string, mixed>  $arguments  形の検証と形の外の検証を通った引数
+     * @param  array<string, mixed>  $arguments  形の検証と形の外の検証を通った引数(名前で書いた相手は id に直した後)
+     * @param  AgentToolParties  $parties  引数の中のユーザー・組織の相手(③ の共通の部品が引いて読んだ物。結果に写すときは印の部品を通す)
      */
-    public function execute(array $arguments, AgentToolSubject $subject, AgentToolScope $scope): AgentToolResult;
+    public function execute(
+        array $arguments,
+        AgentToolSubject $subject,
+        AgentToolScope $scope,
+        AgentToolParties $parties,
+    ): AgentToolResult;
 }

@@ -2,6 +2,8 @@
 
 namespace App\Actions\Ai\Api;
 
+use App\Enums\Ai\AiToolPartyForm;
+
 /**
  * 業務モジュールを読み書きする道具の約束(性質が読む・書くの道具 = docs の 設計/AI/道具と権限/README.md 10.1 の性質の表)。ファイルを作る道具は
  * 実装しない(呼び出しが指す業務モジュールを持たない = 設計/AI/データと失敗と検査.md 8 節)。
@@ -15,4 +17,12 @@ interface AgentRecordTool extends AgentTool
      * @param  array<string, mixed>  $arguments  形の検証を通った引数
      */
     public function moduleOf(array $arguments): ?string;
+
+    /**
+     * ユーザー・組織の相手を名前か候補の id で書ける引数の鍵と、その形(docs の 設計/AI/道具と権限/README.md 10.2 のユーザー・組織の名前)。
+     * ③ の共通の部品が形の外の検証の前に引いて直す。鍵は引数の形にある物だけ。無ければ空。
+     *
+     * @return array<string, AiToolPartyForm>
+     */
+    public function partyArguments(): array;
 }

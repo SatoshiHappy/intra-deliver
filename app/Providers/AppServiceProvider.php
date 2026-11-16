@@ -2,11 +2,14 @@
 
 namespace App\Providers;
 
+use App\Actions\Ai\Api\AgentTool;
 use App\Actions\Ai\Api\PromptKind;
 use App\Actions\Ai\Api\TranscriptionKind;
 use App\Actions\Ai\CarryOverSpending;
 use App\Actions\Ai\Instructions\DefaultInstructionBuilder;
 use App\Actions\Ai\Instructions\InstructionBuilder;
+use App\Actions\Ai\Tools\ReadRecord;
+use App\Actions\Ai\Tools\SearchRecords;
 use App\Actions\Meeting\MeetingMinutesKind;
 use App\Actions\Meeting\MeetingTranscriptionKind;
 use App\Actions\Reset\Api\ResetParticipant;
@@ -92,9 +95,7 @@ class AppServiceProvider extends ServiceProvider
         // 依存の逆転: メニューの表示判定が、ルートを受け持つモジュールの追加の判定で隠す(docs の 設計/ワークフロー/申請の周辺/メニューと導線.md 1.2)
         $this->app->tag([RecordMenuItemVisibility::class], MenuItemVisibility::TAG);
 
-        // 依存の逆転: AI の実行の種類(文章・文字起こし。docs の 設計/AI/公開の口.md 3.1)。呼び手のモジュールが実装を足す(コードは設定にあり型をまたいで一意)
-        $this->app->tag([MeetingMinutesKind::class], PromptKind::TAG);
-        $this->app->tag([MeetingTranscriptionKind::class], TranscriptionKind::TAG);
+        $this->tagAiImplementations();
 
         // 依存の逆転: 毎日の初期化が残す表と、表を空にする直前の処理(AI の費用の繰り越し = docs の 設計/公開の配備/毎日の初期化.md 7 節)。
         // 初期化で消えては困る表を持つモジュールが実装をここに足す
@@ -131,6 +132,19 @@ class AppServiceProvider extends ServiceProvider
         foreach (PrivateProviders::listedIn($this->app->basePath(PrivateProviders::PATH)) as $provider) {
             $this->app->register($provider);
         }
+    }
+
+    /**
+     * AI の実行の種類と会話の型の道具を、実装を持つモジュールのクラスで登録する。
+     */
+    private function tagAiImplementations(): void
+    {
+        // 依存の逆転: AI の実行の種類(文章・文字起こし。docs の 設計/AI/公開の口.md 3.1)。呼び手のモジュールが実装を足す(コードは設定にあり型をまたいで一意)
+        $this->app->tag([MeetingMinutesKind::class], PromptKind::TAG);
+        $this->app->tag([MeetingTranscriptionKind::class], TranscriptionKind::TAG);
+
+        // 依存の逆転: 会話の型の道具(docs の 設計/AI/道具と権限/README.md 10.1 の置き場)。汎用の道具は Ai が、製品の道具は製品のモジュールが足す
+        $this->app->tag([ReadRecord::class, SearchRecords::class], AgentTool::TAG);
     }
 
     /**

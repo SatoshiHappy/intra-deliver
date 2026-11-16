@@ -6,6 +6,7 @@ use App\Actions\Ai\Api\AgentRecordTool;
 use App\Actions\Ai\Api\AgentTool;
 use App\Enums\Ai\AiInstructionTemplate;
 use App\Enums\Ai\AiToolNature;
+use App\Enums\Ai\AiToolPartyForm;
 
 /**
  * 道具の登録の起動の時の確かめ(docs の 設計/AI/データと失敗と検査.md 8 節の会話の型で足すもの・設計/AI/道具と権限/README.md 10.1)。投げずに文にする。
@@ -123,16 +124,37 @@ final readonly class ToolChecks
     }
 
     /**
-     * 包みが照らせない引数の形(照らせない形の値を、形の誤りでなく道具の例外で知ることにならないように、起動の時に断る)。
+     * 包みが照らせない引数の形と、引数の形に無い相手の引数の鍵(形の誤りでなく道具の例外で知ることにならないように、設定の確かめで断る)。
+     * 入れ物の入力の形の相手の引数も設定の確かめで断る(書く道具の入力の形の引き当てがまだ無いため。確かめを経ずに呼ばれたら、
+     * 名前の引き当ての部品が例外で止める)。書く道具の入力の形の引き当てを足すときに、この確かめを外す。
      *
      * @return list<string>
      */
     private static function argumentProblems(AgentTool $tool): array
     {
-        return array_map(
-            fn (array $found): string => self::label($tool)."の引数の形 {$found[0]} が照らせない形({$found[1]})",
-            ToolArgumentSchema::unreadable(ToolArgumentSchema::of($tool)),
-        );
+        $schema = ToolArgumentSchema::of($tool);
+        $keys = array_map(strval(...), array_keys(ToolArgumentSchema::properties($schema)));
+        $forms = $tool instanceof AgentRecordTool ? $tool->partyArguments() : [];
+        $parties = array_map(strval(...), array_keys($forms));
+        $inputs = array_map(strval(...), array_keys(array_filter(
+            $forms,
+            fn (AiToolPartyForm $form): bool => $form === AiToolPartyForm::Input,
+        )));
+
+        return [
+            ...array_map(
+                fn (array $found): string => self::label($tool)."の引数の形 {$found[0]} が照らせない形({$found[1]})",
+                ToolArgumentSchema::unreadable($schema),
+            ),
+            ...array_map(
+                fn (string $key): string => self::label($tool)."の相手を名前で書ける引数 {$key} が引数の形に無い",
+                array_values(array_diff($parties, $keys)),
+            ),
+            ...array_map(
+                fn (string $key): string => self::label($tool)."の相手を名前で書ける引数 {$key} は入れ物の入力の形で、まだ引けない",
+                $inputs,
+            ),
+        ];
     }
 
     /** 性質の起きない組(ファイルを作る道具は、汎用の道具にまだ無いので起きない組に数える) */

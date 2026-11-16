@@ -10,7 +10,7 @@ use PHPat\Test\PHPat;
 
 /**
  * 会話の道具と判定の関数が使える口の一覧と規則(Policy。docs の 設計/業務ツール/機械検査.md の検査 (b) と、規則・一覧・理由の正本
- * 設計/AI/道具と権限/道具の判定と今の権限.md の 10.4)。
+ * 設計/AI/道具と権限/読み書きのたびの今の権限.md の 10.4)。
  *
  * クラスの単位の依存の規則(phpat)に操作の単位の規則(allowedOperation・reflectiveCall)を重ねるのは、許した口のクラスの中の主体の判定をしない
  * 操作を依存の規則では止められないため。置き場の規則(interfacePlacement)は、依存の規則が名前空間の外に置いた実装を止めないため。
@@ -50,14 +50,20 @@ final class AgentToolDependencies
         ['class' => 'App\Actions\Ai\Api\AgentToolResult', 'reason' => '道具の結果の値の型(10.1)'],
         ['class' => 'App\Actions\Ai\Api\RecordMarker', 'reason' => '結果に添えるレコードの印の値の型(10.2)'],
         ['class' => 'App\Actions\Ai\Api\PriorToolCall', 'reason' => '形の外の検証が受ける、同じステップの前の呼び出しの値の型(10.1)'],
+        [
+            'class' => 'App\Actions\Ai\Api\AgentToolParties',
+            'reason' => '実行が受ける、引数の中のユーザー・組織の相手の値の型(③ の共通の部品が引いて読む = 10.1・10.2)',
+        ],
         ['class' => 'App\Queries\Ai\Api\RecordMarkers', 'reason' => '③ の印の部品(外から来る値の印の形を直す = 10.2)'],
         ['class' => 'App\Enums\Ai\AiToolAction', 'reason' => '道具の約束の要る権限の列挙(10.1)'],
         ['class' => 'App\Enums\Ai\AiInstructionTemplate', 'reason' => '道具の約束の大きい結果の定型の列挙(10.7)'],
         ['class' => 'App\Enums\Ai\AiToolCallDecision', 'reason' => '前の呼び出しの判定の列挙(10.1)'],
+        ['class' => 'App\Enums\Ai\AiToolPartyForm', 'reason' => '道具の約束の相手を含む引数の形の列挙(10.1・10.2)'],
     ];
 
     /**
-     * 道具の名前空間が依存できる口と、呼べる操作(10.4 の (1) の表。行の判定を通る集計の口は足すときに足す)。
+     * 道具の名前空間が依存できる口と、呼べる操作(10.4 の (1) の表。行の判定を通る集計の口と `RecordFormQuery::editValues` は、
+     * 使う道具を足すときに足す)。
      *
      * @var list<array{class: string, methods: list<string>, reason: string}>
      */
@@ -78,7 +84,11 @@ final class AgentToolDependencies
             'methods' => ['execute'],
             'reason' => '判定する更新(直すの書く時。持ち主の鍵を渡さない = TOOL_KEY_ARGUMENTS)',
         ],
-        ['class' => 'App\Queries\Records\Api\RecordDisplayQuery', 'methods' => ['show'], 'reason' => '詳細の値(閲覧の判定の後だけ)'],
+        [
+            'class' => 'App\Queries\Records\Api\RecordDisplayQuery',
+            'methods' => ['detail'],
+            'reason' => '詳細の値と参照制限の今の値(詳細の画面と同じ読み取り。閲覧の判定の後だけ)',
+        ],
         [
             'class' => 'App\Queries\Records\Api\RecordFormQuery',
             'methods' => ['draftValues'],

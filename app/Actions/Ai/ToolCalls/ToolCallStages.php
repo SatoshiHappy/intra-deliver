@@ -3,6 +3,7 @@
 namespace App\Actions\Ai\ToolCalls;
 
 use App\Actions\Ai\Api\AgentRecordTool;
+use App\Actions\Ai\Api\AgentToolParties;
 use App\Actions\Ai\Api\ConversationItem;
 use App\Actions\Ai\Api\PriorToolCall;
 use App\Actions\Ai\Instructions\SharedInstructionTemplates;
@@ -15,7 +16,7 @@ use LogicException;
 
 /**
  * 道具を呼ぶ包みの、止める印の後の段。どの段で終わっても同じ形の結果と道具の行にするため、1 か所に集める(docs の
- * 設計/AI/エージェントの実行/道具の包みと止める.md 9.4、設計/AI/道具と権限/README.md 10.2、設計/AI/道具と権限/道具の判定と今の権限.md 10.4)。
+ * 設計/AI/エージェントの実行/道具の包みと止める.md 9.4、設計/AI/道具と権限/README.md 10.2、設計/AI/道具と権限/読み書きのたびの今の権限.md 10.4)。
  *
  * @phpstan-type Result array{callId: string, toolCallId: int, item: ConversationItem}
  */
@@ -27,6 +28,7 @@ class ToolCallStages
         private ToolCallRows $rows,
         private AuthorizationReuse $reuse,
         private SharedInstructionTemplates $shared,
+        private ToolPartyNames $partyNames,
     ) {}
 
     /**
@@ -76,7 +78,7 @@ class ToolCallStages
     }
 
     /**
-     * 道具の検証(形の外の検証)の後、区間の中で判定の関数と道具を呼ぶ。
+     * 相手の名前の引き当てと道具の検証(形の外の検証)の後、区間の中で判定の関数と道具を呼ぶ。
      *
      * @param  array<string, mixed>  $arguments
      * @param  list<PriorToolCall>  $prior
@@ -90,12 +92,17 @@ class ToolCallStages
         array $arguments,
         array $prior,
     ): array {
+        $tool = $granted->tool;
+        $checked = function () use ($tool, $arguments, $granted, $prior, $step): array {
+            $resolved = $tool instanceof AgentRecordTool
+                ? $this->partyNames->resolve($tool, $arguments, $granted->scope, $step->run)
+                : new ToolPartyResolution($arguments, new AgentToolParties);
+
+            return [$resolved, $resolved->error ?? $tool->validate($resolved->arguments, $granted->scope, $prior)];
+        };
+
         try {
-            $error = ToolCallException::during(
-                $call,
-                ToolCallException::WRAPPER,
-                fn (): ?string => $granted->tool->validate($arguments, $granted->scope, $prior),
-            );
+            [$resolved, $error] = ToolCallException::during($call, ToolCallException::WRAPPER, $checked);
         } catch (ToolCallException $exception) {
             return $this->wrapperException($step, $position, $call, $arguments, $exception);
         }
@@ -107,7 +114,9 @@ class ToolCallStages
             return $this->failed($step, $position, $call, AiToolCallDecision::ValidationError, $item, $arguments);
         }
 
-        return $this->reuse->without(fn (): array => $this->judged($step, $position, $call, $granted, $arguments));
+        return $this->reuse->without(
+            fn (): array => $this->judged($step, $position, $call, $granted, $resolved->arguments, $resolved->parties),
+        );
     }
 
     /**
@@ -122,6 +131,7 @@ class ToolCallStages
         ModelToolCall $call,
         GrantedTool $granted,
         array $arguments,
+        AgentToolParties $parties,
     ): array {
         $tool = $granted->tool;
 
@@ -142,10 +152,9 @@ class ToolCallStages
         }
 
         $row = $this->rows->running($step, $position, $call);
-
         $subject = $judgement->subject;
-        $executed = function () use ($step, $row, $call, $tool, $arguments, $subject, $granted): array {
-            $result = $tool->execute($arguments, $subject, $granted->scope);
+        $executed = function () use ($step, $row, $call, $tool, $arguments, $subject, $granted, $parties): array {
+            $result = $tool->execute($arguments, $subject, $granted->scope, $parties);
             $shaped = ToolResultText::shaped($tool, $result, RecordMarkers::neutralize($call->name));
             [$template, $values, $body] = [$shaped['template'], $shaped['values'], $shaped['body']];
             $item = ConversationItem::toolResult($call->id, $template, $values, $body, false);

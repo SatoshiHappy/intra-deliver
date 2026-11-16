@@ -27,14 +27,15 @@ final class ToolResultMessages
             throw new LogicException("道具の結果でない項目 {$result->type->value} は組めない");
         }
 
-        $forms = $builder->conversationMarkerForms();
-        usort($forms, fn (string $left, string $right): int => mb_strlen($right) <=> mb_strlen($left));
+        $forms = ConversationMarkerBreaker::forms($builder);
         $content = $result->content;
-        $body = is_string($content['body'] ?? null) ? self::broken($content['body'], $forms) : null;
+        $body = is_string($content['body'] ?? null)
+            ? ConversationMarkerBreaker::broken($content['body'], $forms)
+            : null;
         $values = array_map(
             fn (string|array $value): string|array => is_string($value)
-                ? self::broken($value, $forms)
-                : array_map(fn (string $item): string => self::broken($item, $forms), $value),
+                ? ConversationMarkerBreaker::broken($value, $forms)
+                : array_map(fn (string $item): string => ConversationMarkerBreaker::broken($item, $forms), $value),
             is_array($content['values'] ?? null) ? $content['values'] : [],
         );
         $template = is_string($content['template'] ?? null) ? AiInstructionTemplate::from($content['template']) : null;
@@ -44,19 +45,5 @@ final class ToolResultMessages
         }
 
         return $builder->template($template, $body === null ? $values : [...$values, self::BODY_PLACEHOLDER => $body]);
-    }
-
-    /**
-     * 文の中の会話の印の形を、印と読めない形に直す。
-     *
-     * @param  list<string>  $forms  長い順
-     */
-    private static function broken(string $text, array $forms): string
-    {
-        foreach ($forms as $form) {
-            $text = str_replace($form, mb_substr($form, 0, 1).' '.mb_substr($form, 1), $text);
-        }
-
-        return $text;
     }
 }

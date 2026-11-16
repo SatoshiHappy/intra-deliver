@@ -58,6 +58,11 @@ abstract class RecordToolBase implements AgentRecordTool
         return AiInstructionTemplate::LargeResultTruncated;
     }
 
+    public function partyArguments(): array
+    {
+        return [];
+    }
+
     public function moduleOf(array $arguments): ?string
     {
         $module = $arguments['module'] ?? null;

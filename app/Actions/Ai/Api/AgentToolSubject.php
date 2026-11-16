@@ -7,7 +7,7 @@ use App\Support\AccessContext;
 use Carbon\CarbonImmutable;
 
 /**
- * 判定の主体の文脈(docs の 設計/AI/道具と権限/道具の判定と今の権限.md 10.4 の表。値の型で、作るのは ③ の共通の部品だけ)。道具のクラスは
+ * 判定の主体の文脈(docs の 設計/AI/道具と権限/読み書きのたびの今の権限.md 10.4 の表。値の型で、作るのは ③ の共通の部品だけ)。道具のクラスは
  * 受けて使うだけで、判定を求める者を受ける口には {@see self::requester()} を渡す。
  */
 final readonly class AgentToolSubject

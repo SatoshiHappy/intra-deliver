@@ -14,33 +14,23 @@ use Tests\TestCase;
  */
 final class DefaultInstructionTextsTest extends TestCase
 {
-    /** 文に出さない英語の語(大文字小文字を問わず語の境で見る) */
+    use ChecksModelTexts;
+
+    /** 文に出さない英語の語(接続先の会社と製品の名前と、コーディングの語。大文字小文字を問わず語の境で見る) */
     private const FORBIDDEN_WORDS = [
-        'Claude', 'Anthropic', 'OpenAI', 'ChatGPT', 'GPT', 'Gemini', 'Google', 'Mistral', 'Bedrock', 'Azure',
+        ...self::VENDOR_WORDS,
         'git', 'GitHub', 'shell', 'bash', 'terminal', 'CLI', 'command line', 'repository', 'repo', 'codebase', 'code',
         'pull request', 'commit', 'IDE',
     ];
 
     /** 文に出さない日本語の語(上の英語の語のカタカナの言い方。前と後ろの字がカタカナでない所で見る) */
     private const FORBIDDEN_KATAKANA_WORDS = [
-        'クロード', 'アンソロピック', 'アンスロピック', 'オープンエーアイ', 'チャットジーピーティー', 'ジェミニ', 'グーグル',
-        'ミストラル', 'ベッドロック', 'アジュール', 'ギット', 'ギットハブ', 'シェル', 'バッシュ', 'ターミナル', 'コマンドライン',
+        ...self::VENDOR_KATAKANA_WORDS,
+        'ギット', 'ギットハブ', 'シェル', 'バッシュ', 'ターミナル', 'コマンドライン',
         'リポジトリ', 'コードベース', 'コード', 'ソースコード', 'プルリクエスト', 'コミット',
     ];
 
-    /** カタカナの字(長音の「ー」を含む。語の境を見る字) */
-    private const KATAKANA = '[\x{30A1}-\x{30FA}\x{30FC}-\x{30FE}]';
-
     private const SOURCE_NOTE = '出どころ = 自前';
-
-    /** 日本語の字(ひらがな・カタカナ・漢字・々) */
-    private const JAPANESE_LETTER = '/[\x{3040}-\x{30FF}\x{3400}-\x{4DBF}\x{4E00}-\x{9FFF}\x{F900}-\x{FAFF}々]/u';
-
-    /** 英語の語(英字だけの語。前後の句読点と所有格を許す。識別子のような英字でない字を含む語は当たらない) */
-    private const ENGLISH_WORD = '/^[("\']?[A-Za-z]+(?:[\'’][A-Za-z]+)?[.,;:!?)"\']*\z/u';
-
-    /** 英語の語がこの数以上、空白だけで続けば英語の文と見る */
-    private const ENGLISH_RUN = 6;
 
     public function test_both_files_carry_the_own_source_note(): void
     {
@@ -76,10 +66,10 @@ final class DefaultInstructionTextsTest extends TestCase
 
     public function test_no_forbidden_word_appears_in_the_texts(): void
     {
-        $this->assertSame([], self::wordProblems(self::allTexts()));
+        $this->assertSame([], self::forbiddenWords(self::allTexts()));
         $this->assertSame(
             ['a の Claude', 'b の git', 'c の pull request', 'd の code', 'e の クロード', 'f の コード', 'g の ソースコード'],
-            self::wordProblems([
+            self::forbiddenWords([
                 'a' => 'You are claude.',
                 'b' => 'Use Git here.',
                 'c' => 'Open a Pull Request.',
@@ -89,7 +79,7 @@ final class DefaultInstructionTextsTest extends TestCase
                 'g' => 'ソースコードを読む。',
             ]),
         );
-        $this->assertSame([], self::wordProblems([
+        $this->assertSame([], self::forbiddenWords([
             'h' => 'A barcode, a digit, a shellfish and a repost.',
             'i' => 'レコードを読む。バーコードを付ける。ミストラルソース。',
         ]));
@@ -164,59 +154,6 @@ final class DefaultInstructionTextsTest extends TestCase
     }
 
     /**
-     * 置き換え口と `[...]` の角かっこを除いて、日本語の字を 1 つも含まない文の鍵。
-     *
-     * @param  array<string, string>  $texts
-     * @return list<string>
-     */
-    private static function textsNotInJapanese(array $texts): array
-    {
-        $keys = [];
-
-        foreach ($texts as $key => $text) {
-            $rest = str_replace(['[', ']'], '', self::withoutPlaceholders($text));
-
-            if (preg_match(self::JAPANESE_LETTER, $rest) !== 1) {
-                $keys[] = $key;
-            }
-        }
-
-        return $keys;
-    }
-
-    /**
-     * 置き換え口とバッククォートの中を除いて、英語の語が ENGLISH_RUN 語以上、空白だけで続く所を持つ文の鍵。
-     *
-     * @param  array<string, string>  $texts
-     * @return list<string>
-     */
-    private static function textsWithEnglishRuns(array $texts): array
-    {
-        $keys = [];
-
-        foreach ($texts as $key => $text) {
-            $plain = preg_replace('/`[^`]*`/u', ' ', self::withoutPlaceholders($text)) ?? $text;
-            $run = 0;
-
-            foreach (preg_split('/\s+/u', $plain, -1, PREG_SPLIT_NO_EMPTY) ?: [] as $token) {
-                $run = preg_match(self::ENGLISH_WORD, $token) === 1 ? $run + 1 : 0;
-
-                if ($run >= self::ENGLISH_RUN) {
-                    $keys[] = $key;
-                    break;
-                }
-            }
-        }
-
-        return $keys;
-    }
-
-    private static function withoutPlaceholders(string $text): string
-    {
-        return preg_replace('/\{\{[a-z_]+\}\}/', ' ', $text) ?? $text;
-    }
-
-    /**
      * @param  array<string, string>  $texts
      * @param  array<string, list<string>>  $valueKeys
      * @return list<string>
@@ -230,28 +167,8 @@ final class DefaultInstructionTextsTest extends TestCase
      * @param  array<string, string>  $texts
      * @return list<string>
      */
-    private static function wordProblems(array $texts): array
+    private static function forbiddenWords(array $texts): array
     {
-        $patterns = [];
-
-        foreach (self::FORBIDDEN_WORDS as $word) {
-            $patterns[$word] = '/\b'.str_replace(' ', '\s+', preg_quote($word, '/')).'\b/i';
-        }
-
-        foreach (self::FORBIDDEN_KATAKANA_WORDS as $word) {
-            $patterns[$word] = '/(?<!'.self::KATAKANA.')'.preg_quote($word, '/').'(?!'.self::KATAKANA.')/u';
-        }
-
-        $problems = [];
-
-        foreach ($texts as $key => $text) {
-            foreach ($patterns as $word => $pattern) {
-                if (preg_match($pattern, $text) === 1) {
-                    $problems[] = "{$key} の {$word}";
-                }
-            }
-        }
-
-        return $problems;
+        return self::wordProblems($texts, self::FORBIDDEN_WORDS, self::FORBIDDEN_KATAKANA_WORDS);
     }
 }

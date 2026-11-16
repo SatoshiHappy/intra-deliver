@@ -2,6 +2,7 @@
 
 namespace App\Actions\Ai\Tools\Records;
 
+use App\Actions\Ai\Api\AgentToolParties;
 use App\Actions\Ai\Api\AgentToolResult;
 use App\Actions\Ai\Api\AgentToolScope;
 use App\Actions\Ai\Api\AgentToolSubject;
@@ -28,8 +29,12 @@ final class ReadsRecord extends RecordToolBase
         return 'レコードを読む';
     }
 
-    public function execute(array $arguments, AgentToolSubject $subject, AgentToolScope $scope): AgentToolResult
-    {
+    public function execute(
+        array $arguments,
+        AgentToolSubject $subject,
+        AgentToolScope $scope,
+        AgentToolParties $parties,
+    ): AgentToolResult {
         $module = $this->moduleOf($arguments) ?? '';
         $recordId = is_int($arguments['id'] ?? null) ? $arguments['id'] : 0;
         $requester = $this->requesterOf($subject);
@@ -38,7 +43,7 @@ final class ReadsRecord extends RecordToolBase
             return AgentToolResult::notFound();
         }
 
-        $values = $this->display->show($requester, $recordId, $subject->date(), $subject->localeCode());
+        $values = $this->display->detail($requester, $recordId, $subject->date(), $subject->localeCode());
 
         return new AgentToolResult(['record' => new RecordMarker($module, $recordId), 'values' => $values]);
     }

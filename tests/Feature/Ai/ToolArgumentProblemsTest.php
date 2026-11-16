@@ -101,6 +101,16 @@ final class ToolArgumentProblemsTest extends TestCase
         $this->assertSame(['items.1: 型が違う(integer)'], self::problems($shape, ['items' => [1, '2']]));
     }
 
+    /** 列挙の形は、選べる値に無い値を誤りにして選べる値を並べる(リストの要素も)。型の違う値は型の違いだけ */
+    public function test_a_value_outside_the_enum_is_a_problem(): void
+    {
+        $shape = fn (JsonSchema $s): array => ['parts' => $s->array()->items($s->string()->enum(['a', 'b']))];
+
+        $this->assertSame([], self::problems($shape, ['parts' => ['a', 'b']]));
+        $this->assertSame(['parts.1: 選べない値(選べる値: a・b)'], self::problems($shape, ['parts' => ['a', 'c']]));
+        $this->assertSame(['parts.0: 型が違う(string)'], self::problems($shape, ['parts' => [1]]));
+    }
+
     /** 並び = schema の鍵の順(深さ優先)の欠けと型の違い、その後に引数の順の知らない鍵(最上位だけ) */
     public function test_problems_follow_the_schema_order_then_the_unknown_keys(): void
     {

@@ -170,7 +170,7 @@ services:
         tags:
             - phpat.test
 
-    # 機械検査 (b) 道具の名前空間と判定の関数の名前空間が依存できる口(docs の 設計/業務ツール/機械検査.md、正本 = 設計/AI/道具と権限/道具の判定と今の権限.md の 10.4。
+    # 機械検査 (b) 道具の名前空間と判定の関数の名前空間が依存できる口(docs の 設計/業務ツール/機械検査.md、正本 = 設計/AI/道具と権限/読み書きのたびの今の権限.md の 10.4。
     # 一覧と規則 = tests/Architecture/Policy/AgentToolDependencies.php)
     -
         class: Tests\Architecture\Policy\AgentToolDependencies

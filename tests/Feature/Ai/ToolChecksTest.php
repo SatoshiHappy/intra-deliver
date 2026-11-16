@@ -7,6 +7,7 @@ use App\Actions\Ai\ToolCalls\AgentTools;
 use App\Actions\Ai\ToolCalls\ToolResultText;
 use App\Enums\Ai\AiInstructionTemplate;
 use App\Enums\Ai\AiToolAction;
+use App\Enums\Ai\AiToolPartyForm;
 use Closure;
 use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\Support\Facades\Artisan;
@@ -86,6 +87,14 @@ final class ToolChecksTest extends TransactionalTestCase
                     'v' => $s->object(fn (JsonSchema $s) => ['w' => $s->object()->withoutAdditionalProperties()]),
                 ]),
                 [$unreadable('v.w', '余分な鍵の禁止')],
+            ],
+            '相手を名前で書ける引数が形に無い' => [
+                fn () => [new GenericTool('ai_r', parties: ['missing' => AiToolPartyForm::Condition])],
+                [self::generic('ai_r').'の相手を名前で書ける引数 missing が引数の形に無い'],
+            ],
+            '相手を名前で書ける引数が入れ物の入力の形(書く道具の入力の形の引き当てを足すまで)' => [
+                fn () => [new GenericTool('ai_r', parties: ['module' => AiToolPartyForm::Input])],
+                [self::generic('ai_r').'の相手を名前で書ける引数 module は入れ物の入力の形で、まだ引けない'],
             ],
         ];
     }

@@ -6,7 +6,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Architecture\Engine\Finding;
 
 /**
- * 機械検査 (b) の会話の道具の規則(docs の 設計/業務ツール/機械検査.md、正本 = 設計/AI/道具と権限/道具の判定と今の権限.md の 10.4。
+ * 機械検査 (b) の会話の道具の規則(docs の 設計/業務ツール/機械検査.md、正本 = 設計/AI/道具と権限/読み書きのたびの今の権限.md の 10.4。
  * 一覧と規則 = tests/Architecture/Policy/AgentToolDependencies.php)の自己証明。
  * どの違反の例も新しい規則の識別子で見るのは、ほかの規則の指摘で代えて通らないようにするため(抑制の注釈を付けた例を含む)。書き込みの通る例は、
  * 道具の名前空間が登録・更新の口の呼び手の一覧(RecordWriters::CALLERS)にまだ無いので、その規則の指摘だけが残ることを見る。
@@ -47,6 +47,8 @@ final class AgentToolDependenciesSelfProofTest extends PhpStanSelfProofTestCase
             '申請の経路を含めない閲覧の判定' => [self::OPERATION, 'Actions/Ai/Tools/CallsTitleOf.php', 46],
             '抑制の注釈を付けた題の読み取り(消せない)' => [self::OPERATION, 'Actions/Ai/Tools/CallsTitleOf.php', 52],
             '許した口の型を継いだ型の受け手' => [self::OPERATION, 'Actions/Ai/Tools/CallsThroughSubclass.php', 14],
+            '一覧から外した詳細の値の読み取りをインスタンスで呼ぶ' => [self::OPERATION, 'Actions/Ai/Tools/CallsShow.php', 19],
+            '一覧から外した詳細の値の読み取りを callable の配列で渡す' => [self::OPERATION, 'Actions/Ai/Tools/CallsShow.php', 25],
             '受け手が mixed' => [self::OPERATION, 'Actions/Ai/Tools/LooseCalls.php', 17],
             '名前が字句でない' => [self::OPERATION, 'Actions/Ai/Tools/LooseCalls.php', 22],
             '引数の展開' => [self::OPERATION, 'Actions/Ai/Tools/LooseCalls.php', 28],

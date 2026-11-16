@@ -34,12 +34,14 @@ final class ToolGrantJudgements
 
     /**
      * @param  Closure(): bool  $isEffective
+     * @param  list<string>  $markerForms  会話の印の形(説明に入れる名前の写しに当てる = {@see ShownDefinitions})
      */
     public function __construct(
         private readonly RecordModuleDirectory $directory,
         private readonly RecordFormQuery $forms,
         private readonly Closure $isEffective,
         private readonly AgentToolSubject $subject,
+        private readonly array $markerForms,
     ) {}
 
     public function granted(AgentTools $tools, AiAgentDefinition $definition): GrantedTools
@@ -98,7 +100,7 @@ final class ToolGrantJudgements
     }
 
     /**
-     * 範囲が空でない道具に、範囲の業務モジュールの名前と定義を添える(A2 は渡さない)。
+     * 範囲が空でない道具に、範囲の業務モジュールの名前と定義と、説明用の名前の写しを添える(A2 は渡さない)。
      *
      * @param  list<array{AgentTool, list<string>|null}>  $ranges
      * @return list<GrantedTool>
@@ -110,15 +112,21 @@ final class ToolGrantJudgements
 
         foreach ($ranges as [$tool, $codes]) {
             $modules = [];
+            $shown = [];
 
             foreach ($codes ?? [] as $code) {
                 if (isset($definitions[$code])) {
-                    $modules[$code] = ['name' => $this->modules()[$code], 'definition' => $definitions[$code]];
+                    $name = $this->modules()[$code];
+                    $modules[$code] = ['name' => $name, 'definition' => $definitions[$code]];
+                    $shown[$code] = [
+                        'name' => ConversationMarkerBreaker::broken($name, $this->markerForms),
+                        'definition' => ShownDefinitions::of($definitions[$code], $this->markerForms),
+                    ];
                 }
             }
 
             if ($codes === null || $modules !== []) {
-                $granted[] = new GrantedTool($tool, new AgentToolScope($modules));
+                $granted[] = new GrantedTool($tool, new AgentToolScope($modules, $shown));
             }
         }
 
