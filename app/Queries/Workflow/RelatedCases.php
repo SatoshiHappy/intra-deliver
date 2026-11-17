@@ -35,10 +35,10 @@ class RelatedCases
     ) {}
 
     /**
-     * 群の並び(空の群は入れない)。recordAccess(申請書のレコードを閲覧できるか = 申請の詳細の recordAccess)が偽なら申請書のレコードからはたどらない。
-     * 申請書の値は、recordAccess が真なら今の値、偽なら最後の申請の写しの値(申請対象の項目を読むため。申請書は申請の後に変わらないので同じ値)。
+     * 群の並び(空の群は入れない)。申請書のレコードはいつも起点にする(申請の詳細を開ける人は申請書のレコードをいつも閲覧できる =
+     * 設計/ワークフロー/申請の周辺/申請の内容の閲覧.md の 2 節)。
      *
-     * @param  array<string, mixed>  $values  申請書のレコードの値(項目のコード → 画面の値)
+     * @param  array<string, mixed>  $values  申請書のレコードの今の値(項目のコード → 画面の値。申請対象の項目を読むため)
      * @return list<RelatedGroup>
      */
     public function of(
@@ -46,14 +46,13 @@ class RelatedCases
         DateTimeInterface $date,
         string $localeCode,
         WorkflowCase $case,
-        bool $recordAccess,
         array $values,
     ): array {
         $recordId = $case->record_id ?? throw new LogicException("申請した案件 {$case->id} がレコードを指していない");
         $modules = RecordModule::query()->whereNull('parent_record_module_id')->get(['id', 'code', 'name']);
         $moduleCodes = array_map(strval(...), $modules->pluck('code', 'id')->all());
         $moduleNames = array_map(strval(...), $modules->pluck('name', 'code')->all());
-        $application = $recordAccess ? $this->applicationOrigin($recordId, $moduleCodes, $moduleNames) : null;
+        $application = $this->applicationOrigin($recordId, $moduleCodes, $moduleNames);
         $applicationTargetOrigin = $this->applicationTargetOrigin(
             $requester, $date, $case, $values, $moduleCodes, $moduleNames,
         );
@@ -63,7 +62,7 @@ class RelatedCases
     }
 
     /**
-     * 申請書のレコードの起点(呼び手が recordAccess を確かめてから呼ぶ)。
+     * 申請書のレコードの起点(呼び手が申請の閲覧を判定してから呼ぶ)。
      *
      * @param  array<int, string>  $moduleCodes  業務モジュールの id → コード
      * @param  array<string, string>  $moduleNames  業務モジュールのコード → 名前

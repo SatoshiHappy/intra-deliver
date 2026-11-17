@@ -5,6 +5,8 @@ namespace Tests\Feature\Http\Controllers\Web\Workflow;
 use App\Actions\Records\RecordRevisionWriter;
 use App\Enums\Records\RecordModuleAction;
 use App\Enums\Records\RecordRevisionAction;
+use App\Enums\Workflow\WorkflowCaseState;
+use App\Enums\Workflow\WorkflowCompletionReason;
 use App\Models\Records\Record;
 use App\Models\Records\RecordAttachment;
 use App\Models\Records\RecordField;
@@ -15,15 +17,17 @@ use App\Queries\Workflow\CaseShowProps;
 use Illuminate\Testing\TestResponse;
 use Inertia\Inertia;
 use Inertia\Support\Header;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Symfony\Component\HttpFoundation\Response;
 use Tests\Support\BuildsRecordModules;
 use Tests\Support\TransactionalTestCase;
 use Tests\Support\UsesSeededRecords;
 
 /**
- * 申請の詳細の伏せ方(docs の 設計/業務データの入れ物/レコードの共通機能/詳細の画面/申請の詳細.md の 4.2 節・6 節、検査 = 8 節の「伏せ方」「入口の名前」
- * 「伏せる props」): 見本の WF-000001(完了。申請者 u0001 = 作成者、承認 u0002)と WF-000005(未完了。課長 u0002 が承認待ち)。申請書のレコードは
- * 参照制限の既定が「する」なので、u0002 は業務モジュールの read があっても行の判定を通らない(申請の経路だけで見る人)。
+ * 申請の詳細のレコードの中身(docs の 設計/業務データの入れ物/レコードの共通機能/詳細の画面/申請の詳細.md の 4.2 節・6 節、検査 = 8 節の「完了の後の見え方」):
+ * 申請を閲覧できる人には、完了の前も後も同じ中身(詳細タブ・参照制限・関連レコード・サイドパネル)が出る。見本の WF-000001(完了。申請者 u0001 =
+ * 作成者、承認 u0002)と WF-000005(未完了。課長 u0002 が承認待ちで、前に処理した履歴の行も持つ)。申請書のレコードは参照制限の既定が「する」なので、
+ * u0002 は業務モジュールの read があっても行の判定を通らない(申請の経路だけで見る人)。read を外した形も確かめる。
  */
 final class CaseShowRecordAccessTest extends TransactionalTestCase
 {
@@ -39,7 +43,6 @@ final class CaseShowRecordAccessTest extends TransactionalTestCase
 
     /**
      * 未完了の申請の課長は申請の経路だけで見る人で、詳細タブの今の値に参照制限の今の値 rowAccess が載る(レコードの詳細の record と同じ形)。
-     * recordAccess が偽のときに content が null になることは、完了の後のテストが確かめる。
      */
     public function test_an_approver_of_an_active_case_sees_the_record_through_the_application(): void
     {
@@ -48,75 +51,75 @@ final class CaseShowRecordAccessTest extends TransactionalTestCase
 
         $props = $this->props($this->get($this->url($case)));
 
-        $this->assertTrue($props['recordAccess']);
         $this->assertSame($case->record_id, $props['content']['record']['id'] ?? null);
         $rowAccess = $props['content']['record']['rowAccess'] ?? null;
         $this->assertSame(['restricted', 'viewers'], array_keys($rowAccess ?? []));
         $this->assertTrue($rowAccess['restricted'] ?? null);
         $this->assertContains('comments', array_column($props['panel']['items'] ?? [], 'key'));
-        $this->assertSame([null, null], [$props['submittedRecord'], $props['maskedRelatedTab']]);
     }
 
     /**
-     * 完了の後は、詳細タブ・明細の札は最後の申請・再申請の時点の写しで、テストで持ち主の規則を通らずに後から書いた値・今の定義の項目名は載らない。
-     * レコードの層は表の偽のときの値。作成者は read と行の判定を通るので今の値を見るが、read を外すと写しになる。
+     * @return array<string, array{bool}>
      */
-    public function test_a_completed_case_shows_the_snapshot_to_a_participant_who_cannot_view_the_record(): void
+    public static function moduleReads(): array
+    {
+        return ['read はあるが行の判定を通らない' => [true], 'read が無い' => [false]];
+    }
+
+    /**
+     * 申請が完了しても、申請の関係者の詳細タブ・参照制限・関連レコード・サイドパネル(帯と開いた欄)は未完了の間と同じ(全体の応答と、欄ごとの
+     * 部分の再読み込み)。完了の後に書いたコメントも出る。
+     */
+    #[DataProvider('moduleReads')]
+    public function test_a_participant_sees_the_same_record_after_the_case_is_completed(bool $read): void
+    {
+        $case = $this->caseOf(5);
+        $application = RecordModule::query()->where('code', $this->moduleCodeOf($case))->sole();
+        $this->referenceField($this->recordModule('case_notes'), 'plan', $application);
+        if (! $read) {
+            $this->deny($this->moduleCodeOf($case), RecordModuleAction::Read);
+        }
+        $this->actingAsUser('u0002');
+        $before = $this->recordLayerOf($case);
+
+        $this->complete($case);
+        $after = $this->recordLayerOf($case);
+
+        $this->assertNotSame([], $before['full']['relatedRecords']['entries'] ?? []);
+        $this->assertNotSame([], $before['full']['panel']['items'] ?? []);
+        $this->assertSame($before, $after);
+        $url = "/records/data/{$this->moduleCodeOf($case)}/{$case->record_id}/comments";
+        $this->from($this->url($case))->post($url, ['body' => '完了の後のコメント'])->assertStatus(303);
+        $comments = $this->recordLayerOf($case)['comments']['rows'] ?? [];
+        $this->assertContains('完了の後のコメント', array_column($comments, 'body'));
+    }
+
+    /**
+     * 完了の後も詳細タブは今の値で、項目名も今の名前(申請した時点の名前は更新履歴で分かる。テストで持ち主の規則を通らずに値と名前を変える)。
+     */
+    public function test_a_completed_case_shows_the_current_values_and_names(): void
     {
         $case = $this->caseOf(1);
         $budget = $this->fieldOf($case, 'budget');
-        $before = Record::query()->findOrFail($case->record_id)->field_values[$budget->id] ?? null;
         $this->rewrite($case, $budget, 987_654_321);
         $budget->update(['name' => '今の名前の予算']);
         $this->actingAsUser('u0002');
 
-        $response = $this->get($this->url($case));
-        $props = $this->props($response);
+        $props = $this->props($this->get($this->url($case)));
 
-        $this->assertFalse($props['recordAccess']);
-        $masked = array_diff_key(CaseShowProps::RECORD_LAYER, array_flip(CaseShowProps::OPTIONAL));
-        $this->assertSame($masked, array_intersect_key($props, CaseShowProps::RECORD_LAYER));
-        $this->assertSame($before, $props['submittedRecord']['values']['budget'] ?? null);
-        $this->assertStringNotContainsString('987654321', (string) $response->getContent());
-        $this->assertStringNotContainsString('今の名前の予算', (string) $response->getContent());
-
-        $this->actingAsUser('u0001');
-        $current = $this->props($this->get($this->url($case)))['content']['record']['values'] ?? [];
-        $this->assertSame(987_654_321, $current['budget'] ?? null);
-        $this->deny($this->moduleCodeOf($case), RecordModuleAction::Read);
-        $this->assertFalse($this->props($this->get($this->url($case)))['recordAccess']);
+        $this->assertSame(987_654_321, $props['content']['record']['values']['budget'] ?? null);
+        $this->assertStringContainsString('今の名前の予算', (string) json_encode($props['content'], JSON_UNESCAPED_UNICODE));
     }
 
     /**
-     * 表のレコードの層の props を 1 つずつ求めた部分の再読み込みでも、偽のときの値だけが返る(recordAccess はいつも返る)。写しの層は中身。
+     * 申請の詳細の props は申請の層かレコードの層のどれかに載る(表に無い props を足すと落ちる。全部の画面に共有の props は除く)。未完了と完了で
+     * 同じ名前が並ぶ(完了の後だけの props は無い)。
      */
-    public function test_each_record_layer_prop_of_a_partial_reload_is_masked(): void
-    {
-        $case = $this->caseOf(1);
-        $this->actingAsUser('u0002');
-        $query = ['panel' => 'comments', 'tab' => 'related', 'related' => 'x', 'relatedPage' => '1'];
-
-        foreach (CaseShowProps::RECORD_LAYER as $key => $masked) {
-            $props = $this->props($this->partial($case, $key, $query));
-
-            $this->assertSame([$key => $masked, 'recordAccess' => false], $props, $key);
-        }
-
-        $snapshot = $this->props($this->partial($case, 'submittedRecord,maskedRelatedTab', $query));
-        $this->assertNotNull($snapshot['submittedRecord']);
-        $this->assertNull($snapshot['maskedRelatedTab']);
-    }
-
-    /**
-     * 申請の詳細の props は表の層のどれかに載る(表に無い props を足すと落ちる。全部の画面に共有の props は除く)。
-     */
-    public function test_every_prop_of_the_page_is_in_the_table_of_the_layers(): void
+    public function test_every_prop_of_the_page_is_in_the_layers(): void
     {
         $expected = [
             ...CaseShowProps::CASE_LAYER,
-            ...array_diff(array_keys(CaseShowProps::RECORD_LAYER), CaseShowProps::OPTIONAL),
-            ...CaseShowProps::SNAPSHOT_LAYER,
-            'recordAccess',
+            ...array_diff(CaseShowProps::RECORD_LAYER, CaseShowProps::OPTIONAL),
         ];
         sort($expected);
 
@@ -127,24 +130,6 @@ final class CaseShowRecordAccessTest extends TransactionalTestCase
 
             $this->assertSame($expected, $keys, "{$user} WF-{$number}");
         }
-    }
-
-    /**
-     * 閲覧できない人の関連レコードのタブは、見える入口があるときだけ名前で返り、件数を持たない(relatedRecords は null)。
-     */
-    public function test_the_masked_related_tab_carries_no_count(): void
-    {
-        $case = $this->caseOf(1);
-        $application = RecordModule::query()->where('code', $this->moduleCodeOf($case))->sole();
-        $this->referenceField($this->recordModule('case_notes'), 'plan', $application);
-        $this->actingAsUser('u0002');
-
-        $props = $this->props($this->get($this->url($case)));
-
-        $this->assertSame(
-            [['key' => 'related', 'name' => '関連レコード'], null],
-            [$props['maskedRelatedTab'], $props['relatedRecords']],
-        );
     }
 
     /**
@@ -224,6 +209,38 @@ final class CaseShowRecordAccessTest extends TransactionalTestCase
         $record = Record::query()->findOrFail($case->record_id);
 
         return RecordField::query()->where('record_module_id', $record->record_module_id)->where('code', $code)->sole();
+    }
+
+    /**
+     * 申請を完了させる(承認。処理の業務処理を通さずに状態だけを変える)。
+     */
+    private function complete(WorkflowCase $case): void
+    {
+        WorkflowCase::query()->whereKey($case->id)->update([
+            'state' => WorkflowCaseState::Completed,
+            'completion_reason' => WorkflowCompletionReason::Approved,
+            'completed_at' => now(),
+        ]);
+    }
+
+    /**
+     * レコードの層(全体の応答の分と、関連レコードのタブとサイドパネルの欄ごとの部分の再読み込みの分)。
+     *
+     * @return array<string, mixed>
+     */
+    private function recordLayerOf(WorkflowCase $case): array
+    {
+        $layer = ['full' => array_intersect_key(
+            $this->props($this->get($this->url($case))),
+            array_flip(CaseShowProps::RECORD_LAYER),
+        )];
+        $layer['relatedRecordRows'] = $this->props($this->partial($case, 'relatedRecordRows', ['tab' => 'related']));
+
+        foreach (['attachments', 'comments', 'revisions'] as $panel) {
+            $layer[$panel] = $this->props($this->partial($case, 'panelContent', ['panel' => $panel]))['panelContent'];
+        }
+
+        return $layer;
     }
 
     /**

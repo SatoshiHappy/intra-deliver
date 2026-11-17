@@ -19,7 +19,6 @@ use Tests\Support\TransactionalTestCase;
 /**
  * 更新履歴の版の読み取りの公開の口(docs の 設計/業務データの入れ物/レコードの共通機能/更新履歴.md の 4.1 節の表): 最新の版の id と、その版より後の版の有無と、
  * 同じレコードの版 2 つの差分(内部の 1 か所 {@see RecordRevisionDiff::between()})。無いレコード・明細の行・無い版・別のレコードの版は 404。
- * 版の写しの形は RecordRevisionViewTest。
  */
 final class RecordRevisionQueryTest extends TransactionalTestCase
 {

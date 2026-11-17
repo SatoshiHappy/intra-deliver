@@ -20,7 +20,7 @@ use Tests\Support\TransactionalTestCase;
 /**
  * 申請の詳細の props canCopy(docs の 設計/ワークフロー/申請の周辺/既存のデータからの申請/案件からの複製/検査.md の 14 節の 12.2):
  * 見本の案件の未完了・完了(承認・承認終了・否認・取止め)のそれぞれで、申請者が開いた詳細に判定({@see CaseCopyability})の値で載る。
- * recordAccess が偽の詳細にも載る。部分の再読み込みでは組まない(判定を呼ばない)。
+ * 申請書のレコードを申請の経路だけで見る人の詳細にも載る。部分の再読み込みでは組まない(判定を呼ばない)。
  */
 final class CaseShowCopyButtonTest extends TransactionalTestCase
 {
@@ -55,16 +55,17 @@ final class CaseShowCopyButtonTest extends TransactionalTestCase
     }
 
     /**
-     * 申請書のレコードを申請の経路だけで見る人(recordAccess が偽)の詳細にも載る。申請できない人には偽。
+     * 申請書のレコードを申請の経路だけで見る人(完了した申請の承認者。業務モジュールの read はあるが行の判定を通らない)の詳細にも載る。
+     * 申請できない人には偽。
      */
-    public function test_can_copy_is_given_even_when_the_record_is_masked(): void
+    public function test_can_copy_is_given_to_a_participant_who_sees_the_record_through_the_application(): void
     {
         $case = WorkflowCase::query()->findOrFail($this->caseNumbered(1));
         $this->actingAsUser('u0002');
 
         $props = $this->propsOf($this->get("/workflow/cases/{$case->id}"));
 
-        $this->assertFalse($props['recordAccess']);
+        $this->assertSame($case->record_id, $props['content']['record']['id'] ?? null);
         $this->assertTrue($props['canCopy']);
 
         $this->forbidCopy();

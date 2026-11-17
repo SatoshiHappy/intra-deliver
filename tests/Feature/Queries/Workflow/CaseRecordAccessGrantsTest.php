@@ -4,26 +4,32 @@ namespace Tests\Feature\Queries\Workflow;
 
 use App\Enums\Authz\SelectionConditionKind;
 use App\Enums\Workflow\WorkflowAction;
+use App\Enums\Workflow\WorkflowCaseState;
 use App\Enums\Workflow\WorkflowCompletionReason;
 use App\Models\Master\User;
+use App\Models\Records\Record;
 use App\Models\Workflow\WorkflowCase;
 use App\Models\Workflow\WorkflowCaseConfirmTarget;
 use App\Models\Workflow\WorkflowFlow;
 use App\Queries\Authz\Api\Requester;
+use App\Queries\Workflow\CaseDetailQuery;
 use App\Queries\Workflow\CaseRecordAccessGrants;
+use App\Support\AccessContext;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Support\Facades\DB;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Feature\Http\Controllers\Web\Workflow\UsesSeededCases;
 use Tests\Support\BuildsWorkflowCases;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * 申請の経路のレコードの閲覧(docs の 設計/ワークフロー/申請の周辺/申請の内容の閲覧.md の 1 節、検査 = 3 節の 1 つ目): 未完了の申請の 5 つの述語
- * (未処理・処理済・参照・確認・管理)のそれぞれで申請の詳細の URL が返る。一時保存はレコードを持たず対象にならない。完了・取止めの申請は返らない。
- * ほかの申請のレコード・無い id を混ぜても見られるものだけが返る。集合を 1 回で判定する(問い合わせの数がレコードの数で増えない)。
+ * 申請の経路のレコードの閲覧(docs の 設計/業務データの入れ物/レコードの共通機能/認可と初期データ.md の 1.2 節の表の各行。検査 =
+ * 設計/ワークフロー/申請の周辺/申請の内容の閲覧.md の 3 節の 1 つ目)。述語ごとに申請の詳細の入口({@see CaseDetailQuery::visibleCase()})と
+ * 同じ結果になることを比べる。表の「起きない」行を止める制約のテストは tests/Feature/Models/Workflow/WorkflowCaseTest。
  * A = u0001(申請者)、B = u0002(処理済)、C = u0003(未処理)、F = u0006(確認する人)、R = u0005(参照者)、
- * M = u0004(システム管理者 = 管理。見本の WF-000005 で確かめる)。
+ * M = u0004(システム管理者 = 管理。見本の WF-000005(未完了)と WF-000001(完了)で確かめる)。
  */
 final class CaseRecordAccessGrantsTest extends TransactionalTestCase
 {
@@ -32,68 +38,98 @@ final class CaseRecordAccessGrantsTest extends TransactionalTestCase
 
     private const DATE = '2026-10-13';
 
-    public function test_each_of_the_five_predicates_of_an_active_case_grants_the_url_of_the_case(): void
+    /**
+     * 申請の状態(null = 未完了、ほか = 完了の理由)。
+     *
+     * @return array<string, array{WorkflowCompletionReason|null}>
+     */
+    public static function states(): array
     {
-        [$a, $b, $c, $r, $m, $f] = $this->seededUsers('u0001', 'u0002', 'u0003', 'u0005', 'u0004', 'u0006');
-        $case = $this->activeCase($this->flow($this->selection(SelectionConditionKind::User, $r->id)), $a);
-        [$apply, $approve1, $approve2] = $this->caseNodes($case, 3);
-        $this->process($apply, $a, WorkflowAction::Apply);
-        $this->process($approve1, $b, WorkflowAction::Approve);
-        $this->reach($approve2, $c);
-        WorkflowCaseConfirmTarget::factory()->create([
-            'workflow_case_id' => $case->id, 'user_id' => $f->id,
-        ]);
-        $expected = [(int) $case->record_id => route('workflow.cases.show', ['case' => $case->id])];
+        return [
+            '未完了' => [null],
+            '完了(承認)' => [WorkflowCompletionReason::Approved],
+            '完了(承認終了)' => [WorkflowCompletionReason::ApprovedEarly],
+            '完了(否認)' => [WorkflowCompletionReason::Rejected],
+            '完了(取止め)' => [WorkflowCompletionReason::Withdrawn],
+        ];
+    }
 
-        foreach (['未処理' => $c, '処理済' => $b, '参照' => $r, '確認' => $f] as $predicate => $user) {
-            $this->assertSame($expected, $this->granted($user, [(int) $case->record_id]), $predicate);
+    #[DataProvider('states')]
+    public function test_each_predicate_grants_the_url_of_the_case_while_it_can_view_the_case(
+        ?WorkflowCompletionReason $reason,
+    ): void {
+        [$case, $users] = $this->participantsCase($reason);
+        $recordId = (int) $case->record_id;
+        $url = [$recordId => route('workflow.cases.show', ['case' => $case->id])];
+        $active = $reason === null;
+
+        $this->assertSame($active ? $url : [], $this->granted($users['未処理'], [$recordId]), '未処理');
+
+        foreach (['処理済', '参照', '確認'] as $predicate) {
+            $this->assertSame($url, $this->granted($users[$predicate], [$recordId]), $predicate);
         }
 
-        // 管理の述語はフローの workflow-flow の read(テストで作ったフローにはリソースが無いので、見本のフローの未完了の申請で確かめる)
-        $seeded = WorkflowCase::query()->findOrFail($this->caseNumbered(5));
+        $seeded = $this->seededCase($reason);
         $this->assertSame(
             [(int) $seeded->record_id => route('workflow.cases.show', ['case' => $seeded->id])],
-            $this->granted($m, [(int) $seeded->record_id]),
+            $this->granted($users['管理'], [(int) $seeded->record_id]),
             '管理',
         );
-
-        $this->assertSame([], $this->granted($this->seededUsers('u0007')[0], [(int) $case->record_id]), '関わらない人');
-        $this->assertSame([], $this->granted(null, [(int) $case->record_id]), 'ゲスト');
+        $this->assertSame([], $this->granted($users['関わらない人'], [$recordId]), '関わらない人');
+        $this->assertSame([], $this->granted(null, [$recordId]), 'ゲスト');
     }
 
     /**
-     * 完了(承認)・取止めの申請は、関係者にも返らない。一時保存はレコードを持たないので、申請者の一時保存は経路にならない。
+     * 同値の検査(申請の内容の閲覧.md の 3 節の 1 つ目): 述語ごとに、一時保存でない申請で、URL が返る ⇔ 申請の詳細の入口が申請を見せる
+     * (入口の判定と比べる。CaseVisibility とだけ比べると、入口に足された条件のずれを拾わない)。
      */
-    public function test_a_completed_a_withdrawn_and_a_draft_case_grant_nothing(): void
-    {
-        [$a, $b] = $this->seededUsers('u0001', 'u0002');
-        $completed = $this->processedCase(WorkflowCase::factory()->completed(), $a, $b);
-        $withdrawn = $this->processedCase(
-            WorkflowCase::factory()->completed()->state(['completion_reason' => WorkflowCompletionReason::Withdrawn]),
-            $a,
-            $b,
-        );
-        $draft = WorkflowCase::factory()->draft()
-            ->create(['workflow_flow_id' => $this->flow()->id, 'user_id' => $a->id]);
+    #[DataProvider('states')]
+    public function test_the_url_is_granted_exactly_when_the_entry_of_the_case_detail_shows_the_case(
+        ?WorkflowCompletionReason $reason,
+    ): void {
+        [$case, $users] = $this->participantsCase($reason);
+        $seeded = $this->seededCase($reason);
 
-        $this->assertNull($draft->record_id);
-        $this->assertSame([], $this->granted($b, [(int) $completed->record_id, (int) $withdrawn->record_id]));
-        $this->assertSame([], $this->granted($a, [(int) $completed->record_id, (int) $withdrawn->record_id]));
+        foreach ($users as $predicate => $user) {
+            $target = $predicate === '管理' ? $seeded : $case;
+            $granted = $this->granted($user, [(int) $target->record_id]) !== [];
+
+            $this->assertSame($this->shownByEntry($user, $target), $granted, $predicate);
+        }
+
+        $guestGranted = $this->granted(null, [(int) $case->record_id]) !== [];
+        $this->assertSame($this->shownByEntry(null, $case), $guestGranted, 'ゲスト');
     }
 
-    public function test_mixed_ids_return_only_the_records_of_the_visible_active_cases_by_one_set_of_queries(): void
+    /**
+     * 申請の無いレコード(業務レコード・申請していない申請書)には返らない。一時保存はレコードを持たないので、申請者の一時保存は経路にならない。
+     */
+    public function test_a_record_without_a_case_and_a_draft_grant_nothing(): void
+    {
+        [$a] = $this->seededUsers('u0001');
+        $draft = WorkflowCase::factory()->draft()
+            ->create(['workflow_flow_id' => $this->flow()->id, 'user_id' => $a->id]);
+        $record = Record::factory()->create();
+
+        $this->assertNull($draft->record_id);
+        $this->assertSame([], $this->granted($a, [$record->id]));
+    }
+
+    public function test_mixed_ids_return_only_the_records_of_the_visible_cases_by_one_set_of_queries(): void
     {
         [$a, $b, $d] = $this->seededUsers('u0001', 'u0002', 'u0007');
-        $mine = $this->processedCase(WorkflowCase::factory()->active(), $a, $b);
+        $active = $this->processedCase(WorkflowCase::factory()->active(), $a, $b);
+        $completed = $this->processedCase(WorkflowCase::factory()->completed(), $a, $b);
         $others = $this->processedCase(WorkflowCase::factory()->active(), $d, $d);
-        $ids = [(int) $mine->record_id, (int) $others->record_id, 999_999_999];
+        $ids = [(int) $active->record_id, (int) $completed->record_id, (int) $others->record_id, 999_999_999];
 
         $this->granted($b, $ids);
-        $one = $this->countQueries(fn () => $this->granted($b, [(int) $mine->record_id]));
-        $three = $this->countQueries(fn () => $this->granted($b, $ids));
+        $one = $this->countQueries(fn () => $this->granted($b, [(int) $active->record_id]));
+        $four = $this->countQueries(fn () => $this->granted($b, $ids));
 
-        $this->assertSame([(int) $mine->record_id], array_keys($this->granted($b, $ids)));
-        $this->assertSame($one, $three);
+        $visible = [(int) $active->record_id, (int) $completed->record_id];
+        $this->assertSame($visible, array_keys($this->granted($b, $ids)));
+        $this->assertSame($one, $four);
         $this->assertSame(0, $this->countQueries(fn () => $this->granted($b, [])));
     }
 
@@ -110,6 +146,22 @@ final class CaseRecordAccessGrantsTest extends TransactionalTestCase
         return app(CaseRecordAccessGrants::class)->grantedViews($requester, $recordIds, $date);
     }
 
+    /**
+     * 申請の詳細の入口(workflow.cases.show の入口の判定 = {@see CaseDetailQuery::visibleCase()})がその申請を見せるか。
+     */
+    private function shownByEntry(?User $user, WorkflowCase $case): bool
+    {
+        $context = new AccessContext($user?->id, null, null, CarbonImmutable::parse(self::DATE), 'ja');
+
+        try {
+            app(CaseDetailQuery::class)->visibleCase(Requester::fromAccessContext($context), $context, $case->id);
+
+            return true;
+        } catch (ModelNotFoundException) {
+            return false;
+        }
+    }
+
     private function countQueries(callable $action): int
     {
         DB::flushQueryLog();
@@ -119,6 +171,48 @@ final class CaseRecordAccessGrantsTest extends TransactionalTestCase
         DB::disableQueryLog();
 
         return $count;
+    }
+
+    /**
+     * 述語ごとの人が関わる申請(reason が null なら未完了、ほかはその理由で完了): 申請者 A が申請し、B が承認 1 を承認し、承認 2 が C の承認待ちのまま
+     * (完了でも処理対象者の行は残る)。R はフローの参照者、F は確認する人。管理の述語の人 M(見本の申請で確かめる)と関わらない人も返す。
+     *
+     * @return array{WorkflowCase, array<string, User>}
+     */
+    private function participantsCase(?WorkflowCompletionReason $reason): array
+    {
+        $codes = ['u0001', 'u0002', 'u0003', 'u0004', 'u0005', 'u0006', 'u0007'];
+        [$a, $b, $c, $m, $r, $f, $d] = $this->seededUsers(...$codes);
+        $flow = $this->flow($this->selection(SelectionConditionKind::User, $r->id));
+        $factory = $reason === null
+            ? WorkflowCase::factory()->active()
+            : WorkflowCase::factory()->completed()->state(['completion_reason' => $reason]);
+        $case = $factory->createOne(['workflow_flow_id' => $flow->id, 'user_id' => $a->id]);
+        [$apply, $approve1, $approve2] = $this->caseNodes($case, 3);
+        $this->process($apply, $a, WorkflowAction::Apply);
+        $this->process($approve1, $b, WorkflowAction::Approve);
+        $this->reach($approve2, $c);
+        WorkflowCaseConfirmTarget::factory()->create(['workflow_case_id' => $case->id, 'user_id' => $f->id]);
+        $users = ['未処理' => $c, '処理済' => $b, '参照' => $r, '確認' => $f, '管理' => $m, '関わらない人' => $d];
+
+        return [$case, $users];
+    }
+
+    /**
+     * 管理の述語を確かめる見本の申請(フローの workflow-flow の read。テストで作ったフローにはリソースが無い): 未完了は WF-000005、完了は
+     * WF-000001 の完了の理由を渡した理由に替える。
+     */
+    private function seededCase(?WorkflowCompletionReason $reason): WorkflowCase
+    {
+        if ($reason === null) {
+            return WorkflowCase::query()->findOrFail($this->caseNumbered(5));
+        }
+
+        $case = WorkflowCase::query()->findOrFail($this->caseNumbered(1));
+        $this->assertSame(WorkflowCaseState::Completed, $case->state);
+        $case->update(['completion_reason' => $reason]);
+
+        return $case;
     }
 
     /**
@@ -134,12 +228,6 @@ final class CaseRecordAccessGrantsTest extends TransactionalTestCase
         $this->process($approve, $processor, WorkflowAction::Approve);
 
         return $case;
-    }
-
-    private function activeCase(WorkflowFlow $flow, User $applicant): WorkflowCase
-    {
-        return WorkflowCase::factory()->active()
-            ->create(['workflow_flow_id' => $flow->id, 'user_id' => $applicant->id]);
     }
 
     /**

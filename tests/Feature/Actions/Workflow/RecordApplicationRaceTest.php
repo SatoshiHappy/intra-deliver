@@ -13,9 +13,9 @@ use Tests\Support\CatchesValidationErrors;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * 既存のデータからの申請の、0 の確かめの後の競合(docs の 設計/ワークフロー/申請の周辺/既存のデータからの申請/README.md の 4 節の 1・7 節): 確かめの読み取りを
- * 競合の後の形に差し替え(別の申請が入った・レコードが消された)、申請の行の挿入の部分一意索引の違反は 422 record、record_id の外部キーの違反は 404 になり、
- * ほかの制約の違反は捕まえずに上がることを確かめる。どれも何も書かない。
+ * 既存のデータからの申請の、0 の確かめの後の競合(docs の 設計/ワークフロー/申請の周辺/既存のデータからの申請/README.md の 4 節の 1・7 節・8 節): 確かめの
+ * 読み取りを競合の後の形に差し替え(別の申請が入った・入って完了した・レコードが消された)、申請の行の挿入の部分一意索引の違反は 422 record、
+ * record_id の外部キーの違反は 404 になり、ほかの制約の違反は捕まえずに上がることを確かめる。どれも何も書かない。
  */
 final class RecordApplicationRaceTest extends TransactionalTestCase
 {
@@ -33,6 +33,24 @@ final class RecordApplicationRaceTest extends TransactionalTestCase
         $u0001 = $this->seededUser('u0001');
         $record = $this->projectRecord($u0001);
         $this->applyFromRecord($u0001, $record->id);
+        $this->checkAs(held: false, moduleCode: null);
+        $counts = $this->workflowCounts();
+
+        $errors = $this->validationErrors(fn () => $this->applyFromRecord($u0001, $record->id));
+
+        $this->assertSame(['record' => RecordApplicationSteps::HELD], $errors);
+        $this->assertSame($counts, $this->workflowCounts());
+    }
+
+    /**
+     * 完了を挟む競合: 0 の確かめの後に、同じレコードへのほかの申請が入って完了してから申請しても、申請の行の挿入の部分一意索引の違反で 422 record。
+     * 開いたときの版はほかの申請の書き込みの後の版にそろえる(版の確かめに頼らない)。
+     */
+    public function test_an_application_racing_with_another_completed_one_gets_422_record_by_the_unique_index(): void
+    {
+        $u0001 = $this->seededUser('u0001');
+        $record = $this->projectRecord($u0001);
+        $this->complete($this->applyFromRecord($u0001, $record->id));
         $this->checkAs(held: false, moduleCode: null);
         $counts = $this->workflowCounts();
 

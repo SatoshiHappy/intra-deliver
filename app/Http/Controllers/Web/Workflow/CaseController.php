@@ -15,7 +15,7 @@ use Inertia\Support\Header;
 /**
  * 案件一覧 Workflow/CaseIndex(docs の 設計/ワークフロー/案件の運用/画面/案件の画面.md の 2 節。クエリ tab・scope・page・q は読み取りが解釈し、
  * 解釈できない値は既定にする)と、案件の詳細 Workflow/CaseShow(設計/ワークフロー/画面/申請と案件.md 5 節。閲覧できない・一時保存の案件は 404。
- * props の層と伏せ方は {@see CaseShowProps})。
+ * props の組み方は {@see CaseShowProps})。
  */
 class CaseController extends Controller
 {
@@ -41,7 +41,6 @@ class CaseController extends Controller
     public function show(Request $request, string $case): Response
     {
         $props = $this->show->of(AccessContext::of($request), (int) $case, self::showSelectionOf($request));
-        $props['recordAccess'] = Inertia::always($props['recordAccess']);
 
         if (array_key_exists('panelContent', $props)) {
             $panelContent = $props['panelContent'];

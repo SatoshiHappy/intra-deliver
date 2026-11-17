@@ -11,8 +11,7 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 /**
  * 更新履歴の版の写し 2 つの差分を画面の値で返す 1 か所(docs の 設計/業務データの入れ物/レコードの共通機能/更新履歴.md の 5.2 節)。
  * 比べ方は {@see RecordRevisionComparison} に任せ、ここは名前と参照の表示名(設計/業務データの入れ物/認可とメニュー/README.md の
- * 2.4 節)だけを足す。業務モジュールの read は呼び手が判定する。版 1 つの写しの値({@see RecordRevisionViews})も同じ値の作り方を使う
- * (差分と写しで値の形が食い違わないため)。
+ * 2.4 節)だけを足す。業務モジュールの read は呼び手が判定する。
  *
  * @phpstan-import-type ReferenceTarget from RecordValueReader
  * @phpstan-import-type ReferenceValue from RecordValueReader
@@ -111,7 +110,7 @@ class RecordRevisionDiff
      * @param  array<string, ReferenceValue>  $targets
      * @return array<string, mixed>|null
      */
-    public function row(array $entries, ?array $raw, array $options, array $targets): ?array
+    private function row(array $entries, ?array $raw, array $options, array $targets): ?array
     {
         if ($raw === null) {
             return null;
@@ -233,7 +232,7 @@ class RecordRevisionDiff
      * @param  RawRow  $raw
      * @return list<ReferenceTarget>
      */
-    public function rowTargets(array $entries, array $raw): array
+    private function rowTargets(array $entries, array $raw): array
     {
         $targets = [];
 
@@ -250,7 +249,7 @@ class RecordRevisionDiff
      * @param  RevisionCopy  $copy
      * @return array<int, array<string, string>>
      */
-    public function optionsOf(array $copy): array
+    private function optionsOf(array $copy): array
     {
         $options = is_array($copy['labels']['options'] ?? null) ? $copy['labels']['options'] : [];
 

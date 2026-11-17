@@ -1,5 +1,4 @@
-import { Head, router } from '@inertiajs/react';
-import { useEffect, useRef } from 'react';
+import { Head } from '@inertiajs/react';
 import {
     CaseActionDialog,
     useCaseActionDialog,
@@ -12,32 +11,10 @@ import { useRecordSidePanel } from '@/hooks/use-record-side-panel';
 import { useOperationDialog } from '@/hooks/Workflow/use-operation-dialog';
 import { PersonLinksContext } from '@/hooks/Workflow/use-person-links';
 import { showAttachOf } from '@/lib/Workflow/caseActionAttach';
-import {
-    caseLayoutOf,
-    caseRecordModeOf,
-    reloadStepOf,
-} from '@/lib/Workflow/caseRecordMode';
 import { index, show } from '@/routes/workflow/cases';
 import type { WorkflowCaseShowProps } from '@/types';
 
 type Props = WorkflowCaseShowProps;
-
-/**
- * 判定と中身がそろわない形({@link caseRecordModeOf} の reload)になったら全体を読み直す。歩の決め方は {@link reloadStepOf}。
- * 正本 = 設計/業務データの入れ物/レコードの共通機能/詳細の画面/申請の詳細.md の 6 節。
- */
-function useReloadWhenStale(stale: boolean) {
-    const reloaded = useRef(false);
-
-    useEffect(() => {
-        const step = reloadStepOf(stale, reloaded.current);
-
-        reloaded.current = step.reloaded;
-        if (step.reload) {
-            router.reload();
-        }
-    }, [stale]);
-}
 
 /**
  * 申請の詳細(設計/業務データの入れ物/レコードの共通機能/詳細の画面/申請の詳細.md)。処理と申請操作のダイアログを描き分けの外に置くのは、
@@ -47,20 +24,9 @@ export default function CaseShow(props: Props) {
     const { openAction, dialogProps } = useCaseActionDialog();
     const { openOperation, dialogProps: operationDialogProps } =
         useOperationDialog();
-    const mode = caseRecordModeOf(props);
     const panel = useRecordSidePanel(
-        mode.kind === 'live' ? (props.panel?.items ?? []) : [],
+        props.panel?.items ?? [],
         props.panelContent,
-    );
-    useReloadWhenStale(mode.kind === 'reload');
-    const layout = caseLayoutOf(mode);
-    const actionBar = (
-        <CaseActionBar
-            {...props}
-            onOpen={openAction}
-            onOpenOperation={openOperation}
-            placement={layout.actionBar === 'belowHeading' ? 'alone' : 'inCard'}
-        />
     );
 
     return (
@@ -68,20 +34,18 @@ export default function CaseShow(props: Props) {
             <Head title={props.case.name} />
 
             <div className="flex h-full flex-1 flex-col gap-6 p-4">
-                {layout.actionBar === 'belowHeading' ? (
-                    <>
-                        <CaseHeading {...props} />
-                        {actionBar}
-                    </>
-                ) : (
-                    <CaseRecordFrame
-                        show={props}
-                        mode={layout.frame}
-                        panel={panel}
-                        heading={<CaseHeading {...props} />}
-                        footer={actionBar}
-                    />
-                )}
+                <CaseRecordFrame
+                    show={props}
+                    panel={panel}
+                    heading={<CaseHeading {...props} />}
+                    footer={
+                        <CaseActionBar
+                            {...props}
+                            onOpen={openAction}
+                            onOpenOperation={openOperation}
+                        />
+                    }
+                />
             </div>
             <CaseActionDialog {...dialogProps} attach={showAttachOf(props)} />
             <CaseOperationDialog {...operationDialogProps} />

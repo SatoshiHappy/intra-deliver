@@ -23,8 +23,8 @@ class RecordApplicationSteps
     /** 持ち主がある・同じレコードへの別の申請と競合した(422 record) */
     public const HELD = '申請済みのため申請できません';
 
-    /** 同じレコードに未完了の案件を 1 つまでにする部分一意索引 */
-    private const ACTIVE_RECORD_UNIQUE = 'workflow_cases_record_id_unique';
+    /** 同じレコードに一時保存でない案件を 1 つまでにする部分一意索引 */
+    private const RECORD_UNIQUE = 'workflow_cases_record_id_unique';
 
     /** 案件の record_id の外部キー(PostgreSQL の foreign_key_violation の文に名前が入る) */
     private const RECORD_FOREIGN_KEY = 'workflow_cases_record_id_foreign';
@@ -66,7 +66,7 @@ class RecordApplicationSteps
      *
      * @param  array<string, mixed>  $columns  案件の行のほかの列
      *
-     * @throws ValidationException 同じレコードに未完了の案件があるとき(record)
+     * @throws ValidationException 同じレコードに一時保存でない案件があるとき(record)
      * @throws ModelNotFoundException<Record> レコードが無いとき
      * @throws QueryException ほかの制約の違反
      */
@@ -77,7 +77,7 @@ class RecordApplicationSteps
         try {
             return WorkflowCase::query()->create($attributes);
         } catch (UniqueConstraintViolationException $exception) {
-            throw $exception->index === self::ACTIVE_RECORD_UNIQUE ? self::held() : $exception;
+            throw $exception->index === self::RECORD_UNIQUE ? self::held() : $exception;
         } catch (QueryException $exception) {
             throw self::violatesRecordForeignKey($exception)
                 ? (new ModelNotFoundException)->setModel(Record::class, [$recordId])

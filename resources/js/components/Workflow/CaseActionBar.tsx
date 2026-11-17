@@ -28,8 +28,6 @@ type Props = Pick<
 > & {
     onOpen: OpenCaseAction;
     onOpenOperation: OpenCaseOperation;
-    /** inCard = 詳細のカードの下端の中(CaseRecordFrame の MainCard が受ける)、alone = 見出しの下に単独(カードを読み直している間) */
-    placement: 'inCard' | 'alone';
 };
 
 /**
@@ -41,7 +39,7 @@ function BarButton({
     onOpen,
 }: {
     button: ProcessButton;
-    show: Omit<Props, 'onOpen' | 'onOpenOperation' | 'placement'>;
+    show: Omit<Props, 'onOpen' | 'onOpenOperation'>;
     onOpen: OpenCaseAction;
 }) {
     switch (button.kind) {
@@ -78,7 +76,7 @@ function ProcessButtons({
     onOpen,
 }: {
     buttons: ProcessButton[];
-    show: Omit<Props, 'onOpen' | 'onOpenOperation' | 'placement'>;
+    show: Omit<Props, 'onOpen' | 'onOpenOperation'>;
     onOpen: OpenCaseAction;
 }) {
     return (
@@ -103,22 +101,12 @@ function ProcessButtons({
     );
 }
 
-/** inCard はカードの左右の余白(px-5)を打ち消し、カードの幅いっぱいにする */
-const BAR_CLASS = {
-    inCard: 'sticky bottom-0 z-10 -mx-5 flex-wrap',
-    alone: 'sticky bottom-0 z-10 flex-wrap rounded-xl border',
-} as const;
-
 /**
  * 下に固定した処理のボタンの帯(docs の 設計/業務データの入れ物/レコードの共通機能/詳細の画面/申請の詳細.md の 1 節、画面の意匠の方針 14)。
+ * 詳細のカードの下端の中に置き(CaseRecordFrame の MainCard が受ける)、カードの左右の余白(px-5)を打ち消してカードの幅いっぱいにする。
  * 影はカードの下端の印が画面に見えないときだけ付ける(帯の下にまだ中身が続く合図。印を置くためカードの section は relative)。
  */
-export function CaseActionBar({
-    onOpen,
-    onOpenOperation,
-    placement,
-    ...show
-}: Props) {
+export function CaseActionBar({ onOpen, onOpenOperation, ...show }: Props) {
     const { markRef, isBelow } = useEdgeBelow();
     const buttons = processButtonsOf(show);
     const parts = caseBarOf(buttons.length > 0, show.operation);
@@ -129,8 +117,8 @@ export function CaseActionBar({
 
     const bar = (
         <ActionBar
-            raised={placement === 'inCard' && isBelow}
-            className={BAR_CLASS[placement]}
+            raised={isBelow}
+            className="sticky bottom-0 z-10 -mx-5 flex-wrap"
             start={
                 parts.operate === null ? undefined : (
                     <CaseOperationMenu
@@ -150,7 +138,7 @@ export function CaseActionBar({
         </ActionBar>
     );
 
-    return placement === 'inCard' ? (
+    return (
         <>
             {bar}
             <div
@@ -159,7 +147,5 @@ export function CaseActionBar({
                 className="pointer-events-none absolute inset-x-0 bottom-0 h-px"
             />
         </>
-    ) : (
-        bar
     );
 }

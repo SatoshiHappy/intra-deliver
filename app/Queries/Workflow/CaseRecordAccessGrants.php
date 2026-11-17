@@ -9,9 +9,8 @@ use App\Queries\Records\Api\RecordAccessGrants;
 use DateTimeInterface;
 
 /**
- * 申請の経路の実装(docs の 設計/ワークフロー/申請の周辺/申請の内容の閲覧.md の 1 節。口の形 =
- * 設計/業務データの入れ物/レコードの共通機能/認可と初期データ.md の 1.2 節)。起動(App\Providers\AppServiceProvider)が
- * タグ {@see RecordAccessGrants::TAG} で登録する。
+ * 申請の経路の実装(docs の 設計/業務データの入れ物/レコードの共通機能/認可と初期データ.md の 1.2 節と 設計/ワークフロー/申請の周辺/申請の内容の閲覧.md の
+ * 1 節)。申請の詳細を開ける人にだけ URL を返すため、述語は申請の詳細の入口({@see CaseDetailQuery::visibleCase()})と同じものを使う。
  */
 class CaseRecordAccessGrants implements RecordAccessGrants
 {
@@ -26,7 +25,8 @@ class CaseRecordAccessGrants implements RecordAccessGrants
             return [];
         }
 
-        $cases = WorkflowCase::query()->where('state', WorkflowCaseState::Active)->whereIn('record_id', $recordIds);
+        $cases = WorkflowCase::query()->where('state', '<>', WorkflowCaseState::Draft)
+            ->whereIn('record_id', $recordIds);
         $visible = $this->visibility->visible($cases, $requester, $date)->orderBy('id')->get(['id', 'record_id']);
         $views = [];
 

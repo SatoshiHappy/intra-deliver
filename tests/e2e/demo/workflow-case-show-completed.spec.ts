@@ -3,14 +3,16 @@ import type { Page } from '@playwright/test';
 import {
     VIEWERS_NOTE,
     moduleReadEffect,
+    pane,
     rail,
+    railButton,
     tabsCard,
 } from '../support/workflow-case-show';
 import { openApplicationTab, openAs } from '../support/workflow-operations';
 
 // 完了した申請を、業務モジュールを見られない申請者が開いた形(docs の 設計/業務データの入れ物/レコードの共通機能/詳細の画面/申請の詳細.md の 8 節の
-// 「写し(E2E)」)。初期データの見本の完了した申請 WF-000017 を読むだけで、申請書の業務モジュールの read の許可を筋の前に外し、筋の後に初期の形
-// (ゲストユーザと認証済みユーザへの許可)に戻す。
+// 「完了の後(E2E)」)。完了の後も未完了の間と同じ中身(詳細タブ・サイドパネル)が出る。初期データの見本の完了した申請 WF-000017 を読むだけで、
+// 申請書の業務モジュールの read の許可を筋の前に外し、筋の後に初期の形(ゲストユーザと認証済みユーザへの許可)に戻す。
 test.use({ viewport: { width: 1280, height: 720 } });
 test.describe.configure({ mode: 'serial' });
 
@@ -18,10 +20,11 @@ test.describe.configure({ mode: 'serial' });
 const COMPLETED_CASE = 'プロジェクト計画の承認 新規顧客開拓キャンペーン';
 const COMPLETED_PROJECT = '新規顧客開拓キャンペーン';
 
-const SNAPSHOT_NOTICE =
-    '申請が完了したため、最後に申請した時点の内容を表示しています。現在の内容は、このレコードを参照できる人だけが表示できます。';
-const MASKED_NOTICE =
-    '申請が完了したため、内容は、このレコードを参照できる人だけが表示できます。';
+/**
+ * 完了した申請の詳細に出ないことを確かめる文の書き出し(完了の後も中身を出す = docs の 仕様/制限事項/レコードの共通機能.md の
+ * 「完了した申請の中身」の行)
+ */
+const COMPLETED_NOTICE_HEAD = '申請が完了したため';
 
 test.beforeAll(({ artisan }) => {
     artisan(['tinker', '--execute', moduleReadEffect('Deny')]);
@@ -54,7 +57,7 @@ async function openCompleted(page: Page) {
     return heading;
 }
 
-test('申請書の業務モジュールの参照を持たない申請者が完了した申請を開くと、詳細タブに申請の時点の値と 1 行が出て、サイドパネルの帯は出ない', async ({
+test('申請書の業務モジュールの参照を持たない申請者が完了した申請を開くと、詳細タブに今の値が出て、サイドパネルの帯から添付とコメントを開ける', async ({
     page,
 }) => {
     const heading = await openCompleted(page);
@@ -69,31 +72,29 @@ test('申請書の業務モジュールの参照を持たない申請者が完�
         'aria-selected',
         'true',
     );
-    // タブの並びは今の値の形と同じ(詳細 / 申請 / フロー / 参照制限。関連レコードは見える入口があるときだけ最後に伏せて出る)
     const tabs = card.getByRole('tab');
     await expect(tabs.nth(0)).toHaveText('詳細');
     await expect(tabs.nth(1)).toHaveText('申請');
     await expect(tabs.nth(2)).toHaveText('フロー');
     await expect(tabs.nth(3)).toHaveText('参照制限');
     await expect(
-        card.getByText(SNAPSHOT_NOTICE, { exact: true }),
-    ).toBeVisible();
-    await expect(
         card.getByText(COMPLETED_PROJECT, { exact: true }).first(),
     ).toBeVisible();
-    await expect(rail(page)).toHaveCount(0);
-    const masked = page.getByRole('region', {
-        name: 'サイドパネル',
-        exact: true,
-    });
-    await expect(
-        masked.getByText(MASKED_NOTICE, { exact: true }),
-    ).toBeVisible();
-    // 伏せた位置の 1 行には鍵の印が 1 つ付く
-    await expect(masked.getByRole('note').locator('svg')).toHaveCount(1);
+    await expect(page.getByText(COMPLETED_NOTICE_HEAD)).toHaveCount(0);
+
+    // サイドパネルの帯は未完了の間と同じに出る
+    await expect(rail(page)).toBeVisible();
+    await railButton(page, '添付ファイル').click();
+    await expect(pane(page, '添付ファイル')).toContainText(
+        '申請の詳細では、添付ファイルを表示だけできます。追加は処理のダイアログで行います。',
+    );
+    await railButton(page, 'コメント').click();
+    await expect(pane(page, 'コメント')).toContainText(
+        'このコメントはレコードに付き、業務モジュールを参照できる人にも表示されます。',
+    );
 });
 
-test('申請タブは申請の閲覧の判定のまま見え、タブ「参照制限」は申請の時点の写しで、「参照者」の注も出る', async ({
+test('申請タブは申請の閲覧の判定のまま見え、タブ「参照制限」は今の参照制限で、「参照者」の注も出る', async ({
     page,
 }) => {
     await openCompleted(page);

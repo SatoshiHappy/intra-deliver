@@ -13,7 +13,8 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 /**
  * 申請の詳細の関連レコードの props。読み取りはレコードの詳細と同じ公開の口 {@see RecordRelatedQuery} を使う(クエリの解釈をそろえるため。
  * docs の 設計/業務データの入れ物/レコードの共通機能/関連レコード.md の 5 節・7 節、
- * 設計/業務データの入れ物/レコードの共通機能/詳細の画面/申請の詳細.md の 6 節)。
+ * 設計/業務データの入れ物/レコードの共通機能/詳細の画面/申請の詳細.md の 4.2 節・6 節)。口の呼び手の判定(このレコードの閲覧)は、呼び手
+ * ({@see CaseShowProps})の申請の閲覧の判定で満たす。
  *
  * @phpstan-import-type RelatedRows from RecordRelatedQuery
  * @phpstan-import-type RelatedForm from RecordRelatedQuery
@@ -89,18 +90,5 @@ class CaseRelatedRecords
         return is_string($related)
             ? $this->related->form($requester, $recordId, $related, $date, $localeCode)
             : null;
-    }
-
-    /**
-     * maskedRelatedTab: 申請書のレコードを閲覧できない人の関連レコードのタブ(見える入口が無ければ null。件数を持たない =
-     * 入口の名前だけを読む口を呼ぶ)。
-     *
-     * @return array{key: string, name: string}|null
-     *
-     * @throws ModelNotFoundException<Record> レコードが無い・明細の行のとき
-     */
-    public function maskedTab(Requester $requester, int $recordId, DateTimeInterface $date): ?array
-    {
-        return $this->related->entryNames($requester, $recordId, $date) === [] ? null : self::TAB;
     }
 }

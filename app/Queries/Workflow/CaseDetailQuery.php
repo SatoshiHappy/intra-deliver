@@ -14,8 +14,8 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use LogicException;
 
 /**
- * 案件の詳細の申請の層の props(docs の 設計/ワークフロー/画面/申請と案件.md 5 節の Props のうち読み取りの分。層 =
- * 設計/業務データの入れ物/レコードの共通機能/詳細の画面/申請の詳細.md の 6 節の表の「申請」。レコードの層とつながる申請は {@see CaseShowProps})。
+ * 案件の詳細の申請の層の props(docs の 設計/ワークフロー/画面/申請と案件.md 5 節の Props のうち読み取りの分。レコードの層とつながる申請は
+ * {@see CaseShowProps})。
  * 閲覧の判定 {@see CaseVisibility} を最初に行う(見えない・一時保存 → 404)。業務モジュールの read は求めない。
  *
  * 複数の読み取りを同じ改訂に揃えない: 案件の行を最初に読んでその改訂番号を返し、ノード・履歴・レコードはその後に読む(READ COMMITTED)。

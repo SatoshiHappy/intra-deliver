@@ -13,8 +13,8 @@ import {
     openFlowTab,
 } from '../support/workflow-operations';
 
-// 申請の詳細の左のタブとサイドパネル(docs の 設計/業務データの入れ物/レコードの共通機能/詳細の画面/申請の詳細.md の 8 節の「E2E」「写し(E2E)」)。
-// 初期データの見本の案件を読むだけ(処理のダイアログは開いて閉じる)。写しの筋は workflow-case-show-snapshot.spec.ts。
+// 申請の詳細の左のタブとサイドパネル(docs の 設計/業務データの入れ物/レコードの共通機能/詳細の画面/申請の詳細.md の 8 節の「E2E」「完了の後(E2E)」)。
+// 初期データの見本の案件を読むだけ(処理のダイアログは開いて閉じる)。完了の後の筋は workflow-case-show-completed.spec.ts。
 test.use({ viewport: { width: 1280, height: 720 } });
 
 /**

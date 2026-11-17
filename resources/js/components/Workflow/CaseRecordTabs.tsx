@@ -1,20 +1,12 @@
 import { RecordRelatedDialog } from '@/components/RecordRelatedDialog';
 import { RecordDetailTabs } from '@/components/RecordDetailTabs';
-import { RecordRevisionTabs } from '@/components/RecordRevisionTabs';
 import { RecordTabNotice } from '@/components/RecordTabNotice';
 import { CaseApplicationTab } from '@/components/Workflow/CaseApplicationTab';
 import { CaseFlowTab } from '@/components/Workflow/CaseFlowTab';
 import { useRecordRelated } from '@/hooks/use-record-related';
-import type {
-    CaseRecordContent,
-    CaseSubmittedRecord,
-    ShownCaseRecordMode,
-} from '@/lib/Workflow/caseRecordMode';
 import {
     APPLICATION_TAB,
     FLOW_TAB,
-    MASKED_NOTICE,
-    SUBMITTED_SNAPSHOT_NOTICE,
     UPDATED_AFTER_SUBMISSION,
     VIEWERS_NOTE,
 } from '@/lib/Workflow/caseShowTexts';
@@ -24,7 +16,7 @@ import type { WorkflowCaseShowProps } from '@/types';
 
 type Props = WorkflowCaseShowProps;
 
-/** 詳細の後ろに順に差し込む申請タブ(中身は {@link CaseApplicationTab})とフロータブ({@link CaseFlowTab})。今の値の形と写しの形で同じ */
+/** 詳細の後ろに順に差し込む申請タブ(中身は {@link CaseApplicationTab})とフロータブ({@link CaseFlowTab}) */
 function caseTabs(props: Props) {
     return [
         {
@@ -41,16 +33,11 @@ function caseTabs(props: Props) {
 }
 
 /**
- * レコードの今の値で描く左のタブと、関連レコードの「新規」のダイアログ(設計/業務データの入れ物/レコードの共通機能/詳細の画面/申請の詳細.md の 2 節)。
+ * 申請の詳細の左のタブ(レコードの今の値で描く)と、関連レコードの「新規」のダイアログ(設計/業務データの入れ物/レコードの共通機能/詳細の画面/申請の詳細.md の
+ * 2 節。完了の前も後も同じ中身 = 4.2)。
  */
-function LiveTabs({
-    props,
-    content,
-}: {
-    props: Props;
-    content: CaseRecordContent;
-}) {
-    const { module, record } = content;
+export function CaseRecordTabs(props: Props) {
+    const { module, record } = props.content;
     const related = useRecordRelated(
         props.relatedRecords,
         props.relatedRecordRows,
@@ -69,7 +56,7 @@ function LiveTabs({
                 }}
                 extraTabs={caseTabs(props)}
                 fieldsNotice={
-                    content.updatedAfterSubmission && (
+                    props.content.updatedAfterSubmission && (
                         <RecordTabNotice tone="warning">
                             {UPDATED_AFTER_SUBMISSION}
                         </RecordTabNotice>
@@ -87,57 +74,5 @@ function LiveTabs({
                 onClose={related.dialog.close}
             />
         </>
-    );
-}
-
-/**
- * 最後の申請・再申請の時点の値の写しで描く左のタブ(同 4.2。今の値を持たないので、今の値の形と別に組む)。
- */
-function SnapshotTabs({
-    props,
-    submittedRecord,
-}: {
-    props: Props;
-    submittedRecord: CaseSubmittedRecord;
-}) {
-    const { maskedRelatedTab } = props;
-
-    return (
-        <RecordRevisionTabs
-            view={submittedRecord}
-            fieldsNotice={
-                <RecordTabNotice>{SUBMITTED_SNAPSHOT_NOTICE}</RecordTabNotice>
-            }
-            extraTabs={caseTabs(props)}
-            viewersNote={VIEWERS_NOTE}
-            lastTab={
-                maskedRelatedTab === null
-                    ? undefined
-                    : {
-                          key: maskedRelatedTab.key,
-                          label: maskedRelatedTab.name,
-                          body: (
-                              <RecordTabNotice locked>
-                                  {MASKED_NOTICE}
-                              </RecordTabNotice>
-                          ),
-                      }
-            }
-        />
-    );
-}
-
-/**
- * 申請の詳細の左のタブ(設計/業務データの入れ物/レコードの共通機能/詳細の画面/申請の詳細.md の 2 節)。今の値で描くか写しで描くかは
- * 呼び手が決めた mode(その形に要る値を持つ)に従う。
- */
-export function CaseRecordTabs({
-    mode,
-    ...props
-}: Props & { mode: ShownCaseRecordMode }) {
-    return mode.kind === 'live' ? (
-        <LiveTabs props={props} content={mode.content} />
-    ) : (
-        <SnapshotTabs props={props} submittedRecord={mode.submittedRecord} />
     );
 }

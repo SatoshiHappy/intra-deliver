@@ -16,7 +16,7 @@ use Tests\Support\TransactionalTestCase;
 
 /**
  * 案件の制約(docs の 設計/ワークフロー/データモデル/表.md 2.5):
- * 状態ごとに持つ列の組、一時保存の入力が JSON のオブジェクト、改訂番号が負でない、案件名が空でない、同じレコードに未完了の案件は 1 つまで、
+ * 状態ごとに持つ列の組、一時保存の入力が JSON のオブジェクト、改訂番号が負でない、案件名が空でない、同じレコードに一時保存でない案件は 1 つまで、
  * 案件番号の一意、案件番号のシーケンス。段 3a(ワークフロー/データモデル/表.md 2.5): 一時保存だけが写した版と申請基準日を
  * 持たない、申請基準日は特殊値でない、写した版は案件のフローの版。
  */
@@ -31,6 +31,8 @@ final class WorkflowCaseTest extends TransactionalTestCase
     private const COMPLETION = 'workflow_cases_state_completion_reason_completed_at_check';
 
     private const VERSION_BASE_DATE = 'workflow_cases_state_workflow_flow_version_id_base_date_check';
+
+    private const RECORD_UNIQUE = 'workflow_cases_record_id_unique';
 
     /**
      * 状態(factory の状態)・上書きする列・拒む制約。値が Closure の列は factory が書く直前に評価する。
@@ -122,20 +124,52 @@ final class WorkflowCaseTest extends TransactionalTestCase
         $this->assertThrows(fn () => WorkflowCase::factory()->active()->createOne(['workflow_flow_id' => $old->workflow_flow_id, 'base_date' => '2025-03-31']), LogicException::class);
     }
 
-    public function test_rejects_a_second_active_case_of_the_same_record(): void
+    /**
+     * 先にある案件の状態と、同じレコードに入れる 2 つ目の案件の状態(一時保存でない 2 つの組の全部)。
+     *
+     * @return array<string, array{string, string}>
+     */
+    public static function nonDraftPairs(): array
     {
-        $active = WorkflowCase::factory()->active()->create();
-
-        $this->assertRejectedBy('workflow_cases_record_id_unique', fn () => WorkflowCase::factory()->active()->create(['record_id' => $active->record_id]));
+        return [
+            '未完了の後に未完了' => ['active', 'active'],
+            '未完了の後に完了' => ['active', 'completed'],
+            '完了の後に未完了' => ['completed', 'active'],
+            '完了の後に完了' => ['completed', 'completed'],
+        ];
     }
 
-    public function test_accepts_a_completed_case_and_an_active_case_of_the_same_record(): void
+    #[DataProvider('nonDraftPairs')]
+    public function test_rejects_a_second_non_draft_case_of_the_same_record(string $first, string $second): void
+    {
+        $existing = WorkflowCase::factory()->{$first}()->create();
+
+        $this->assertRejectedBy(
+            self::RECORD_UNIQUE,
+            fn () => WorkflowCase::factory()->{$second}()->create(['record_id' => $existing->record_id]),
+        );
+    }
+
+    public function test_rejects_an_update_that_moves_a_case_onto_the_record_of_a_completed_case(): void
     {
         $completed = WorkflowCase::factory()->completed()->create();
+        $active = WorkflowCase::factory()->active()->create();
+        $active->record_id = $completed->record_id;
 
-        $active = WorkflowCase::factory()->active()->create(['record_id' => $completed->record_id]);
+        $this->assertRejectedBy(self::RECORD_UNIQUE, fn () => $active->save());
+    }
 
-        $this->assertSame($completed->record_id, $active->refresh()->record_id);
+    public function test_rejects_an_update_that_applies_a_draft_onto_the_record_of_a_completed_case(): void
+    {
+        $completed = WorkflowCase::factory()->completed()->create();
+        $draft = WorkflowCase::factory()->draft()->create();
+        $applied = WorkflowCase::factory()->active()->make([
+            'workflow_flow_id' => $draft->workflow_flow_id,
+            'record_id' => $completed->record_id,
+        ]);
+        $draft->forceFill($applied->getAttributes());
+
+        $this->assertRejectedBy(self::RECORD_UNIQUE, fn () => $draft->save());
     }
 
     public function test_rejects_a_duplicate_case_number(): void

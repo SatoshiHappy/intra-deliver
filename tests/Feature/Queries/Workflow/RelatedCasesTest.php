@@ -3,13 +3,11 @@
 namespace Tests\Feature\Queries\Workflow;
 
 use App\Enums\Records\RecordModuleAction;
-use App\Enums\Workflow\WorkflowAction;
 use App\Enums\Workflow\WorkflowCaseState;
 use App\Enums\Workflow\WorkflowCompletionReason;
 use App\Models\Master\User;
 use App\Models\Records\Record;
 use App\Models\Workflow\WorkflowCase;
-use App\Models\Workflow\WorkflowCaseHistory;
 use App\Models\Workflow\WorkflowFlow;
 use Illuminate\Support\Facades\DB;
 use Tests\Support\BuildsRelatedCases;
@@ -20,8 +18,8 @@ use Tests\Support\TransactionalTestCase;
  * 設計/ワークフロー/申請の周辺/申請の内容の閲覧.md の 2・3 節)。起点 R = 見る案件の申請書のレコード(m_plan)、T = その申請対象(projects)。
  * 業務データ: projects(plan の申請対象の参照先。main_issue → issues、plan_form → m_plan)・issues(issue の申請対象の参照先。
  * project → projects、plan → m_plan)、申請書: m_plan(target → projects、issue → issues、issue_form → m_issue)・
- * m_issue(target → issues、project_ref → projects、plan_ref → m_plan)。認可の条件(案件の閲覧・起点とたどった先の閲覧・recordAccess)は
- * 業務モジュールの read を外して偽にする。
+ * m_issue(target → issues、project_ref → projects、plan_ref → m_plan)。認可の条件(案件の閲覧・T とたどった先の閲覧)は
+ * 業務モジュールの read を外して偽にする。R は申請の詳細を開ける人がいつも閲覧できるので、いつも起点にする。
  * 「起きない」行の止め方のテスト = WorkflowCaseTest の同じレコードの 2 つ目の未完了の案件・RecordApplicationRevisionsTest の完了の後の申請
  * (同じ申請書のレコードに一時保存でない案件は 1 つまで)と、初期データの止め方(申請対象の参照先は申請書の業務モジュールでない)。
  */
@@ -72,14 +70,11 @@ final class RelatedCasesTest extends TransactionalTestCase
     }
 
     /**
-     * recordAccess が偽(申請書の業務モジュールの read が無く、見る案件が完了して申請の経路でも閲覧できない): 申請書のレコードからたどる群は出ず、
-     * 申請対象からたどる群は出る(R からの群で出ていた issue の案件は、T の参照元の群に出る)。T は申請の版の写しの値から引く。
+     * 申請書の業務モジュールの read が無く、見る案件が完了していても、申請書のレコード R からいつもたどる(申請の関係者は申請の経路で R を閲覧できる)。
+     * T は申請書の今の値から引く。群は全部を閲覧できる人と同じ。
      */
-    public function test_without_the_record_access_only_the_groups_from_the_application_target_are_shown(): void
+    public function test_the_groups_from_the_application_record_show_after_completion_without_the_read(): void
     {
-        $apply = WorkflowCaseHistory::query()->where('workflow_case_id', $this->cases['viewed']->id)
-            ->where('action', WorkflowAction::Apply)->sole();
-        $this->pointAtSubmittedRevision($apply, $this->records['form'], [], []);
         $this->cases['viewed']->update([
             'state' => WorkflowCaseState::Completed,
             'completion_reason' => WorkflowCompletionReason::Approved,
@@ -91,8 +86,11 @@ final class RelatedCasesTest extends TransactionalTestCase
             ['同じprojectsを申請対象にする申請', ['sameNewer', 'sameOlder']],
             ['projectsの「main_issue」を申請対象にする申請', ['mainIssue']],
             ['projectsの「plan_form」が指す申請', ['planForm']],
-            ['「project」でprojectsを指すissuesを申請対象にする申請', ['issue']],
+            ['m_planの「issue」を申請対象にする申請', ['issue']],
+            ['m_planの「issue_form」が指す申請', ['issueForm']],
             ['「project_ref」でprojectsを指すm_issue', ['projectRef']],
+            ['「plan」でm_planを指すissuesを申請対象にする申請', ['planTarget']],
+            ['「plan_ref」でm_planを指すm_issue', ['planRef']],
         ], $this->related());
     }
 

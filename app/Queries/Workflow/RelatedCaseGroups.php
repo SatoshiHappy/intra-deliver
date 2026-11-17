@@ -30,14 +30,14 @@ class RelatedCaseGroups
      * 群の並び(写しとつながる申請.md の 6 節)。当てる申請書のレコードの無い群は返さない。
      *
      * @param  RelatedOrigin|null  $applicationTargetOrigin  申請対象の起点(無い・閲覧できなければ null)
-     * @param  RelatedOrigin|null  $application  申請書のレコードの起点(recordAccess が偽なら null)
+     * @param  RelatedOrigin  $application  申請書のレコードの起点
      * @return list<RelatedGroupSource>
      */
     public function of(
         Requester $requester,
         DateTimeInterface $date,
         ?array $applicationTargetOrigin,
-        ?array $application,
+        array $application,
     ): array {
         $fieldIds = $this->applicationTargetCases->fieldIdsByModule();
         $groups = [];
