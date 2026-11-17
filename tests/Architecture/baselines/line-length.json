@@ -656,7 +656,7 @@
     "tests/Feature/Queries/Workflow/ApplicableFlowsTest.php": 9,
     "tests/Feature/Queries/Workflow/ApplicationFormQueryTest.php": 31,
     "tests/Feature/Queries/Workflow/ApplicationNextTest.php": 24,
-    "tests/Feature/Queries/Workflow/CaseDetailQueryTest.php": 29,
+    "tests/Feature/Queries/Workflow/CaseDetailQueryTest.php": 28,
     "tests/Feature/Queries/Workflow/CaseDiagramTest.php": 28,
     "tests/Feature/Queries/Workflow/CaseListQueryTest.php": 22,
     "tests/Feature/Queries/Workflow/CaseOperationDeciderNodeTest.php": 14,

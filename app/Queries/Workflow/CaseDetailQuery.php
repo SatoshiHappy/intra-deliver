@@ -19,9 +19,9 @@ use LogicException;
  * 閲覧の判定 {@see CaseVisibility} を最初に行う(見えない・一時保存 → 404)。業務モジュールの read は求めない。
  *
  * 複数の読み取りを同じ改訂に揃えない: 案件の行を最初に読んでその改訂番号を返し、ノード・履歴・レコードはその後に読む(READ COMMITTED)。
- * 揃わないときの害は画面の一時的な混在だけで、操作は改訂番号で守られる。組み立ての最後に、案件の行を閲覧の判定を通してもう 1 回読み、見えなくなっていれば 404
- * (閲覧を失った後の履歴・コメントを返さない = 画面/申請と案件.md 5 節・認可と一覧.md 2 節)。組み立て直しは繰り返さず、返す改訂番号は最初に読んだ値。読み取りの間に閲覧を
- * 失って取り戻した場合は返す(受け入れた代償)。
+ * 揃わないときの害は画面の一時的な混在だけで、操作は改訂番号で守られる。組み立ての後の閲覧の判定(閲覧を失った後の履歴・コメントを返さない
+ * = 画面/申請と案件.md 5 節・認可と一覧.md 2 節)は、入口 {@see CaseShowProps::of()} が使い回さない区間で行う。組み立て直しは繰り返さず、返す改訂番号は
+ * この読み取りが最初に読んだ値。読み取りの間に閲覧を失って取り戻した場合は返す(受け入れた代償)。
  * 引戻し・取止めの入口の添付の可否と attachmentLimits = 設計/ワークフロー/申請の周辺/添付/README.md の 5 節({@see CaseAttachEntries})。
  * だれとして処理するか(処理担当者の選択肢・引戻しと取止めの処理者・代理の 1 行)は {@see CaseProcessorChoices}、確認の面は
  * {@see CaseConfirmationPanel}、申請情報の期限は {@see CaseDeadlines}、申請操作のメニュー(can.operate と operation)は
@@ -70,12 +70,12 @@ class CaseDetailQuery
     ) {}
 
     /**
-     * まとまりの中から呼ぶと最後の 2 回目の判定は使い回されるので、判定し直しは呼び手が区間で行う({@see CaseShowProps::of()}。docs の
+     * 組み立ての後の閲覧の判定は、判定の使い回しのまとまりを開く入口が使い回さない区間で行う({@see CaseShowProps::of()}。docs の
      * 設計/業務データの入れ物/レコードの共通機能/詳細の画面/申請の詳細.md の 4.2 節)。
      *
      * @return Detail
      *
-     * @throws ModelNotFoundException<WorkflowCase> 案件が無い・閲覧できない・一時保存のとき(組み立ての後の 2 回目の閲覧の判定で見えなくなったときを含む)
+     * @throws ModelNotFoundException<WorkflowCase> 案件が無い・閲覧できない・一時保存のとき
      */
     public function show(AccessContext $context, int $caseId): array
     {
@@ -95,7 +95,8 @@ class CaseDetailQuery
         $linked = $this->people->linked($people, $context->date, $context->localeCode);
         $diagram = $this->diagram->of($case, $nodes, $historiesById, $assignments, $situation, $linked, $councils, $requester->userId, $context);
         $operation = $this->operationPanel->of($requester, $context, $situation, $nodes);
-        $detail = [
+
+        return [
             'case' => $this->caseOf($case, $situation, $people, $context),
             'nodes' => $diagram['nodes'],
             'edges' => $diagram['edges'],
@@ -109,9 +110,6 @@ class CaseDetailQuery
             'commentMaxLength' => WorkflowCaseHistory::COMMENT_MAX,
             'links' => $this->links->lazy($context),
         ];
-        $this->visibleCase($requester, $context, $case->id);
-
-        return $detail;
     }
 
     /**

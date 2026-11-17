@@ -29,7 +29,7 @@ use Tests\Support\TransactionalTestCase;
 
 /**
  * 案件の詳細(docs の 設計/ワークフロー/画面/申請と案件.md 5 節、認可と一覧.md 2 節、業務データとの接続/写しとつながる申請.md 5・6・9 節): 閲覧できない・一時保存は 404、
- * 閲覧の判定より前に業務データの入れ物の読み取りの SQL を出さない、組み立ての後にもう 1 回閲覧を判定する(途中で閲覧を失えば 404)、申請情報・ノード・履歴・
+ * 閲覧の判定より前に業務データの入れ物の読み取りの SQL を出さない、入口({@see CaseShowProps})が組み立ての後にもう 1 回閲覧を判定する(途中で閲覧を失えば 404)、申請情報・ノード・履歴・
  * can・差戻し先(申請の層だけ。レコードの層は CaseShowRecordAccessTest・CaseShowAssemblyTest、つながる申請は CaseDetailRelatedCasesTest)。A = u0001(申請者)、B = u0002(承認 1)、C = u0003・E = u0005(承認 2 の処理対象者)、D = u0004(関わらない)。
  */
 final class CaseDetailQueryTest extends TransactionalTestCase
@@ -38,6 +38,9 @@ final class CaseDetailQueryTest extends TransactionalTestCase
     use BuildsWorkflowCases;
 
     private const DATE = '2026-10-13';
+
+    /** 閲覧の判定の問い合わせ(案件の行を閲覧の述語で読む)の前置き */
+    private const JUDGEMENT_SQL = 'select * from "workflow_cases" where "workflow_cases"."id" = ? and "state" <> ?';
 
     /** @var array<string, User> */
     private array $users = [];
@@ -80,17 +83,27 @@ final class CaseDetailQueryTest extends TransactionalTestCase
         $this->assertNotSame([], $visible);
     }
 
-    /** 閲覧の判定の問い合わせ(案件の行を閲覧の述語で読む)が、最初と組み立ての後(履歴の後の最後の問い合わせ)の 2 回出る(同時実行は作れないので SQL の記録で確かめる)。 */
+    /**
+     * 閲覧の判定の問い合わせ(案件の行を閲覧の述語で読む)が、履歴より前に出て、組み立ての後(履歴の後)にちょうど 1 回出る(同時実行は作れないので SQL の記録で確かめる)。
+     * 組み立ての後の判定は入口が使い回さない区間で行い(詳細の読み取りの中では判定し直さない)、入口の最後の問い合わせになる(判定の後に読まない)。
+     * 履歴より前の判定は入口と詳細の読み取りの 2 回(重なり。1 回にするかは課題のワークフローの行)。判定の後に読まないのは入口が返すまで
+     * (応答を描く時に解く値は入口の外 = 申請の詳細の 4.2)。
+     */
     public function test_the_visibility_is_judged_again_after_the_assembly(): void
     {
         $case = $this->standardCase();
+        DB::flushQueryLog();
         DB::enableQueryLog();
 
-        $this->show($this->users['c'], $case->id);
+        $this->entry($this->users['c'], $case->id);
         $sql = array_map(fn (mixed $statement) => (string) $statement, array_column(DB::getQueryLog(), 'query'));
-        $judgements = array_keys(array_filter($sql, fn (string $statement) => str_starts_with($statement, 'select * from "workflow_cases" where "workflow_cases"."id" = ? and "state" <> ?')));
+        $judgements = array_keys(array_filter($sql, fn (string $statement) => str_starts_with($statement, self::JUDGEMENT_SQL)));
         $histories = array_keys(array_filter($sql, fn (string $statement) => str_starts_with($statement, 'select * from "workflow_case_histories" where "workflow_case_id" = ?')));
-        $this->assertSame([2, 1, true, count($sql) - 1], [count($judgements), count($histories), $judgements[0] < $histories[0], $judgements[1]]);
+        $after = array_filter($judgements, fn (int $index) => $index > $histories[0]);
+        $this->assertSame(
+            [3, 1, true, 1, count($sql) - 1],
+            [count($judgements), count($histories), $judgements[0] < $histories[0], count($after), end($judgements)],
+        );
     }
 
     /** 組み立ての途中(履歴を読んだ直後)に閲覧を失う(処理対象者でなくなる)と、組み立ての後の判定で 404 になり、閲覧を失った後の履歴を返さない。 */
@@ -105,8 +118,27 @@ final class CaseDetailQueryTest extends TransactionalTestCase
             }
         });
 
-        $this->assertThrows(fn () => $this->show($this->users['c'], $case->id), ModelNotFoundException::class);
+        $this->assertThrows(fn () => $this->entry($this->users['c'], $case->id), ModelNotFoundException::class);
         $this->assertTrue($lost, '最初の閲覧の判定を通って履歴を読んだ');
+    }
+
+    /** 部分の再読み込み(欄の中身だけ)でも、最初の閲覧の判定の後に処理対象者から外れると、組み立ての後の判定で 404 になる。 */
+    public function test_a_partial_reload_after_losing_the_visibility_is_not_found(): void
+    {
+        $case = $this->standardCase();
+        $judged = 0;
+        DB::listen(function (QueryExecuted $query) use (&$judged): void {
+            if (str_starts_with($query->sql, self::JUDGEMENT_SQL) && ++$judged === 1) {
+                WorkflowCaseNodeTarget::query()->where('user_id', $this->users['c']->id)->delete();
+            }
+        });
+        $selection = new CaseShowSelection(true, ['panelContent'], panel: 'revisions');
+
+        $this->assertThrows(
+            fn () => app(CaseShowProps::class)->of($this->contextOf($this->users['c']), $case->id, $selection),
+            ModelNotFoundException::class,
+        );
+        $this->assertSame(2, $judged, '入口の最初の判定と組み立ての後の判定の 2 回だけ');
     }
 
     /**
@@ -175,6 +207,16 @@ final class CaseDetailQueryTest extends TransactionalTestCase
     private function show(?User $viewer, int $caseId): array
     {
         return app(CaseDetailQuery::class)->show($this->contextOf($viewer), $caseId);
+    }
+
+    /**
+     * 申請の詳細の入口(最初の組み立てをまとまり、組み立ての後の判定を使い回さない区間で囲む)。
+     *
+     * @return array<string, mixed>
+     */
+    private function entry(User $viewer, int $caseId): array
+    {
+        return app(CaseShowProps::class)->of($this->contextOf($viewer), $caseId, new CaseShowSelection);
     }
 
     private function contextOf(?User $viewer): AccessContext

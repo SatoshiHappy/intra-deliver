@@ -27,10 +27,10 @@ final class CaseDetailHistoryLinesTest extends TransactionalTestCase
     use ReadsCaseLists;
 
     /**
-     * 見本の詳細(WF-000003 を代理先 u0009 が開く)の問い合わせの上限(測った値 243 に余裕を見た値)。確認の面の展開は、確認を開く業務処理と
-     * 同じ口のまとめ読みで、ユーザーの数によらない。
+     * 見本の詳細(WF-000003 を代理先 u0009 が開く)の問い合わせの上限(詳細の読み取りと複製の可否を入口を通さずに呼んだ数。測った値 150 に余裕を
+     * 見た値。入口の全体の応答の上限は CaseShowReuseTest)。確認の面の展開は、確認を開く業務処理と同じ口のまとめ読みで、ユーザーの数によらない。
      */
-    private const SEEDED_DETAIL_QUERY_LIMIT = 300;
+    private const SEEDED_DETAIL_QUERY_LIMIT = 165;
 
     protected function setUp(): void
     {

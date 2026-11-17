@@ -11,6 +11,7 @@ use App\Support\AccessContext;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Events\QueryExecuted;
 use Illuminate\Support\Facades\DB;
+use Inertia\Support\Header;
 use Tests\Support\TransactionalTestCase;
 
 /**
@@ -22,8 +23,8 @@ final class CaseShowReuseTest extends TransactionalTestCase
 {
     use UsesSeededCases;
 
-    /** 見本の詳細(WF-000003 を課長 u0002 が開く全体の応答)の問い合わせの上限(測った値 417 に余裕を見た値。最初の組み立てを使い回さないと 500 本を超える) */
-    private const SEEDED_FULL_RESPONSE_QUERY_LIMIT = 460;
+    /** 見本の詳細(WF-000003 を課長 u0002 が開く全体の応答)の問い合わせの上限(測った値 350 に余裕を見た値。最初の組み立てを使い回さないと 420 本) */
+    private const SEEDED_FULL_RESPONSE_QUERY_LIMIT = 385;
 
     protected function setUp(): void
     {
@@ -70,6 +71,32 @@ final class CaseShowReuseTest extends TransactionalTestCase
         $response = $this->get("/workflow/cases/{$case}");
 
         $this->assertTrue($removed, '最初の閲覧の判定を通って履歴を読んだ');
+        $response->assertNotFound();
+    }
+
+    /**
+     * 部分の再読み込み(欄の中身だけ)でも、最初の閲覧の判定の直後にフローの閲覧を与えるロールを外すと、組み立ての後の判定が今のロールで判定して 404 になる。
+     */
+    public function test_a_role_removed_during_a_partial_reload_is_not_found(): void
+    {
+        $case = $this->caseNumbered(5);
+        $user = User::query()->where('code', 'u0004')->sole();
+        $role = Role::query()->where('code', 'system_admin')->sole();
+        $this->actingAs($user);
+        $partial = [Header::PARTIAL_COMPONENT => 'Workflow/CaseShow', Header::PARTIAL_ONLY => 'panelContent'];
+        $this->get("/workflow/cases/{$case}?panel=comments", $partial)->assertOk();
+        $judged = 0;
+        DB::listen(function (QueryExecuted $query) use (&$judged, $user, $role): void {
+            $judgement = 'select * from "workflow_cases" where "workflow_cases"."id" = ? and "state" <> ?';
+
+            if (str_starts_with($query->sql, $judgement) && ++$judged === 1) {
+                UserRole::query()->where('user_id', $user->id)->where('role_id', $role->id)->delete();
+            }
+        });
+
+        $response = $this->get("/workflow/cases/{$case}?panel=comments", $partial);
+
+        $this->assertSame(2, $judged, '入口の最初の判定と組み立ての後の判定の 2 回だけ');
         $response->assertNotFound();
     }
 
