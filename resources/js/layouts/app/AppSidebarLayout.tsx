@@ -26,10 +26,12 @@ export default function AppSidebarLayout({
                 <AppSidebar />
                 <AppContent>{children}</AppContent>
             </div>
-            {/* 右上・ヘッダーのすぐ下(docs の 設計/画面の意匠/骨格とヘッダー.md の「トーストの置き場」。下に固定した帯のボタンを覆わない) */}
+            {/* クリックを通すトースト(resources/css/app.css)はポインタで広げられないので、初めから広げて並べる(docs の
+                設計/画面の意匠/骨格とヘッダー.md の「トーストの置き場」) */}
             <Toaster
                 position="top-right"
                 offset={{ top: 'calc(var(--header-height) + 16px)' }}
+                expand
             />
         </AppShell>
     );

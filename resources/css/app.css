@@ -194,3 +194,17 @@
         @apply bg-background text-foreground;
     }
 }
+
+/*
+ * トーストは右上の操作のボタンに重なっても押せるようクリックを下へ通し、操作のボタンを持つ見えているトーストだけはポインタを受ける
+ * (docs の 設計/画面の意匠/骨格とヘッダー.md の「トーストの置き場」)。sonner の CSS と同じく層の外に置き、詳細度で見分ける。
+ */
+[data-sonner-toast] {
+    pointer-events: none;
+}
+
+[data-sonner-toast][data-visible='true'][data-removed='false']:has(
+        [data-button]
+    ) {
+    pointer-events: auto;
+}

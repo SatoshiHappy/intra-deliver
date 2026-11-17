@@ -18,6 +18,7 @@ import {
     expectRecordHeadingLine,
     recordIdOf,
 } from '../support/workflow-record-apply';
+import { toasts } from '../support/toasts';
 
 // 既存のデータからの申請の画面(入口が 1 つ)。筋の正本 = docs の 設計/ワークフロー/申請の周辺/画面.md の 9 節。
 // 見本に案件の無い申請書のレコードは無いので筋の中で作る。入口が 1 つのうちに流すため、2 つ目のフローを足す 2-choose より前に置く(流す順は tests/e2e/demo/groups.ts の並び)。
@@ -34,6 +35,11 @@ test('詳細の「申請する」→ 申請の画面(見出しの 1 行・値を
     const name = 'E2E の既存の計画 A';
     await openAs(page, 'applicant', '/');
     recordUrl = await createRecord(page, name);
+    // 登録のトースト(数秒で消えるので登録の直後に見る)は右上の「申請する」に重なりうるが、クリックを下へ通し、広げて出る(docs の
+    // 設計/画面の意匠/骨格とヘッダー.md の「トーストの置き場」)
+    const created = toasts(page).filter({ hasText: '登録しました' });
+    await expect(created).toHaveCSS('pointer-events', 'none');
+    await expect(created).toHaveAttribute('data-expanded', 'true');
     const main = page.getByRole('main');
 
     // 入口が 1 つ(初期データ)なので、押すとダイアログを経ずに申請の画面へ。持ち主が無いので理由の 1 行は無く、削除も押せる
