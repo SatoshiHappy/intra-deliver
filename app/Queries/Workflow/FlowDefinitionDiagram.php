@@ -6,6 +6,7 @@ use App\Enums\Workflow\WorkflowNodeKind;
 use App\Models\Workflow\WorkflowRouteEdge;
 use App\Models\Workflow\WorkflowRouteNode;
 use App\Queries\Records\Api\RecordConditions;
+use Closure;
 use DateTimeInterface;
 
 /**
@@ -15,6 +16,7 @@ use DateTimeInterface;
  * 分岐の辺の条件の文は、コンテンツの業務モジュールの今の定義で作る({@see RecordConditions::describe()})。鍵を取らない。
  *
  * @phpstan-import-type SubtitlePart from StepDescriptions
+ * @phpstan-import-type SubjectRow from StepTarget
  *
  * @phpstan-type DefinitionNode array{id: int, code: string, name: string, kind: string, parentId: null, sequence: null,
  *     subtitle: list<SubtitlePart>|null, state: null, people: list<never>,
@@ -31,17 +33,25 @@ class FlowDefinitionDiagram
     ) {}
 
     /**
+     * 処理対象者の行は呼び手が渡す行を引く関数で引き、確認の札の名前は所属を引かない {@see SubjectRows::namesOf()} で引く。
+     *
      * @param  int  $moduleId  フローのコンテンツの業務モジュール(条件の文の項目の名前を引く)
+     * @param  Closure(list<int>): array<int, list<SubjectRow>>  $rowsOf  対象者の行を引く関数({@see StepTargets::withRowsOf()})
      * @return array{nodes: list<DefinitionNode>, edges: list<DefinitionEdge>}
      */
-    public function of(FlowVersionRoute $route, int $moduleId, DateTimeInterface $date, string $localeCode): array
-    {
-        $targets = $this->targets->of(array_values($route->nodes), $route->designatorNames(), $date, $localeCode);
-        $confirmGroupIds = array_map(
-            fn (WorkflowRouteNode $node) => $node->confirm_authz_subject_group_id === null
-                ? null : (int) $node->confirm_authz_subject_group_id,
-            array_values($route->nodes),
-        );
+    public function of(
+        FlowVersionRoute $route,
+        int $moduleId,
+        Closure $rowsOf,
+        DateTimeInterface $date,
+        string $localeCode,
+    ): array {
+        $nodes = array_values($route->nodes);
+        $targets = $this->targets->withRowsOf($nodes, $route->designatorNames(), $rowsOf, $date, $localeCode);
+        $confirmGroupIds = StepTargets::idsOf(array_map(
+            fn (WorkflowRouteNode $node) => $node->confirm_authz_subject_group_id,
+            $nodes,
+        ));
         $confirmers = $this->subjectRows->namesOf($confirmGroupIds, $date, $localeCode);
 
         return [

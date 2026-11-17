@@ -6,6 +6,7 @@ use App\Enums\Workflow\WorkflowNodeKind;
 use App\Enums\Workflow\WorkflowTargetKind;
 use App\Models\Workflow\WorkflowRouteNode;
 use App\Models\Workflow\WorkflowRouteSendBack;
+use Closure;
 use DateTimeInterface;
 use LogicException;
 
@@ -30,23 +31,26 @@ use LogicException;
  */
 class FlowStepSettings
 {
-    public function __construct(private StepTargets $targets, private SubjectRows $subjectRows) {}
+    public function __construct(private StepTargets $targets) {}
 
     /**
+     * @param  Closure(list<int>): array<int, list<SubjectRow>>  $rowsOf  対象者の行を引く関数({@see StepTargets::withRowsOf()})
      * @return StepSettings
      */
     public function of(
         FlowVersionRoute $route,
         WorkflowRouteNode $node,
+        Closure $rowsOf,
         DateTimeInterface $date,
         string $localeCode,
     ): array {
+        // 処理対象者と確認する人の行を 1 回で引く(処理対象者は行を引く関数が覚えた行から返す)
+        $rows = $rowsOf(StepTargets::idsOf([$node->authz_subject_group_id, $node->confirm_authz_subject_group_id]));
         $designatorNames = array_intersect_key($route->designatorNames(), [$node->id => true]);
-        $target = $this->targets->of([$node], $designatorNames, $date, $localeCode)[$node->id];
+        $target = $this->targets->withRowsOf([$node], $designatorNames, $rowsOf, $date, $localeCode)[$node->id];
         $isApproving = $node->kind->isIn(WorkflowNodeKind::approving());
         $hasDeadline = $node->kind->isIn(WorkflowNodeKind::withDeadline());
-        $confirmers = $node->kind->isIn(WorkflowNodeKind::withConfirmers())
-            ? $this->confirmersOf($node, $date, $localeCode) : null;
+        $confirmers = $node->kind->isIn(WorkflowNodeKind::withConfirmers()) ? self::confirmersOf($node, $rows) : null;
 
         return [
             'code' => $node->code,
@@ -73,17 +77,14 @@ class FlowStepSettings
     /**
      * 確認する人の行(確認する人がいなければ空)。
      *
+     * @param  array<int, list<SubjectRow>>  $rows
      * @return list<SubjectRow>
      */
-    private function confirmersOf(WorkflowRouteNode $node, DateTimeInterface $date, string $localeCode): array
+    private static function confirmersOf(WorkflowRouteNode $node, array $rows): array
     {
         $groupId = $node->confirm_authz_subject_group_id;
 
-        if ($groupId === null) {
-            return [];
-        }
-
-        return $this->subjectRows->of([(int) $groupId], $date, $localeCode)[(int) $groupId] ?? [];
+        return $groupId === null ? [] : $rows[(int) $groupId] ?? [];
     }
 
     /**

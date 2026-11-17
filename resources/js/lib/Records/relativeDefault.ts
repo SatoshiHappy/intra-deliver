@@ -1,3 +1,4 @@
+import { normalizeNumberText } from '@/lib/numberText';
 import type { RecordFieldType } from '@/types';
 
 /**
@@ -46,13 +47,13 @@ export function parseDuration(
 }
 
 /**
- * 数の欄と単位から送る値を作る(数の欄の誤りは画面で止めず、送った後の 422 で出す)。
+ * 数の欄と単位から送る値を作る(数の欄の形にそろえる。数の欄の誤りは画面で止めず、送った後の 422 で出す)。
  */
 export function relativePayload(
     amount: string,
     unit: RelativeUnit,
 ): { relative: string } {
-    return { relative: `P${amount.trim()}${unit}` };
+    return { relative: `P${normalizeNumberText(amount)}${unit}` };
 }
 
 /**

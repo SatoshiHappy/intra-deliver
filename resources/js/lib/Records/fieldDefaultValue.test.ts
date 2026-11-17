@@ -101,6 +101,9 @@ describe('defaultValuePayload(登録の時から)', () => {
         expect(relative('datetime', ' 0 ', 'D')).toEqual({
             default_value: { relative: 'P0D' },
         });
+        expect(relative('date', '６', 'M')).toEqual({
+            default_value: { relative: 'P6M' },
+        });
         expect(relative('date', '1.5', 'Y')).toEqual({
             default_value: { relative: 'P1.5Y' },
         });
@@ -157,6 +160,7 @@ describe('defaultValueField', () => {
         expect(maxLengthOf(false, '1000')).toBe(1000);
         expect(maxLengthOf(false, '1001')).toBe(1000);
         expect(maxLengthOf(false, '0')).toBe(1000);
+        expect(maxLengthOf(false, '１００')).toBe(100);
     });
 
     it('選択肢は同じコードの先の行だけを使い、空のコードを除き、名前が空ならコードを出す', () => {

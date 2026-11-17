@@ -4,6 +4,7 @@ import {
     parseDuration,
     relativePayload,
 } from '@/lib/Records/relativeDefault';
+import { normalizeNumberText } from '@/lib/numberText';
 import type { RecordFieldDraft } from '@/lib/recordForm';
 import { currentDraft } from '@/lib/recordForm';
 import { payloadValue } from '@/lib/recordPayload';
@@ -116,7 +117,7 @@ export function defaultValueField(
     const limit = data.isMultiline
         ? stringMaxLengths.multilineMax
         : stringMaxLengths.singleLine;
-    const attribute = data.maxLength.trim();
+    const attribute = normalizeNumberText(data.maxLength);
     const maxLength = /^[0-9]+$/.test(attribute) ? Number(attribute) : 0;
 
     return {

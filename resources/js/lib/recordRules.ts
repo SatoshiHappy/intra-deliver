@@ -1,4 +1,10 @@
+import {
+    DECIMAL_TEXT,
+    INTEGER_TEXT,
+    normalizeNumberText,
+} from '@/lib/numberText';
 import type { RecordFieldDraft } from '@/lib/recordForm';
+import { isNumberField } from '@/lib/recordForm';
 import type {
     RecordConditionExpression,
     RecordConditionOperator,
@@ -64,7 +70,8 @@ type Comparable = string | number | boolean | number[] | null;
 const FORM_OFFSET = '+09:00';
 
 /**
- * 欄の値を比べる値にする(サーバーの正規化に合わせて前後の空白を除く。型に合わない値は空として扱う = 送ると型の誤りで止まる)。
+ * 欄の値を比べる値にする(サーバーの正規化に合わせて前後の空白を除く。整数・小数は送る値と同じ形にそろえる = docs の
+ * 設計/画面の意匠/README.md の方針 9 の (g)。型に合わない値は空として扱う = 送ると型の誤りで止まる)。
  */
 function comparableOf(
     field: RecordFieldDefinition,
@@ -87,21 +94,22 @@ function comparableOf(
         return draft.id;
     }
 
+    if (isNumberField(field)) {
+        const number = normalizeNumberText(draft);
+        const pattern = field.type === 'integer' ? INTEGER_TEXT : DECIMAL_TEXT;
+
+        return pattern.test(number) ? Number(number) : null;
+    }
+
     const text = draft.trim();
 
-    switch (field.type) {
-        case 'integer':
-            return /^-?[0-9]+$/.test(text) ? Number(text) : null;
-        case 'decimal':
-            return /^-?[0-9]+(\.[0-9]+)?$/.test(text) ? Number(text) : null;
-        case 'datetime': {
-            const time = Date.parse(`${text}:00${FORM_OFFSET}`);
+    if (field.type === 'datetime') {
+        const time = Date.parse(`${text}:00${FORM_OFFSET}`);
 
-            return Number.isNaN(time) ? null : time;
-        }
-        default:
-            return text === '' ? null : text;
+        return Number.isNaN(time) ? null : time;
     }
+
+    return text === '' ? null : text;
 }
 
 /**

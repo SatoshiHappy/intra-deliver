@@ -1,3 +1,4 @@
+import { INTEGER_TEXT, normalizeNumberText } from '@/lib/numberText';
 import { draftsOf, rowsPayloadOf } from '@/lib/Workflow/subjectRows';
 import type {
     SubjectRowDraft,
@@ -128,20 +129,18 @@ export function formOf(step: WorkflowStepSettings): StepForm {
     };
 }
 
-/** 整数の形(符号つき) */
-const INTEGER_PATTERN = /^-?\d+$/;
-
 /**
- * 数の欄の送る値(空は null、整数の形は数、ほかは文字のまま = サーバーの「整数」の誤りを欄の下に出す)。
+ * 数の欄の送る値(空は null、整数の形は数、ほかは文字のまま = サーバーの「整数」の誤りを欄の下に出す。形は
+ * docs の 設計/画面の意匠/README.md の方針 9 の (g) にそろえてから見る)。
  */
 function numberOf(text: string): number | string | null {
-    const trimmed = text.trim();
+    const normalized = normalizeNumberText(text);
 
-    if (trimmed === '') {
+    if (normalized === '') {
         return null;
     }
 
-    return INTEGER_PATTERN.test(trimmed) ? Number(trimmed) : trimmed;
+    return INTEGER_TEXT.test(normalized) ? Number(normalized) : normalized;
 }
 
 function decisionPayload(

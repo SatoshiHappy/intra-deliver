@@ -7,6 +7,7 @@ import {
     emptyDefaultFields,
     initialDefaultFields,
 } from '@/lib/Records/fieldDefaultValue';
+import { INTEGER_TEXT, normalizeNumberText } from '@/lib/numberText';
 import type { RecordAdminField } from '@/types';
 
 /**
@@ -130,16 +131,17 @@ export function initialFieldData(
 }
 
 /**
- * 整数の欄の値を送る値にする(空は null、整数の形なら数、ほかは文字のまま送って業務処理の誤りにする)。
+ * 整数の欄の値を送る値にする(空は null、整数の形なら数、ほかは文字のまま送って業務処理の誤りにする。形は
+ * docs の 設計/画面の意匠/README.md の方針 9 の (g) にそろえてから見る)。
  */
 function integerPayload(value: string): number | string | null {
-    const text = value.trim();
+    const text = normalizeNumberText(value);
 
     if (text === '') {
         return null;
     }
 
-    return /^-?[0-9]+$/.test(text) ? Number(text) : text;
+    return INTEGER_TEXT.test(text) ? Number(text) : text;
 }
 
 /**

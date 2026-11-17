@@ -8,6 +8,7 @@ import { recordField } from './recordField.testing';
 import {
     currentDraft,
     drawnDetailsFields,
+    isNumberField,
     isReferenceField,
 } from './recordForm';
 import { payloadValue } from './recordPayload';
@@ -137,5 +138,14 @@ describe('drawnDetailsFields', () => {
         expect(drawnDetailsFields(issueModule).map((f) => f.code)).toEqual([
             'lines',
         ]);
+    });
+});
+
+describe('isNumberField', () => {
+    it('整数・小数だけが数の欄の項目', () => {
+        expect(isNumberField(field('f', 'integer'))).toBe(true);
+        expect(isNumberField(field('f', 'decimal'))).toBe(true);
+        expect(isNumberField(field('f', 'string'))).toBe(false);
+        expect(isNumberField(field('f', 'date'))).toBe(false);
     });
 });

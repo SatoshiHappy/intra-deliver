@@ -223,6 +223,24 @@ describe('payloadOf(数の欄・役職)', () => {
             max_assignees: 4,
         });
         expect(payloadOf(typed, COUNCIL).min_assignees).toBe('1.5');
+        expect(payloadOf({ ...typed, min: '1e' }, COUNCIL).min_assignees).toBe(
+            '1e',
+        );
+    });
+
+    it('数の欄: 全角の数字を半角にそろえてから読む(丸数字は文字のまま)', () => {
+        const form = {
+            ...formOf(COUNCIL),
+            min: '２',
+            max: '①',
+            deadline: '５',
+        };
+
+        expect(payloadOf(form, COUNCIL)).toMatchObject({
+            min_assignees: 2,
+            max_assignees: '①',
+            deadline_days: 5,
+        });
     });
 
     it('役職を絞らない基準にする人は company_post_id が null', () => {

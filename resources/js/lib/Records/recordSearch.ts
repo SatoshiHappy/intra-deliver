@@ -1,5 +1,6 @@
+import { normalizeNumberText } from '@/lib/numberText';
 import { pickedKey } from '@/lib/pickedReference';
-import { isReferenceField } from '@/lib/recordForm';
+import { isNumberField, isReferenceField } from '@/lib/recordForm';
 import { hasPartyKind } from '@/lib/recordParty';
 import { toTokyoLocal } from '@/lib/recordValues';
 import type { QueryParams } from '@/wayfinder';
@@ -53,7 +54,8 @@ export function pickedOf(
 
 /**
  * 欄の値を、クエリの filter の 1 つの値にする(空は undefined。日時の範囲の秒と時差 = 画面/業務の画面.md 2.1 の「クエリ」)。
- * 複数選べる参照は相手の並び(クエリの配列。添字の形 `filter[<コード>][<n>]`)。
+ * 複数選べる参照は相手の並び(クエリの配列。添字の形 `filter[<コード>][<n>]`)。整数・小数の範囲の端は
+ * docs の 設計/画面の意匠/README.md の方針 9 の (g) の形にそろえる。
  */
 export function filterValue(
     field: RecordFieldDefinition,
@@ -83,8 +85,15 @@ export function filterValue(
                 ? ':00+09:00'
                 : ':59+09:00'
             : '';
-    const from = draft.from === '' ? undefined : draft.from + suffix('from');
-    const to = draft.to === '' ? undefined : draft.to + suffix('to');
+    const sideOf = (side: 'from' | 'to') => {
+        const text = isNumberField(field)
+            ? normalizeNumberText(draft[side])
+            : draft[side];
+
+        return text === '' ? undefined : text + suffix(side);
+    };
+    const from = sideOf('from');
+    const to = sideOf('to');
 
     return from === undefined && to === undefined ? undefined : { from, to };
 }

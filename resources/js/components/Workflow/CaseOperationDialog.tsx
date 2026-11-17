@@ -1,6 +1,7 @@
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { CaseOperationForm } from '@/components/Workflow/CaseOperationForm';
 import type { OperationDialogProps } from '@/hooks/Workflow/use-operation-dialog';
+import { focusBackOnClose } from '@/lib/dialogFocus';
 
 /**
  * 申請操作のダイアログ(処理担当者の変更・再展開。docs の 設計/ワークフロー/案件の運用/画面/管理と通知の画面.md の 7.2 節)。
@@ -25,13 +26,7 @@ export function CaseOperationDialog({
         >
             <DialogContent
                 className="flex max-h-[90vh] flex-col"
-                onCloseAutoFocus={(event) => {
-                    event.preventDefault();
-
-                    if (returnFocusTo.current?.isConnected === true) {
-                        returnFocusTo.current.focus();
-                    }
-                }}
+                onCloseAutoFocus={focusBackOnClose(returnFocusTo)}
             >
                 {target !== null && (
                     <CaseOperationForm

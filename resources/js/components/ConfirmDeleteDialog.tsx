@@ -12,6 +12,7 @@ import {
     DialogTitle,
     DialogTrigger,
 } from '@/components/ui/dialog';
+import { focusBackOnClose } from '@/lib/dialogFocus';
 import { toastErrors } from '@/lib/flashToast';
 import type { RouteDefinition } from '@/wayfinder';
 
@@ -74,19 +75,11 @@ function DeleteTrigger({
     );
 }
 
-/** 閉じた後のフォーカスを target へ(DOM に残っていれば)。省くと Dialog の既定(開いたボタンへ) */
-function focusBackTo(target: RefObject<HTMLElement | null> | undefined) {
-    if (target === undefined) {
-        return undefined;
-    }
-
-    return (event: Event) => {
-        event.preventDefault();
-
-        if (target.current?.isConnected === true) {
-            target.current.focus();
-        }
-    };
+/** 閉じた後のフォーカスを returnFocusTo へ(DOM に残っていれば)。省くと Dialog の既定(開いたボタンへ) */
+function focusBackTo(returnFocusTo: RefObject<HTMLElement | null> | undefined) {
+    return returnFocusTo === undefined
+        ? undefined
+        : focusBackOnClose(returnFocusTo);
 }
 
 /**

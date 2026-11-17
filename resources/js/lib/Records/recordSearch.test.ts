@@ -66,6 +66,17 @@ describe('filterValue', () => {
     });
 });
 
+describe('filterValue(数の欄の全角)', () => {
+    it('整数・小数の範囲の端は、全角の数字・マイナス・小数点を半角にそろえる', () => {
+        expect(
+            filterValue(field('integer'), { from: '１０', to: ' ' }),
+        ).toEqual({ from: '10', to: undefined });
+        expect(
+            filterValue(field('decimal'), { from: '', to: '－１．５' }),
+        ).toEqual({ from: undefined, to: '-1.5' });
+    });
+});
+
 describe('filterValue(型「ユーザーと組織」と複数選べる参照)', () => {
     it('型「ユーザーと組織」の相手は <種類>:<id> で送る', () => {
         const picked = { id: 3, label: '開発部', type: 'department' as const };

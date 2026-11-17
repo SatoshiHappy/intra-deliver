@@ -75,6 +75,7 @@ class FlowDefinitionDetail
             return $route ??= FlowVersionRoute::load($selected->id);
         };
         $nodeOf = fn () => self::selectedNode($routeOf(), $node);
+        $rowsOf = $this->subjectRowsOf($today, $localeCode);
 
         return [
             'flow' => [
@@ -93,9 +94,10 @@ class FlowDefinitionDetail
             'selectedVersion' => $selected->number,
             'tab' => is_string($tab) && in_array($tab, self::TABS, true) ? $tab : self::TABS[0],
             'today' => $today->format('Y-m-d'),
-            'diagram' => fn () => $this->diagram
-                ->of($routeOf(), FlowDefinitionList::contentOf($flow)->record_module_id, $today, $localeCode),
-            'selectedNode' => fn () => $this->settings->of($routeOf(), $nodeOf(), $today, $localeCode),
+            'diagram' => fn () => $this->diagram->of(
+                $routeOf(), FlowDefinitionList::contentOf($flow)->record_module_id, $rowsOf, $today, $localeCode,
+            ),
+            'selectedNode' => fn () => $this->settings->of($routeOf(), $nodeOf(), $rowsOf, $today, $localeCode),
             'referrers' => fn () => ['rows' => $this->referrerRows($flow, $today, $localeCode)],
             'flowSettings' => fn () => ['isAttachmentEnabled' => $flow->is_attachment_enabled],
             'options' => fn () => [
@@ -126,6 +128,27 @@ class FlowDefinitionDetail
         $isApply = fn (WorkflowRouteNode $node) => $node->kind === WorkflowNodeKind::Apply;
 
         return $chosen ?? collect($route->nodes)->first($isApply) ?? throw new LogicException('版に申請のノードが無い');
+    }
+
+    /**
+     * 対象者の id から行を引く関数(図と選んだステップの欄が使い回す)。渡した id のうちまだ引いていない分だけを引いて覚え、覚えた行から返す
+     * (用途 selection でない・無い対象者は空の行で覚える)。
+     *
+     * @return Closure(list<int>): array<int, list<SubjectRow>>
+     */
+    private function subjectRowsOf(DateTimeInterface $date, string $localeCode): Closure
+    {
+        $read = [];
+
+        return function (array $groupIds) use (&$read, $date, $localeCode): array {
+            $missing = array_values(array_unique(array_diff($groupIds, array_keys($read))));
+
+            if ($missing !== []) {
+                $read += $this->subjectRows->of($missing, $date, $localeCode) + array_fill_keys($missing, []);
+            }
+
+            return array_intersect_key($read, array_flip($groupIds));
+        };
     }
 
     /**

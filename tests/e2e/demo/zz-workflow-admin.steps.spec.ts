@@ -192,9 +192,9 @@ test('システム管理者: 並列承認「関係部署の合議」を選ぶと
     await expect(
         page.getByRole('combobox', { name: '選択する人', exact: true }),
     ).toBeVisible();
-    await expect(
-        page.getByRole('spinbutton', { name: '人数の最小' }),
-    ).toHaveCount(1);
+    await expect(page.getByRole('textbox', { name: '人数の最小' })).toHaveCount(
+        1,
+    );
 });
 
 test('システム管理者: 縦配置の可決の条件は切り替えボタンで、キーボードでも選べ、選んだ条件の欄だけが出る(全員 = 欄なし)', async ({
@@ -203,8 +203,8 @@ test('システム管理者: 縦配置の可決の条件は切り替えボタン
     await openAsAdministrator(page, `${PLAN}?node=council`);
     const rule = (name: string) =>
         page.getByRole('radio', { name, exact: true });
-    const count = page.getByRole('spinbutton', { name: '必要な人数' });
-    const ratio = page.getByRole('spinbutton', { name: '必要な割合' });
+    const count = page.getByRole('textbox', { name: '必要な人数' });
+    const ratio = page.getByRole('textbox', { name: '必要な割合' });
     await expect(rule('人数')).toHaveAttribute('aria-checked', 'true');
     await expect(count).toHaveValue('2');
     await expect(ratio).toHaveCount(0);
@@ -227,7 +227,7 @@ test('システム管理者: 規則に合わない入力で保存すると欄の
     page,
 }) => {
     await openAsAdministrator(page, `${PLAN}?node=council`);
-    await page.getByRole('spinbutton', { name: '人数の最小' }).fill('0');
+    await page.getByRole('textbox', { name: '人数の最小' }).fill('0');
     await submitAndExpectUrl(
         page,
         page.getByRole('button', { name: '保存', exact: true }),
@@ -246,9 +246,9 @@ test('システム管理者: 規則に合わない入力で保存すると欄の
 
     // 開き直すと、保存されていない(最小は 2 のまま)
     await page.goto(`${PLAN}?node=council`);
-    await expect(
-        page.getByRole('spinbutton', { name: '人数の最小' }),
-    ).toHaveValue('2');
+    await expect(page.getByRole('textbox', { name: '人数の最小' })).toHaveValue(
+        '2',
+    );
 });
 
 test('システム管理者: 申請のステップの「対象者で指定」も参照者と同じ欄で、選んだ相手が札になって一覧から消え、× で外せる(保存しない)', async ({

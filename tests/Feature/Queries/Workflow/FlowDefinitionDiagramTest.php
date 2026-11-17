@@ -10,6 +10,7 @@ use App\Enums\Authz\SelectionConditionKind;
 use App\Enums\Workflow\WorkflowTargetKind;
 use App\Models\Master\Department;
 use App\Models\Workflow\WorkflowRouteNode;
+use App\Queries\Authz\Api\SelectionSubjects;
 use App\Queries\Master\Api\MasterNames;
 use App\Queries\Workflow\FlowDefinitionDetail;
 use App\Queries\Workflow\FlowDefinitionDiagram;
@@ -19,7 +20,9 @@ use App\Queries\Workflow\StepTarget;
 use App\Queries\Workflow\SubjectRows;
 use App\Support\AccessContext;
 use Carbon\CarbonImmutable;
+use Mockery;
 use Mockery\LegacyMockInterface;
+use Mockery\MockInterface;
 use Tests\Support\SendsFlowDefinitionRequests;
 use Tests\Support\TransactionalTestCase;
 
@@ -32,6 +35,7 @@ use Tests\Support\TransactionalTestCase;
  * @phpstan-import-type DefinitionNode from FlowDefinitionDiagram
  * @phpstan-import-type DefinitionEdge from FlowDefinitionDiagram
  * @phpstan-import-type StepSettings from FlowStepSettings
+ * @phpstan-import-type Detail from FlowDefinitionDetail
  * @phpstan-import-type SubjectRow from StepTarget
  */
 final class FlowDefinitionDiagramTest extends TransactionalTestCase
@@ -143,6 +147,81 @@ final class FlowDefinitionDiagramTest extends TransactionalTestCase
         $names = app(SubjectRows::class)->namesOf([$groupId, null, $groupId], $this->today(), 'ja');
 
         $this->assertSame([$groupId => ['山田 恵']], $names);
+    }
+
+    /**
+     * 全体の読み込み(図と選んだステップの欄)は、対象者の行を多くて 2 回で引く(処理対象者を図で 1 回、選んだステップの確認する人を 1 回)。
+     */
+    public function test_the_whole_page_reads_the_subject_rows_at_most_twice(): void
+    {
+        $rows = $this->spiedSubjectRows();
+        $rows->shouldReceive('of')->twice()->passthru();
+        $rows->shouldReceive('namesOf')->once()->passthru();
+
+        $props = $this->showNode('manager');
+        $diagram = $props['diagram']();
+        $manager = $props['selectedNode']();
+
+        $badge = collect($diagram['nodes'])->firstOrFail('code', 'manager')['confirmBadge'];
+        $this->assertSame(['確認：山田 恵', ['山田 恵']], [$badge, array_column($manager['confirmers'] ?? [], 'name')]);
+    }
+
+    /**
+     * ステップの選び直し(選んだステップの欄だけの部分の再読み込み)は、選んだステップの処理対象者と確認する人を 1 回で引く。
+     */
+    public function test_reselecting_a_step_reads_only_its_subject_rows_at_once(): void
+    {
+        $yamada = $this->seededAccount('u0010')->id;
+        $settings = new NodeSettingsInput(
+            WorkflowTargetKind::Fixed, [new SelectionCondition(SelectionConditionKind::User, $yamada)],
+            sendBackNodeCodes: ['apply', 'section_chief'], confirmers: [$yamada],
+        );
+        app(SaveNodeSettings::class)->execute(self::PLAN, 3, 'manager', $settings);
+        $rows = $this->spiedSubjectRows();
+        // 処理対象者と確認する人の 2 つの対象者
+        $rows->shouldReceive('of')->once()->withArgs(fn (array $ids) => count($ids) === 2)->passthru();
+
+        $manager = $this->showNode('manager')['selectedNode']();
+
+        $this->assertSame(['山田 恵'], array_column($manager['confirmers'] ?? [], 'name'));
+        $this->assertSame(['山田 恵'], array_column($manager['target']['rows'] ?? [], 'name'));
+    }
+
+    /**
+     * 定義の図の確認の札は、所属を引く SubjectRows::of でなく名前だけの namesOf で引く(of に確認する人の対象者を渡さない)。
+     */
+    public function test_the_confirm_badges_of_the_definition_diagram_do_not_read_the_affiliations(): void
+    {
+        $confirmIds = WorkflowRouteNode::query()->whereNotNull('confirm_authz_subject_group_id')
+            ->pluck('confirm_authz_subject_group_id')->map(fn (mixed $id) => (int) $id)->all();
+        $rows = $this->spiedSubjectRows();
+        $rows->shouldReceive('of')->once()
+            ->withArgs(fn (array $ids) => array_intersect($ids, $confirmIds) === [])->passthru();
+        $rows->shouldReceive('namesOf')->once()->passthru();
+
+        $diagram = $this->showNode('manager')['diagram']();
+
+        $this->assertSame('確認：山田 恵', collect($diagram['nodes'])->firstOrFail('code', 'manager')['confirmBadge']);
+    }
+
+    /**
+     * 呼んだ回数と引数を確かめる SubjectRows(確かめないメソッドは元の処理)。
+     */
+    private function spiedSubjectRows(): MockInterface
+    {
+        $rows = Mockery::mock(SubjectRows::class, [app(SelectionSubjects::class), app(MasterNames::class)])
+            ->makePartial();
+        $this->app->instance(SubjectRows::class, $rows);
+
+        return $rows;
+    }
+
+    /**
+     * @return Detail
+     */
+    private function showNode(string $code): array
+    {
+        return app(FlowDefinitionDetail::class)->show(self::PLAN, null, null, $code, $this->today(), 'ja');
     }
 
     /**

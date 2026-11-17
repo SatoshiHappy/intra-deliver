@@ -1,8 +1,9 @@
 import { useRef, useState } from 'react';
-import type { MouseEvent, RefObject } from 'react';
+import type { MouseEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { CaseActionForm } from '@/components/Workflow/CaseActionForm';
+import { focusBackOnClose } from '@/lib/dialogFocus';
 import type { PageAttach } from '@/lib/Workflow/caseActionAttach';
 import { OPERATION_TEXTS } from '@/lib/Workflow/caseActions';
 import type { CaseActionTarget } from '@/lib/Workflow/caseActions';
@@ -99,13 +100,6 @@ type DialogProps = ReturnType<typeof useCaseActionDialog>['dialogProps'] & {
     attach: PageAttach;
 };
 
-/** 戻し先のボタンが DOM に残っていればフォーカスを戻す */
-function focusIfConnected(ref: RefObject<HTMLElement | null>) {
-    if (ref.current?.isConnected === true) {
-        ref.current.focus();
-    }
-}
-
 /**
  * 案件の処理のダイアログ(docs の 設計/ワークフロー/画面/申請と案件.md 6 節、足した欄 = docs の 設計/ワークフロー/案件の運用/画面/案件の画面.md の 5 節)。
  * 案件の誤りはリダイレクトで props を描き直すので、ダイアログは描き分けの外(ページの直下)に 1 つ置き、開いた時の写し(target)だけを読む。
@@ -131,10 +125,7 @@ export function CaseActionDialog({
         >
             <DialogContent
                 className="flex max-h-[90vh] flex-col"
-                onCloseAutoFocus={(event) => {
-                    event.preventDefault();
-                    focusIfConnected(returnFocusTo);
-                }}
+                onCloseAutoFocus={focusBackOnClose(returnFocusTo)}
             >
                 {target !== null && (
                     <CaseActionForm

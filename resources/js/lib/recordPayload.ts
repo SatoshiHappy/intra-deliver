@@ -1,5 +1,6 @@
 import type { RecordFieldDraft, RecordFormData } from '@/lib/recordForm';
-import { valueFields } from '@/lib/recordForm';
+import { isNumberField, valueFields } from '@/lib/recordForm';
+import { normalizeNumberText } from '@/lib/numberText';
 import { hasPartyKind, partyKindOf } from '@/lib/recordParty';
 import type {
     PickedReference,
@@ -55,7 +56,8 @@ function pickedPayload(
 
 /**
  * 欄の値を送る値にする(参照は id、複数選べる参照は id の配列で 0 個は null、型「ユーザーと組織」は種類と id、真偽は真偽、
- * 日時は :00+09:00 を付ける、空は null)。規則の条件の値・項目の既定値にも使う。
+ * 日時は :00+09:00 を付ける、整数・小数は docs の 設計/画面の意匠/README.md の方針 9 の (g) の形にそろえた文字、空は null)。
+ * 規則の条件の値・項目の既定値にも使う。
  */
 export function payloadValue(
     field: RecordFieldDefinition,
@@ -84,6 +86,12 @@ export function payloadValue(
 
     if (typeof draft === 'object') {
         return pickedPayload(field, draft);
+    }
+
+    if (isNumberField(field)) {
+        const text = normalizeNumberText(draft);
+
+        return text === '' ? null : text;
     }
 
     return field.type === 'datetime' ? draft + DATETIME_SUFFIX : draft;

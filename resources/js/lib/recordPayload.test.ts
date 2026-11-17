@@ -19,6 +19,16 @@ describe('payloadValue', () => {
         expect(payloadValue(field('f', 'decimal'), '1.5')).toBe('1.5');
     });
 
+    it('整数・小数の欄は前後の空白を除き、全角の数字・マイナス・小数点を半角にそろえて送る', () => {
+        expect(payloadValue(field('f', 'integer'), '１２')).toBe('12');
+        expect(payloadValue(field('f', 'decimal'), '－１．５')).toBe('-1.5');
+        expect(payloadValue(field('f', 'integer'), '\u3000')).toBeNull();
+    });
+
+    it('整数の欄のほかの文字(丸数字など)は文字のまま送る(業務処理が形の誤りを返す)', () => {
+        expect(payloadValue(field('f', 'integer'), '①')).toBe('①');
+    });
+
     it('空の欄は null', () => {
         expect(payloadValue(field('f', 'string'), '')).toBeNull();
         expect(payloadValue(field('f', 'datetime'), '')).toBeNull();

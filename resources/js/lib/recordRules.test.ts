@@ -167,6 +167,35 @@ describe('isRequiredNow', () => {
     });
 });
 
+describe('isRequiredNow(数の欄の全角)', () => {
+    const module = moduleWith(
+        [field('limit', 'integer')],
+        expressionOf('limit', 'gt', 10),
+    );
+    const requiredWith = (limit: string) =>
+        isRequiredNow(module, module.fields[0], { limit });
+
+    it('整数の欄の全角の数字を数として比べる', () => {
+        expect(requiredWith('１２')).toBe(true);
+        expect(requiredWith('９')).toBe(false);
+    });
+
+    it('丸数字は数として読まない(空として扱う)', () => {
+        expect(requiredWith('①')).toBe(false);
+    });
+
+    it('小数の欄の全角のマイナス・小数点を数として比べる', () => {
+        const decimal = moduleWith(
+            [field('rate', 'decimal')],
+            expressionOf('rate', 'lt', '-1'),
+        );
+
+        expect(
+            isRequiredNow(decimal, decimal.fields[0], { rate: '－１．５' }),
+        ).toBe(true);
+    });
+});
+
 describe('conditionOperatorsOf', () => {
     it('参照の型(型「ユーザーと組織」を含む)は空・空でないだけ(8.2 の表)', () => {
         for (const type of [

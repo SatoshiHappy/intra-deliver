@@ -57,6 +57,22 @@ describe('toFieldPayload', () => {
         ).toBeNull();
     });
 
+    it('最大の文字数は全角の数字を半角にそろえて数で送り、ほかの文字は文字のまま送る', () => {
+        const typed = (maxLength: string) =>
+            toFieldPayload({ ...formData('string', ''), maxLength }, true)
+                .max_length;
+
+        expect(typed('１００')).toBe(100);
+        expect(typed('①')).toBe('①');
+        expect(typed(' ')).toBeNull();
+    });
+
+    it('整数の既定値は全角の数字を半角にそろえて送る', () => {
+        expect(
+            toFieldPayload(formData('integer', '１２'), true).default_value,
+        ).toBe('12');
+    });
+
     it('既定値を持てない型は既定値を送らない', () => {
         expect(toFieldPayload(formData('user', null), true)).not.toHaveProperty(
             'default_value',
