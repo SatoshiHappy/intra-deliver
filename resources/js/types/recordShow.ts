@@ -5,6 +5,7 @@
  * 後ろのモジュールが一覧と詳細に足すものの型も、ここに置く(末尾)。
  */
 import type { RecordPartyValue, RecordReferenceValue } from './recordReference';
+import type { RecordHoldLink } from './recordHold';
 import type { RecordFieldType, RecordFieldValue } from './records';
 import type { StatusTone } from './status';
 
@@ -185,7 +186,7 @@ export type RecordRevisionChanges = {
 
 /**
  * 更新履歴の欄の 1 行(新しい版から)。頭 = 日時・操作した人(actor。null = ゲスト。principal があれば代理の形)・操作
- * (origin があれば契機の札とステップ名、無ければ action)。changes = null は頭だけ(登録・差分の無い版)。
+ * (origin があれば契機の札とステップ名、link があれば持ち主の画面へのリンク、無ければ action)。changes = null は頭だけ(登録・差分の無い版)。
  */
 export type RecordRevisionRow = {
     id: number;
@@ -194,7 +195,11 @@ export type RecordRevisionRow = {
     action: 'create' | 'update';
     actor: RecordReferenceValue | null;
     principal: RecordReferenceValue | null;
-    origin: { operation: string; nodeName: string | null } | null;
+    origin: {
+        operation: string;
+        nodeName: string | null;
+        link: RecordHoldLink | null;
+    } | null;
     noPreviousRecord: boolean; // 前の版が無い update の版(「この版より前の記録はありません。」)
     changes: RecordRevisionChanges | null;
 };

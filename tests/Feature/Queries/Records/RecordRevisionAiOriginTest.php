@@ -47,8 +47,8 @@ final class RecordRevisionAiOriginTest extends TransactionalTestCase
 
         $this->assertSame([
             [4, $editor->id, null, null],
-            [3, $requester->id, null, ['operation' => 'AI(議事録の再作成)', 'nodeName' => null]],
-            [2, $requester->id, null, ['operation' => 'AI(議事録の作成)', 'nodeName' => null]],
+            [3, $requester->id, null, ['operation' => 'AI(議事録の再作成)', 'nodeName' => null, 'link' => null]],
+            [2, $requester->id, null, ['operation' => 'AI(議事録の作成)', 'nodeName' => null, 'link' => null]],
             [1, $requester->id, null, null],
         ], array_map(fn (array $row) => [
             $row['revision'], $row['actor']['id'] ?? null, $row['principal']['id'] ?? null, $row['origin'],

@@ -146,7 +146,7 @@ class RecordController extends Controller
                 ->detail($requester, $opened, $recordId, $context->date, $context->localeCode),
             'can' => fn () => $this->pages->detailCan($requester, $opened, $context->date, $applyEntries()),
             'applyEntries' => fn () => $applyEntries(),
-            'hold' => fn () => $this->pages->hold($recordId),
+            'hold' => fn () => $this->pages->hold($requester, $recordId, $context->date),
             'panel' => fn () => $panel()['panel'] ?? null,
             'sections' => fn () => $panel()['sections'] ?? [],
             'panelContent' => Inertia::merge(fn () => $this->panelContent($request, $context, $module, $recordId))
@@ -221,7 +221,7 @@ class RecordController extends Controller
             'module' => fn () => $this->pages->definition($opened),
             'headings' => fn () => $this->panels->headings($opened->id),
             'record' => $editable,
-            'hold' => fn () => $this->pages->hold($editable['id']),
+            'hold' => fn () => $this->pages->hold($requester, $editable['id'], $context->date),
         ]);
     }
 

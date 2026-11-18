@@ -12,6 +12,7 @@ use App\Http\Requests\Records\RecordModuleInputRequest;
 use App\Http\Requests\Records\RecordModuleOrderRequest;
 use App\Http\Requests\Records\RecordModuleUpdateRequest;
 use App\Queries\Records\RecordAdminQuery;
+use App\Queries\Records\RecordModuleAttachmentNotices;
 use App\Queries\Records\RecordRelatedColumns;
 use Illuminate\Http\RedirectResponse;
 use Inertia\Inertia;
@@ -27,6 +28,7 @@ class ModuleController extends Controller
 {
     public function __construct(
         private RecordAdminQuery $admin,
+        private RecordModuleAttachmentNotices $attachmentNotices,
         private CreateRecordModule $createModule,
         private UpdateRecordModule $updateModule,
         private ReorderRecordModuleItems $reorderItems,
@@ -61,7 +63,10 @@ class ModuleController extends Controller
 
     public function edit(string $module): Response
     {
-        return Inertia::render('Records/Admin/ModuleEdit', $this->admin->moduleForm($module));
+        return Inertia::render('Records/Admin/ModuleEdit', [
+            ...$this->admin->moduleForm($module),
+            'attachmentDisableNotices' => $this->attachmentNotices->of($module),
+        ]);
     }
 
     public function update(RecordModuleUpdateRequest $request, string $module): RedirectResponse

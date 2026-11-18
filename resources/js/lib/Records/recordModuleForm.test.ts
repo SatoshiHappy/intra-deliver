@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vite-plus/test';
 import type { RecordAdminModuleForm } from '@/types';
 import {
     initialModuleData,
+    needsAttachmentDisableConfirm,
     toModulePayload,
     withVisibilityStop,
 } from './recordModuleForm';
@@ -109,5 +110,47 @@ describe('toModulePayload', () => {
             toModulePayload({ ...data, is_visible: false }, false, categories)
                 .categories,
         ).toEqual([]);
+    });
+});
+
+describe('needsAttachmentDisableConfirm(業務モジュールの管理.md 2 節の表)', () => {
+    const enabled = { ...module, isAttachmentEnabled: true };
+    const notice = [
+        '添付ファイルを追加・削除できる進行中の申請が 1 件あります。',
+    ];
+    const sending = (allowed: boolean) => ({
+        ...initialModuleData(enabled),
+        is_attachment_enabled: allowed,
+    });
+
+    it('開いた時に許可・送る値が許可しない・案内の文が 1 つ以上なら確かめる', () => {
+        expect(
+            needsAttachmentDisableConfirm(enabled, sending(false), notice),
+        ).toBe(true);
+    });
+
+    it('案内の文が無ければ(0 件・案内の失敗)確かめない', () => {
+        expect(needsAttachmentDisableConfirm(enabled, sending(false), [])).toBe(
+            false,
+        );
+    });
+
+    it('送る値が許可するなら確かめない', () => {
+        expect(
+            needsAttachmentDisableConfirm(enabled, sending(true), notice),
+        ).toBe(false);
+    });
+
+    it('開いた時に許可しない・明細のモジュール(null)なら確かめない', () => {
+        expect(needsAttachmentDisableConfirm(module, sending(false), [])).toBe(
+            false,
+        );
+        expect(
+            needsAttachmentDisableConfirm(
+                { ...module, isAttachmentEnabled: null },
+                sending(false),
+                notice,
+            ),
+        ).toBe(false);
     });
 });

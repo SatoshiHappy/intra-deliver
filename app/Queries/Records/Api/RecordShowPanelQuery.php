@@ -7,6 +7,7 @@ use App\Queries\Authz\Api\Requester;
 use App\Queries\Records\RecordCommentQuery;
 use App\Queries\Records\RecordHeadingGroups;
 use App\Queries\Records\RecordHoldCatalog;
+use App\Queries\Records\RecordRevisionHoldLinks;
 use App\Queries\Records\RecordRevisionRows;
 use App\Queries\Records\RecordShowSectionCatalog;
 use App\Queries\Records\RecordValueReader;
@@ -58,6 +59,7 @@ class RecordShowPanelQuery
         private RecordAttachmentQuery $attachments,
         private RecordCommentQuery $comments,
         private RecordRevisionRows $revisions,
+        private RecordRevisionHoldLinks $revisionHoldLinks,
         private RecordShowSectionCatalog $sections,
         private RecordHoldCatalog $holds,
         private RecordHeadingGroups $headingGroups,
@@ -211,7 +213,10 @@ class RecordShowPanelQuery
 
         return [
             'kind' => 'revisions',
-            'rows' => array_map(fn (array $row) => self::withRevisionFileLinks($row, $route), $page['rows']),
+            'rows' => array_map(
+                fn (array $row) => self::withRevisionFileLinks($row, $route),
+                $this->revisionHoldLinks->withLinks($recordId, $page['rows']),
+            ),
             'hasMore' => $page['hasMore'],
         ];
     }

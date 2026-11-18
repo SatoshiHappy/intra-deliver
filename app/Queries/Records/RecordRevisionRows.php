@@ -23,6 +23,7 @@ use Illuminate\Support\Collection;
  * @phpstan-import-type Diff from RecordRevisionDiff
  * @phpstan-import-type ShownRowAccessChange from RecordRevisionRowAccess
  * @phpstan-import-type RevisionField from RecordRevisionLabels
+ * @phpstan-import-type HoldLinkProps from RecordHoldNoticeCatalog
  *
  * @phpstan-type RevisionAttachmentChange array{change: 'added'|'removed', id: int, name: string, uploadId: int|null,
  *     mime: string|null, previewable: bool, purgeDueOn: string|null,
@@ -33,7 +34,8 @@ use Illuminate\Support\Collection;
  *     attachments: list<RevisionAttachmentChange>, rowAccess: ShownRowAccessChange|null}
  * @phpstan-type RevisionRow array{id: int, revision: int, at: string|null, action: 'create'|'update',
  *     actor: ReferenceValue|null, principal: ReferenceValue|null,
- *     origin: array{operation: string, nodeName: string|null}|null, noPreviousRecord: bool,
+ *     origin: array{operation: string, nodeName: string|null, link?: HoldLinkProps|null}|null,
+ *     noPreviousRecord: bool,
  *     changes: RevisionChanges|null}
  */
 class RecordRevisionRows
@@ -193,7 +195,7 @@ class RecordRevisionRows
                 'change' => $change['change'],
                 'id' => $change['id'],
                 'name' => $change['name'],
-                // 開けるのは外した行だけ(追加の行は添付ファイルの欄から開く = 更新履歴.md の 5.2 節)
+                // 開けるのは外した行だけ(追加の行は添付ファイルの欄から開く = 設計/業務データの入れ物/レコードの共通機能/更新履歴.md の 5.2 節)
                 'uploadId' => $change['change'] === 'removed' ? $change['uploadId'] : null,
                 'mime' => null,
                 'previewable' => false,

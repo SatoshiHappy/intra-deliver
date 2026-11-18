@@ -99,7 +99,7 @@ describe('revisionOperation', () => {
     it('契機があればその語とステップ名、無ければ登録・編集', () => {
         expect(
             revisionOperation({
-                origin: { operation: '承認', nodeName: '課長' },
+                origin: { operation: '承認', nodeName: '課長', link: null },
                 action: 'update',
             }),
         ).toEqual({ label: '承認', nodeName: '課長' });

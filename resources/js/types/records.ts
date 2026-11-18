@@ -160,9 +160,6 @@ export type RecordDetail = {
 /** 業務の画面の詳細 Records/Show の record(参照制限の今の値を足したもの = 設計/業務データの入れ物/画面/業務の画面.md の 2.3) */
 export type RecordShowDetail = RecordDetail & { rowAccess: RowAccessInput };
 
-/** レコードの持ち主(詳細・編集のページの hold。理由だけを出し、案件の番号や名前は出さない = 画面/業務の画面.md 2.2・2.3) */
-export type RecordHold = { reason: string };
-
 /** 編集のページ Records/Edit の record(画面/業務の画面.md 2.2) */
 export type RecordEditable = {
     id: number;

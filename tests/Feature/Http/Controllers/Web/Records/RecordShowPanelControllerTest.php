@@ -257,7 +257,7 @@ final class RecordShowPanelControllerTest extends TransactionalTestCase
 
         $this->get($this->url())->assertInertia(fn (Assert $page) => $page
             ->where('can', ['update' => true, 'delete' => true, 'copy' => true, 'attach' => true, 'apply' => false])
-            ->where('hold', ['reason' => self::HOLD_REASON])
+            ->where('hold', ['reason' => self::HOLD_REASON, 'state' => null])
         );
         $this->get("/records/data/panel_unused/{$other->id}")->assertInertia(fn (Assert $page) => $page
             ->where('can', ['update' => true, 'delete' => true, 'copy' => true, 'attach' => false, 'apply' => false]));

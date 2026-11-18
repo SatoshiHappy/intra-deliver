@@ -11,6 +11,7 @@ use App\Models\Records\Record;
 use App\Models\Records\RecordAttachment;
 use App\Models\Records\RecordComment;
 use App\Models\Records\RecordRevision;
+use App\Queries\Authz\Api\Requester;
 use App\Queries\Records\RecordPageQuery;
 use Carbon\CarbonImmutable;
 use Inertia\Testing\AssertableInertia as Assert;
@@ -154,7 +155,7 @@ final class RecordCopyControllerTest extends TransactionalTestCase
         $this->assertSame(1, RecordRevision::query()->where('record_id', $estimateId)->count());
         $this->assertSame(0, RecordComment::query()->where('record_id', $copied->id)->count());
         $this->assertSame(0, RecordAttachment::query()->where('record_id', $copied->id)->count());
-        $this->assertNull(app(RecordPageQuery::class)->hold($copied->id));
+        $this->assertNull(app(RecordPageQuery::class)->hold(new Requester(null, null), $copied->id, now()));
         $this->assertSame(2, Record::query()->where('parent_record_id', $copied->id)->count());
     }
 

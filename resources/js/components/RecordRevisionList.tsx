@@ -1,6 +1,7 @@
 import { FileText } from 'lucide-react';
 import { Fragment } from 'react';
 import type { ReactNode } from 'react';
+import { HoldLink } from '@/components/HoldLink';
 import { RecordPanelMore } from '@/components/RecordPanelMore';
 import { RecordRevisionValueChange } from '@/components/RecordRevisionValueChange';
 import { RecordValue } from '@/components/RecordValue';
@@ -233,9 +234,10 @@ const TIMELINE_ITEM = cn(
     'after:absolute after:top-1 after:left-0 after:size-4 after:rounded-full after:bg-primary',
 );
 
-/** 頭の 1 行(日時・操作した人・操作 = 更新履歴.md の 5.1 節) */
+/** 頭の 1 行(日時・操作した人・操作と、契機の持ち主の画面へのリンク = 更新履歴.md の 5.1 節) */
 function RevisionHead({ row }: { row: RecordRevisionRow }) {
     const operation = revisionOperation(row);
+    const link = row.origin?.link ?? null;
 
     return (
         <div className="flex flex-wrap items-center gap-x-2.5 gap-y-0.5">
@@ -249,6 +251,7 @@ function RevisionHead({ row }: { row: RecordRevisionRow }) {
                     {operation.nodeName}
                 </span>
             )}
+            {link !== null && <HoldLink link={link} />}
         </div>
     );
 }

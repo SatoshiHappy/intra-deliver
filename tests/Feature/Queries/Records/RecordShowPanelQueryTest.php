@@ -132,7 +132,7 @@ final class RecordShowPanelQueryTest extends TransactionalTestCase
         $rows = $this->content($recordId, 'revisions', null)['rows'] ?? [];
 
         $this->assertSame([
-            [3, 'update', $proxy->id, $applicant->id, ['operation' => '承認', 'nodeName' => '課長']],
+            [3, 'update', $proxy->id, $applicant->id, ['operation' => '承認', 'nodeName' => '課長', 'link' => null]],
             [2, 'update', null, null, null],
             [1, 'create', $applicant->id, null, null],
         ], array_map(fn (array $row) => [

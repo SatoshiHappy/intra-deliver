@@ -1,16 +1,11 @@
-import { Head, Link } from '@inertiajs/react';
-import type { FormEvent } from 'react';
+import { Head } from '@inertiajs/react';
 import { CountedTextInput } from '@/components/CountedTextInput';
 import { FormBlock, invalidProps, UnshownErrors } from '@/components/FormBlock';
-import {
-    FormActions,
-    FormSurface,
-    TWO_SURFACES_GRID,
-} from '@/components/FormLayout';
+import { FormSurface, TWO_SURFACES_GRID } from '@/components/FormLayout';
 import { HeadingHelp } from '@/components/HeadingHelp';
 import { MenuIcon } from '@/components/MenuIcon';
+import { ModuleEditActions } from '@/components/Records/ModuleEditActions';
 import { ModuleAttributes } from '@/components/Records/RecordModuleAttributes';
-import { Button } from '@/components/ui/button';
 import {
     Select,
     SelectContent,
@@ -18,9 +13,9 @@ import {
     SelectTrigger,
     SelectValue,
 } from '@/components/ui/select';
+import { useModuleEditSubmit } from '@/hooks/Records/use-module-edit-submit';
 import { useRecordModuleForm } from '@/hooks/Records/use-record-module-form';
-import { toModulePayload } from '@/lib/Records/recordModuleForm';
-import { edit, index, show, update } from '@/routes/records/admin/modules';
+import { edit, index, show } from '@/routes/records/admin/modules';
 import type {
     DefinitionTextMaxLengths,
     ModuleCategoryChoice,
@@ -45,7 +40,8 @@ const MODULE_KEYS = [
 
 /**
  * icons = アイコンの選択肢(作成と同じ)、categories = すべてのモジュール分類(並びの順)、textMaxLengths = 名前・説明の文字数の上限、
- * visibilityStopReason = 表示の止めの理由(止めが無い・明細のモジュールは null)
+ * visibilityStopReason = 表示の止めの理由(止めが無い・明細のモジュールは null)、
+ * attachmentDisableNotices = 添付の許可を外す前の確かめの文(docs の 設計/業務データの入れ物/レコードの共通機能/業務モジュールの管理.md の 2 節)
  */
 type Props = {
     module: RecordAdminModuleForm;
@@ -53,11 +49,12 @@ type Props = {
     categories: ModuleCategoryChoice[];
     textMaxLengths: DefinitionTextMaxLengths;
     visibilityStopReason: string | null;
+    attachmentDisableNotices: string[];
 };
 
 /**
- * 管理の業務モジュールの編集(docs の 設計/業務データの入れ物/画面/管理の画面.md 3.5、モジュール分類/画面と検査.md 4.2)。
- * 欄として描いていないキーの誤りはフォームの面の先頭に出す(3 節の冒頭)。
+ * 管理の業務モジュールの編集(docs の 設計/業務データの入れ物/画面/管理の画面.md 3.5、設計/業務データの入れ物/モジュール分類/画面と検査.md 4.2)。
+ * 欄として描いていないキーの誤りはフォームの面の先頭に出す(管理の画面.md の 3 節の冒頭)。
  */
 export default function ModuleEdit({
     module,
@@ -65,15 +62,15 @@ export default function ModuleEdit({
     categories,
     textMaxLengths,
     visibilityStopReason,
+    attachmentDisableNotices,
 }: Props) {
     const form = useRecordModuleForm(module, visibilityStopReason);
-    const submit = (event: FormEvent) => {
-        event.preventDefault();
-        form.transform((data) =>
-            toModulePayload(data, module.isDetails, categories),
-        );
-        form.submit(update(module.code));
-    };
+    const submission = useModuleEditSubmit(
+        form,
+        module,
+        categories,
+        attachmentDisableNotices,
+    );
 
     const basic = (
         <FormSurface aria-labelledby="module-basic" inner="max-w-2xl">
@@ -162,7 +159,7 @@ export default function ModuleEdit({
                 <h1 className="text-2xl font-semibold">{HEADING}</h1>
                 <form
                     noValidate
-                    onSubmit={submit}
+                    onSubmit={submission.submit}
                     aria-label="業務モジュールの入力"
                     className="flex flex-col gap-6"
                 >
@@ -188,14 +185,11 @@ export default function ModuleEdit({
                             />
                         </div>
                     )}
-                    <FormActions>
-                        <Button variant="outline" asChild>
-                            <Link href={show(module.code)}>キャンセル</Link>
-                        </Button>
-                        <Button type="submit" disabled={form.processing}>
-                            更新
-                        </Button>
-                    </FormActions>
+                    <ModuleEditActions
+                        cancelHref={show(module.code)}
+                        processing={form.processing}
+                        submission={submission}
+                    />
                 </form>
             </div>
         </>

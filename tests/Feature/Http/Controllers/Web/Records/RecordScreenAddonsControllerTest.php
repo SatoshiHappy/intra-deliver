@@ -255,7 +255,7 @@ final class RecordScreenAddonsControllerTest extends TransactionalTestCase
         ]));
 
         $this->get("/records/data/addon_check/{$this->ids[0]}")->assertOk()->assertInertia(fn (Assert $page) => $page
-            ->where('hold', ['reason' => self::HOLD_REASON])
+            ->where('hold', ['reason' => self::HOLD_REASON, 'state' => null])
             ->where('addons.actions', [$action]));
         $this->assertSame(1, $addons->showCalls);
     }

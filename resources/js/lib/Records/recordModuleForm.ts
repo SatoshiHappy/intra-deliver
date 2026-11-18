@@ -38,7 +38,7 @@ export function initialModuleData(
 }
 
 /**
- * 表示の止めを当てたフォームの値(管理の画面.md 3.5)。初期値と、開いている間に止めが立ったときの両方をこれで決める。
+ * 表示の止めを当てたフォームの値(docs の 設計/業務データの入れ物/画面/管理の画面.md 3.5)。初期値と、開いている間に止めが立ったときの両方をこれで決める。
  */
 export function withVisibilityStop(
     data: ModuleFormData,
@@ -70,4 +70,19 @@ export function toModulePayload(
                   .map((category) => category.id)
             : [],
     };
+}
+
+/**
+ * 「更新」を押した時に添付の許可の解除を確かめるか(docs の 設計/業務データの入れ物/レコードの共通機能/業務モジュールの管理.md の 2 節の表)。
+ */
+export function needsAttachmentDisableConfirm(
+    module: RecordAdminModuleForm,
+    data: ModuleFormData,
+    notices: string[],
+): boolean {
+    return (
+        module.isAttachmentEnabled === true &&
+        !data.is_attachment_enabled &&
+        notices.length > 0
+    );
 }
