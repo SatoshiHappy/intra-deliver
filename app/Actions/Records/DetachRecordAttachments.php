@@ -2,6 +2,7 @@
 
 namespace App\Actions\Records;
 
+use App\Actions\Records\Api\RecordHolderRefusal;
 use App\Enums\Records\RecordRevisionAction;
 use App\Models\Records\Record;
 use App\Models\Records\RecordAttachment;
@@ -29,7 +30,8 @@ class DetachRecordAttachments
     /**
      * @throws ModelNotFoundException<RecordModule|Record|RecordAttachment> 業務モジュール・レコードが無い、そのレコードの今の添付でないとき
      * @throws AuthorizationException update を許されないとき
-     * @throws ValidationException 持ち主があるとき(キー record)・使用しない業務モジュール(キー attachments)
+     * @throws RecordHolderRefusal 持ち主があるとき(キー record)
+     * @throws ValidationException 使用しない業務モジュール(キー attachments)
      */
     public function execute(AccessContext $context, string $moduleCode, int $recordId, int $attachmentId): void
     {

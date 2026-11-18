@@ -31,7 +31,8 @@ class DeleteRecordUnchecked
      * 外側のトランザクションの中では savepoint になり、デッドロックを含む例外はやり直さずに伝わる(やり直すかは呼び手が決める)。
      *
      * @throws ModelNotFoundException<Record|RecordModule> レコードが無い・明細の行のとき
-     * @throws ValidationException 持ち主があるとき・ほかの行から参照されているとき(キー record)
+     * @throws RecordHolderRefusal 持ち主があるとき(キー record)
+     * @throws ValidationException ほかの行から参照されているとき(キー record)
      */
     public function execute(int $recordId): void
     {

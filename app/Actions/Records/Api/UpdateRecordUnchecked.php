@@ -49,8 +49,9 @@ class UpdateRecordUnchecked
      *
      * @throws ModelNotFoundException<RecordModule|Record> 業務モジュールが無い・明細のモジュール、レコードがその業務モジュールに無い
      *                                                     (明細の行を含む)とき
-     * @throws ValidationException 持ち主があるとき(キー record)、検証に失敗したとき・添付を使用しない業務モジュールに
-     *                             添付を渡したとき(キー attachments)
+     * @throws RecordHolderRefusal 持ち主があるとき(キー record)
+     * @throws ValidationException 検証に失敗したとき(キーは誤りのある項目)、添付を使用しない業務モジュールに添付を渡したとき
+     *                             (キー attachments)
      * @throws LogicException 受けない入力を渡したとき(呼び手の作りの誤り)
      * @throws InvalidArgumentException 契機の実行者が AccessContext の利用者と同じとき・上げ済みの実体が持ち主の無い実体でないとき
      */

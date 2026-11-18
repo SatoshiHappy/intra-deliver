@@ -14,6 +14,7 @@ use App\Queries\Records\RecordModuleGate;
 use App\Queries\Records\RecordPageQuery;
 use App\Queries\Records\RecordParty;
 use App\Queries\Records\RecordQuery;
+use App\Queries\Records\RecordRowAccessValues;
 use App\Queries\Records\ReferenceCheck;
 use App\Queries\Records\ReferenceTargets;
 use DateTimeInterface;
@@ -23,13 +24,14 @@ use LogicException;
 
 /**
  * 申請の画面のフォームの口(業務モジュールの定義・判定・一時保存の入力と再申請の初期値 = docs の 設計/ワークフロー/業務データとの接続/申請と書き込み.md 1 節・
- * 2 節。主体・認可・結果・失敗の正本 = 同 公開の口/README.md 7 節の表)。判定は業務データの入れ物の画面と同じ口({@see RecordModuleGate})を通る。
+ * 2 節。主体・認可・結果・失敗の正本 = 同 公開の口/画面の値の口.md の 7.2 の表)。判定は業務データの入れ物の画面と同じ口({@see RecordModuleGate})を通る。
  *
  * @phpstan-import-type ModuleDefinition from RecordDefinitionQuery
  * @phpstan-import-type DraftValues from DraftValueReader
  * @phpstan-import-type DetailRow from RecordQuery
  * @phpstan-import-type CopiedValues from RecordCopyValues
  * @phpstan-import-type Party from RecordParty
+ * @phpstan-import-type ShownRowAccess from RecordRowAccessValues
  *
  * @phpstan-type CopiedRows array<string, list<array{values: array<string, mixed>}>>
  * @phpstan-type ClearedField array{kind: 'field'|'cell'|'viewers', field: string|null, detail: string|null,
@@ -65,6 +67,26 @@ class RecordFormQuery
     }
 
     /**
+     * 業務モジュール(親の無いもの)の $action を判定し、参照制限の既定のチェックを返す(docs の
+     * 設計/ワークフロー/業務データとの接続/公開の口/画面の値の口.md の 7.2 の「参照制限の既定の読み取り」の行)。{@see self::definition()} の結果と
+     * 申請の画面の props を変えないための別の操作。
+     *
+     * @throws ModelNotFoundException<RecordModule> 業務モジュールが無い・明細のモジュールのとき
+     * @throws AuthorizationException $action を許されないとき
+     */
+    public function rowAccessRestrictedByDefault(
+        Requester $requester,
+        string $moduleCode,
+        RecordModuleAction $action,
+        DateTimeInterface $date,
+    ): bool {
+        $module = $this->gate->topLevelModule($moduleCode);
+        $this->gate->authorize($requester, $module, $action, $date);
+
+        return $module->row_access_restricted_by_default;
+    }
+
+    /**
      * 判定を求める者が d に、業務モジュール(親の無いもの)の $action を許されるか。
      *
      * @throws ModelNotFoundException<RecordModule> 業務モジュールが無い・明細のモジュールのとき
@@ -97,14 +119,14 @@ class RecordFormQuery
 
     /**
      * 主体の判定をしない。呼び手が、そのレコードの値を見てよいことを確かめてから呼ぶ(呼び手ごとの確かめ = docs の
-     * 設計/ワークフロー/業務データとの接続/公開の口/README.md 7 節の editValues の行)。
+     * 設計/ワークフロー/業務データとの接続/公開の口/画面の値の口.md の 7.2 の editValues の行)。
      *
-     * 結果の形は `@return` の型(rowAccessRestricted = そのレコードのチェック「参照を制限する」= 7 節の行の結果)。検証の範囲 = 同じ 7 節の editValues の行
+     * 結果の形は `@return` の型と、同じ 7.2 の editValues の行の結果と検証の範囲
      * (version を送り返す使い方 = 設計/ワークフロー/申請の周辺/既存のデータからの申請/README.md の 3 節)。判定を求める者は、参照先の表示名の
-     * 出し分けにだけ使う(同じ 7 節の「行の権限」)。
+     * 出し分けにだけ使う(設計/ワークフロー/業務データとの接続/公開の口/README.md 7 節の「行の権限」)。
      *
      * @return array{values: array<string, mixed>, details: array<string, list<DetailRow>>, version: string,
-     *     rowAccessRestricted: bool}
+     *     rowAccessRestricted: bool, rowAccess: ShownRowAccess}
      *
      * @throws ModelNotFoundException<RecordModule|Record> 業務モジュールが無い・明細のモジュールのとき、レコードがその業務モジュールに無いとき
      */
@@ -118,6 +140,7 @@ class RecordFormQuery
             'details' => $editable['details'],
             'version' => $editable['version'],
             'rowAccessRestricted' => $editable['rowAccess']['restricted'],
+            'rowAccess' => $editable['rowAccess'],
         ];
     }
 

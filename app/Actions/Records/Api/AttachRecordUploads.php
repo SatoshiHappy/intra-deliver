@@ -40,7 +40,8 @@ class AttachRecordUploads
      *
      * @throws ModelNotFoundException<RecordModule|Record> 業務モジュール・レコードが無いとき
      * @throws AuthorizationException 持ち主の鍵が無く、update を許されないとき
-     * @throws ValidationException 持ち主(キー record)・使用しない業務モジュール・ファイルの誤り(キー attachments・attachments.<添字>)
+     * @throws RecordHolderRefusal 渡した鍵と違う持ち主があるとき(キー record)
+     * @throws ValidationException 使用しない業務モジュール・ファイルの誤り(キー attachments・attachments.<添字>)
      * @throws InvalidArgumentException 契機の実行者が AccessContext の利用者と同じとき・渡した持ち主の鍵がそのレコードの持ち主に無いとき
      * @throws RuntimeException 実体を書けなかったとき
      */

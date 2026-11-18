@@ -2,6 +2,7 @@
 
 namespace App\Actions\Records;
 
+use App\Actions\Records\Api\RecordHolderRefusal;
 use App\Enums\Records\RecordModuleAction;
 use App\Models\Records\Record;
 use App\Models\Records\RecordModule;
@@ -34,7 +35,8 @@ class DeleteRecord
      * @throws ModelNotFoundException<RecordModule|Record> 業務モジュールが無い・明細のモジュール、レコードがその業務モジュールに無い・
      *                                                     行の判定を通らないとき
      * @throws AuthorizationException 削除を許されないとき
-     * @throws ValidationException 持ち主があるとき・ほかの行から参照されているとき(キー record)
+     * @throws RecordHolderRefusal 持ち主があるとき(キー record)
+     * @throws ValidationException ほかの行から参照されているとき(キー record)
      */
     public function execute(AccessContext $context, string $moduleCode, int $recordId): void
     {

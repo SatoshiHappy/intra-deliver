@@ -2,6 +2,7 @@
 
 namespace App\Actions\Records;
 
+use App\Actions\Records\Api\RecordHolderRefusal;
 use App\Actions\Records\Api\RecordInput;
 use App\Enums\Records\RecordModuleAction;
 use App\Models\Records\Record;
@@ -61,7 +62,8 @@ class RecordAttachmentGate
     /**
      * 持ち主と使用の判定(行の鍵の後に読む)。
      *
-     * @throws ValidationException 渡した鍵と違う持ち主があるとき(キー record)・添付を使用しないとき(キー attachments)
+     * @throws RecordHolderRefusal 渡した鍵と違う持ち主があるとき(キー record)
+     * @throws ValidationException 添付を使用しないとき(キー attachments)
      * @throws InvalidArgumentException 持ち主の鍵を渡したのに、そのレコードの持ち主にその鍵が無いとき(呼び手の誤り)
      */
     public function ensureWritable(RecordModule $module, Record $record, ?string $holder): void
@@ -69,7 +71,7 @@ class RecordAttachmentGate
         $hold = $this->holds->blockingHold($record->id, $holder);
 
         if ($hold !== null) {
-            throw ValidationException::withMessages(['record' => [$hold->reason]]);
+            throw RecordHolderRefusal::of($hold->reason);
         }
 
         // 鍵だけで update と行の判定を飛ばすので、鍵がそのレコードの持ち主のものであることを確かめる

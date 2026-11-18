@@ -2,6 +2,7 @@
 
 namespace App\Actions\Records;
 
+use App\Actions\Records\Api\RecordHolderRefusal;
 use App\Actions\Records\Api\RecordInput;
 use App\Actions\Records\Api\RecordRevisionOrigin;
 use App\Actions\Records\Api\UpdateRecord;
@@ -38,7 +39,7 @@ class LockedRecordUpdate
      *
      * @param  string|null  $holder  持ち主の鍵(null = 鍵を渡さない = 持ち主があれば拒む)
      *
-     * @throws ValidationException 渡した鍵と違う持ち主があるとき(キー record)
+     * @throws RecordHolderRefusal 渡した鍵と違う持ち主があるとき(キー record)
      * @throws InvalidArgumentException 鍵を渡したのに、そのレコードの持ち主にその鍵が無いとき
      */
     public function throwIfHeld(Record $record, ?string $holder): void
@@ -46,7 +47,7 @@ class LockedRecordUpdate
         $hold = $this->holds->blockingHold($record->id, $holder);
 
         if ($hold !== null) {
-            throw ValidationException::withMessages(['record' => [$hold->reason]]);
+            throw RecordHolderRefusal::of($hold->reason);
         }
 
         if ($holder !== null && ! $this->holds->isHeldBy($record->id, $holder)) {

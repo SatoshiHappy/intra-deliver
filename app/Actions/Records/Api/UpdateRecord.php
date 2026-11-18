@@ -64,8 +64,10 @@ class UpdateRecord
      * @throws ModelNotFoundException<RecordModule|Record> 業務モジュールが無い・明細のモジュール、レコードがその業務モジュールに無い・
      *                                                     行の判定を通らないとき(鍵が null のとき)
      * @throws AuthorizationException 更新を許されないとき
-     * @throws ValidationException 渡した鍵と違う持ち主があるとき・開いた後に更新されているとき(キー record)、検証に失敗したとき・
-     *                             添付を使用しない業務モジュールに添付を渡したとき(キー attachments)
+     * @throws RecordHolderRefusal 渡した鍵と違う持ち主があるとき(キー record)
+     * @throws RecordStaleRefusal 開いた後に更新されているとき(キー record)
+     * @throws ValidationException 検証に失敗したとき(キーは誤りのある項目)、添付を使用しない業務モジュールに添付を渡したとき
+     *                             (キー attachments)
      * @throws InvalidArgumentException 契機の実行者が AccessContext の利用者と同じとき・上げ済みの実体が持ち主の無い実体でないとき・
      *                                  渡した持ち主の鍵がそのレコードの持ち主に無いとき(呼び手の誤り)
      */
@@ -97,7 +99,7 @@ class UpdateRecord
             $this->update->throwIfHeld($record, $holder);
 
             if ($version !== null && $version !== $record->version()) {
-                throw ValidationException::withMessages(['record' => [self::STALE]]);
+                throw RecordStaleRefusal::of(self::STALE);
             }
 
             $this->update->write($requester, $context, $this->definitions->load($module), $record, $input, $origin);

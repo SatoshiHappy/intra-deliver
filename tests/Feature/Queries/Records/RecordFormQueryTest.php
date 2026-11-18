@@ -45,12 +45,28 @@ final class RecordFormQueryTest extends TransactionalTestCase
         );
     }
 
+    public function test_the_row_access_default_judges_the_action_and_returns_the_check_of_the_module(): void
+    {
+        $module = $this->recordModule('projects', [RecordModuleAction::Create]);
+        $query = app(RecordFormQuery::class);
+        $default = fn (RecordModuleAction $action = RecordModuleAction::Create) => $query
+            ->rowAccessRestrictedByDefault($this->requester(), 'projects', $action, $this->today());
+
+        $this->assertFalse($default());
+        $module->update(['row_access_restricted_by_default' => true]);
+        $this->assertTrue($default());
+        $this->expectException(AuthorizationException::class);
+        $default(RecordModuleAction::Update);
+    }
+
     public function test_a_missing_module_and_a_details_module_are_not_found(): void
     {
         $this->detailsField($this->recordModule('projects'), 'tasks');
         $calls = [
             fn (string $code) => app(RecordFormQuery::class)->definition($this->requester(), $code, RecordModuleAction::Create, $this->today()),
             fn (string $code) => app(RecordFormQuery::class)->allows($this->requester(), $code, RecordModuleAction::Create, $this->today()),
+            fn (string $code) => app(RecordFormQuery::class)
+                ->rowAccessRestrictedByDefault($this->requester(), $code, RecordModuleAction::Create, $this->today()),
             fn (string $code) => $this->draftValues($code, [], []),
         ];
 
@@ -191,7 +207,8 @@ final class RecordFormQueryTest extends TransactionalTestCase
     }
 
     /**
-     * 再申請の画面の初期値(公開の口/README.md 7 節の editValues): 保存された値を編集の画面と同じ形で返し、明細の行は id を持つ。版は編集の画面と同じ。業務モジュールの判定をしない
+     * 再申請の画面の初期値(docs の 設計/ワークフロー/業務データとの接続/公開の口/画面の値の口.md の 7.2 の editValues):
+     * 保存された値を編集の画面と同じ形で返し、明細の行は id を持つ。版は編集の画面と同じ。業務モジュールの判定をしない
      * (read も update も許されない業務モジュールでも返す = 呼び手が先に判定する)。
      */
     public function test_edit_values_return_the_stored_values_with_the_detail_row_ids_without_judging(): void
@@ -209,6 +226,7 @@ final class RecordFormQueryTest extends TransactionalTestCase
                 'details' => ['tasks' => [['id' => $row->id, 'values' => ['task_name' => '設計']]]],
                 'version' => $record->refresh()->version(),
                 'rowAccessRestricted' => false,
+                'rowAccess' => ['restricted' => false, 'viewers' => []],
             ],
             app(RecordFormQuery::class)->editValues($this->requester(), 'projects', $record->id, $this->today(), 'ja'),
         );

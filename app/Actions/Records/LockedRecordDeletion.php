@@ -2,6 +2,7 @@
 
 namespace App\Actions\Records;
 
+use App\Actions\Records\Api\RecordHolderRefusal;
 use App\Actions\Upload\Api\DeleteUploads;
 use App\Models\Records\Record;
 use App\Models\Records\RecordAttachment;
@@ -33,14 +34,15 @@ class LockedRecordDeletion
      *
      * @param  Record  $record  親の無いレコード(呼び手が FOR UPDATE で引いたもの)
      *
-     * @throws ValidationException 持ち主があるとき・ほかの行から参照されているとき(キー record)
+     * @throws RecordHolderRefusal 持ち主があるとき(キー record)
+     * @throws ValidationException ほかの行から参照されているとき(キー record)
      */
     public function delete(Record $record): void
     {
         $hold = $this->holds->blockingHold($record->id, null);
 
         if ($hold !== null) {
-            throw ValidationException::withMessages(['record' => [$hold->reason]]);
+            throw RecordHolderRefusal::of($hold->reason);
         }
 
         $uploadIds = $this->attachments->uploadIdsOf($record->record_module_id, $record->id);
