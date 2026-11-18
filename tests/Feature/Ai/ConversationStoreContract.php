@@ -5,6 +5,7 @@ namespace Tests\Feature\Ai;
 use App\Actions\Ai\Api\ConversationItem;
 use App\Actions\Ai\Api\ConversationStore;
 use App\Enums\Ai\AiInstructionTemplate;
+use DateTimeImmutable;
 use Illuminate\Support\Facades\DB;
 use Throwable;
 
@@ -37,7 +38,10 @@ trait ConversationStoreContract
     public function test_append_adds_the_items_in_the_given_order_and_read_returns_them(): void
     {
         $runId = $this->runInNewConversation();
-        $items = [ConversationItem::userText('一つ目'), ConversationItem::modelText([ConversationItem::textBlock('二つ目')])];
+        $items = [
+            ConversationItem::userText('一つ目'),
+            ConversationItem::modelText('r1', [ConversationItem::textBlock('二つ目')]),
+        ];
 
         $this->assertTrue($this->conversationStore()->append($runId, $items));
         $this->assertTrue($this->conversationStore()->append($runId, [ConversationItem::userText('三つ目')]));
@@ -98,12 +102,12 @@ trait ConversationStoreContract
         $first = $this->runInNewConversation();
         $this->conversationStore()->append($first, [
             ConversationItem::userText('前の文'),
-            ConversationItem::compactBoundary(),
+            ConversationItem::compactBoundary(1200, '2026-11-16'),
             ConversationItem::compactSummary('前の要約'),
         ]);
         $second = $this->nextRunInSameConversation($first);
         $after = [
-            ConversationItem::compactBoundary(),
+            ConversationItem::compactBoundary(3400, '2026-11-17'),
             ConversationItem::compactSummary('後の要約'),
             ConversationItem::userText('後の文'),
             ConversationItem::toolResult('call_1', null, [], '結果', false),
@@ -115,24 +119,25 @@ trait ConversationStoreContract
     }
 
     /**
-     * 読むは足した写しを値と鍵の順のまま返す(道具の呼び出しの引数の入れ子と、最上位と入れ子の空の配列を含む。形の版 2 の境目のほかの種類と、
-     * 道具の結果の定型の値の鍵の順と列を含む)
+     * 読むは足した写しを値と鍵の順のまま返す(道具の呼び出しの引数の入れ子と、最上位と入れ子の空の配列と、応答の終わりの生の状態を含む。
+     * 境目のほかの種類と、道具の結果と足す文の定型の値の鍵の順と列を含む)
      */
     public function test_read_returns_the_copies_with_the_same_values_and_key_order(): void
     {
         $runId = $this->runInNewConversation();
         $arguments = ['zeta' => 1, 'alpha' => ['omega' => [], 'beta' => 'b', 'list' => [3, 1, 2]], 'empty' => []];
+        $large = ['preview_length' => '2', 'original_length' => '10'];
         $items = [
-            ConversationItem::modelText([
+            ConversationItem::modelText('r1', [
                 ConversationItem::toolCallBlock('call_1', 'search_records', $arguments),
-                ConversationItem::toolCallBlock('call_2', 'list_modules', []),
+                ConversationItem::toolCallBlock('call_2', 'list_modules', [], 'fc_2'),
                 ConversationItem::textBlock('探します'),
             ]),
-            ConversationItem::toolResult('call_1', AiInstructionTemplate::LargeResultSearch, [
-                'zeta' => '1',
-                'alpha' => ['b', 'a'],
-                'empty' => [],
-            ], '先頭', false),
+            ConversationItem::toolResult('call_1', AiInstructionTemplate::LargeResultSearch, $large, '先頭', false),
+            ConversationItem::toolResult('call_2', AiInstructionTemplate::ToolInputInvalid, [
+                'tool_name' => 'list_modules',
+                'problems' => ['b', 'a'],
+            ], null, true),
             ConversationItem::toolResult('c2', AiInstructionTemplate::EmptyResult, ['tool_name' => 'x'], null, false),
             ConversationItem::toolResult('call_3', AiInstructionTemplate::ToolUseRejectedWithReason, [
                 ConversationItem::USER_FEEDBACK => '別の件で',
@@ -140,6 +145,21 @@ trait ConversationStoreContract
             ConversationItem::userText('文'),
             ConversationItem::interruption(true),
             ConversationItem::turnLimit(),
+            ConversationItem::responseEnd(
+                'r1',
+                ['input_tokens' => 10, 'output_tokens' => 2, 'cache_read_input_tokens' => null,
+                    'cache_write_input_tokens' => 0, 'reasoning_tokens' => null],
+                [['type' => 'thinking', 'thinking' => '考え', 'signature' => 's'], ['z' => [], 'a' => 1]],
+                'anthropic',
+                'claude-x',
+                3,
+                ['call_1', 'call_2'],
+                new DateTimeImmutable('2026-11-17T10:00:00+09:00'),
+            ),
+            ConversationItem::cancellation('r0'),
+            ConversationItem::addedText(AiInstructionTemplate::UnknownOutcomeNotice, [
+                'unknown_calls' => ['b', 'a'],
+            ], ['call_9', 'call_8']),
             ConversationItem::compactSummary('要約'),
         ];
         $this->conversationStore()->append($runId, $items);

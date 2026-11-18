@@ -57,7 +57,7 @@ final class ToolResultMessagesTest extends TestCase
         ]), $text);
     }
 
-    /** 定型の無い結果は本文だけ(見つからない)、本文も無ければ空 */
+    /** 定型の無い結果は本文だけ(見つからない) */
     public function test_a_result_without_a_template_is_its_body(): void
     {
         $item = ConversationItem::toolResult('call_1', null, [], '見つからない '.self::FORM, true);

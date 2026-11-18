@@ -5,6 +5,7 @@ namespace App\Actions\Ai\ToolCalls;
 use App\Actions\Ai\Api\AgentTool;
 use App\Actions\Ai\Api\AgentToolScope;
 use App\Actions\Ai\Api\AgentToolSubject;
+use App\Actions\Ai\Core\ConversationMarkers;
 use App\Enums\Ai\AiToolNature;
 use App\Enums\Records\RecordModuleAction;
 use App\Models\Ai\AiAgentDefinition;
@@ -119,7 +120,7 @@ final class ToolGrantJudgements
                     $name = $this->modules()[$code];
                     $modules[$code] = ['name' => $name, 'definition' => $definitions[$code]];
                     $shown[$code] = [
-                        'name' => ConversationMarkerBreaker::broken($name, $this->markerForms),
+                        'name' => ConversationMarkers::broken($name, $this->markerForms),
                         'definition' => ShownDefinitions::of($definitions[$code], $this->markerForms),
                     ];
                 }

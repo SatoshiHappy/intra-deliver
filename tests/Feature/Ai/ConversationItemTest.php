@@ -6,16 +6,18 @@ use App\Actions\Ai\Api\ConversationItem;
 use App\Enums\Ai\AiInstructionTemplate;
 use App\Enums\Ai\ConversationItemDisplay;
 use App\Enums\Ai\ConversationItemType;
-use LogicException;
+use DateTimeImmutable;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 
 /**
  * 会話の保存の項目の形(docs の 設計/AI/エージェントの実行/口と契約.md 9.13 の「項目の種類」): 種類ごとに作り手から写しと読みを往復して同じ値になり、
- * 種類と出し方と形の版を持つ。知らない形の版・種類・出し方と、種類の形に合わない中身の写しを読むと作りの誤り。
+ * 種類と出し方と形の版を持つ(形に合わない中身 = ConversationItemShapeTest)。
  */
 final class ConversationItemTest extends TestCase
 {
+    use ConversationItemSamples;
+
     /**
      * 項目と、その種類と出し方の値。
      *
@@ -26,11 +28,32 @@ final class ConversationItemTest extends TestCase
         $blocks = [
             ConversationItem::textBlock('探します'),
             ConversationItem::toolCallBlock('call_1', 'search_records', ['module' => 'meetings', 'limit' => 5]),
+            ConversationItem::toolCallBlock('call_2', 'list_modules', [], 'fc_2'),
         ];
 
         return [
             '利用者の文' => [ConversationItem::userText('会議を探して'), 'user_text', 'show'],
-            'モデルの文' => [ConversationItem::modelText($blocks), 'model_text', 'show'],
+            'モデルの文' => [ConversationItem::modelText('r1', $blocks), 'model_text', 'show'],
+            '応答の終わり' => [self::responseEnd(), 'response_end', 'hide'],
+            '応答の終わり(生の状態が無い)' => [
+                ConversationItem::responseEnd('r2', self::USAGE, null, 'openai', 'gpt-x', 0, [], new DateTimeImmutable),
+                'response_end',
+                'hide',
+            ],
+            '取り消しの印' => [ConversationItem::cancellation('r1'), 'cancellation', 'hide'],
+            ...self::resultItems(),
+            ...self::markerItems(),
+        ];
+    }
+
+    /**
+     * 道具の結果と、その種類と出し方の値。
+     *
+     * @return array<string, array{ConversationItem, string, string}>
+     */
+    private static function resultItems(): array
+    {
+        return [
             '道具の結果(本文だけ)' => [ConversationItem::toolResult('call_1', null, [], '3 件', false), 'tool_result', 'hide'],
             '道具の失敗の結果(定型と値)' => [
                 ConversationItem::toolResult('call_1', AiInstructionTemplate::ToolInputInvalid, [
@@ -49,7 +72,13 @@ final class ConversationItemTest extends TestCase
                 'hide',
             ],
             '空の結果(本文が無い)' => [
-                ConversationItem::toolResult('c', AiInstructionTemplate::EmptyResult, ['k' => 't'], null, false),
+                ConversationItem::toolResult(
+                    'c',
+                    AiInstructionTemplate::EmptyResult,
+                    ['tool_name' => 't'],
+                    null,
+                    false,
+                ),
                 'tool_result',
                 'hide',
             ],
@@ -60,10 +89,33 @@ final class ConversationItemTest extends TestCase
                 'tool_result',
                 'reason_as_user_text',
             ],
+        ];
+    }
+
+    /**
+     * 印・足す文・要約の項目と、その種類と出し方の値。
+     *
+     * @return array<string, array{ConversationItem, string, string}>
+     */
+    private static function markerItems(): array
+    {
+        return [
             '中断の印(道具の途中)' => [ConversationItem::interruption(true), 'interruption', 'show'],
             '中断の印(道具の途中でない)' => [ConversationItem::interruption(false), 'interruption', 'show'],
             '回数の上限の印' => [ConversationItem::turnLimit(), 'turn_limit', 'show'],
-            '要約の境目' => [ConversationItem::compactBoundary(), 'compact_boundary', 'boundary_line'],
+            '足す文(結果の分からない書き込みの知らせ)' => [
+                ConversationItem::addedText(AiInstructionTemplate::UnknownOutcomeNotice, [
+                    'unknown_calls' => ['会議の登録'],
+                ], ['call_1']),
+                'added_text',
+                'hide',
+            ],
+            '足す文(日付の変化)' => [
+                ConversationItem::addedText(AiInstructionTemplate::DateChange, ['new_date' => '2026-11-18'], []),
+                'added_text',
+                'hide',
+            ],
+            '要約の境目' => [ConversationItem::compactBoundary(5000, '2026-11-17'), 'compact_boundary', 'boundary_line'],
             '要約の文' => [ConversationItem::compactSummary('ここまでの要約'), 'compact_summary', 'hide'],
         ];
     }
@@ -101,7 +153,7 @@ final class ConversationItemTest extends TestCase
     public function test_a_model_text_made_from_blocks_with_reordered_keys_has_the_same_copy_as_its_read_back(): void
     {
         $arguments = ['zeta' => 1, 'alpha' => ['beta' => 'b']];
-        $item = ConversationItem::modelText([
+        $item = ConversationItem::modelText('r1', [
             array_reverse(ConversationItem::textBlock('探します'), true),
             array_reverse(ConversationItem::toolCallBlock('call_1', 'search_records', $arguments), true),
         ]);
@@ -110,49 +162,9 @@ final class ConversationItemTest extends TestCase
         $this->assertSame($arguments, $item->toArray()['content']['blocks'][1]['arguments']);
     }
 
-    /**
-     * @return array<string, array{array<string, mixed>}>
-     */
-    public static function unreadableCopies(): array
+    /** 応答の終わりの時刻は、渡した時刻の時差のまま秒まで持つ */
+    public function test_a_response_end_keeps_the_finished_time_to_the_second(): void
     {
-        $copy = ConversationItem::userText('文')->toArray();
-        $result = ConversationItem::toolResult('call_1', null, [], '結果', false)->toArray();
-
-        return [
-            '形の版 1 の道具の結果(前の形の固定の写し)' => [[
-                'type' => 'tool_result',
-                'display' => 'hide',
-                'version' => 1,
-                'content' => ['call_id' => 'call_1', 'text' => '結果', 'is_error' => false, 'reason' => null],
-            ]],
-            '形の版 1 の利用者の文' => [[...$copy, 'version' => 1]],
-            '知らない形の版' => [[...$copy, 'version' => 3]],
-            '形の版が無い' => [array_diff_key($copy, ['version' => true])],
-            '知らない種類' => [[...$copy, 'type' => 'image']],
-            '知らない出し方' => [[...$copy, 'display' => 'blink']],
-            '中身が種類の形に合わない' => [[...$copy, 'content' => ['text' => 1]]],
-            '中身に余分な鍵' => [[...$copy, 'content' => ['text' => '文', 'extra' => true]]],
-            'モデルの文の知らないブロック' => [[
-                ...ConversationItem::modelText([])->toArray(),
-                'content' => ['blocks' => [['type' => 'x']]],
-            ]],
-            '出し方が中身と合わない' => [[...$result, 'display' => 'show']],
-            '知らない定型の種類' => [[...$result, 'content' => [...$result['content'], 'template' => 'nope']]],
-            '定型の値が文字列でない' => [[...$result, 'content' => [...$result['content'], 'values' => ['a' => 1]]]],
-            '定型の値の列に文字列でない物' => [[...$result, 'content' => [...$result['content'], 'values' => ['a' => ['x', 2]]]]],
-            '定型の値の鍵が文字列でない' => [[...$result, 'content' => [...$result['content'], 'values' => ['x']]]],
-            '境目に中身' => [[...ConversationItem::compactBoundary()->toArray(), 'content' => ['text' => '文']]],
-        ];
-    }
-
-    /**
-     * @param  array<string, mixed>  $copy
-     */
-    #[DataProvider('unreadableCopies')]
-    public function test_a_copy_that_does_not_fit_is_a_logic_error(array $copy): void
-    {
-        $this->expectException(LogicException::class);
-
-        ConversationItem::fromArray($copy);
+        $this->assertSame('2026-11-17T10:00:00+09:00', self::responseEnd()->content['finished_at']);
     }
 }

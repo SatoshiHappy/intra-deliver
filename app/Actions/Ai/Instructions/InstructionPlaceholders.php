@@ -28,6 +28,7 @@ final class InstructionPlaceholders
         'model_id',
         'knowledge_cutoff',
         'current_date',
+        'new_date',
         'summary',
         'custom_instructions',
         'created_files',

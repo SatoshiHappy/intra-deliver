@@ -135,4 +135,12 @@ return [
     'resume_after_cut' => '前の応答は終わる前に止まった。あなたはここから会話を続ける。',
 
     'no_response' => '[応答は無かった。]',
+
+    'date_change' => '今日の日付は {{new_date}} に変わった。',
+
+    'no_content' => '[内容は無い。]',
+
+    'no_message_content' => '[応答の内容は無い。]',
+
+    'tool_use_interrupted' => '[道具の呼び出しは中断された。]',
 ];

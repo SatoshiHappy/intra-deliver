@@ -29,6 +29,8 @@ parameters:
 			- %rootDir%/../../../tests/Architecture/fixtures/Seeders/passing
 			- %rootDir%/../../../tests/Architecture/fixtures/ModuleTables/violating
 			- %rootDir%/../../../tests/Architecture/fixtures/ModuleTables/passing
+			- %rootDir%/../../../tests/Architecture/fixtures/CoreDependencies/violating
+			- %rootDir%/../../../tests/Architecture/fixtures/CoreDependencies/passing
 	# 副作用の規則の台帳②は fixture 用(HTTP だけをモジュール Alpha の業務処理に限る)
 	sideEffects:
 		ledgerFile: %rootDir%/../../../tests/Architecture/fixtures/SideEffects/guardrails_allow.php

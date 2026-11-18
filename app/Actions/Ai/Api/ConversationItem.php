@@ -5,41 +5,43 @@ namespace App\Actions\Ai\Api;
 use App\Enums\Ai\AiInstructionTemplate;
 use App\Enums\Ai\ConversationItemDisplay;
 use App\Enums\Ai\ConversationItemType;
+use DateTimeImmutable;
+use DateTimeInterface;
 use LogicException;
 
 /**
  * 会話の保存の項目 1 つ(docs の 設計/AI/エージェントの実行/口と契約.md 9.13 の「項目の種類」)。中身の形は ③ の公開の側のここに 1 つ定め、
  * 両方の版(移した版と代わりの版)が同じ形で書き読む。SDK のメッセージの型は使わない(ADR 0039 の決定 2。読むときに SDK の 1 ステップの口に渡す形へ写す)。
  * ① は {@see self::toArray()} の写しを組み替えず書き換えずに持ち、{@see self::fromArray()} で読み戻す(画面に描くために写しを読んでよい)。
- * 形を変えるときは形の版 {@see self::VERSION} を上げ、前の形の項目が会話に残る間は前の形も読む(9.13)。
+ * 形の版は、会話の保存を配った後の形の変更に当てる(変えるときは {@see self::VERSION} を上げ、前の形の項目が会話に残る間は前の形も読む = 9.13)。
  * 道具の呼び出しの引数は SDK の道具の呼び出しの型と同じ配列で持つ。写しでは空のオブジェクトと空の配列の区別が消えるが、SDK の型も配列なので
  * 失うものは無く、最上位の空は各接続先の写しがオブジェクトに戻す(入れ子の空のオブジェクトが配列になるのは SDK の型と同じ)。
  * 写しは値と鍵の順のまま持つ(順が変わると接続先のキャッシュが当たらない = docs の 設計/AI/エージェントの実行/口と契約.md 9.13 の守る結果)。
+ * どの作り手も作る時に形を確かめ、合わなければ作りの誤り(LogicException)。
  *
  * @phpstan-type TextBlock array{type: 'text', text: string}
- * @phpstan-type ToolCallBlock array{type: 'tool_call', id: string, name: string, arguments: array<string, mixed>}
- * @phpstan-type UserTextContent array{text: string}
- * @phpstan-type ModelTextContent array{blocks: list<TextBlock|ToolCallBlock>}
+ * @phpstan-type ToolCallBlock array{type: 'tool_call', id: string, name: string, arguments: array<string, mixed>,
+ *     result_id: string|null}
  * @phpstan-type TemplateValues array<string, string|list<string>>
  * @phpstan-type ToolResultContent array{call_id: string, template: string|null, values: TemplateValues,
  *     body: string|null, is_error: bool}
- * @phpstan-type InterruptionContent array{during_tool: bool}
- * @phpstan-type CompactSummaryContent array{text: string}
- * @phpstan-type ItemContent UserTextContent|ModelTextContent|ToolResultContent|InterruptionContent
- *     |CompactSummaryContent|array{}
+ * @phpstan-type Usage array{input_tokens: int, output_tokens: int, cache_read_input_tokens: int|null,
+ *     cache_write_input_tokens: int|null, reasoning_tokens: int|null}
  * @phpstan-type ItemCopy array{type: string, display: string, version: int, content: array<string, mixed>}
  */
 final readonly class ConversationItem
 {
-    /** 今の形の版(道具の結果を定型の種類・値・本文に分けた形。前の版の項目を書く物は無いので、前の版は読まない) */
+    /** 今の形の版(会話の保存を配る前なので、13 節の種類と欄を含む今の形を最初の版とし、値は前のまま = 9.13) */
     public const VERSION = 2;
 
     /** 理由つきの断りの理由を持つ定型の値の鍵(① は理由を利用者の文として出す) */
     public const USER_FEEDBACK = 'user_feedback';
 
+    /** 要約の境目が持つ日の形(東京の日。先頭の日付の文の値 = docs の 設計/AI/会話の中核.md 13.2) */
+    public const DATE_FORMAT = 'Y-m-d';
+
     /**
-     * @param  ItemContent  $content  種類ごとの中身(利用者の文・要約の文 = 文、モデルの文 = 確定したブロックの列、道具の結果 = 呼び出しの id・定型の種類・
-     *                                定型に入れる値・本文・失敗の印、中断の印 = 道具の途中か、回数の上限の印・要約の境目 = 空)
+     * @param  array<string, mixed>  $content  種類ごとの中身(形 = {@see ConversationItemShape::fits()})
      */
     private function __construct(
         public ConversationItemType $type,
@@ -51,10 +53,14 @@ final readonly class ConversationItem
     /**
      * 今の形の版の項目。
      *
-     * @param  ItemContent  $content
+     * @param  array<string, mixed>  $content
      */
     private static function of(ConversationItemType $type, ConversationItemDisplay $display, array $content): self
     {
+        if (! ConversationItemShape::fits($type, $content)) {
+            throw new LogicException("会話の保存の項目 {$type->value} の中身が種類の形に合わない");
+        }
+
         return new self($type, $display, self::VERSION, $content);
     }
 
@@ -65,21 +71,25 @@ final readonly class ConversationItem
     }
 
     /**
-     * モデルの文(確定したブロックの列。文のブロックと道具の呼び出しのブロック。画面の履歴に出す)。ブロックは作り手で作り直してから持つ
-     * (作った時の写しと読み戻した写しの鍵の順を同じにするため。道具の呼び出しの引数は渡されたまま)。
+     * モデルの文(1 つの応答の確定したブロック 1 つか、同じ時に確定した物。会話の中核が振る応答の id で束ねる = docs の 設計/AI/会話の中核.md 13.2。
+     * 画面の履歴に出す)。ブロックは作り手で作り直してから持つ(作った時の写しと読み戻した写しの鍵の順を同じにするため。引数は渡されたまま)。
      *
      * @param  list<TextBlock|ToolCallBlock>  $blocks
      */
-    public static function modelText(array $blocks): self
+    public static function modelText(string $responseId, array $blocks): self
     {
         $rebuilt = array_map(
             static fn (array $block): array => $block['type'] === 'text'
                 ? self::textBlock($block['text'])
-                : self::toolCallBlock($block['id'], $block['name'], $block['arguments']),
+                : self::toolCallBlock($block['id'], $block['name'], $block['arguments'], $block['result_id']),
             $blocks,
         );
 
-        return self::of(ConversationItemType::ModelText, ConversationItemDisplay::Show, ['blocks' => $rebuilt]);
+        return self::of(
+            ConversationItemType::ModelText,
+            ConversationItemDisplay::Show,
+            ['response_id' => $responseId, 'blocks' => $rebuilt],
+        );
     }
 
     /**
@@ -93,20 +103,64 @@ final readonly class ConversationItem
     }
 
     /**
-     * 道具の呼び出しのブロック({@see self::modelText()} に渡す)。
+     * 道具の呼び出しのブロック({@see self::modelText()} に渡す)。$id = 会話の中で呼び出しを指す id(SDK の `id`)。$resultId = SDK の結果を結ぶ id
+     * (SDK の `ToolCall` の `resultId`。無い接続先は null。送る形への変換で結果に付ける = 設計/AI/エージェントの実行/口と契約.md 9.13)。
      *
      * @param  array<string, mixed>  $arguments
      * @return ToolCallBlock
      */
-    public static function toolCallBlock(string $id, string $name, array $arguments): array
+    public static function toolCallBlock(string $id, string $name, array $arguments, ?string $resultId = null): array
     {
-        return ['type' => 'tool_call', 'id' => $id, 'name' => $name, 'arguments' => $arguments];
+        return [
+            'type' => 'tool_call',
+            'id' => $id,
+            'name' => $name,
+            'arguments' => $arguments,
+            'result_id' => $resultId,
+        ];
     }
 
     /**
-     * 道具の結果(画面の履歴に出さない。① は道具の呼び出しを実行の読み取りの一覧から出す)。組んだ文は持たず、定型の種類・定型に入れる値・本文
-     * (長さの上限を当てた後)に分けて持ち、送るときに今の版で組む(9.13)。定型を使わない結果は種類が無しで本文だけ、空の結果は本文が無い。
-     * 理由つきの断り(承認待ちへの理由つきの断り = 9.3 の H3)は理由を値の {@see self::USER_FEEDBACK} に持ち、理由を利用者の文として出す。
+     * 応答の終わり(画面の履歴に出さない。書くのは会話の中核が応答の終わりを知らせた応答だけ = docs の 設計/AI/会話の中核の口と受け手.md 13.3)。
+     * $rawState = 接続先の生の状態(思考と署名を含む、接続先が返したブロックの列。開けない値。空の id に UUID を振った応答では null)。
+     * $model = その送信に中核が渡したモデルの値(SDK の応答のモデルの値でない = 設計/AI/会話の中核.md 13.2)。$callIds = 接続先が返したままの呼び出しの id の列。
+     *
+     * @param  Usage  $usage
+     * @param  array<array-key, mixed>|null  $rawState
+     * @param  list<string>  $callIds
+     */
+    public static function responseEnd(
+        string $responseId,
+        array $usage,
+        ?array $rawState,
+        string $provider,
+        string $model,
+        int $blockCount,
+        array $callIds,
+        DateTimeInterface $finishedAt,
+    ): self {
+        return self::of(ConversationItemType::ResponseEnd, ConversationItemDisplay::Hide, [
+            'response_id' => $responseId,
+            'usage' => ConversationItemShape::orderedUsage($usage),
+            'raw_state' => $rawState,
+            'provider' => $provider,
+            'model' => $model,
+            'block_count' => $blockCount,
+            'call_ids' => $callIds,
+            'finished_at' => $finishedAt->format(DATE_ATOM),
+        ]);
+    }
+
+    /** 取り消しの印(応答の id。前の試しの応答を送らず出さない物にする = 設計/AI/エージェントの実行/口と契約.md 9.13。画面の履歴に出さない) */
+    public static function cancellation(string $responseId): self
+    {
+        $content = ['response_id' => $responseId];
+
+        return self::of(ConversationItemType::Cancellation, ConversationItemDisplay::Hide, $content);
+    }
+
+    /**
+     * 道具の結果(持つ物と出し方 = 9.13 の項目の種類)。理由つきの断りは、理由を値の {@see self::USER_FEEDBACK} に持つ。
      *
      * @param  TemplateValues  $values  置き換え口の名前 → 値
      */
@@ -138,19 +192,41 @@ final readonly class ConversationItem
         return self::of(ConversationItemType::Interruption, ConversationItemDisplay::Show, $content);
     }
 
-    /** 回数の上限の印(画面の履歴に出し、モデルには送らない = 9.7) */
+    /** 回数の上限の印(画面の履歴に出し、モデルには送らない = 設計/AI/エージェントの実行/途中の表示と上限.md 9.7) */
     public static function turnLimit(): self
     {
         return self::of(ConversationItemType::TurnLimit, ConversationItemDisplay::Show, []);
     }
 
-    /** 要約の境目(画面の履歴に境目の 1 行として出し、モデルには送らない = 9.9) */
-    public static function compactBoundary(): self
+    /**
+     * 足す文(日付が変わった知らせ・結果の分からない書き込みの知らせ。画面の履歴に出さない。足す時と所 = docs の 設計/AI/会話の中核.md 13.2)。
+     * 組んだ文は持たず、定型の種類と入れる値を持ち、送るときに今の版で組む。$callIds = 結果の分からない書き込みの知らせが知らせたすべての
+     * 呼び出しの id(画面にもモデルにも出さない値 = 設計/AI/エージェントの実行/途中の表示と上限.md 9.8。日付が変わった知らせは空)。
+     *
+     * @param  TemplateValues  $values
+     * @param  list<string>  $callIds
+     */
+    public static function addedText(AiInstructionTemplate $template, array $values, array $callIds): self
     {
-        return self::of(ConversationItemType::CompactBoundary, ConversationItemDisplay::BoundaryLine, []);
+        return self::of(ConversationItemType::AddedText, ConversationItemDisplay::Hide, [
+            'template' => $template->value,
+            'values' => $values,
+            'call_ids' => $callIds,
+        ]);
     }
 
-    /** 要約の文(画面の履歴に出さない = 9.9) */
+    /**
+     * 要約の境目(画面の履歴に境目の 1 行として出し、モデルには送らない = 9.9)。$estimate = 要約の前の送る量の見積もり(① が使えるように持つ)。
+     * $date = 要約が済んだ時の時計の口の今日({@see self::DATE_FORMAT}。先頭の日付の文の値 = 設計/AI/会話の中核.md 13.2)。
+     */
+    public static function compactBoundary(int $estimate, string $date): self
+    {
+        $content = ['estimate' => $estimate, 'date' => $date];
+
+        return self::of(ConversationItemType::CompactBoundary, ConversationItemDisplay::BoundaryLine, $content);
+    }
+
+    /** 要約の文(画面の履歴に出さない = 設計/AI/エージェントの実行/途中の表示と上限.md 9.9) */
     public static function compactSummary(string $text): self
     {
         return self::of(ConversationItemType::CompactSummary, ConversationItemDisplay::Hide, ['text' => $text]);
@@ -190,7 +266,9 @@ final readonly class ConversationItem
         $display = ConversationItemDisplay::tryFrom(is_string($copy['display'] ?? null) ? $copy['display'] : '');
         $content = $copy['content'] ?? null;
 
-        if ($type === null || $display === null || ! is_array($content) || ! self::fits($type, $content)) {
+        $fits = $type !== null && is_array($content) && ConversationItemShape::fits($type, $content);
+
+        if ($display === null || ! $fits) {
             throw new LogicException('会話の保存の項目の種類・出し方・中身の形が合わない');
         }
 
@@ -212,7 +290,21 @@ final readonly class ConversationItem
     {
         return match ($type) {
             ConversationItemType::UserText => self::userText($content['text']),
-            ConversationItemType::ModelText => self::modelText(array_values($content['blocks'])),
+            ConversationItemType::ModelText => self::modelText(
+                $content['response_id'],
+                array_values($content['blocks']),
+            ),
+            ConversationItemType::ResponseEnd => self::responseEnd(
+                $content['response_id'],
+                $content['usage'],
+                $content['raw_state'],
+                $content['provider'],
+                $content['model'],
+                $content['block_count'],
+                $content['call_ids'],
+                new DateTimeImmutable($content['finished_at']),
+            ),
+            ConversationItemType::Cancellation => self::cancellation($content['response_id']),
             ConversationItemType::ToolResult => self::toolResult(
                 $content['call_id'],
                 $content['template'] === null ? null : AiInstructionTemplate::from($content['template']),
@@ -222,109 +314,13 @@ final readonly class ConversationItem
             ),
             ConversationItemType::Interruption => self::interruption($content['during_tool']),
             ConversationItemType::TurnLimit => self::turnLimit(),
-            ConversationItemType::CompactBoundary => self::compactBoundary(),
+            ConversationItemType::AddedText => self::addedText(
+                AiInstructionTemplate::from($content['template']),
+                $content['values'],
+                $content['call_ids'],
+            ),
+            ConversationItemType::CompactBoundary => self::compactBoundary($content['estimate'], $content['date']),
             ConversationItemType::CompactSummary => self::compactSummary($content['text']),
         };
-    }
-
-    /**
-     * 中身が種類の形に合うか。
-     *
-     * @param  array<array-key, mixed>  $content
-     */
-    private static function fits(ConversationItemType $type, array $content): bool
-    {
-        return match ($type) {
-            ConversationItemType::UserText,
-            ConversationItemType::CompactSummary => self::hasOnly($content, ['text' => 'string']),
-            ConversationItemType::ModelText => self::hasOnly($content, ['blocks' => 'array'])
-                && self::blocksFit($content['blocks']),
-            ConversationItemType::ToolResult => self::hasOnly($content, [
-                'call_id' => 'string',
-                'template' => '?template',
-                'values' => 'values',
-                'body' => '?string',
-                'is_error' => 'bool',
-            ]),
-            ConversationItemType::Interruption => self::hasOnly($content, ['during_tool' => 'bool']),
-            ConversationItemType::TurnLimit, ConversationItemType::CompactBoundary => $content === [],
-        };
-    }
-
-    /** モデルの文のブロックの列が、文のブロックと道具の呼び出しのブロックだけか */
-    private static function blocksFit(mixed $blocks): bool
-    {
-        if (! is_array($blocks) || ! array_is_list($blocks)) {
-            return false;
-        }
-
-        foreach ($blocks as $block) {
-            $fits = is_array($block) && match ($block['type'] ?? null) {
-                'text' => self::hasOnly($block, ['type' => 'string', 'text' => 'string']),
-                'tool_call' => self::hasOnly(
-                    $block,
-                    ['type' => 'string', 'id' => 'string', 'name' => 'string', 'arguments' => 'array'],
-                ),
-                default => false,
-            };
-
-            if (! $fits) {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    /**
-     * 配列が渡した鍵だけを持ち(順は問わない)、値が形(string・?string・bool・array・?template = 定型の種類の値か null・values = 定型の値)に
-     * 合うか。
-     *
-     * @param  array<array-key, mixed>  $values
-     * @param  array<string, string>  $forms
-     */
-    private static function hasOnly(array $values, array $forms): bool
-    {
-        if (count($values) !== count($forms) || array_diff_key($forms, $values) !== []) {
-            return false;
-        }
-
-        foreach ($forms as $key => $form) {
-            $value = $values[$key];
-            $fits = match ($form) {
-                'string' => is_string($value),
-                '?string' => $value === null || is_string($value),
-                'bool' => is_bool($value),
-                '?template' => $value === null
-                    || (is_string($value) && AiInstructionTemplate::tryFrom($value) !== null),
-                'values' => self::valuesFit($value),
-                default => is_array($value),
-            };
-
-            if (! $fits) {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
-    /** 定型の値が、文字列の鍵 → 文字列か文字列の列か */
-    private static function valuesFit(mixed $values): bool
-    {
-        if (! is_array($values)) {
-            return false;
-        }
-
-        foreach ($values as $key => $value) {
-            $fits = is_string($key) && (is_string($value) || (is_array($value) && array_is_list($value)
-                && array_filter($value, is_string(...)) === $value));
-
-            if (! $fits) {
-                return false;
-            }
-        }
-
-        return true;
     }
 }

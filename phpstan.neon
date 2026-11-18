@@ -126,6 +126,44 @@ parameters:
             types:
                 - Illuminate\Database\Eloquent\Factories\Factory
                 - Faker\Generator
+        # 機械検査 (f) 会話の中核(約束・2 つの版・変換の 1 か所)は、ファサードが前に立つ物に関数の呼び出し(app('db')・dispatch()・auth() など)でも
+        # 届かない(phpat の依存の規則は関数を数えず、台帳②は中核のある App\Actions の下を許すため。ファサードを除くのと同じ理由 = コンテナを通して
+        # システムの型に届く。並びと規則 = tests/Architecture/Policy/CoreDependencies.php)。この並びが中核の禁じる型の正本(名前空間は受けない)。
+        # 型で止まらない形(event()・鍵を渡す cache()・config()・session()・定数でない名前の app())は残る穴(docs の 設計/AI/検査で守る結果.md の (f))
+        -
+            directories:
+                - app/Actions/Ai/Core
+                - ai-private/app/Actions/Ai/Core
+            types:
+                - Illuminate\Database\DatabaseManager
+                - Illuminate\Database\ConnectionInterface
+                - Illuminate\Database\Query\Builder
+                - Illuminate\Database\Eloquent\Builder
+                - Illuminate\Database\Eloquent\Model
+                - Illuminate\Contracts\Container\Container
+                - Illuminate\Contracts\Foundation\Application
+                - Illuminate\Foundation\Bus\PendingDispatch
+                - Illuminate\Contracts\Bus\Dispatcher
+                - Illuminate\Contracts\Queue\Factory
+                - Illuminate\Contracts\Queue\Queue
+                - Illuminate\Contracts\Events\Dispatcher
+                - Illuminate\Contracts\Cache\Factory
+                - Illuminate\Contracts\Cache\Repository
+                - Illuminate\Contracts\Auth\Factory
+                - Illuminate\Contracts\Auth\Guard
+                - Illuminate\Contracts\Auth\Authenticatable
+                - Illuminate\Contracts\Session\Session
+                - Illuminate\Session\SessionManager
+                - Illuminate\Contracts\Config\Repository
+                - Illuminate\Http\Request
+                - Illuminate\Contracts\Filesystem\Factory
+                - Illuminate\Contracts\Filesystem\Filesystem
+                - Illuminate\Contracts\Redis\Factory
+                - Illuminate\Log\LogManager
+                - PDO
+                - PDOStatement
+                - mysqli
+                - SQLite3
 
     # 公開の口(業務処理・読み取りの <M>\Api の下)の public メソッドの引数・戻り値と public プロパティの型にモデルを使わない(docs の 設計/コード構成/README.md 2 節、
     # 検査/README.md 6.2)。モデルの配列・総称の型引数(list<Record>・Collection<int, Record>)も数える。使えるのは識別子・配列・値のクラス・列挙・
@@ -174,6 +212,19 @@ services:
     # 一覧と規則 = tests/Architecture/Policy/AgentToolDependencies.php)
     -
         class: Tests\Architecture\Policy\AgentToolDependencies
+        tags:
+            - phpat.test
+
+    # 機械検査 (f) 会話の中核の約束・2 つの版・版ごとの変換の 1 か所が依れる物(docs の 設計/AI/検査で守る結果.md の (f)、表の正本 =
+    # 設計/AI/会話の中核.md の 13.1。並びと規則 = tests/Architecture/Policy/CoreDependencies.php)
+    -
+        class: Tests\Architecture\Policy\CoreDependencies
+        tags:
+            - phpat.test
+
+    # 機械検査 (f) のうち、会話の中核を参照してよい側(docs の 設計/AI/検査で守る結果.md の (f)。規則 = tests/Architecture/Policy/CoreUsers.php)
+    -
+        class: Tests\Architecture\Policy\CoreUsers
         tags:
             - phpat.test
 

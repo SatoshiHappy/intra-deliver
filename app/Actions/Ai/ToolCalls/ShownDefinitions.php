@@ -2,6 +2,9 @@
 
 namespace App\Actions\Ai\ToolCalls;
 
+use App\Actions\Ai\Core\ConversationMarkers;
+use App\Actions\Ai\Instructions\InstructionBuilder;
+
 /**
  * 道具の説明に入れる定義の名前の写し(docs の 設計/AI/道具と権限/まとめた実行と送るデータ.md 10.6 の (1))。業務モジュール・項目・選択肢・
  * 参照先の名前に会話の印の形の直しを当てる。コードは英小文字・数字・_ の規則で会話の印の形を作れないので当てない。定義そのものは直さず、
@@ -11,7 +14,7 @@ final class ShownDefinitions
 {
     /**
      * @param  array<string, mixed>  $definition  業務モジュールの定義
-     * @param  list<string>  $forms  会話の印の形({@see ConversationMarkerBreaker::forms()})
+     * @param  list<string>  $forms  会話の印の形({@see InstructionBuilder::conversationMarkerForms()})
      * @return array<string, mixed>
      */
     public static function of(array $definition, array $forms): array
@@ -55,7 +58,7 @@ final class ShownDefinitions
     private static function named(array $item, array $forms): array
     {
         if (is_string($item['name'] ?? null)) {
-            $item['name'] = ConversationMarkerBreaker::broken($item['name'], $forms);
+            $item['name'] = ConversationMarkers::broken($item['name'], $forms);
         }
 
         return $item;

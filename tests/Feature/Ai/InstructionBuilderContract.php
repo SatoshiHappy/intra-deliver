@@ -225,6 +225,7 @@ trait InstructionBuilderContract
             'preview' => 'first part of the result',
             'created_files' => ['report.xlsx (file 7)'],
             'unknown_calls' => ['update_record (call 3)'],
+            'new_date' => '2026-11-18',
         ];
     }
 

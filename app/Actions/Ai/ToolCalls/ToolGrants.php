@@ -32,7 +32,7 @@ class ToolGrants
             $this->forms,
             fn (): bool => $this->subjects->isEffective($subject),
             $subject,
-            ConversationMarkerBreaker::forms($this->instructions),
+            $this->instructions->conversationMarkerForms(),
         ))->granted($this->tools, $definition));
     }
 }
