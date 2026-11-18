@@ -56,7 +56,7 @@ final class FailedRunReceiverTest extends TransactionalTestCase
     {
         parent::setUp();
         $this->registerTestPromptKinds();
-        $this->registerNoticeTypes([self::NOTICE_TYPE => true]);
+        $this->registerNoticeTypes([self::NOTICE_TYPE]);
     }
 
     /**

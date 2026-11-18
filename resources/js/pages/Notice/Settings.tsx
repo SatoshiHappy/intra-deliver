@@ -17,12 +17,13 @@ export default function Settings({ surfaces }: NoticeSettingsProps) {
             <Head title="通知の設定" />
             <NoticeSettingsFrame
                 title="通知の設定"
-                lead="通知の種類ごとに、受け取るかを設定します。"
+                lead="通知の種類ごとに、ミュートするかを設定します。ミュートした通知は、既読で届きます。"
                 note={account.user === null ? GUEST_TEXT : undefined}
             >
                 <NoticeSettingSurfaces
                     surfaces={ownSurfaceViews(surfaces)}
                     url={update.url()}
+                    valueKey="muted"
                 />
             </NoticeSettingsFrame>
         </>

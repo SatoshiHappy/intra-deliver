@@ -5,7 +5,6 @@ namespace Tests\Feature\Queries\Notice;
 use App\Enums\Meeting\MeetingNoticeType;
 use App\Enums\Records\RecordNoticeType;
 use App\Enums\Workflow\WorkflowNoticeType;
-use App\Queries\Notice\Api\NoticeTypeEntry;
 use App\Queries\Notice\NoticeTypeCatalog;
 use LogicException;
 use PHPUnit\Framework\Attributes\DataProvider;
@@ -22,20 +21,17 @@ final class NoticeTypeCatalogTest extends TransactionalTestCase
     use RegistersNoticeTypes;
 
     /**
-     * @return array<string, array{list<list<NoticeTypeEntry>>, string}>
+     * @return array<string, array{list<list<string>>, string}>
      */
     public static function brokenAnswers(): array
     {
-        $a = new NoticeTypeEntry('test.a', true);
-        $b = new NoticeTypeEntry('test.b', true);
-
         return [
-            '書式の誤り' => [[[new NoticeTypeEntry('Test.a', true)]], '「モジュール.種類」の書式でない'],
-            '1 つの答えに同じ値が 2 度' => [[[$a, $a]], 'test.a が一覧に 2 度ある'],
-            '実装の間で同じ値が 2 度' => [[[$a], [new NoticeTypeEntry('test.a', false)]], 'test.a が一覧に 2 度ある'],
-            '既にある値をもう 1 つの実装が答える' => [[[new NoticeTypeEntry('records.comment', true)]], 'records.comment が一覧に 2 度ある'],
-            '1 つの答えに接頭辞が 2 つ' => [[[$a, new NoticeTypeEntry('other.b', true)]], '接頭辞を 2 つ以上答えている'],
-            '2 つの実装が同じ接頭辞' => [[[$a], [$b]], '接頭辞 test を 2 つの実装が答えている'],
+            '書式の誤り' => [[['Test.a']], '「モジュール.種類」の書式でない'],
+            '1 つの答えに同じ値が 2 度' => [[['test.a', 'test.a']], 'test.a が一覧に 2 度ある'],
+            '実装の間で同じ値が 2 度' => [[['test.a'], ['test.a']], 'test.a が一覧に 2 度ある'],
+            '既にある値をもう 1 つの実装が答える' => [[['records.comment']], 'records.comment が一覧に 2 度ある'],
+            '1 つの答えに接頭辞が 2 つ' => [[['test.a', 'other.b']], '接頭辞を 2 つ以上答えている'],
+            '2 つの実装が同じ接頭辞' => [[['test.a'], ['test.b']], '接頭辞 test を 2 つの実装が答えている'],
         ];
     }
 
@@ -50,45 +46,37 @@ final class NoticeTypeCatalogTest extends TransactionalTestCase
         ];
         $enums = [...WorkflowNoticeType::cases(), ...RecordNoticeType::cases(), ...MeetingNoticeType::cases()];
 
-        $types = array_map(fn (NoticeTypeEntry $entry): string => $entry->type, app(NoticeTypeCatalog::class)->all());
-
-        $this->assertSame($expected, $types);
+        $this->assertSame($expected, app(NoticeTypeCatalog::class)->all());
         $this->assertSame(
             $expected,
             array_map(fn (WorkflowNoticeType|RecordNoticeType|MeetingNoticeType $case): string => $case->value, $enums),
         );
     }
 
-    public function test_only_the_contact_cannot_be_switched(): void
+    public function test_has_answers_whether_a_type_is_in_the_list(): void
     {
         $catalog = app(NoticeTypeCatalog::class);
-        $fixed = array_filter($catalog->all(), fn (NoticeTypeEntry $entry): bool => ! $entry->switchable);
 
-        $this->assertSame([WorkflowNoticeType::Contact->value], array_column(array_values($fixed), 'type'));
-        $this->assertFalse($catalog->isSwitchable(WorkflowNoticeType::Contact->value));
-        $this->assertTrue($catalog->isSwitchable(WorkflowNoticeType::ProcessRequest->value));
-        $this->assertFalse($catalog->isSwitchable('test.unlisted'));
-        $this->assertNull($catalog->find('test.unlisted'));
+        $this->assertTrue($catalog->has(WorkflowNoticeType::Contact->value));
+        $this->assertTrue($catalog->has(WorkflowNoticeType::ProcessRequest->value));
+        $this->assertFalse($catalog->has('test.unlisted'));
     }
 
     public function test_a_registered_implementation_follows_in_the_order_of_registration(): void
     {
-        $this->registerNoticeTypes(['test.b' => true, 'test.a' => false]);
+        $this->registerNoticeTypes(['test.b', 'test.a']);
 
-        $all = app(NoticeTypeCatalog::class)->all();
-
-        $expected = [new NoticeTypeEntry('test.b', true), new NoticeTypeEntry('test.a', false)];
-        $this->assertEquals($expected, array_slice($all, -2));
+        $this->assertSame(['test.b', 'test.a'], array_slice(app(NoticeTypeCatalog::class)->all(), -2));
     }
 
     /**
-     * @param  list<list<NoticeTypeEntry>>  $answers  起動の実装の後ろに登録する実装の答え(登録の順)
+     * @param  list<list<string>>  $answers  起動の実装の後ろに登録する実装の答え(登録の順)
      */
     #[DataProvider('brokenAnswers')]
     public function test_a_broken_answer_is_an_exception_when_bundled(array $answers, string $message): void
     {
-        foreach ($answers as $entries) {
-            $this->registerNoticeTypeEntries($entries);
+        foreach ($answers as $answer) {
+            $this->registerNoticeTypes($answer);
         }
 
         $this->expectException(LogicException::class);
@@ -99,11 +87,10 @@ final class NoticeTypeCatalogTest extends TransactionalTestCase
 
     public function test_the_list_is_bundled_once_per_request(): void
     {
-        $implementation = $this->registerNoticeTypes(['test.a' => true]);
+        $implementation = $this->registerNoticeTypes(['test.a']);
 
         app(NoticeTypeCatalog::class)->all();
-        app(NoticeTypeCatalog::class)->find('test.a');
-        app(NoticeTypeCatalog::class)->isSwitchable('test.a');
+        app(NoticeTypeCatalog::class)->has('test.a');
 
         $this->assertSame(1, $implementation->calls);
     }

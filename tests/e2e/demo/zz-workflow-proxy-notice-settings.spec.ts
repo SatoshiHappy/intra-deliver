@@ -9,7 +9,7 @@ import {
     switchUser,
 } from '../support/workflow-operations';
 
-// 通知の受け取りの設定の流れ(docs の 設計/ワークフロー/申請の周辺/通知の受け取りの設定/ルートと文言と検査.md の 8 節の「E2E」)。
+// 通知のミュートの流れ(docs の 設計/ワークフロー/申請の周辺/通知の受け取りの設定/ルートと文言と検査.md の 8 節の「E2E」)。
 // 利用者 A = 課長(中村 美咲)。別の利用者 = 申請者が計画を申請すると、最初のステップの課長に処理依頼が回る。
 // 組の中の置き場と、通知の設定を触った後に戻す約束は tests/e2e/demo/groups.ts の demo-workflow のコメント。
 test.use({ viewport: { width: 1280, height: 720 } });
@@ -21,7 +21,7 @@ test.afterAll(({ artisan }) => {
         'tinker',
         '--execute',
         [
-            'DB::table("notice_opt_outs")->whereIn("type", ["workflow.process_request", "workflow.transfer"])',
+            'DB::table("notice_mutes")->whereIn("type", ["workflow.process_request", "workflow.transfer"])',
             '->whereIn("user_id", DB::table("users")->where("code", "u0002")->select("id"))->delete();',
             'DB::table("notice_required_types")->where("type", "workflow.process_request")->delete();',
         ].join(''),
@@ -158,32 +158,32 @@ test('ゲストの通知の設定の画面は、保存の案内に代えて「�
     await expect(page.getByRole('switch')).toHaveCount(0);
 });
 
-test('A が処理依頼を受け取らないにすると(保存の間は全スイッチが押せない)、別の利用者の申請で処理依頼が回っても鈴の件数が増えない', async ({
+test('A が処理依頼をミュートすると(保存の間は全スイッチが押せない)、別の利用者の申請で処理依頼が回っても鈴の件数が増えず、一覧の「すべて」には既読で出る', async ({
     page,
 }) => {
     await openAs(page, 'chief', '/notices/settings');
-    const row = workflowRow(page, '処理依頼を受け取る');
-    await expect(row.getByRole('switch')).toBeChecked();
-    await expect(row).toContainText('受け取る');
+    const row = workflowRow(page, '処理依頼をミュートする');
+    await expect(row.getByRole('switch')).not.toBeChecked();
+    await expect(row).toContainText('ミュートしない');
 
     // 要求の数では確かめない(守りが外れても、Inertia が前の要求を送る前に止めるので 1 本に見える)。1 本目の行の値が残り、2 本目の行が変わらないことで確かめる
-    const other = workflowRow(page, '担当変更を受け取る');
-    await expect(other.getByRole('switch')).toBeChecked();
+    const other = workflowRow(page, '担当変更をミュートする');
+    await expect(other.getByRole('switch')).not.toBeChecked();
     await clickTwoSwitchesWhileHoldingSave(
         page,
-        '処理依頼を受け取る',
-        '担当変更を受け取る',
+        '処理依頼をミュートする',
+        '担当変更をミュートする',
     );
-    await expect(row.getByRole('switch')).not.toBeChecked();
+    await expect(row.getByRole('switch')).toBeChecked();
     await expect(row.getByRole('switch')).toBeEnabled();
-    await expect(row).toContainText('受け取らない');
-    await expect(other.getByRole('switch')).toBeChecked();
+    await expect(row).toContainText('ミュート中');
+    await expect(other.getByRole('switch')).not.toBeChecked();
     // 成功のトーストは出さない(スイッチの表示が結果)
     await expect(toasts(page)).toHaveCount(0);
 
     await page.goto('/');
     const before = await unreadCount(page);
-    const projectName = 'E2E の通知の設定(受け取らない)';
+    const projectName = 'E2E の通知の設定(ミュート)';
     await applyThenBackToChief(page, projectName);
 
     expect(await unreadCount(page)).toBe(before);
@@ -193,16 +193,23 @@ test('A が処理依頼を受け取らないにすると(保存の間は全ス�
             .getByRole('table', { name: '通知' })
             .getByRole('row')
             .filter({ hasText: projectName }),
+    ).toHaveCount(1);
+    await page.goto('/notices?filter=unread');
+    await expect(
+        page
+            .getByRole('table', { name: '通知' })
+            .getByRole('row')
+            .filter({ hasText: projectName }),
     ).toHaveCount(0);
 });
 
-test('システム管理者が処理依頼に必須を付けると、開いたままの A の画面は保存が 422 で拒まれて行が必須の見え方になり、A に処理依頼が届く', async ({
+test('システム管理者が処理依頼に必須を付けると、開いたままの A の画面は保存が 422 で拒まれて行が必須の見え方になり、A に処理依頼が未読で届く', async ({
     page,
     browser,
 }) => {
     await openAs(page, 'chief', '/notices/settings');
-    const row = workflowRow(page, '処理依頼を受け取る');
-    await expect(row.getByRole('switch')).not.toBeChecked();
+    const row = workflowRow(page, '処理依頼をミュートする');
+    await expect(row.getByRole('switch')).toBeChecked();
 
     await toggleRequiredAsAdministrator(browser, true);
 
@@ -213,14 +220,14 @@ test('システム管理者が処理依頼に必須を付けると、開いた�
             exact: true,
         }),
     ).toBeVisible();
-    await expect(row.getByRole('switch')).toBeChecked();
+    await expect(row.getByRole('switch')).not.toBeChecked();
     await expect(row.getByRole('switch')).toBeDisabled();
     await expect(
         row.getByText('必須(管理者の設定)', { exact: true }),
     ).toBeVisible();
-    await expect(row).toContainText('受け取る');
+    await expect(row).toContainText('ミュートしない');
 
-    // 読み込み直しても同じ(本人の設定の行は受け取らないのまま、必須の間は効かない)
+    // 読み込み直しても同じ(本人のミュートの行は残り、必須の間は効かない)
     await page.reload();
     await expect(row.getByRole('switch')).toBeDisabled();
     await expect(
@@ -234,29 +241,29 @@ test('システム管理者が処理依頼に必須を付けると、開いた�
     expect(await unreadCount(page)).toBe(before + 1);
 });
 
-test('必須を外すと、A の行は受け取らないに戻る', async ({ page, browser }) => {
+test('必須を外すと、A の行はミュート中に戻る', async ({ page, browser }) => {
     await toggleRequiredAsAdministrator(browser, false);
 
     await openAs(page, 'chief', '/notices/settings');
-    const row = workflowRow(page, '処理依頼を受け取る');
-    await expect(row.getByRole('switch')).not.toBeChecked();
+    const row = workflowRow(page, '処理依頼をミュートする');
+    await expect(row.getByRole('switch')).toBeChecked();
     await expect(row.getByRole('switch')).toBeEnabled();
-    await expect(row).toContainText('受け取らない');
+    await expect(row).toContainText('ミュート中');
     await expect(row.getByText('必須(管理者の設定)')).toHaveCount(0);
 });
 
-test('A が受け取るに戻すと、次の処理依頼は届く(終わりは A が受け取る)', async ({
+test('A がミュートを外すと、次の処理依頼は未読で届く(終わりは A がミュートしない)', async ({
     page,
 }) => {
     await openAs(page, 'chief', '/notices/settings');
-    const row = workflowRow(page, '処理依頼を受け取る');
+    const row = workflowRow(page, '処理依頼をミュートする');
     await row.getByRole('switch').click();
-    await expect(row.getByRole('switch')).toBeChecked();
-    await expect(row).toContainText('受け取る');
+    await expect(row.getByRole('switch')).not.toBeChecked();
+    await expect(row).toContainText('ミュートしない');
 
     await page.goto('/');
     const before = await unreadCount(page);
-    await applyThenBackToChief(page, 'E2E の通知の設定(受け取る)');
+    await applyThenBackToChief(page, 'E2E の通知の設定(ミュートしない)');
 
     expect(await unreadCount(page)).toBe(before + 1);
 });

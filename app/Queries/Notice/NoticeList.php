@@ -11,8 +11,9 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 /**
  * 自分宛の通知の読み取り(docs の 設計/ワークフロー/案件の運用/通知.md の 6 節と 7 節、形は 設計/ワークフロー/案件の運用/画面/管理と通知の画面.md の 7.5):
- * 未読の数・鈴の最新 10 件・通知の一覧・押した時の移り先。判定を求める者にユーザーがいなければ(ゲスト)自分宛の行は無い。
- * 並びは作った日時の新しい順、同じ時刻は id の降順(通知.md の 2 節)。
+ * 未読の数・鈴の 10 件・通知の一覧・押した時の移り先。判定を求める者にユーザーがいなければ(ゲスト)自分宛の行は無い。
+ * 並びは作った日時の新しい順、同じ時刻は id の降順(通知.md の 2 節)。鈴の 10 件だけは未読を先に並べる(7.5。ミュートで既読で作った行が
+ * 未読の行を鈴から押し出さないように)。
  *
  * @phpstan-import-type NoticeRow from NoticeRows
  */
@@ -41,13 +42,22 @@ class NoticeList
     }
 
     /**
-     * 鈴の中の最新 10 件(既読・未読の両方)。
+     * 鈴の中の 10 件(未読を先に、続けて既読。未読どうし・既読どうしは一覧と同じ並び)。
      *
      * @return list<NoticeRow>
      */
     public function latest(AccessContext $context): array
     {
-        return $this->rows->rows($this->ordered($this->own($context))->limit(self::LATEST_COUNT)->get(), $context);
+        // 未読と既読を分けて引く(既読は (user_id, created_at, id) の索引の並びで上から取れる。1 つの問い合わせで未読を先に並べると、
+        // 本人の全行を並べ替える)。2 つの間に既読になった行を 2 度出さないよう、既読の側から未読の側で取った行を除く
+        $unread = $this->ordered($this->own($context)->whereNull('read_at'))->limit(self::LATEST_COUNT)->get();
+        $rest = self::LATEST_COUNT - $unread->count();
+        $read = $rest === 0
+            ? new Collection
+            : $this->ordered($this->own($context)->whereNotNull('read_at')->whereKeyNot($unread->modelKeys()))
+                ->limit($rest)->get();
+
+        return $this->rows->rows($unread->concat($read), $context);
     }
 
     /**

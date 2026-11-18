@@ -2,7 +2,6 @@
 
 namespace Tests\Feature\Queries\Notice;
 
-use App\Queries\Notice\Api\NoticeTypeEntry;
 use App\Queries\Notice\NoticeTypeCatalog;
 use Tests\TestCase;
 
@@ -20,8 +19,8 @@ final class NoticeTypeWordingTest extends TestCase
     {
         $code = $this->sourceOf(self::TYPE_WORDS);
 
-        foreach ($this->entries() as $entry) {
-            $this->assertStringContainsString("case '{$entry->type}':", $code, $entry->type);
+        foreach ($this->types() as $type) {
+            $this->assertStringContainsString("case '{$type}':", $code, $type);
         }
     }
 
@@ -31,8 +30,8 @@ final class NoticeTypeWordingTest extends TestCase
         $heading = preg_match('/export function surfaceHeading\(.*?\n}\n/s', $code, $match) === 1 ? $match[0] : '';
         $this->assertNotSame('', $heading);
         $prefixes = array_unique(array_map(
-            fn (NoticeTypeEntry $entry) => explode('.', $entry->type, 2)[0],
-            $this->entries(),
+            fn (string $type) => explode('.', $type, 2)[0],
+            $this->types(),
         ));
 
         $this->assertNotSame([], $prefixes);
@@ -43,9 +42,9 @@ final class NoticeTypeWordingTest extends TestCase
     }
 
     /**
-     * @return list<NoticeTypeEntry>
+     * @return list<string>
      */
-    private function entries(): array
+    private function types(): array
     {
         return app(NoticeTypeCatalog::class)->all();
     }

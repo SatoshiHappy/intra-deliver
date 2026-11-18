@@ -19,7 +19,7 @@ export type NoticeSettingRowView = {
     type: string;
     /** 種類の画面の語(鈴の種類の札と同じ) */
     label: string;
-    /** スイッチの値(利用者の画面 = 受け取る、管理の画面 = 必須) */
+    /** スイッチの値(利用者の画面 = ミュート中、管理の画面 = 必須) */
     checked: boolean;
     /** 押せない行(必須の種類。利用者の画面だけ) */
     locked: boolean;
@@ -60,15 +60,15 @@ export function surfaceHeading(prefix: string): string {
  */
 function ownRowView(row: NoticeOwnSettingRow): NoticeSettingRowView {
     const label = noticeTypeLabel(row.type);
-    const checked = row.isRequiredType || row.receives;
+    const checked = !row.isRequiredType && row.muted;
 
     return {
         type: row.type,
         label,
         checked,
         locked: row.isRequiredType,
-        word: checked ? '受け取る' : '受け取らない',
-        switchName: `${label}を受け取る`,
+        word: checked ? 'ミュート中' : 'ミュートしない',
+        switchName: `${label}をミュートする`,
         badge: row.isRequiredType ? REQUIRED_BADGE : null,
     };
 }
@@ -119,14 +119,21 @@ export function adminSurfaceViews(
     return surfaceViews(surfaces, adminRowView);
 }
 
+/** 保存で送る値のキー(書き込みごとの意味の名前。利用者の画面 = ミュートするか、管理の画面 = 必須か) */
+export type SettingValueKey = 'muted' | 'required';
+
 /**
  * 保存で送る値(クリックした後の値。同じ値を 2 度送っても結果は同じ)。キーはサーバーの 422 のキーと同じ。
  */
-export function settingPayload(
+export function settingPayload<K extends SettingValueKey>(
+    valueKey: K,
     type: string,
     checked: boolean,
-): { type: string; value: boolean } {
-    return { type, value: checked };
+): { type: string } & Record<K, boolean> {
+    return { type, [valueKey]: checked } as { type: string } & Record<
+        K,
+        boolean
+    >;
 }
 
 /**

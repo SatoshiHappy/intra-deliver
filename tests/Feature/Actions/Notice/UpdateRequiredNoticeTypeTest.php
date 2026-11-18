@@ -4,9 +4,8 @@ namespace Tests\Feature\Actions\Notice;
 
 use App\Actions\Notice\NoticeSettingValidator;
 use App\Actions\Notice\UpdateRequiredNoticeType;
-use App\Enums\Workflow\WorkflowNoticeType;
 use App\Models\Master\User;
-use App\Models\Notice\NoticeOptOut;
+use App\Models\Notice\NoticeMute;
 use App\Models\Notice\NoticeRequiredType;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Support\CatchesValidationErrors;
@@ -30,10 +29,9 @@ final class UpdateRequiredNoticeTypeTest extends TransactionalTestCase
     {
         return [
             '一覧に無い種類' => ['test.unlisted', true, ['type']],
-            '切り替えられない種類(連絡)' => [WorkflowNoticeType::Contact->value, true, ['type']],
             '文字列でない種類' => [null, true, ['type']],
-            '真偽でない値' => [self::PROCESS, 'true', ['value']],
-            '種類と値の両方' => [1, 1, ['type', 'value']],
+            '真偽でない値' => [self::PROCESS, 'true', ['required']],
+            '種類と値の両方' => [1, 1, ['type', 'required']],
         ];
     }
 
@@ -53,7 +51,7 @@ final class UpdateRequiredNoticeTypeTest extends TransactionalTestCase
     }
 
     /**
-     * 必須の印のある種類に真偽でない値を送ると、値の 422(キー value)で、印は残る。
+     * 必須の印のある種類に真偽でない値を送ると、値の 422(キー required)で、印は残る。
      */
     public function test_an_invalid_value_for_a_required_type_is_rejected_and_the_mark_stays(): void
     {
@@ -63,7 +61,7 @@ final class UpdateRequiredNoticeTypeTest extends TransactionalTestCase
 
         $errors = $this->validationErrors($save);
 
-        $this->assertSame(['value' => NoticeSettingValidator::INVALID_MESSAGE], $errors);
+        $this->assertSame(['required' => NoticeSettingValidator::INVALID_MESSAGE], $errors);
         $this->assertSame([self::PROCESS], $this->requiredTypes());
     }
 
@@ -91,7 +89,7 @@ final class UpdateRequiredNoticeTypeTest extends TransactionalTestCase
     public function test_requiring_and_unrequiring_leave_the_settings_of_the_users_as_they_are(): void
     {
         $user = User::factory()->createOne();
-        NoticeOptOut::query()->create(['user_id' => $user->id, 'type' => self::PROCESS]);
+        NoticeMute::query()->create(['user_id' => $user->id, 'type' => self::PROCESS]);
         $before = $this->optOutRows();
 
         app(UpdateRequiredNoticeType::class)->execute(self::PROCESS, true);
@@ -109,7 +107,7 @@ final class UpdateRequiredNoticeTypeTest extends TransactionalTestCase
      */
     private function optOutRows(): array
     {
-        $rows = NoticeOptOut::query()->orderBy('id')->get(['id', 'user_id', 'type', 'updated_at']);
+        $rows = NoticeMute::query()->orderBy('id')->get(['id', 'user_id', 'type', 'updated_at']);
 
         return array_values($rows->toArray());
     }

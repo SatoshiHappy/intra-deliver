@@ -3,7 +3,7 @@
 namespace Tests\Feature\Queries\Notice;
 
 use App\Models\Master\User;
-use App\Models\Notice\NoticeOptOut;
+use App\Models\Notice\NoticeMute;
 use App\Models\Notice\NoticeRequiredType;
 use App\Queries\Notice\NoticeReceivingQuery;
 use Tests\Support\TransactionalTestCase;
@@ -37,12 +37,12 @@ final class NoticeReceivingQueryTest extends TransactionalTestCase
      */
     public function test_the_opted_out_types_of_a_user_leave_out_required_types_and_others_rows(): void
     {
-        $types = $this->receiving->optedOutTypesOf($this->user->id);
+        $types = $this->receiving->mutedTypesOf($this->user->id);
         sort($types);
 
         $this->assertSame(['test.free'], $types);
-        $this->assertSame(['test.others'], $this->receiving->optedOutTypesOf($this->other->id));
-        $this->assertSame([], $this->receiving->optedOutTypesOf(User::factory()->createOne()->id));
+        $this->assertSame(['test.others'], $this->receiving->mutedTypesOf($this->other->id));
+        $this->assertSame([], $this->receiving->mutedTypesOf(User::factory()->createOne()->id));
     }
 
     /**
@@ -52,10 +52,10 @@ final class NoticeReceivingQueryTest extends TransactionalTestCase
     {
         $recipients = [$this->user->id, $this->other->id];
 
-        $this->assertSame([$this->user->id], $this->receiving->optedOutAmong('test.free', $recipients));
-        $this->assertSame([], $this->receiving->optedOutAmong('test.required', $recipients));
-        $this->assertSame([$this->other->id], $this->receiving->optedOutAmong('test.others', $recipients));
-        $this->assertSame([], $this->receiving->optedOutAmong('test.free', []));
+        $this->assertSame([$this->user->id], $this->receiving->mutedAmong('test.free', $recipients));
+        $this->assertSame([], $this->receiving->mutedAmong('test.required', $recipients));
+        $this->assertSame([$this->other->id], $this->receiving->mutedAmong('test.others', $recipients));
+        $this->assertSame([], $this->receiving->mutedAmong('test.free', []));
     }
 
     /**
@@ -66,7 +66,7 @@ final class NoticeReceivingQueryTest extends TransactionalTestCase
         $this->optOut($this->other, 'test.free');
         $none = User::factory()->createOne();
 
-        $optedOut = $this->receiving->optedOutAmong('test.free', [$this->user->id, $none->id, $this->other->id]);
+        $optedOut = $this->receiving->mutedAmong('test.free', [$this->user->id, $none->id, $this->other->id]);
         sort($optedOut);
 
         $expected = [$this->user->id, $this->other->id];
@@ -92,6 +92,6 @@ final class NoticeReceivingQueryTest extends TransactionalTestCase
 
     private function optOut(User $user, string $type): void
     {
-        NoticeOptOut::factory()->createOne(['user_id' => $user->id, 'type' => $type]);
+        NoticeMute::factory()->createOne(['user_id' => $user->id, 'type' => $type]);
     }
 }

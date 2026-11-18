@@ -49,7 +49,7 @@ final class DemoDisabledTest extends TransactionalTestCase
     }
 
     /**
-     * 利用者メニューの節は main の節(ゲストには項目の無いワークフローの節と通知の節 = docs の 設計/ワークフロー/案件の運用/認可と一覧.md の 5 節、
+     * 利用者メニューの節はワークフローと通知の節(ゲストには項目の無い節 = docs の 設計/ワークフロー/案件の運用/認可と一覧.md の 5 節、
      * 設計/ワークフロー/申請の周辺/通知の受け取りの設定/利用者と管理の画面.md の 3.1)だけ。
      */
     public function test_shares_no_switch_section_and_tags_no_section_of_its_own(): void

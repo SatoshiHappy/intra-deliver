@@ -82,8 +82,8 @@ final class WorkflowSeederTest extends TransactionalTestCase
     }
 
     /**
-     * 案件の見本 19 = 申請の順に WF-000001〜WF-000018 と一時保存 1(一時保存 1・未完了 11・完了 7 = 設計/ワークフロー/案件の運用/初期データ.md 5 節に、
-     * 設計/ワークフロー/申請の周辺/初期データ.md の 2 節の申請対象からの申請 2 を足した値)。状態・完了の理由・
+     * 案件の見本 19 = 申請の順に WF-000001〜WF-000018 と一時保存 1(一時保存 1・未完了 11・完了 7 = 設計/ワークフロー/案件の運用/初期データ.md 5 節。
+     * 設計/ワークフロー/申請の周辺/初期データ.md の 2 節の申請対象からの申請 2 を含む)。状態・完了の理由・
      * 現在のノード(表示名・状態・処理対象者)・案件名(空で渡した既定)・履歴(種別と処理者)。申請基準日と版は {@see WorkflowSeederRouteDepthTest}。
      */
     public function test_seeds_the_sample_cases_of_the_design(): void

@@ -11,7 +11,7 @@ use App\Enums\Authz\PolicyEffect;
 use App\Enums\Authz\ServiceAction;
 use App\Models\Authz\AuthzResourceGroup;
 use App\Models\Master\User;
-use App\Models\Notice\NoticeOptOut;
+use App\Models\Notice\NoticeMute;
 use App\Models\Notice\NoticeRequiredType;
 use Carbon\CarbonImmutable;
 use Illuminate\Testing\TestResponse;
@@ -94,6 +94,7 @@ final class NoticeAdminControllerTest extends TransactionalTestCase
                     self::row('workflow.result', false),
                     self::row('workflow.confirm_request', false),
                     self::row('workflow.proxy', false),
+                    self::row('workflow.contact', false),
                 ]],
                 ['prefix' => 'records', 'rows' => [self::row('records.comment', false)]],
                 ['prefix' => 'meeting', 'rows' => [
@@ -131,10 +132,9 @@ final class NoticeAdminControllerTest extends TransactionalTestCase
     public static function invalidInputs(): array
     {
         return [
-            'contact' => ['workflow.contact', true, ['type']],
             'unknown type' => ['records.no_such_type', true, ['type']],
-            'string value' => ['records.comment', 'true', ['value']],
-            'both' => ['workflow.contact', 1, ['type', 'value']],
+            'string value' => ['records.comment', 'true', ['required']],
+            'both' => ['workflow.no_such_type', 1, ['type', 'required']],
         ];
     }
 
@@ -144,7 +144,7 @@ final class NoticeAdminControllerTest extends TransactionalTestCase
     public function test_required_adds_the_mark_and_not_required_removes_it_without_touching_user_settings(): void
     {
         $user = $this->seededUser('u0001');
-        NoticeOptOut::factory()->createOne(['user_id' => $user->id, 'type' => 'records.comment']);
+        NoticeMute::factory()->createOne(['user_id' => $user->id, 'type' => 'records.comment']);
         $this->actingAs($this->seededUser('u0004'));
 
         $this->save('records.comment', true)->assertStatus(303)->assertRedirect(self::URL)->assertSessionHasNoErrors();
@@ -156,7 +156,7 @@ final class NoticeAdminControllerTest extends TransactionalTestCase
         $this->assertSame([], $this->requiredTypes());
         $this->assertSame(
             [[$user->id, 'records.comment']],
-            NoticeOptOut::query()->get()->map(fn (NoticeOptOut $row) => [$row->user_id, $row->type])->all(),
+            NoticeMute::query()->get()->map(fn (NoticeMute $row) => [$row->user_id, $row->type])->all(),
         );
     }
 
@@ -181,11 +181,24 @@ final class NoticeAdminControllerTest extends TransactionalTestCase
     }
 
     /**
+     * 値のキー required が無い保存(別のキーで送った値)は 422 で拒み、必須の印を変えない(利用者と管理の画面.md の 4.3 の 2 行目)。
+     */
+    public function test_a_save_without_the_required_key_is_rejected_without_writing(): void
+    {
+        $this->actingAs($this->seededUser('u0004'))->from(self::URL)
+            ->put(self::URL, ['type' => 'records.comment', 'value' => true])
+            ->assertRedirect(self::URL)
+            ->assertSessionHasErrors(['required' => NoticeSettingValidator::INVALID_MESSAGE]);
+
+        $this->assertFalse(NoticeRequiredType::query()->where('type', 'records.comment')->exists());
+    }
+
+    /**
      * @return TestResponse<Response>
      */
     private function save(mixed $type, mixed $value): TestResponse
     {
-        return $this->from(self::URL)->put(self::URL, ['type' => $type, 'value' => $value]);
+        return $this->from(self::URL)->put(self::URL, ['type' => $type, 'required' => $value]);
     }
 
     /**

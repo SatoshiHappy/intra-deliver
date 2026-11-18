@@ -10,7 +10,7 @@ use Tests\Support\TransactionalTestCase;
 
 /**
  * 通知の必須の印の表の制約(docs の 設計/ワークフロー/申請の周辺/通知の受け取りの設定/種類と作る規則.md の 2 節の起きない組み合わせ、
- * ADR 0045 の決定 1。名前は 設計/共通マスタ/共通の規則.md の 9 節の形): 種類の一意・種類の書式。列の一覧は SchemaTest も確かめる。
+ * ADR 0050 の決定 1。名前は 設計/共通マスタ/共通の規則.md の 9 節の形): 種類の一意・種類の書式。列の一覧は SchemaTest も確かめる。
  */
 final class NoticeRequiredTypeTest extends TransactionalTestCase
 {

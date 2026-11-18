@@ -52,10 +52,10 @@ export type NoticeSettingSurface<TRow> = {
     rows: TRow[];
 };
 
-/** 利用者の画面の 1 行(必須の種類は本人の設定によらず receives = true) */
+/** 利用者の画面の 1 行(必須の種類は本人の設定によらず muted = false) */
 export type NoticeOwnSettingRow = {
     type: string;
-    receives: boolean;
+    muted: boolean;
     isRequiredType: boolean;
 };
 

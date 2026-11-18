@@ -12,6 +12,7 @@ import {
 import type {
     NoticeSettingRowView,
     NoticeSettingSurfaceView,
+    SettingValueKey,
 } from '@/lib/Notice/noticeSettings';
 
 function NoticeSettingRow({
@@ -85,7 +86,7 @@ function NoticeSettingSurface({
  * 保存(docs の 設計/ワークフロー/申請の周辺/通知の受け取りの設定/利用者と管理の画面.md の 3.3)。
  * 保存の間に別の行を押せると、その保存が前の保存の応答を捨てるため、保存の間は全スイッチを押せなくする。
  */
-function useSettingSave(url: string) {
+function useSettingSave(url: string, valueKey: SettingValueKey) {
     const [saving, setSaving] = useState(false);
     // saving は再描画の後にしか効かず、その前の 2 つ目のクリックを止められないので、同期の印で止める
     const inFlight = useRef(false);
@@ -96,7 +97,7 @@ function useSettingSave(url: string) {
         }
 
         inFlight.current = true;
-        router.put(url, settingPayload(type, checked), {
+        router.put(url, settingPayload(valueKey, type, checked), {
             only: SETTING_PROPS,
             preserveScroll: true,
             preserveState: true,
@@ -115,11 +116,13 @@ function useSettingSave(url: string) {
 export function NoticeSettingSurfaces({
     surfaces,
     url,
+    valueKey,
 }: {
     surfaces: NoticeSettingSurfaceView[];
     url: string;
+    valueKey: SettingValueKey;
 }) {
-    const { saving, save } = useSettingSave(url);
+    const { saving, save } = useSettingSave(url, valueKey);
 
     return (
         <>

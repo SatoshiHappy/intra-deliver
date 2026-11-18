@@ -2,7 +2,6 @@
 
 namespace Tests\Support;
 
-use App\Queries\Notice\Api\NoticeTypeEntry;
 use App\Queries\Notice\Api\NoticeTypes;
 
 /**
@@ -14,14 +13,14 @@ final class FixedNoticeTypes implements NoticeTypes
     public int $calls = 0;
 
     /**
-     * @param  list<NoticeTypeEntry>  $entries
+     * @param  list<string>  $types
      */
-    public function __construct(private readonly array $entries) {}
+    public function __construct(private readonly array $types) {}
 
     public function types(): array
     {
         $this->calls++;
 
-        return $this->entries;
+        return $this->types;
     }
 }

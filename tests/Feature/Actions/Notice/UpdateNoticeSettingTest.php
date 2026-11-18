@@ -6,7 +6,7 @@ use App\Actions\Notice\NoticeSettingValidator;
 use App\Actions\Notice\UpdateNoticeSetting;
 use App\Enums\Workflow\WorkflowNoticeType;
 use App\Models\Master\User;
-use App\Models\Notice\NoticeOptOut;
+use App\Models\Notice\NoticeMute;
 use App\Models\Notice\NoticeRequiredType;
 use App\Support\AccessContext;
 use Carbon\CarbonImmutable;
@@ -33,24 +33,23 @@ final class UpdateNoticeSettingTest extends TransactionalTestCase
     {
         return [
             '一覧に無い種類' => ['test.unlisted', false, ['type']],
-            '切り替えられない種類(連絡)' => [WorkflowNoticeType::Contact->value, false, ['type']],
             '文字列でない種類' => [['workflow.process_request'], false, ['type']],
-            '真偽でない値' => [self::PROCESS, 'false', ['value']],
-            '整数の値' => [self::PROCESS, 0, ['value']],
-            '種類と値の両方' => ['test.unlisted', null, ['type', 'value']],
+            '真偽でない値' => [self::PROCESS, 'false', ['muted']],
+            '整数の値' => [self::PROCESS, 0, ['muted']],
+            '種類と値の両方' => ['test.unlisted', null, ['type', 'muted']],
         ];
     }
 
     public function test_row_1_a_guest_is_forbidden_and_nothing_is_written(): void
     {
-        $before = NoticeOptOut::query()->count();
+        $before = NoticeMute::query()->count();
 
         $this->assertThrows(
             fn () => app(UpdateNoticeSetting::class)->execute($this->contextOf(null), self::PROCESS, false),
             AuthorizationException::class,
         );
 
-        $this->assertSame($before, NoticeOptOut::query()->count());
+        $this->assertSame($before, NoticeMute::query()->count());
     }
 
     /**
@@ -63,15 +62,12 @@ final class UpdateNoticeSettingTest extends TransactionalTestCase
         array $keys,
     ): void {
         $user = $this->user();
-        $contact = WorkflowNoticeType::Contact->value;
-
         $context = $this->contextOf($user);
 
         $errors = $this->validationErrors(fn () => app(UpdateNoticeSetting::class)->execute($context, $type, $value));
 
         $this->assertSame(array_fill_keys($keys, NoticeSettingValidator::INVALID_MESSAGE), $errors);
-        $this->assertSame([], $this->optedOutTypes($user));
-        $this->assertFalse(NoticeOptOut::query()->where('type', $contact)->exists());
+        $this->assertSame([], $this->mutedTypes($user));
     }
 
     /**
@@ -79,14 +75,14 @@ final class UpdateNoticeSettingTest extends TransactionalTestCase
      */
     public function test_a_guest_with_an_invalid_input_is_forbidden_before_the_input_is_checked(): void
     {
-        $before = NoticeOptOut::query()->count();
+        $before = NoticeMute::query()->count();
 
         $this->assertThrows(
             fn () => app(UpdateNoticeSetting::class)->execute($this->contextOf(null), 'test.unlisted', 'false'),
             AuthorizationException::class,
         );
 
-        $this->assertSame($before, NoticeOptOut::query()->count());
+        $this->assertSame($before, NoticeMute::query()->count());
     }
 
     /**
@@ -102,8 +98,8 @@ final class UpdateNoticeSettingTest extends TransactionalTestCase
 
         $errors = $this->validationErrors($save);
 
-        $this->assertSame(['value' => NoticeSettingValidator::INVALID_MESSAGE], $errors);
-        $this->assertSame([], $this->optedOutTypes($user));
+        $this->assertSame(['muted' => NoticeSettingValidator::INVALID_MESSAGE], $errors);
+        $this->assertSame([], $this->mutedTypes($user));
     }
 
     public function test_row_3_a_required_type_is_rejected_without_writing_either_value(): void
@@ -111,44 +107,56 @@ final class UpdateNoticeSettingTest extends TransactionalTestCase
         $user = $this->user();
         NoticeRequiredType::query()->create(['type' => self::PROCESS]);
 
-        foreach ([false, true] as $receives) {
+        foreach ([false, true] as $muted) {
             $errors = $this->validationErrors(
-                fn () => app(UpdateNoticeSetting::class)->execute($this->contextOf($user), self::PROCESS, $receives),
+                fn () => app(UpdateNoticeSetting::class)->execute($this->contextOf($user), self::PROCESS, $muted),
             );
 
             $this->assertSame(['type' => UpdateNoticeSetting::REQUIRED_MESSAGE], $errors);
         }
 
-        $this->assertSame([], $this->optedOutTypes($user));
+        $this->assertSame([], $this->mutedTypes($user));
     }
 
-    public function test_row_4_opting_out_creates_the_row_once(): void
+    public function test_row_4_muting_creates_the_row_once(): void
     {
         $user = $this->user();
         $other = $this->user();
 
-        app(UpdateNoticeSetting::class)->execute($this->contextOf($user), self::PROCESS, false);
-        $row = NoticeOptOut::query()->where('user_id', $user->id)->sole();
-        app(UpdateNoticeSetting::class)->execute($this->contextOf($user), self::PROCESS, false);
+        app(UpdateNoticeSetting::class)->execute($this->contextOf($user), self::PROCESS, true);
+        $row = NoticeMute::query()->where('user_id', $user->id)->sole();
+        app(UpdateNoticeSetting::class)->execute($this->contextOf($user), self::PROCESS, true);
 
-        $this->assertSame([self::PROCESS], $this->optedOutTypes($user));
-        $this->assertSame($row->id, NoticeOptOut::query()->where('user_id', $user->id)->sole()->id);
-        $this->assertSame([], $this->optedOutTypes($other));
+        $this->assertSame([self::PROCESS], $this->mutedTypes($user));
+        $this->assertSame($row->id, NoticeMute::query()->where('user_id', $user->id)->sole()->id);
+        $this->assertSame([], $this->mutedTypes($other));
     }
 
-    public function test_row_5_receiving_deletes_only_the_own_row_and_does_nothing_without_one(): void
+    public function test_row_5_unmuting_deletes_only_the_own_row_and_does_nothing_without_one(): void
     {
         $user = $this->user();
         $other = $this->user();
-        NoticeOptOut::query()->create(['user_id' => $user->id, 'type' => self::PROCESS]);
-        NoticeOptOut::query()->create(['user_id' => $user->id, 'type' => 'records.comment']);
-        NoticeOptOut::query()->create(['user_id' => $other->id, 'type' => self::PROCESS]);
+        NoticeMute::query()->create(['user_id' => $user->id, 'type' => self::PROCESS]);
+        NoticeMute::query()->create(['user_id' => $user->id, 'type' => 'records.comment']);
+        NoticeMute::query()->create(['user_id' => $other->id, 'type' => self::PROCESS]);
 
-        app(UpdateNoticeSetting::class)->execute($this->contextOf($user), self::PROCESS, true);
-        app(UpdateNoticeSetting::class)->execute($this->contextOf($user), self::PROCESS, true);
+        app(UpdateNoticeSetting::class)->execute($this->contextOf($user), self::PROCESS, false);
+        app(UpdateNoticeSetting::class)->execute($this->contextOf($user), self::PROCESS, false);
 
-        $this->assertSame(['records.comment'], $this->optedOutTypes($user));
-        $this->assertSame([self::PROCESS], $this->optedOutTypes($other));
+        $this->assertSame(['records.comment'], $this->mutedTypes($user));
+        $this->assertSame([self::PROCESS], $this->mutedTypes($other));
+    }
+
+    /**
+     * 連絡を含む 12 種のどれもミュートできる(連絡の例外は無い)。
+     */
+    public function test_the_contact_can_be_muted(): void
+    {
+        $user = $this->user();
+
+        app(UpdateNoticeSetting::class)->execute($this->contextOf($user), WorkflowNoticeType::Contact->value, true);
+
+        $this->assertSame([WorkflowNoticeType::Contact->value], $this->mutedTypes($user));
     }
 
     private function user(): User
@@ -162,10 +170,10 @@ final class UpdateNoticeSettingTest extends TransactionalTestCase
     }
 
     /**
-     * @return list<string> その人が受け取らないにしている種類(値の順)
+     * @return list<string> その人がミュートしている種類(値の順)
      */
-    private function optedOutTypes(User $user): array
+    private function mutedTypes(User $user): array
     {
-        return array_values(NoticeOptOut::query()->where('user_id', $user->id)->orderBy('type')->pluck('type')->all());
+        return array_values(NoticeMute::query()->where('user_id', $user->id)->orderBy('type')->pluck('type')->all());
     }
 }

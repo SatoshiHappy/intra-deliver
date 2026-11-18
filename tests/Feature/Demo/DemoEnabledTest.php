@@ -8,7 +8,7 @@ use App\Models\Authz\AuthzPolicy;
 use App\Models\Authz\AuthzResourceGroup;
 use App\Models\Authz\AuthzSubjectCondition;
 use App\Models\Master\User;
-use App\Models\Notice\NoticeOptOut;
+use App\Models\Notice\NoticeMute;
 use App\Models\Notice\NoticeRequiredType;
 use App\Queries\Account\Api\UserMenuSections;
 use App\Queries\Demo\DemoResetSeeder;
@@ -235,7 +235,7 @@ final class DemoEnabledTest extends TransactionalTestCase
      */
     public function test_the_seeded_data_has_no_notice_setting_and_no_required_notice_type(): void
     {
-        $this->assertSame([0, 0], [NoticeOptOut::query()->count(), NoticeRequiredType::query()->count()]);
+        $this->assertSame([0, 0], [NoticeMute::query()->count(), NoticeRequiredType::query()->count()]);
     }
 
     /**

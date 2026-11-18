@@ -13,7 +13,7 @@ use Inertia\Response;
 
 /**
  * 利用者の画面「通知の設定」の入口(docs の 設計/ワークフロー/申請の周辺/通知の受け取りの設定/利用者と管理の画面.md の 3 節、
- * ルートと文言と検査.md の 5 節): 画面 Notice/Settings と、種類 1 つの受け取るかの保存(入力 type・value。確かめは業務処理)。
+ * ルートと文言と検査.md の 5 節): 画面 Notice/Settings と、種類 1 つのミュートするかの保存(入力 type・muted。確かめは業務処理)。
  * 保存は元の画面へ 303 で戻る(画面は部分再読み込みで行を作り直す)。
  */
 class NoticeSettingController extends Controller
@@ -31,7 +31,11 @@ class NoticeSettingController extends Controller
     public function update(Request $request): RedirectResponse
     {
         $context = AccessContext::of($request);
-        $this->updateNoticeSetting->execute($context, $request->input('type'), $request->input('value'));
+        $this->updateNoticeSetting->execute(
+            $context,
+            $request->input('type'),
+            $request->input(UpdateNoticeSetting::VALUE_KEY),
+        );
 
         return redirect()->back(303, fallback: route('notice.settings.show'));
     }

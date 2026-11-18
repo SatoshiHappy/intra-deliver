@@ -2,43 +2,43 @@
 
 namespace App\Queries\Notice;
 
-use App\Models\Notice\NoticeOptOut;
+use App\Models\Notice\NoticeMute;
 use App\Models\Notice\NoticeRequiredType;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
- * 通知の受け取りの設定と必須の印の読み取り(docs の 設計/ワークフロー/申請の周辺/通知の受け取りの設定/種類と作る規則.md の 2 節、
- * ADR 0045 の決定 1・3)。種類が一覧にあるか・切り替えられるかは見ない(呼び手が {@see NoticeTypeCatalog} で確かめる)。
+ * 通知のミュートの印と必須の印の読み取り(docs の 設計/ワークフロー/申請の周辺/通知の受け取りの設定/種類と作る規則.md の 2 節、
+ * ADR 0050 の決定 1・3)。種類が一覧にあるかは見ない(呼び手が {@see NoticeTypeCatalog} で確かめる)。
  * 必須の印の読み方と必須の当て方は 1 か所ずつにする(送る時と画面と書き込みの拒みで当て方が食い違わないように)。
  */
 class NoticeReceivingQuery
 {
     /**
-     * 渡した利用者のうち、その種類を受け取らない人(必須の種類なら誰もいない。1 回の問い合わせで読む)。
+     * 渡した利用者のうち、その種類をミュートしている人(必須の種類なら誰もいない。1 回の問い合わせで読む)。
      *
      * @param  list<int>  $userIds  重ねない
-     * @return array<int, int> 値だけに意味がある(呼び手は集合として差を取る)
+     * @return array<int, int> 値だけに意味がある(呼び手はミュートしている人の集合として引く)
      */
-    public function optedOutAmong(string $type, array $userIds): array
+    public function mutedAmong(string $type, array $userIds): array
     {
         if ($userIds === []) {
             return [];
         }
 
-        $optedOut = $this->effectiveOptOuts()->where('type', $type)->whereIn('user_id', $userIds)
+        $muted = $this->effectiveMutes()->where('type', $type)->whereIn('user_id', $userIds)
             ->pluck('user_id')->all();
 
-        return array_map('intval', $optedOut);
+        return array_map('intval', $muted);
     }
 
     /**
-     * その利用者が受け取らない種類のすべて(必須の種類を除く。利用者の画面の行の見え方 = 利用者と管理の画面.md の 3.2)。
+     * その利用者がミュートしている種類のすべて(必須の種類を除く。利用者の画面の行の見え方 = 利用者と管理の画面.md の 3.2)。
      *
      * @return list<string>
      */
-    public function optedOutTypesOf(int $userId): array
+    public function mutedTypesOf(int $userId): array
     {
-        return array_values($this->effectiveOptOuts()->where('user_id', $userId)->pluck('type')->all());
+        return array_values($this->effectiveMutes()->where('user_id', $userId)->pluck('type')->all());
     }
 
     /**
@@ -60,16 +60,16 @@ class NoticeReceivingQuery
     }
 
     /**
-     * 効いている受け取らないの行(同じ種類に必須の印がある行を除く = 種類と作る規則.md の 2 節の表の 3 行目)。
+     * 効いているミュートの行(同じ種類に必須の印がある行を除く = 種類と作る規則.md の 2 節の表の 2 行目)。
      *
-     * @return Builder<NoticeOptOut>
+     * @return Builder<NoticeMute>
      */
-    private function effectiveOptOuts(): Builder
+    private function effectiveMutes(): Builder
     {
-        return NoticeOptOut::query()->whereNotExists(
+        return NoticeMute::query()->whereNotExists(
             $this->requiredMarks()->whereColumn(
                 (new NoticeRequiredType)->qualifyColumn('type'),
-                (new NoticeOptOut)->qualifyColumn('type'),
+                (new NoticeMute)->qualifyColumn('type'),
             ),
         );
     }

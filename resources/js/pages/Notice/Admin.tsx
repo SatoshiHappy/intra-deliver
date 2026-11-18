@@ -15,11 +15,12 @@ export default function Admin({ surfaces }: NoticeAdminProps) {
             <Head title="通知の管理" />
             <NoticeSettingsFrame
                 title="通知の管理"
-                lead="通知の種類ごとに、必須にするかを設定します。必須にした通知は、利用者の設定によらず届きます。"
+                lead="通知の種類ごとに、必須にするかを設定します。必須にした通知は、利用者がミュートできず、ミュートしていた利用者にも未読で届きます。"
             >
                 <NoticeSettingSurfaces
                     surfaces={adminSurfaceViews(surfaces)}
                     url={update.url()}
+                    valueKey="required"
                 />
             </NoticeSettingsFrame>
         </>

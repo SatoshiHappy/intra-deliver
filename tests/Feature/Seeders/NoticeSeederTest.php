@@ -4,7 +4,7 @@ namespace Tests\Feature\Seeders;
 
 use App\Models\Authz\AuthzResourceGroup;
 use App\Models\Authz\AuthzResourceGroupTranslation;
-use App\Models\Notice\NoticeOptOut;
+use App\Models\Notice\NoticeMute;
 use App\Models\Notice\NoticeRequiredType;
 use Tests\Support\TransactionalTestCase;
 
@@ -58,7 +58,7 @@ final class NoticeSeederTest extends TransactionalTestCase
      */
     public function test_the_seeded_data_has_no_setting_and_no_required_type(): void
     {
-        $this->assertSame([0, 0], [NoticeOptOut::query()->count(), NoticeRequiredType::query()->count()]);
+        $this->assertSame([0, 0], [NoticeMute::query()->count(), NoticeRequiredType::query()->count()]);
     }
 
     /**

@@ -10,7 +10,8 @@ use App\Actions\Workflow\SendCaseNotices;
 use App\Actions\Workflow\TransferCase;
 use App\Enums\Workflow\WorkflowNodeKind;
 use App\Enums\Workflow\WorkflowNoticeType;
-use App\Models\Notice\NoticeOptOut;
+use App\Models\Notice\Notice;
+use App\Models\Notice\NoticeMute;
 use App\Models\Workflow\WorkflowCase;
 use Carbon\CarbonImmutable;
 use Illuminate\Validation\ValidationException;
@@ -99,10 +100,10 @@ final class CaseNoticeRecipientsTest extends TransactionalTestCase
     }
 
     /**
-     * 受け取らないにした人を、送る口が最後に除く(docs の 設計/ワークフロー/申請の周辺/通知の受け取りの設定/種類と作る規則.md の 2 節):
-     * 処理依頼を受け取らないにした u0002 には届かず、u0002 の代理先は自分の設定で決まる(u0016 は受け取る、u0017 は受け取らない)。
+     * ミュートした人にも送る口が既読で作る(docs の 設計/ワークフロー/申請の周辺/通知の受け取りの設定/種類と作る規則.md の 2 節):
+     * 処理依頼をミュートした u0002 には既読で届き、u0002 の代理先は自分の設定で決まる(u0016 は未読、u0017 はミュートしたので既読)。
      */
-    public function test_a_person_who_opted_out_is_left_out_and_the_proxies_follow_their_own_settings(): void
+    public function test_a_muted_person_gets_a_read_notice_and_the_proxies_follow_their_own_settings(): void
     {
         $this->addVersion([[
             $this->applyNode(),
@@ -111,16 +112,22 @@ final class CaseNoticeRecipientsTest extends TransactionalTestCase
         $chief = $this->seededUser('u0002');
         $this->addProxy($chief, $this->seededUser('u0016'));
         $this->addProxy($chief, $this->seededUser('u0017'));
-        foreach ([$chief, $this->seededUser('u0017')] as $optedOut) {
-            NoticeOptOut::query()->create(['user_id' => $optedOut->id, 'type' => self::PROCESS->value]);
+        foreach ([$chief, $this->seededUser('u0017')] as $muted) {
+            NoticeMute::query()->create(['user_id' => $muted->id, 'type' => self::PROCESS->value]);
         }
         $lastId = $this->lastNoticeId();
 
         [$case] = $this->applyOnRoute([]);
 
         $request = ['step_name' => 'first', 'step_kind' => 'approve'];
-        $expected = [$this->caseNotice(self::PROCESS, 'u0016', 'u0001', $case, $request)];
+        $expected = array_map(
+            fn (string $to) => $this->caseNotice(self::PROCESS, $to, 'u0001', $case, $request),
+            ['u0002', 'u0016', 'u0017'],
+        );
         $this->assertSame($expected, $this->noticesSince($lastId));
+        $read = Notice::query()->where('id', '>', $lastId)->whereNotNull('read_at')->with('user')->get()
+            ->map(fn (Notice $notice) => $notice->user?->code)->sort()->values()->all();
+        $this->assertSame(['u0002', 'u0017'], $read);
     }
 
     /**

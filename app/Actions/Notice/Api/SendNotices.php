@@ -12,7 +12,8 @@ use LogicException;
 
 /**
  * 通知を送る(Notice の公開の口。保証の正本 = docs の 設計/ワークフロー/案件の運用/通知.md の 1 節と、そこが指す ADR 0012 の決定 3・
- * ADR 0045 の決定 3)。認可を見ない(宛先は呼び手が決める)。宛先の重複を除き、受け取らないにした人を除いて 1 人 1 行を書き、0 人なら何も書かない。
+ * ADR 0050 の決定 3)。認可を見ない(宛先は呼び手が決める)。宛先の重複を除いて 1 人 1 行を書き(ミュートした人の行は既読で作る)、
+ * 0 人なら何も書かない。
  * 自分で DB::transaction を持ち、呼び手のトランザクションの中では savepoint で含まれる(呼び手が巻き戻すと通知も残らない)。
  */
 class SendNotices
@@ -32,8 +33,8 @@ class SendNotices
      * 主体の判定をしない。呼び手が宛先を決めてから(除く人と今日に有効でない人を除いてから)呼ぶ。設定と必須の印は呼ばれた時に読む
      * (呼び手のトランザクションの中なら、その中で読む)。
      *
-     * 宛先を作るかの表(docs の 設計/ワークフロー/申請の周辺/通知の受け取りの設定/種類と作る規則.md の 2 節)で絞る。
-     * 誰を除いたかは返さない。
+     * 宛先を除かず、未読で作るか既読で作るかを宛先ごとに決める(docs の 設計/ワークフロー/申請の周辺/通知の受け取りの設定/
+     * 種類と作る規則.md の 2 節の表。既読の日時 = 作った時刻)。誰の行を既読で作ったかは返さない。
      *
      * @param  list<int>  $recipientUserIds  宛先のユーザー(users.id)。重ねてよい
      *
@@ -44,22 +45,22 @@ class SendNotices
     public function execute(NoticeMessage $message, array $recipientUserIds): void
     {
         $this->assertWellFormed($message);
-        $entry = $this->types->find($message->type)
-            ?? throw new InvalidArgumentException("通知の種類「{$message->type}」が種類の一覧に無い");
-        $recipients = array_values(array_unique($recipientUserIds));
-
-        if ($entry->switchable) {
-            $optedOut = $this->receiving->optedOutAmong($message->type, $recipients);
-            $recipients = array_values(array_diff($recipients, $optedOut));
+        if (! $this->types->has($message->type)) {
+            throw new InvalidArgumentException("通知の種類「{$message->type}」が種類の一覧に無い");
         }
+
+        $recipients = array_values(array_unique($recipientUserIds));
 
         if ($recipients === []) {
             return;
         }
 
-        DB::transaction(function () use ($message, $recipients): void {
+        $muted = array_flip($this->receiving->mutedAmong($message->type, $recipients));
+        $now = now();
+
+        DB::transaction(function () use ($message, $recipients, $muted, $now): void {
             foreach ($recipients as $userId) {
-                Notice::query()->create([
+                $notice = new Notice([
                     'user_id' => $userId,
                     'type' => $message->type,
                     'target_type' => $message->targetType,
@@ -67,7 +68,10 @@ class SendNotices
                     'actor_user_id' => $message->actorUserId,
                     // 空の params も JSON のオブジェクト {} で書く(PHP の空の配列は JSON の配列になるため。表の検査制約 = object)
                     'params' => (object) $message->params,
+                    'read_at' => isset($muted[$userId]) ? $now : null,
                 ]);
+                // 既読で作る行の既読の日時を作った時刻と同じにする(作った時刻を 1 回の送信で 1 つに決める)
+                $notice->setCreatedAt($now)->setUpdatedAt($now)->save();
             }
         });
     }

@@ -16,69 +16,69 @@ describe('surfaceHeading', () => {
     });
 });
 
-/** 利用者の画面の 1 行の props(種類・本人の受け取る・必須) */
-function ownRow(type: string, receives: boolean, isRequiredType: boolean) {
-    return { type, receives, isRequiredType };
+/** 利用者の画面の 1 行の props(種類・本人のミュート・必須) */
+function ownRow(type: string, muted: boolean, isRequiredType: boolean) {
+    return { type, muted, isRequiredType };
 }
 
 const [OWN_SURFACE] = ownSurfaceViews([
     {
         prefix: 'workflow',
         rows: [
-            ownRow('workflow.process_request', true, true),
-            ownRow('workflow.transfer', true, false),
-            ownRow('workflow.retarget', false, false),
+            ownRow('workflow.process_request', false, true),
+            ownRow('workflow.transfer', false, false),
+            ownRow('workflow.retarget', true, false),
         ],
     },
 ]);
 
 describe('ownSurfaceViews(利用者の画面。3.2 の必須の行)', () => {
-    it('1 行目 = 必須: 受け取る・押せない・札「必須(管理者の設定)」', () => {
+    it('1 行目 = 必須: ミュートしない・押せない・札「必須(管理者の設定)」', () => {
         expect(OWN_SURFACE.rows[0]).toEqual({
             type: 'workflow.process_request',
             label: '処理依頼',
-            checked: true,
+            checked: false,
             locked: true,
-            word: '受け取る',
-            switchName: '処理依頼を受け取る',
+            word: 'ミュートしない',
+            switchName: '処理依頼をミュートする',
             badge: '必須(管理者の設定)',
         });
     });
 
-    it('必須の行は本人の設定(receives = false)によらず受け取る', () => {
+    it('必須の行は本人の設定(muted = true)によらずミュートしない', () => {
         const [required] = ownSurfaceViews([
             {
                 prefix: 'workflow',
-                rows: [ownRow('workflow.process_request', false, true)],
+                rows: [ownRow('workflow.process_request', true, true)],
             },
         ]);
 
         expect(required.rows[0]).toMatchObject({
-            checked: true,
+            checked: false,
             locked: true,
-            word: '受け取る',
+            word: 'ミュートしない',
             badge: '必須(管理者の設定)',
         });
     });
 });
 
 describe('ownSurfaceViews(利用者の画面。3.2 の必須でない行)', () => {
-    it('2 行目 = 必須でなく受け取る: 受け取る・押せる・札なし', () => {
+    it('2 行目 = 必須でなくミュートしない: ミュートしない・押せる・札なし', () => {
         expect(OWN_SURFACE.rows[1]).toMatchObject({
-            checked: true,
+            checked: false,
             locked: false,
-            word: '受け取る',
-            switchName: '担当変更を受け取る',
+            word: 'ミュートしない',
+            switchName: '担当変更をミュートする',
             badge: null,
         });
     });
 
-    it('3 行目 = 必須でなく受け取らない: 受け取らない・押せる・札なし', () => {
+    it('3 行目 = 必須でなくミュート中: ミュート中・押せる・札なし', () => {
         expect(OWN_SURFACE.rows[2]).toMatchObject({
-            checked: false,
+            checked: true,
             locked: false,
-            word: '受け取らない',
-            switchName: '処理担当者の変更を受け取る',
+            word: 'ミュート中',
+            switchName: '処理担当者の変更をミュートする',
             badge: null,
         });
     });
@@ -146,21 +146,21 @@ describe('adminSurfaceViews(管理の画面。4.2 の 2 通り)', () => {
 });
 
 describe('settingPayload・distinctErrors', () => {
-    it('クリックした後の値を type・value で送る', () => {
-        expect(settingPayload('workflow.transfer', false)).toEqual({
+    it('クリックした後の値を type と画面ごとの値のキー(muted・required)で送る', () => {
+        expect(settingPayload('muted', 'workflow.transfer', true)).toEqual({
             type: 'workflow.transfer',
-            value: false,
+            muted: true,
         });
-        expect(settingPayload('workflow.transfer', true)).toEqual({
+        expect(settingPayload('required', 'workflow.transfer', false)).toEqual({
             type: 'workflow.transfer',
-            value: true,
+            required: false,
         });
     });
 
     it('422 のエラーは、当たるキーが複数でも同じ文を 1 つにして出す', () => {
         const message = 'この通知の設定は保存できませんでした。';
 
-        expect(distinctErrors({ type: message, value: message })).toEqual({
+        expect(distinctErrors({ type: message, muted: message })).toEqual({
             type: message,
         });
         expect(

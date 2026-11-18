@@ -57,7 +57,7 @@ final class CompletionLockOrderTest extends TransactionalTestCase
         parent::setUp();
         $this->registerTestPromptKinds();
         $this->registerTestTranscriptionKind();
-        $this->registerNoticeTypes([self::NOTICE_TYPE => true]);
+        $this->registerNoticeTypes([self::NOTICE_TYPE]);
     }
 
     protected function tearDown(): void
