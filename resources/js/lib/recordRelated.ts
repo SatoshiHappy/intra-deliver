@@ -1,6 +1,7 @@
 import type { RecordFormData } from '@/lib/recordForm';
 import { createFormData, currentDraft } from '@/lib/recordForm';
 import { toTokyoLocal } from '@/lib/recordValues';
+import { queryValue } from '@/lib/recordShow';
 import type {
     RecordFieldValue,
     RecordRelatedEntry,
@@ -22,7 +23,7 @@ export const MAX_RELATED_COLUMNS = 5;
  * 選んでいる入口のキー(クエリ related が入口のキーのどれかならそれ、ほかは先頭の入口。入口が無ければ null = 3 節)。
  */
 export function selectedRelatedKey(url: string, keys: string[]): string | null {
-    const key = new URL(url, 'http://localhost').searchParams.get('related');
+    const key = queryValue(url, 'related');
 
     return key !== null && keys.includes(key) ? key : (keys[0] ?? null);
 }

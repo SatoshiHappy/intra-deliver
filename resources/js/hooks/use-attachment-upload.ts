@@ -6,12 +6,17 @@ import { uploadProgress } from '@/lib/recordShow';
 type AttachmentError = { key: string; message: string };
 
 /**
- * 送った添付の誤り(キー attachments と attachments.<添字>)を、欄の上に出す並びにする。
+ * 送った添付の誤り(キー attachments と attachments.<添字>、持ち主の断りのキー record)を、欄の上に出す並びにする。
  */
-function attachmentErrors(errors: Record<string, string>): AttachmentError[] {
+export function attachmentErrors(
+    errors: Record<string, string>,
+): AttachmentError[] {
     return Object.entries(errors)
         .filter(
-            ([key]) => key === 'attachments' || key.startsWith('attachments.'),
+            ([key]) =>
+                key === 'record' ||
+                key === 'attachments' ||
+                key.startsWith('attachments.'),
         )
         .map(([key, message]) => ({ key, message }));
 }

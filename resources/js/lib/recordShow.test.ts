@@ -31,6 +31,15 @@ describe('openPanelKey', () => {
         ).toBe('integration-notes');
     });
 
+    it('同じ名前のクエリが 2 つあれば、サーバーと同じく最後の値を読む', () => {
+        expect(
+            openPanelKey(
+                '/records/data/p/1?panel=attachments&panel=revisions',
+                keys,
+            ),
+        ).toBe('revisions');
+    });
+
     it('帯に無いキー・無いクエリは閉じた形', () => {
         expect(openPanelKey('/records/data/p/1?panel=comments', keys)).toBe(
             null,
@@ -52,6 +61,10 @@ describe('selectedTabKey', () => {
             'fields',
         );
         expect(selectedTabKey('/x', keys)).toBe('fields');
+    });
+
+    it('同じ名前のクエリが 2 つあれば最後の値を読む', () => {
+        expect(selectedTabKey('/x?tab=fields&tab=access', keys)).toBe('access');
     });
 });
 

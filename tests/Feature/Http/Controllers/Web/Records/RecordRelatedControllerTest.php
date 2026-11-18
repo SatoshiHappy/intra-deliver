@@ -160,6 +160,11 @@ final class RecordRelatedControllerTest extends TransactionalTestCase
 
         $this->assertSame(2, RecordReference::query()->where('record_field_id', $this->f['customer']->id)
             ->where('referenced_record_id', $this->project->id)->count());
+        $created = Record::query()->where('record_module_id', $this->f['estimates']->id)->latest('id')->firstOrFail();
+        $props = $this->get($back)->assertOk()->viewData('page')['props'];
+        $this->assertContains($created->id, array_column($props['relatedRecordRows']['rows'], 'id'));
+        $counts = array_column($props['relatedRecords']['entries'], 'count', 'key');
+        $this->assertSame(2, $counts['estimates.customer'] ?? null);
     }
 
     public function test_a_store_without_related_still_moves_to_the_new_detail_with_a_toast(): void

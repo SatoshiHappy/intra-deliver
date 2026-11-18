@@ -22,10 +22,10 @@ function parsed(url: string): URL {
 }
 
 /**
- * URL のクエリの値(無ければ null)。
+ * URL のクエリの値(無ければ null)。括弧の無い同じ名前が 2 つ以上あれば、サーバー(PHP)と同じく最後の値を読む(画面とサーバーで開く欄が分かれないように)。
  */
 export function queryValue(url: string, name: string): string | null {
-    return parsed(url).searchParams.get(name);
+    return parsed(url).searchParams.getAll(name).at(-1) ?? null;
 }
 
 /**

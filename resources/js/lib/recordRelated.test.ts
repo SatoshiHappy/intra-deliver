@@ -22,6 +22,15 @@ const entry = (key: string, count: number) => ({
 describe('selectedRelatedKey', () => {
     const keys = ['estimates.customer', 'issues.project'];
 
+    it('同じ名前のクエリが 2 つあれば最後の値を読む', () => {
+        expect(
+            selectedRelatedKey(
+                '/r/1?related=estimates.customer&related=issues.project',
+                keys,
+            ),
+        ).toBe('issues.project');
+    });
+
     it('クエリ related が入口のキーのときだけそれを選び、ほかは先頭の入口', () => {
         expect(
             selectedRelatedKey('/r/1?tab=related&related=issues.project', keys),

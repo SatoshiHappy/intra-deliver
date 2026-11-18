@@ -99,7 +99,7 @@ function TabBar({ tabs, selected, onSelect }: TabsProps) {
 }
 
 /**
- * 詳細の左のタブ(docs の 設計/業務データの入れ物/レコードの共通機能/詳細の画面/README.md の 4 節): 全部を帯に並べる(多くて 4 つ。あふれた
+ * 詳細の左のタブ(docs の 設計/業務データの入れ物/レコードの共通機能/詳細の画面/README.md の 4 節): 全部を帯に並べる(多くて 5 つ。あふれた
  * ときの形は置かない)。選んだタブの中身は children。選び方(URL のクエリへの映し)は呼び手が持つ。
  */
 export function RecordShowTabs({
