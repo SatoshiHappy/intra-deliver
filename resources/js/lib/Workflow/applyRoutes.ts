@@ -1,4 +1,5 @@
 import { candidateQueryOf } from '@/lib/Workflow/applyApplicant';
+import { queryValue } from '@/lib/recordShow';
 import {
     create as applicationCreate,
     store as applicationStore,
@@ -158,5 +159,18 @@ export function applicationTargetSnapshotUrlOf(
     return targetValues.url(
         { target: applicationTargetId },
         { query: candidateQueryOf(scope, applicant) },
+    );
+}
+
+/**
+ * 申請の詳細(今の URL = detailUrl)から再申請の画面へのリンク。再申請の後に今のタブを開くため、クエリ tab を渡す
+ * (docs の 設計/業務データの入れ物/レコードの共通機能/詳細の画面/README.md の 3 節)。
+ */
+export function reapplicationHrefOf(caseId: number, detailUrl: string): string {
+    const tab = queryValue(detailUrl, 'tab');
+
+    return reapplicationCreate.url(
+        caseId,
+        tab === null ? undefined : { query: { tab } },
     );
 }

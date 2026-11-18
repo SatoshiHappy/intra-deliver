@@ -25,6 +25,8 @@ use Inertia\Inertia;
  */
 class CaseActionController extends Controller
 {
+    use RedirectsToCaseShow;
+
     public function __construct(
         private ApproveCase $approveCase,
         private ApproveCaseEarly $approveCaseEarly,
@@ -139,6 +141,6 @@ class CaseActionController extends Controller
     {
         Inertia::flash('toast', ['type' => 'success', 'message' => $message]);
 
-        return redirect()->route('workflow.cases.show', ['case' => $request->caseId()]);
+        return $this->redirectToCaseShow($request, $request->caseId());
     }
 }

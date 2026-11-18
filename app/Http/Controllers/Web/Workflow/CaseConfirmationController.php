@@ -15,6 +15,8 @@ use Inertia\Inertia;
  */
 class CaseConfirmationController extends Controller
 {
+    use RedirectsToCaseShow;
+
     public function __construct(private ConfirmCase $confirmCase) {}
 
     public function store(Request $request): RedirectResponse
@@ -24,6 +26,6 @@ class CaseConfirmationController extends Controller
         $this->confirmCase->execute(AccessContext::of($request), $caseId);
         Inertia::flash('toast', ['type' => 'success', 'message' => '確認しました']);
 
-        return redirect()->route('workflow.cases.show', ['case' => $caseId]);
+        return $this->redirectToCaseShow($request, $caseId);
     }
 }

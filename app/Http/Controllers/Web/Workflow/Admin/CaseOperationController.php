@@ -8,6 +8,7 @@ use App\Actions\Workflow\ReassignCaseNode;
 use App\Actions\Workflow\ReexpandCaseNode;
 use App\Actions\Workflow\RetargetCaseNode;
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Web\Workflow\RedirectsToCaseShow;
 use App\Http\Requests\Workflow\CaseOperationRequest;
 use App\Queries\Workflow\CaseOperationList;
 use App\Support\AccessContext;
@@ -24,6 +25,8 @@ use Inertia\Response;
  */
 class CaseOperationController extends Controller
 {
+    use RedirectsToCaseShow;
+
     public function __construct(
         private CaseOperationList $list,
         private RetargetCaseNode $retargetCaseNode,
@@ -99,6 +102,6 @@ class CaseOperationController extends Controller
     {
         Inertia::flash('toast', ['type' => 'success', 'message' => $message]);
 
-        return redirect()->route('workflow.cases.show', ['case' => $request->caseId()]);
+        return $this->redirectToCaseShow($request, $request->caseId());
     }
 }

@@ -20,6 +20,8 @@ use Inertia\Response;
  */
 class ReapplicationController extends Controller
 {
+    use RedirectsToCaseShow;
+
     public function __construct(
         private ApplicationFormQuery $forms,
         private ReapplyCase $reapplyCase,
@@ -32,7 +34,7 @@ class ReapplicationController extends Controller
         if ($form === null) {
             Inertia::flash('toast', ['type' => 'error', 'message' => CaseOperationErrors::NOT_PERMITTED]);
 
-            return redirect()->route('workflow.cases.show', ['case' => (int) $case]);
+            return $this->redirectToCaseShow($request, (int) $case);
         }
 
         return Inertia::render('Workflow/Apply', $form);
@@ -46,6 +48,6 @@ class ReapplicationController extends Controller
         );
         Inertia::flash('toast', ['type' => 'success', 'message' => '再申請しました']);
 
-        return redirect()->route('workflow.cases.show', ['case' => $request->caseId()]);
+        return $this->redirectToCaseShow($request, $request->caseId());
     }
 }

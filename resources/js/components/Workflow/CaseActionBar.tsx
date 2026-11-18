@@ -1,4 +1,4 @@
-import { Link } from '@inertiajs/react';
+import { Link, usePage } from '@inertiajs/react';
 import { ActionBar } from '@/components/ActionBar';
 import { Button } from '@/components/ui/button';
 import { CaseActionButton } from '@/components/Workflow/CaseActionDialog';
@@ -13,7 +13,7 @@ import {
     processButtonsOf,
 } from '@/lib/Workflow/caseActions';
 import type { ProcessButton } from '@/lib/Workflow/caseActions';
-import { create as reapply } from '@/routes/workflow/reapplications';
+import { reapplicationHrefOf } from '@/lib/Workflow/applyRoutes';
 import type { WorkflowCaseShowProps } from '@/types';
 
 type Props = Pick<
@@ -29,6 +29,17 @@ type Props = Pick<
     onOpen: OpenCaseAction;
     onOpenOperation: OpenCaseOperation;
 };
+
+/** 再申請の画面へのボタン(今の URL を読むのはこのボタンだけ) */
+function ReapplyButton({ caseId }: { caseId: number }) {
+    const { url } = usePage();
+
+    return (
+        <Button asChild>
+            <Link href={reapplicationHrefOf(caseId, url)}>再申請</Link>
+        </Button>
+    );
+}
 
 /**
  * 処理のボタン 1 つ(ダイアログを開く・再申請の画面へのリンク・押すと送る確認)。
@@ -57,11 +68,7 @@ function BarButton({
                 />
             );
         case 'reapply':
-            return (
-                <Button asChild>
-                    <Link href={reapply(show.case.id)}>再申請</Link>
-                </Button>
-            );
+            return <ReapplyButton caseId={show.case.id} />;
         case 'confirm':
             return (
                 <CaseConfirmButton caseId={show.case.id} variant="outline" />

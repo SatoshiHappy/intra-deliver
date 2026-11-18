@@ -24,7 +24,7 @@ function parsed(url: string): URL {
 /**
  * URL のクエリの値(無ければ null)。
  */
-function queryValue(url: string, name: string): string | null {
+export function queryValue(url: string, name: string): string | null {
     return parsed(url).searchParams.get(name);
 }
 

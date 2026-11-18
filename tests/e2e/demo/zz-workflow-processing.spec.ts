@@ -179,7 +179,7 @@ test('保留と保留解除: u0009 が代理元として保留を解除しても
     await expect(hold).toContainText(
         '保留中は、保留した人とその代理関係にある人だけが処理できます。期限と経過日数は、保留中も数えます。',
     );
-    await decide(page, hold, detailUrl);
+    await decide(page, hold, `${detailUrl}?tab=application`);
     await expect(page.getByText('保留しました', { exact: true })).toBeVisible();
     await expect(await basicItem(page, '状態')).toHaveText('保留中');
     await expect(
@@ -288,10 +288,10 @@ test('確認の面(タブ「フロー」): u0010 が未確認の申請の詳細�
     await submitAndExpectUrl(
         page,
         panel.getByRole('button', { name: '確認', exact: true }),
-        detailUrl,
+        // 確認を始めたフロータブを開いたまま戻る(詳細の画面/README.md の 3 節)
+        `${detailUrl}?tab=flow`,
     );
     await expect(page.getByText('確認しました', { exact: true })).toBeVisible();
-    await openFlowTab(page);
     await expect(rows.filter({ hasText: '課長' })).toContainText('確認済');
     await page.goto('/workflow/cases?tab=confirmed');
     await expect(caseRow(page, '確認済の申請', SECOND_QUARTER)).toHaveCount(1);

@@ -6,6 +6,7 @@ import {
     draftActionOf,
     recordCandidatesUrlOf,
     applicationTargetSnapshotUrlOf,
+    reapplicationHrefOf,
 } from './applyRoutes';
 import { RECORDS_DATA_SOURCE } from '@/hooks/use-record-candidates';
 import type { WorkflowApplyProps } from '@/types';
@@ -170,5 +171,19 @@ describe('業務レコードの詳細から開いた申請の画面の戻り先(
             '/records/data/project/12',
         );
         expect(backHrefOf(asProps(newProps)).url).toBe('/workflow/flows');
+    });
+});
+
+describe('再申請の画面へのリンク', () => {
+    it('今の URL のクエリ tab を渡す', () => {
+        expect(
+            reapplicationHrefOf(4, '/workflow/cases/4?tab=flow&panel=comments'),
+        ).toBe('/workflow/cases/4/reapply?tab=flow');
+    });
+
+    it('クエリ tab が無ければ何も付けない', () => {
+        expect(reapplicationHrefOf(4, '/workflow/cases/4?panel=comments')).toBe(
+            '/workflow/cases/4/reapply',
+        );
     });
 });

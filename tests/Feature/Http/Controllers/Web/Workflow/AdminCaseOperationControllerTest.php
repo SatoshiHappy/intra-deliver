@@ -187,7 +187,8 @@ final class AdminCaseOperationControllerTest extends TransactionalTestCase
     }
 
     /**
-     * 成功: 詳細へ 302 とトースト(画面 README の 1.1 節の文)、業務処理の履歴の行(処理者 = 管理者)。移り先の GET が 200。
+     * 成功: 詳細へ 302 とトースト(docs の 設計/ワークフロー/案件の運用/画面/README.md の 1.1 節の文)、業務処理の履歴の行(処理者 = 管理者)。移り先の GET が 200。
+     * 移り先は操作を始めたときのタブを開く(docs の 設計/業務データの入れ物/レコードの共通機能/詳細の画面/README.md の 3 節)。
      */
     #[DataProvider('operations')]
     public function test_an_operation_lands_on_the_detail_with_its_toast(
@@ -199,9 +200,10 @@ final class AdminCaseOperationControllerTest extends TransactionalTestCase
         $this->actingAs($this->seededUser(self::MANAGER));
 
         $url = "/workflow/admin/cases/{$case->id}/{$route}";
-        $response = $this->post($url, $this->input($route, $case), self::INERTIA);
+        $response = $this->from(route('workflow.cases.show', ['case' => $case->id, 'tab' => 'flow']))
+            ->post($url, $this->input($route, $case), self::INERTIA);
 
-        $detail = route('workflow.cases.show', ['case' => $case->id]);
+        $detail = route('workflow.cases.show', ['case' => $case->id, 'tab' => 'flow']);
         $response->assertStatus(302)->assertSessionHasNoErrors()->assertRedirect($detail)
             ->assertInertiaFlash('toast', ['type' => 'success', 'message' => $toast]);
         $this->assertSame([$action, self::MANAGER], array_slice($this->latestRow($case), 0, 2));
