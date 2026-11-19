@@ -9,8 +9,10 @@ use App\Actions\Ai\CarryOverSpending;
 use App\Actions\Ai\Conversation\CoreVersion;
 use App\Actions\Ai\Instructions\DefaultInstructionBuilder;
 use App\Actions\Ai\Instructions\InstructionBuilder;
+use App\Actions\Ai\Tools\CreateRecordTool;
 use App\Actions\Ai\Tools\ReadRecord;
 use App\Actions\Ai\Tools\SearchRecords;
+use App\Actions\Ai\Tools\UpdateRecordTool;
 use App\Actions\Meeting\MeetingMinutesKind;
 use App\Actions\Meeting\MeetingTranscriptionKind;
 use App\Actions\Reset\Api\ResetParticipant;
@@ -148,7 +150,8 @@ class AppServiceProvider extends ServiceProvider
         $this->app->tag([MeetingTranscriptionKind::class], TranscriptionKind::TAG);
 
         // 依存の逆転: 会話の型の道具(docs の 設計/AI/道具と権限/README.md 10.1 の置き場)。汎用の道具は Ai が、製品の道具は製品のモジュールが足す
-        $this->app->tag([ReadRecord::class, SearchRecords::class], AgentTool::TAG);
+        $tools = [CreateRecordTool::class, ReadRecord::class, SearchRecords::class, UpdateRecordTool::class];
+        $this->app->tag($tools, AgentTool::TAG);
     }
 
     /**

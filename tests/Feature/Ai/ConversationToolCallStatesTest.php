@@ -97,10 +97,14 @@ final class ConversationToolCallStatesTest extends TransactionalTestCase
     public function test_the_version_goes_with_an_ask_and_the_end_follows_the_status(): void
     {
         $version = 'ai_tool_calls_confirmation_version_check';
-        $withVersion = ['confirmation_version' => 1];
+        $withVersion = ['confirmation_version' => '1'];
         $this->assertRejectedBy($version, fn () => AiToolCall::factory()->allowed()->create($withVersion));
         $this->assertRejectedBy($version, fn () => AiToolCall::factory()->notReached()->create($withVersion));
-        $this->assertSame(1, AiToolCall::factory()->asked()->create()->refresh()->confirmation_version);
+        $asked = fn (string $version): ?string => AiToolCall::factory()->asked()
+            ->create(['confirmation_version' => $version])->refresh()->confirmation_version;
+        // 版は入れ物の版の文字列のまま残る(ISO 8601 の版と空の文字列 = 2.4)
+        $this->assertSame('2026-11-17T09:00:00.123456Z', $asked('2026-11-17T09:00:00.123456Z'));
+        $this->assertSame('', $asked(''));
 
         $finished = 'ai_tool_calls_status_finished_at_check';
         $running = AiToolCall::factory()->allowed(AiToolCallStatus::Running);

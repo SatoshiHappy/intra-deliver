@@ -9,7 +9,7 @@ use App\Actions\Ai\Instructions\SharedInstructionTemplates;
 use Tests\TestCase;
 
 /**
- * 公開の側の既定の文(resources/ai/instructions)を自前で書き、公開の側に Claude Code の文と前提を入れないことの確かめ(docs の
+ * 公開の側の既定の文(resources/ai/instructions)を自前で書き、公開の側に移した版の文と前提を入れないことの確かめ(docs の
  * 設計/AI/設定とプロンプト/README.md 11.4・使う文と組み立て.md 11.7。禁止の語の前提 = 設計/AI/README.md の採った方針の 18)。
  */
 final class DefaultInstructionTextsTest extends TestCase

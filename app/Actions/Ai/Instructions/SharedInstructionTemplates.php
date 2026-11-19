@@ -7,7 +7,7 @@ use LogicException;
 
 /**
  * 持ち主が ③ の定型({@see AiInstructionTemplate::isShared()})と、定型でない ③ の決まった文を引く 1 か所(docs の 設計/AI/設定とプロンプト/README.md
- * 11.4: Claude Code の文でないので公開の側に 1 つだけ置き、2 つの版がここから同じ文を返す)。
+ * 11.4: 移した版の文でないので公開の側に 1 つだけ置き、2 つの版がここから同じ文を返す)。
  * 文の置き場 = resources/ai/instructions/shared.php。
  */
 final readonly class SharedInstructionTemplates

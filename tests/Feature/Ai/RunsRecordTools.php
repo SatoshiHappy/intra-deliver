@@ -16,11 +16,13 @@ use App\Models\Ai\AiToolCallText;
 use App\Queries\Records\Api\RecordActivityQuery;
 use App\Queries\Records\Api\RecordAttachmentQuery;
 use App\Queries\Records\Api\RecordDisplayQuery;
+use App\Queries\Records\Api\RecordFormQuery;
 use App\Queries\Records\Api\RecordListQuery;
 use App\Queries\Records\Api\RecordViewAccess;
 use Tests\Feature\Ai\RecordReads\LoggedActivityQuery;
 use Tests\Feature\Ai\RecordReads\LoggedAttachmentQuery;
 use Tests\Feature\Ai\RecordReads\LoggedDisplayQuery;
+use Tests\Feature\Ai\RecordReads\LoggedFormQuery;
 use Tests\Feature\Ai\RecordReads\LoggedListQuery;
 use Tests\Feature\Ai\RecordReads\LoggedViewAccess;
 use Tests\Feature\Ai\RecordReads\RecordReadLog;
@@ -53,6 +55,7 @@ trait RunsRecordTools
             RecordDisplayQuery::class => LoggedDisplayQuery::class,
             RecordActivityQuery::class => LoggedActivityQuery::class,
             RecordAttachmentQuery::class => LoggedAttachmentQuery::class,
+            RecordFormQuery::class => LoggedFormQuery::class,
         ];
 
         foreach ($logged as $api => $class) {
@@ -63,13 +66,14 @@ trait RunsRecordTools
     }
 
     /**
-     * 本物の 2 つの道具を渡す実行を作り、1 段目を済ませる。
+     * 本物の道具(既定 = 読む 2 つ)を渡す実行を作り、1 段目を済ませる。
      *
      * @param  list<string>  $knowledge
+     * @param  list<string>  $tools
      */
-    private function startRecordToolRun(array $knowledge): void
+    private function startRecordToolRun(array $knowledge, array $tools = ['ai_read_record', 'ai_search_records']): void
     {
-        $this->run = $this->runFor(['ai_read_record', 'ai_search_records'], $knowledge);
+        $this->run = $this->runFor($tools, $knowledge);
         $this->granted = app(ToolGrants::class)->grant(
             $this->run->agentDefinition()->sole(),
             app(ToolSubjects::class)->for($this->run),

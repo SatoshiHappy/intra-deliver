@@ -5,7 +5,9 @@ namespace Tests\Feature\Ai\Tools;
 use App\Actions\Ai\Api\AgentTool;
 use App\Actions\Ai\ToolCalls\AgentTools;
 use App\Enums\Ai\AiToolAction;
+use Tests\Feature\Ai\Tools\Generic\GenericCreateTool;
 use Tests\Feature\Ai\Tools\Generic\GenericTool;
+use Tests\Feature\Ai\Tools\Generic\GenericUpdateTool;
 use Tests\Feature\Ai\Tools\Product\Widget\WidgetTool;
 
 /**
@@ -32,14 +34,14 @@ final class FakeTools
         return new GenericTool($name);
     }
 
-    public static function create(string $name = 'ai_create'): GenericTool
+    public static function create(string $name = 'ai_create'): GenericCreateTool
     {
-        return new GenericTool($name, readOnly: false, action: AiToolAction::Create);
+        return new GenericCreateTool($name, readOnly: false, action: AiToolAction::Create);
     }
 
-    public static function update(string $name = 'ai_update'): GenericTool
+    public static function update(string $name = 'ai_update'): GenericUpdateTool
     {
-        return new GenericTool($name, readOnly: false, action: AiToolAction::Update);
+        return new GenericUpdateTool($name, readOnly: false, action: AiToolAction::Update);
     }
 
     /**

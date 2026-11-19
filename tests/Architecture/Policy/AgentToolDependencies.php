@@ -45,6 +45,10 @@ final class AgentToolDependencies
     public const TOOL_AI_TYPES = [
         ['class' => 'App\Actions\Ai\Api\AgentTool', 'reason' => '道具の約束(10.1)'],
         ['class' => 'App\Actions\Ai\Api\AgentRecordTool', 'reason' => '業務モジュールを読み書きする道具の約束(呼び出しが指す業務モジュールを答える = 10.1)'],
+        ['class' => 'App\Actions\Ai\Api\AgentCreateTool', 'reason' => '作るの書く道具の約束(確認の内容を作る口が 1 段 = 10.1)'],
+        ['class' => 'App\Actions\Ai\Api\AgentUpdateTool', 'reason' => '直すの書く道具の約束(確認の内容を作る口が 2 段 = 10.1)'],
+        ['class' => 'App\Actions\Ai\Api\RecordConfirmation', 'reason' => '書く道具が作る確認の内容の値の型(10.5)'],
+        ['class' => 'App\Actions\Ai\Api\RecordCurrentValues', 'reason' => '直すの 1 段目が読んだ今の値の値の型(10.1・10.2)'],
         ['class' => 'App\Actions\Ai\Api\AgentToolScope', 'reason' => '渡せる範囲の値の型(10.1)'],
         ['class' => 'App\Actions\Ai\Api\AgentToolSubject', 'reason' => '判定の主体の文脈(値の型。作るのは ③ の共通の部品 = 10.4)'],
         ['class' => 'App\Actions\Ai\Api\AgentToolResult', 'reason' => '道具の結果の値の型(10.1)'],
@@ -62,8 +66,7 @@ final class AgentToolDependencies
     ];
 
     /**
-     * 道具の名前空間が依存できる口と、呼べる操作(10.4 の (1) の表。行の判定を通る集計の口と `RecordFormQuery::editValues` は、
-     * 使う道具を足すときに足す)。
+     * 道具の名前空間が依存できる口と、呼べる操作(10.4 の (1) の表。行の判定を通る集計の口は、使う道具を足すときに足す)。
      *
      * @var list<array{class: string, methods: list<string>, reason: string}>
      */
@@ -91,8 +94,9 @@ final class AgentToolDependencies
         ],
         [
             'class' => 'App\Queries\Records\Api\RecordFormQuery',
-            'methods' => ['draftValues'],
-            'reason' => '書く値を画面の初期値の形にする(判定の関数が業務モジュールの権限を見た後だけ)',
+            'methods' => ['draftValues', 'editValues'],
+            'reason' => '書く値を画面の初期値の形にする(判定の関数が業務モジュールの権限を見た後だけ)と、直すの確認の内容を作る口の'
+                .' 1 段目の今の値と版(編集の画面と同じ読み取り。閲覧の判定の後だけ)',
         ],
         [
             'class' => 'App\Queries\Records\Api\RecordActivityQuery',
@@ -146,7 +150,8 @@ final class AgentToolDependencies
     public const TOOL_CALL_APIS = [
         [
             'class' => 'App\Queries\Records\Api\RecordFormQuery',
-            'reason' => '業務モジュールの権限の判定と定義の読み取り(allows・definition だけ)',
+            'reason' => '業務モジュールの権限の判定と、定義と参照制限の既定の読み取り(allows・definition・'
+                .'rowAccessRestrictedByDefault だけ)',
         ],
         [
             'class' => 'App\Queries\Records\Api\RecordModuleDirectory',
@@ -174,8 +179,8 @@ final class AgentToolDependencies
     public const TOOL_CALL_OPERATIONS = [
         [
             'class' => 'App\Queries\Records\Api\RecordFormQuery',
-            'methods' => ['allows', 'definition'],
-            'reason' => '業務モジュールの権限の判定と定義の読み取り(10.4 の (2))',
+            'methods' => ['allows', 'definition', 'rowAccessRestrictedByDefault'],
+            'reason' => '業務モジュールの権限の判定と、判定する定義と参照制限の既定の読み取り(10.4 の (2))',
         ],
     ];
 

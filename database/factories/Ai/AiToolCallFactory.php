@@ -75,7 +75,7 @@ class AiToolCallFactory extends Factory
     public function asked(AiToolCallStatus $status = AiToolCallStatus::AwaitingConfirmation): static
     {
         return $this->withStatus(AiToolCallDecision::Ask, $status)
-            ->state(fn (): array => ['confirmation_version' => 1]);
+            ->state(fn (): array => ['confirmation_version' => '2026-11-17T09:00:00.000000Z']);
     }
 
     /**

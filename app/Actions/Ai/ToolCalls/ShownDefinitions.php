@@ -7,7 +7,7 @@ use App\Actions\Ai\Instructions\InstructionBuilder;
 
 /**
  * 道具の説明に入れる定義の名前の写し(docs の 設計/AI/道具と権限/まとめた実行と送るデータ.md 10.6 の (1))。業務モジュール・項目・選択肢・
- * 参照先の名前に会話の印の形の直しを当てる。コードは英小文字・数字・_ の規則で会話の印の形を作れないので当てない。定義そのものは直さず、
+ * 参照先の名前に会話の印の形の直しを当てる(明細の項目は、明細のモジュールの定義にも同じ直しを当てる)。コードは英小文字・数字・_ の規則で会話の印の形を作れないので当てない。定義そのものは直さず、
  * B1 の確かめと書く値は直す前の定義を使う。
  */
 final class ShownDefinitions
@@ -45,6 +45,10 @@ final class ShownDefinitions
 
         if (is_array($field['referencedModule'] ?? null)) {
             $field['referencedModule'] = self::named($field['referencedModule'], $forms);
+        }
+
+        if (is_array($field['childModule'] ?? null)) {
+            $field['childModule'] = self::of($field['childModule'], $forms);
         }
 
         return $field;

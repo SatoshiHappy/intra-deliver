@@ -8,8 +8,14 @@ use App\Actions\Ai\ToolCalls\ToolGrants;
 use App\Actions\Ai\ToolCalls\ToolSubjects;
 use App\Enums\Records\RecordModuleAction;
 use App\Models\Ai\AiRun;
+use App\Models\Records\RecordModule;
+use App\Queries\Records\Api\RecordFormQuery;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Feature\Ai\Tools\FakeTools;
 use Tests\Support\TransactionalTestCase;
+use Throwable;
 
 /**
  * 1 段目の渡す道具と渡せる範囲(docs の 設計/AI/道具と権限/道具の判定と今の権限.md 10.3 の 1 段目の表)。表の各行を通すため、業務モジュールごとに
@@ -70,6 +76,40 @@ final class ToolGrantsTest extends TransactionalTestCase
         $read = $granted->find('ai_read');
         $this->assertNotNull($read);
         $this->assertSame('業務モジュール m_view・m_view_update・m_all を扱う', $read->tool->description($read->scope));
+    }
+
+    /** 渡せる範囲の業務モジュールごとに、参照制限の既定のチェックを実行の始めに読んで持つ(作るの W 表の元のチェック = 10.2) */
+    public function test_the_scope_carries_the_row_access_default_of_each_module(): void
+    {
+        RecordModule::query()->where('code', 'm_create')->update(['row_access_restricted_by_default' => true]);
+        RecordModule::query()->where('code', 'm_all')->update(['row_access_restricted_by_default' => false]);
+
+        $create = $this->granted($this->runFor(['ai_create'], self::KNOWLEDGE))->find('ai_create');
+
+        $this->assertNotNull($create);
+        $defaults = [$create->scope->rowAccessDefault('m_create'), $create->scope->rowAccessDefault('m_all')];
+        $this->assertSame([true, false], $defaults);
+    }
+
+    /**
+     * @return array<string, array{Throwable}>
+     */
+    public static function refusals(): array
+    {
+        return ['操作の権限が無い' => [new AuthorizationException], '業務モジュールが無い' => [new ModelNotFoundException]];
+    }
+
+    /** 既定を読めない(断られた・消えた)業務モジュールは、定義を読めないときと同じく範囲に入れない(10.4) */
+    #[DataProvider('refusals')]
+    public function test_a_module_whose_default_cannot_be_read_is_left_out(Throwable $refusal): void
+    {
+        $forms = app(CountingRecordFormQuery::class);
+        $forms->beforeDefault = static fn (string $code) => $code === 'm_create' ? throw $refusal : null;
+        $this->app->instance(RecordFormQuery::class, $forms);
+
+        $granted = $this->granted($this->runFor(['ai_create'], self::KNOWLEDGE));
+
+        $this->assertSame(['ai_create' => ['m_all']], self::scopes($granted));
     }
 
     /** A2: 有効でない依頼者は渡せる範囲が空で、読む・書く道具は渡さない */

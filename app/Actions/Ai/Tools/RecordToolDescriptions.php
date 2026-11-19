@@ -33,6 +33,10 @@ final class RecordToolDescriptions
         'record' => '業務モジュールのレコード',
     ];
 
+    /** 名前の物が決まらないときの求め(探すと作る・直すで同じ文) */
+    public const NAME_UNRESOLVED = '- 名前の物は、名前が完全に一致する相手が 1 つのときだけ当たる。決まらないときは、候補か、当たらなかったことが返る。'
+        .'候補が返ったら、推し量らずに利用者に選んでもらい、選んだ候補の値で呼び直す。当たらなかったときも、推し量らずに利用者に聞き返す。';
+
     /** 参照の相手の名前の読み方 */
     private const HIDDEN = '- 参照の相手の名前(`label`)が `#<id>` のときは、利用者がその相手を見られないか、相手に名前が無い。';
 
@@ -67,8 +71,7 @@ final class RecordToolDescriptions
             .'レコードに当たる。例 `{"members": ["user:12", {"name": "山田 太郎"}]}`。',
         '- 相手の id は、前の結果の値の中の相手の `id`(型「ユーザーと組織」は `type` と `id`)から取り、推し量って書かない。'
             .'ユーザー・組織の相手で名前しか分からないときは、名前の物で書く。業務モジュールのレコードの参照には名前の物を使えない。',
-        '- 名前の物は、名前が完全に一致する相手が 1 つのときだけ当たる。決まらないときは、候補か、当たらなかったことが返る。'
-            .'候補が返ったら、推し量らずに利用者に選んでもらい、選んだ候補の値で呼び直す。',
+        self::NAME_UNRESOLVED,
         '- 組織の条件は、その組織だけに当たり、配下の組織を含まない。',
         '',
         '# 結果の読み方',
@@ -164,7 +167,7 @@ final class RecordToolDescriptions
      *
      * @throws LogicException 範囲に説明用の写しが無いとき(1 段目の外で作った範囲。作りの誤り)
      */
-    private static function shown(AgentToolScope $scope): array
+    public static function shown(AgentToolScope $scope): array
     {
         $shown = [];
 
@@ -216,7 +219,7 @@ final class RecordToolDescriptions
      * @param  array<array-key, mixed>  $field
      * @return list<string>
      */
-    private static function details(array $field): array
+    public static function details(array $field): array
     {
         $lines = array_map(
             fn (array $option): string => '  - 選択肢 '.self::named($option['code'], $option['name']),
@@ -249,7 +252,7 @@ final class RecordToolDescriptions
     }
 
     /** コードと名前(どちらも印の部品で直す) */
-    private static function named(string $code, string $name): string
+    public static function named(string $code, string $name): string
     {
         return '`'.RecordMarkers::neutralize($code).'` '.RecordMarkers::neutralize($name);
     }

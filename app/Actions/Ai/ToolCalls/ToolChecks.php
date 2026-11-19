@@ -2,11 +2,12 @@
 
 namespace App\Actions\Ai\ToolCalls;
 
+use App\Actions\Ai\Api\AgentCreateTool;
 use App\Actions\Ai\Api\AgentRecordTool;
 use App\Actions\Ai\Api\AgentTool;
+use App\Actions\Ai\Api\AgentUpdateTool;
 use App\Enums\Ai\AiInstructionTemplate;
 use App\Enums\Ai\AiToolNature;
-use App\Enums\Ai\AiToolPartyForm;
 
 /**
  * 道具の登録の起動の時の確かめ(docs の 設計/AI/データと失敗と検査.md 8 節の会話の型で足すもの・設計/AI/道具と権限/README.md 10.1)。投げずに文にする。
@@ -97,6 +98,7 @@ final readonly class ToolChecks
                 ? "{$label}は業務モジュールを読み書きするが、呼び出しが指す業務モジュールを答えない(AgentRecordTool でない)" : null,
             ! $this->tools->isGeneric($tool) && ($targets === null || $targets === [])
                 ? "{$label}は製品の道具だが、対象の業務モジュールを持たない" : null,
+            self::writeProblem($tool, $nature),
             ...self::resultProblems($tool),
         ];
 
@@ -104,8 +106,29 @@ final readonly class ToolChecks
     }
 
     /**
+     * 性質と確認の内容を作る口の食い違い(作る = 1 段の口、直す = 2 段の口、ほかの性質 = どちらも持たない。設計/AI/道具と権限/README.md 10.1 の
+     * 「確認の内容を作る口」。書く道具が口を持たないと、判定の関数が問えない)。
+     */
+    private static function writeProblem(AgentTool $tool, ?AiToolNature $nature): ?string
+    {
+        $creates = $tool instanceof AgentCreateTool;
+        $updates = $tool instanceof AgentUpdateTool;
+        $writes = $nature === AiToolNature::Create || $nature === AiToolNature::Update;
+        $label = self::label($tool);
+
+        return match (true) {
+            $nature === AiToolNature::Create && $updates => "{$label}は作るの性質だが、直すの 2 段の確認の内容を作る口を持つ",
+            $nature === AiToolNature::Create && ! $creates => "{$label}は作るの性質だが、確認の内容を作る口(AgentCreateTool)を持たない",
+            $nature === AiToolNature::Update && $creates => "{$label}は直すの性質だが、作るの 1 段の確認の内容を作る口を持つ",
+            $nature === AiToolNature::Update && ! $updates => "{$label}は直すの性質だが、2 段の確認の内容を作る口(AgentUpdateTool)を持たない",
+            ! $writes && ($creates || $updates) => "{$label}は書く道具でないが、確認の内容を作る口を持つ",
+            default => null,
+        };
+    }
+
+    /**
      * 結果の長さの上限と大きい結果の定型の食い違い。上限の下限は上限を超えたときに返す先頭の長さ(先頭は上限によらず同じ長さなので、
-     * 下回る上限では縮めた本文が上限を超える。Claude Code も先頭の長さを上限によらず同じにする = 10.7)。
+     * 下回る上限では縮めた本文が上限を超える = 10.7)。
      *
      * @return list<string|null>
      */
@@ -125,8 +148,6 @@ final readonly class ToolChecks
 
     /**
      * 包みが照らせない引数の形と、引数の形に無い相手の引数の鍵(形の誤りでなく道具の例外で知ることにならないように、設定の確かめで断る)。
-     * 入れ物の入力の形の相手の引数も設定の確かめで断る(書く道具の入力の形の引き当てがまだ無いため。確かめを経ずに呼ばれたら、
-     * 名前の引き当ての部品が例外で止める)。書く道具の入力の形の引き当てを足すときに、この確かめを外す。
      *
      * @return list<string>
      */
@@ -136,10 +157,6 @@ final readonly class ToolChecks
         $keys = array_map(strval(...), array_keys(ToolArgumentSchema::properties($schema)));
         $forms = $tool instanceof AgentRecordTool ? $tool->partyArguments() : [];
         $parties = array_map(strval(...), array_keys($forms));
-        $inputs = array_map(strval(...), array_keys(array_filter(
-            $forms,
-            fn (AiToolPartyForm $form): bool => $form === AiToolPartyForm::Input,
-        )));
 
         return [
             ...array_map(
@@ -149,10 +166,6 @@ final readonly class ToolChecks
             ...array_map(
                 fn (string $key): string => self::label($tool)."の相手を名前で書ける引数 {$key} が引数の形に無い",
                 array_values(array_diff($parties, $keys)),
-            ),
-            ...array_map(
-                fn (string $key): string => self::label($tool)."の相手を名前で書ける引数 {$key} は入れ物の入力の形で、まだ引けない",
-                $inputs,
             ),
         ];
     }

@@ -102,6 +102,7 @@ final class RecordToolDescriptionsTest extends TransactionalTestCase
             $this->assertStringContainsString($line, $search);
         }
 
+        $this->assertStringContainsString(RecordToolDescriptions::NAME_UNRESOLVED, $search);
         $this->assertStringNotContainsString('`lines`', $search);
         $this->assertStringNotContainsString('`title`', $read);
         $this->assertStringContainsString("# 業務モジュール\n\n- `m_alpha` アルファ[ [rec:m_tasks:1]]\n- `m_tasks` タスク", $read);

@@ -27,8 +27,7 @@ class ToolCallWrapper
      */
     public function run(ToolStep $step, array $calls, Closure $stopped): ToolStepOutcome
     {
-        $results = [];
-        $prior = [];
+        [$results, $asks, $prior] = [[], [], []];
 
         foreach ($calls as $index => $call) {
             if ($call->id === '') {
@@ -39,20 +38,26 @@ class ToolCallWrapper
             $reason = $granted === null ? null : $stopped();
 
             if ($reason !== null) {
-                return $this->stopped($step, array_slice($calls, $index), $index + 1, $reason, $results);
+                return $this->stopped($step, array_slice($calls, $index), $index + 1, $reason, $results, $asks);
             }
 
             [$result, $priorCall] = $this->stages->through($step, $index + 1, $call, $granted, $prior);
 
             if ($result === null) {
-                return new ToolStepOutcome($results, conversationMissing: true);
+                return new ToolStepOutcome($results, conversationMissing: true, asks: $asks);
             }
 
-            $results[] = $result;
+            $called = ['callId' => $result['callId'], 'toolCallId' => $result['toolCallId']];
+
+            if ($result['item'] === null) {
+                $asks[] = $called;
+            } else {
+                $results[] = [...$called, 'item' => $result['item']];
+            }
             $prior[] = $priorCall;
         }
 
-        return new ToolStepOutcome($results);
+        return new ToolStepOutcome($results, asks: $asks);
     }
 
     /**
@@ -60,6 +65,7 @@ class ToolCallWrapper
      *
      * @param  list<ModelToolCall>  $calls  止めた呼び出しとその後ろ
      * @param  list<array{callId: string, toolCallId: int, item: ConversationItem}>  $results
+     * @param  list<array{callId: string, toolCallId: int}>  $asks
      */
     private function stopped(
         ToolStep $step,
@@ -67,6 +73,7 @@ class ToolCallWrapper
         int $position,
         AiRunStopReason $reason,
         array $results,
+        array $asks,
     ): ToolStepOutcome {
         $template = match ($reason) {
             AiRunStopReason::User => AiInstructionTemplate::UserCancelled,
@@ -83,14 +90,14 @@ class ToolCallWrapper
         $ids = $this->rows->finished($step, $entries, $interruption === null ? [] : [$interruption]);
 
         if ($ids === null) {
-            return new ToolStepOutcome($results, conversationMissing: true);
+            return new ToolStepOutcome($results, conversationMissing: true, asks: $asks);
         }
 
         foreach ($entries as $offset => $entry) {
             $results[] = ['callId' => $entry['call']->id, 'toolCallId' => $ids[$offset], 'item' => $entry['item']];
         }
 
-        return new ToolStepOutcome($results, $interruption, $reason);
+        return new ToolStepOutcome($results, $interruption, $reason, asks: $asks);
     }
 
     /**

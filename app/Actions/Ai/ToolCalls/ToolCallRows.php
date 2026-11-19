@@ -46,6 +46,32 @@ class ToolCallRows
         });
     }
 
+    /**
+     * 問うの呼び出しの行を確認待ちで書き、確認の内容と直すの版を残す(2.4 の T5)。会話の保存には足さない(結果は答えの後 = 9.4 の 5)。
+     *
+     * @param  array<string, mixed>  $confirmation
+     */
+    public function asked(
+        ToolStep $step,
+        int $position,
+        ModelToolCall $call,
+        array $confirmation,
+        ?string $version,
+    ): AiToolCall {
+        return DB::transaction(function () use ($step, $position, $call, $confirmation, $version): AiToolCall {
+            $row = $this->insert($step, $position, $call, [
+                'decision' => AiToolCallDecision::Ask,
+                'status' => AiToolCallStatus::AwaitingConfirmation,
+                'confirmation_version' => $version,
+            ], null);
+            AiToolCallText::query()->whereKey($row->id)->update([
+                'confirmation' => json_encode($confirmation, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR),
+            ]);
+
+            return $row;
+        });
+    }
+
     /** 許すの呼び出しの行を処理中で書いて確定する(道具の中から処理中で読める) */
     public function running(ToolStep $step, int $position, ModelToolCall $call): AiToolCall
     {

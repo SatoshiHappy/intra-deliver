@@ -151,7 +151,7 @@ final class SearchRecords implements AgentRecordTool
     }
 
     /**
-     * 当てた条件の相手(名前を読めない相手は、名前と所属の代わりに「名前を読めない」とだけ添える)。
+     * 当てた条件の相手(名前を読めない相手は、名前と所属の代わりに「名前を読めない」とだけ添える。コードは添えない)。
      *
      * @param  array<string, mixed>  $filters  口が当てた条件
      * @return list<array<string, mixed>>
@@ -160,9 +160,13 @@ final class SearchRecords implements AgentRecordTool
     {
         $used = array_filter($parties->parties, fn (array $party): bool => isset($filters[$party['field']]));
 
-        return array_values(array_map(fn (array $party): array => $party['name'] === null
-            ? ['field' => $party['field'], 'type' => $party['type'], 'id' => $party['id'], 'note' => self::UNREADABLE]
-            : $party, $used));
+        return array_values(array_map(function (array $party): array {
+            $shown = ['field' => $party['field'], 'type' => $party['type'], 'id' => $party['id']];
+
+            return $party['name'] === null
+                ? [...$shown, 'note' => self::UNREADABLE]
+                : [...$shown, 'name' => $party['name'], 'affiliation' => $party['affiliation']];
+        }, $used));
     }
 
     /**

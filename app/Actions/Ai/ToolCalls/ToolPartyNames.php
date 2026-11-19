@@ -6,27 +6,28 @@ use App\Actions\Ai\Api\AgentRecordTool;
 use App\Actions\Ai\Api\AgentToolParties;
 use App\Actions\Ai\Api\AgentToolScope;
 use App\Actions\Ai\Api\AgentToolSubject;
+use App\Actions\Ai\Api\AgentUpdateTool;
+use App\Actions\Ai\Api\RecordCurrentValues;
 use App\Enums\Ai\AiToolPartyForm;
 use App\Models\Ai\AiRun;
 use App\Queries\Master\Api\MasterNames;
-use LogicException;
 
 /**
  * 道具の引数の中のユーザー・組織の相手を引く ③ の共通の部品(docs の 設計/AI/道具と権限/README.md 10.1 の形の外の検証・10.2 のユーザー・組織の名前、
- * 決まらないとき = 設計/AI/道具と権限/道具の判定と今の権限.md 10.3 の B1)。名前の物 {"name": "…"} を候補の口で引き、引数の形の id に直す。
- * id で渡した相手も名前で引いた相手も、名前と所属を同じ口で読んで道具に渡す(道具のクラスは共通マスタの口に依存しない = 10.4)。条件の id には
- * 有効かの確かめを掛けない(画面の絞り込みと同じく、過去の担当者でも探せる)。定義を使うので、渡せる範囲の業務モジュールにだけ掛ける。
- * 条件に使えるかは実行の始めの定義で見る(説明と同じ定義で確かめる = 10.2 の値の形の表)。
+ * 決まらないとき = 設計/AI/道具と権限/道具の判定と今の権限.md 10.3 の B1、直すの今の値に無い無効な相手 = B19)。名前の物 {"name": "…"} を候補の口で
+ * 引き、引数の形の id に直す。id で渡した相手も名前で引いた相手も、コードと名前と所属を同じ口で読んで道具に渡す(道具のクラスは共通マスタの口に
+ * 依存しない = 10.4)。条件の id には有効かの確かめを掛けない(画面の絞り込みと同じく、過去の担当者でも探せる)。書く値の id は確かめる
+ * ({@see ToolInputParties})。定義を使うので、渡せる範囲の業務モジュールにだけ掛ける。条件に使えるかは実行の始めの定義で見る
+ * (説明と同じ定義で確かめる = 10.2 の値の形の表)。
  *
  * @phpstan-import-type Party from AgentToolParties
+ * @phpstan-import-type PartyType from ToolPartyFields
+ * @phpstan-import-type Slot from ToolInputParties
  *
  * @phpstan-type Found array{field: string, type: 'user'|'department', id: int}
  */
 class ToolPartyNames
 {
-    /** 相手を指す項目の型 */
-    private const PARTY_TYPES = ['user', 'department', 'user_or_department'];
-
     /** 条件の形の相手の id(正の整数の 10 進。一覧の条件の口と同じ) */
     private const ID_PATTERN = '[1-9][0-9]{0,17}';
 
@@ -38,13 +39,14 @@ class ToolPartyNames
         private PartyCandidates $candidates,
         private MasterNames $names,
         private ToolSubjects $subjects,
+        private ToolInputParties $inputs,
     ) {}
 
     /**
-     * @param  array<string, mixed>  $arguments  形の検証を通った引数
+     * 呼ばれた時の引き当て(道具の検証の段)。条件の形は名前の物を引いて読む。入れ物の入力の形は名前の物を引き、作るは id を確かめて読む
+     * (直すは今の値を読んだ後に {@see self::afterCurrent()} で確かめる = 10.1 の確認の内容を作る口)。
      *
-     * @throws LogicException 道具が入れ物の入力の形の引数を答えたとき(設定の確かめで断る。確かめを経ずに登録された道具が呼ばれたら、
-     *                        この例外で止まる)
+     * @param  array<string, mixed>  $arguments  形の検証を通った引数
      */
     public function resolve(
         AgentRecordTool $tool,
@@ -52,12 +54,6 @@ class ToolPartyNames
         AgentToolScope $scope,
         AiRun $run,
     ): ToolPartyResolution {
-        foreach ($tool->partyArguments() as $form) {
-            if ($form !== AiToolPartyForm::Condition) {
-                throw new LogicException("道具 {$tool->name()} の入れ物の入力の形の相手は引けない");
-            }
-        }
-
         $module = $tool->moduleOf($arguments);
 
         if ($tool->partyArguments() === [] || $module === null || ! $scope->has($module)) {
@@ -65,27 +61,126 @@ class ToolPartyNames
         }
 
         $subject = $this->subjects->for($run);
-        $types = self::partyTypes($scope->modules[$module]['definition']);
+        $definition = $scope->modules[$module]['definition'];
+        $forms = $tool->partyArguments();
+        [$resolved, $found, $errors] = $this->conditionArguments($arguments, $forms, $definition, $subject);
+        $chooses = $errors !== [];
+        $inputs = self::inputs($forms);
+        [$resolved, $slots, $problems, $names] = $this->inputs->resolve($resolved, $inputs, $definition, $subject);
+        [$errors, $chooses] = [[...$errors, ...$problems], $chooses || $names];
+
+        if ($errors === [] && ! $tool instanceof AgentUpdateTool) {
+            $byId = array_values(array_filter($slots, fn (array $slot): bool => ! $slot['byName']));
+            $errors = $this->inputs->invalid($byId, $subject);
+            $found = [...$found, ...self::found($slots)];
+        }
+
+        return $errors === []
+            ? new ToolPartyResolution($resolved, new AgentToolParties($this->named($found, $subject)))
+            : new ToolPartyResolution($arguments, new AgentToolParties, self::error($errors, $chooses));
+    }
+
+    /**
+     * 直すの 1 段目の後の確かめ(10.3 の B19 の分): 今の値(欄ごと)に無い相手を確かめて読む。誤りは B19 の文。引数を歩き直した誤り
+     * (形の誤り。名前の物は 1 段目の前に id に直してあるので、名前の誤りは起きない)は捨てずに、呼ぶ時の確かめと同じ文(B1)にする。
+     *
+     * @param  array<string, mixed>  $arguments  1 段目の後の引数(参照制限を今の値で決め直した値。名前の物は id に直してある)
+     * @return array{AgentToolParties, string|null} 今の値に無かった相手と、誤りの文
+     */
+    public function afterCurrent(
+        AgentUpdateTool $tool,
+        array $arguments,
+        AgentToolScope $scope,
+        RecordCurrentValues $current,
+        AgentToolSubject $subject,
+    ): array {
+        $module = $tool->moduleOf($arguments);
+        $inputs = self::inputs($tool->partyArguments());
+
+        if ($inputs === [] || $module === null || ! $scope->has($module)) {
+            return [new AgentToolParties, null];
+        }
+
+        $definition = $scope->modules[$module]['definition'];
+        [, $slots, $walkErrors] = $this->inputs->resolve($arguments, $inputs, $definition, $subject, $current);
+
+        if ($walkErrors !== []) {
+            return [new AgentToolParties, self::error($walkErrors, false)];
+        }
+
+        $added = ToolInputParties::notInCurrent($slots);
+        $errors = $this->inputs->invalid($added, $subject);
+
+        return $errors === []
+            ? [new AgentToolParties($this->named(self::found($added), $subject)), null]
+            : [new AgentToolParties, self::error($errors, false)];
+    }
+
+    /**
+     * 条件の形の引数の相手を直す。
+     *
+     * @param  array<string, mixed>  $arguments
+     * @param  array<string, AiToolPartyForm>  $forms
+     * @param  array<array-key, mixed>  $definition
+     * @return array{array<string, mixed>, list<Found>, list<string>}
+     */
+    private function conditionArguments(
+        array $arguments,
+        array $forms,
+        array $definition,
+        AgentToolSubject $subject,
+    ): array {
+        $types = ToolPartyFields::of($definition, true);
         [$resolved, $found, $errors] = [$arguments, [], []];
 
-        foreach (array_keys($tool->partyArguments()) as $key) {
-            if (is_array($arguments[$key] ?? null)) {
+        foreach ($forms as $key => $form) {
+            if ($form === AiToolPartyForm::Condition && is_array($arguments[$key] ?? null)) {
                 [$resolved[$key], $parties, $problems] = $this->conditions($arguments[$key], $types, $subject);
                 array_push($found, ...$parties);
                 array_push($errors, ...$problems);
             }
         }
 
-        return $errors === []
-            ? new ToolPartyResolution($resolved, new AgentToolParties($this->named($found, $subject)))
-            : new ToolPartyResolution($arguments, new AgentToolParties, implode("\n", [...$errors, self::CHOOSE]));
+        return [$resolved, $found, $errors];
+    }
+
+    /**
+     * 入れ物の入力の形の相手を含む引数。
+     *
+     * @param  array<string, AiToolPartyForm>  $forms
+     * @return array<string, AiToolPartyForm>
+     */
+    private static function inputs(array $forms): array
+    {
+        return array_filter($forms, fn (AiToolPartyForm $form): bool => $form !== AiToolPartyForm::Condition);
+    }
+
+    /**
+     * @param  list<Slot>  $slots
+     * @return list<Found>
+     */
+    private static function found(array $slots): array
+    {
+        return array_map(fn (array $slot): array => [
+            'field' => $slot['field'],
+            'type' => $slot['type'],
+            'id' => $slot['id'],
+        ], $slots);
+    }
+
+    /**
+     * @param  list<string>  $errors
+     */
+    private static function error(array $errors, bool $chooses): string
+    {
+        return implode("\n", [...$errors, ...($chooses ? [self::CHOOSE] : [])]);
     }
 
     /**
      * 条件のうち相手を指す項目の値を直す(名前の物は引いた id に、ほかは渡したまま)。
      *
      * @param  array<array-key, mixed>  $conditions
-     * @param  array<string, string>  $types  項目のコード → 相手を指す型
+     * @param  array<string, PartyType>  $types  項目のコード → 相手を指す型
      * @return array{array<array-key, mixed>, list<Found>, list<string>}
      */
     private function conditions(array $conditions, array $types, AgentToolSubject $subject): array
@@ -107,6 +202,7 @@ class ToolPartyNames
     /**
      * 条件の値 1 つ(複数の相手の列は要素ごと)。
      *
+     * @param  PartyType  $type
      * @return array{mixed, list<Found>, list<string>}
      */
     private function value(string $code, string $type, mixed $value, AgentToolSubject $subject): array
@@ -126,6 +222,7 @@ class ToolPartyNames
     /**
      * 値 1 つ(名前の物は引いて id の形に、id の形はそのまま。どちらでもない値は一覧の口が外す)。
      *
+     * @param  PartyType  $type
      * @return array{mixed, Found|null, string|null}
      */
     private function element(string $code, string $type, mixed $element, AgentToolSubject $subject): array
@@ -135,11 +232,14 @@ class ToolPartyNames
             : null;
 
         if ($name !== null) {
-            [$element, $error] = $this->candidates->resolve($code, $type, $name, $subject);
+            $form = AiToolPartyForm::Condition;
+            [$found, $error] = $this->candidates->resolve("条件 `{$code}`", $type, $name, $subject, $form);
 
-            if ($element === null) {
+            if ($found === null) {
                 return [null, null, $error];
             }
+
+            $element = PartyCandidates::value($found['type'], $found['id'], $type === 'user_or_department', $form);
         }
 
         return [$element, is_string($element) ? self::party($code, $type, $element) : null, null];
@@ -161,7 +261,7 @@ class ToolPartyNames
     }
 
     /**
-     * 相手の名前と所属(基準日の名前。読めない相手は名前と所属が null)。同じ項目の同じ相手は 1 つにする。
+     * 相手のコードと名前と所属(基準日の名前。読めない相手は名前と所属が null、無い id はコードも null)。同じ項目の同じ相手は 1 つにする。
      *
      * @param  list<Found>  $found
      * @return list<Party>
@@ -180,35 +280,11 @@ class ToolPartyNames
 
         return array_map(function (array $party) use ($users, $affiliations, $departments): array {
             $isUser = $party['type'] === 'user';
-            $name = ($isUser ? $users : $departments)[$party['id']]['name'] ?? null;
+            $read = ($isUser ? $users : $departments)[$party['id']] ?? null;
+            $name = $read['name'] ?? null;
             $affiliation = $isUser && $name !== null ? $affiliations[$party['id']] ?? null : null;
 
-            return [...$party, 'name' => $name, 'affiliation' => $affiliation];
+            return [...$party, 'code' => $read['code'] ?? null, 'name' => $name, 'affiliation' => $affiliation];
         }, $found);
-    }
-
-    /**
-     * 定義の項目のうち、条件に使えて相手を指す型の物(項目のコード → 型)。条件に使えない項目は名前の物も引かず、一覧の口に外させる
-     * (引いても条件に効かず、決まらなければ利用者に選ばせる手間だけが残るため)。
-     *
-     * @param  array<string, mixed>  $definition
-     * @return array<string, string>
-     */
-    private static function partyTypes(array $definition): array
-    {
-        $types = [];
-        $fields = is_array($definition['fields'] ?? null) ? array_filter($definition['fields'], is_array(...)) : [];
-
-        foreach ($fields as $field) {
-            $code = $field['code'] ?? null;
-            $type = $field['type'] ?? null;
-            $searchable = ($field['isSearchable'] ?? false) === true;
-
-            if (is_string($code) && $searchable && in_array($type, self::PARTY_TYPES, true)) {
-                $types[$code] = $type;
-            }
-        }
-
-        return $types;
     }
 }

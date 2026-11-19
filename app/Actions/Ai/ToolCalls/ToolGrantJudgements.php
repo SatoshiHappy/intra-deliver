@@ -18,7 +18,7 @@ use LogicException;
 
 /**
  * 1 回の 1 段目の中の判定({@see ToolGrants} が区間の中で作って捨てる)。業務モジュールの一覧・表示の止め・依頼者の有効・操作の判定は、同じ 1 段目の
- * 中で同じ業務モジュールと操作に 1 回だけ呼ぶ。
+ * 中で同じ業務モジュールと操作に 1 回だけ呼ぶ(定義と参照制限の既定の読み取りは、それぞれの口が判定を含む)。
  */
 final class ToolGrantJudgements
 {
@@ -108,17 +108,19 @@ final class ToolGrantJudgements
      */
     private function scoped(array $ranges): array
     {
-        $definitions = $this->definitions($ranges);
+        [$definitions, $defaults] = $this->definitions($ranges);
         $granted = [];
 
         foreach ($ranges as [$tool, $codes]) {
             $modules = [];
             $shown = [];
+            $rowAccessDefaults = [];
 
             foreach ($codes ?? [] as $code) {
                 if (isset($definitions[$code])) {
                     $name = $this->modules()[$code];
                     $modules[$code] = ['name' => $name, 'definition' => $definitions[$code]];
+                    $rowAccessDefaults[$code] = $defaults[$code];
                     $shown[$code] = [
                         'name' => ConversationMarkers::broken($name, $this->markerForms),
                         'definition' => ShownDefinitions::of($definitions[$code], $this->markerForms),
@@ -127,7 +129,7 @@ final class ToolGrantJudgements
             }
 
             if ($codes === null || $modules !== []) {
-                $granted[] = new GrantedTool($tool, new AgentToolScope($modules, $shown));
+                $granted[] = new GrantedTool($tool, new AgentToolScope($modules, $shown, $rowAccessDefaults));
             }
         }
 
@@ -138,24 +140,29 @@ final class ToolGrantJudgements
      * 範囲に入れた業務モジュールの定義(業務モジュールごとに 1 回。範囲に入れた性質のうち、閲覧が要る物があれば閲覧、無ければ登録で読む = 10.4)。
      * 判定の後に操作の権限か業務モジュールが無くなって読めない業務モジュールは、範囲に入れない(判定で外れたのと同じ)。
      *
+     * 参照制限の既定のチェックも、同じ操作で読む(作るの W 表の元のチェック = 設計/AI/道具と権限/README.md 10.2。定義と既定の読み取りは
+     * それぞれの口が判定を含むので、どちらかが断られた業務モジュールは範囲に入れない)。
+     *
      * @param  list<array{AgentTool, list<string>|null}>  $ranges
-     * @return array<string, array<string, mixed>>
+     * @return array{array<string, array<string, mixed>>, array<string, bool>} 定義と、参照制限の既定
      */
     private function definitions(array $ranges): array
     {
-        $definitions = [];
+        [$definitions, $defaults] = [[], []];
 
         foreach (self::definitionActions($ranges) as $code => $action) {
-            $requester = $this->subject->requester();
+            [$requester, $date] = [$this->subject->requester(), $this->subject->date()];
 
             try {
-                $definitions[$code] = $this->forms->definition($requester, $code, $action, $this->subject->date());
+                $definition = $this->forms->definition($requester, $code, $action, $date);
+                $defaults[$code] = $this->forms->rowAccessRestrictedByDefault($requester, $code, $action, $date);
+                $definitions[$code] = $definition;
             } catch (AuthorizationException|ModelNotFoundException) {
                 continue;
             }
         }
 
-        return $definitions;
+        return [$definitions, $defaults];
     }
 
     /**

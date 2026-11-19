@@ -4,6 +4,7 @@ namespace App\Actions\Ai\ToolCalls;
 
 use App\Actions\Ai\Api\AgentRecordTool;
 use App\Actions\Ai\Api\AgentToolParties;
+use App\Actions\Ai\Api\AgentToolSubject;
 use App\Actions\Ai\Api\ConversationItem;
 use App\Actions\Ai\Api\PriorToolCall;
 use App\Actions\Ai\Instructions\SharedInstructionTemplates;
@@ -18,7 +19,9 @@ use LogicException;
  * 道具を呼ぶ包みの、止める印の後の段。どの段で終わっても同じ形の結果と道具の行にするため、1 か所に集める(docs の
  * 設計/AI/エージェントの実行/道具の包みと止める.md 9.4、設計/AI/道具と権限/README.md 10.2、設計/AI/道具と権限/読み書きのたびの今の権限.md 10.4)。
  *
- * @phpstan-type Result array{callId: string, toolCallId: int, item: ConversationItem}
+ * @phpstan-type Result array{callId: string, toolCallId: int, item: ConversationItem|null}
+ *
+ * 結果の項目が null なのは問う(確認待ちで、会話の保存に足さない = 9.4 の 5)。
  */
 class ToolCallStages
 {
@@ -29,6 +32,7 @@ class ToolCallStages
         private AuthorizationReuse $reuse,
         private SharedInstructionTemplates $shared,
         private ToolPartyNames $partyNames,
+        private ToolCallAsks $asks,
     ) {}
 
     /**
@@ -78,7 +82,8 @@ class ToolCallStages
     }
 
     /**
-     * 相手の名前の引き当てと道具の検証(形の外の検証)の後、区間の中で判定の関数と道具を呼ぶ。
+     * 相手の名前の引き当てと、書く道具の ③ に共通の確かめ({@see ToolWriteChecks})と、道具の検証(形の外の検証)の後、区間の中で判定の関数と
+     * 道具を呼ぶ。
      *
      * @param  array<string, mixed>  $arguments
      * @param  list<PriorToolCall>  $prior
@@ -94,11 +99,23 @@ class ToolCallStages
     ): array {
         $tool = $granted->tool;
         $checked = function () use ($tool, $arguments, $granted, $prior, $step): array {
-            $resolved = $tool instanceof AgentRecordTool
-                ? $this->partyNames->resolve($tool, $arguments, $granted->scope, $step->run)
-                : new ToolPartyResolution($arguments, new AgentToolParties);
+            if (! $tool instanceof AgentRecordTool) {
+                $plain = new ToolPartyResolution($arguments, new AgentToolParties);
 
-            return [$resolved, $resolved->error ?? $tool->validate($resolved->arguments, $granted->scope, $prior)];
+                return [$plain, $tool->validate($arguments, $granted->scope, $prior)];
+            }
+
+            $resolved = $this->partyNames->resolve($tool, $arguments, $granted->scope, $step->run);
+
+            if ($resolved->error !== null) {
+                return [$resolved, $resolved->error];
+            }
+
+            $scope = $granted->scope;
+            [$written, $error] = ToolWriteChecks::whenCalled($tool, $resolved->arguments, $scope, $prior, $step->tools);
+            $resolved = new ToolPartyResolution($written, $resolved->parties);
+
+            return [$resolved, $error ?? $tool->validate($written, $scope, $prior)];
         };
 
         try {
@@ -115,14 +132,14 @@ class ToolCallStages
         }
 
         return $this->reuse->without(
-            fn (): array => $this->judged($step, $position, $call, $granted, $resolved->arguments, $resolved->parties),
+            fn (): array => $this->judged($step, $position, $call, $granted, $resolved, $prior),
         );
     }
 
     /**
-     * 判定の関数の答えで、断る(2.4 の T3)か、行を処理中にして道具を呼ぶ(T4)。
+     * 判定の関数の答えで、断る(2.4 の T3)か、問う(T5)か、行を処理中にして道具を呼ぶ(T4)。
      *
-     * @param  array<string, mixed>  $arguments
+     * @param  list<PriorToolCall>  $prior
      * @return array{Result|null, PriorToolCall}
      */
     private function judged(
@@ -130,29 +147,49 @@ class ToolCallStages
         int $position,
         ModelToolCall $call,
         GrantedTool $granted,
-        array $arguments,
-        AgentToolParties $parties,
+        ToolPartyResolution $resolved,
+        array $prior,
     ): array {
-        $tool = $granted->tool;
+        [$tool, $arguments, $parties] = [$granted->tool, $resolved->arguments, $resolved->parties];
 
         try {
             $judgement = ToolCallException::during(
                 $call,
                 ToolCallException::WRAPPER,
                 fn (): ToolJudgement => $tool instanceof AgentRecordTool
-                    ? $this->judge->judge($tool, $arguments, $granted, $step->run)
+                    ? $this->judge->judge($tool, $arguments, $granted, $step->run, $parties)
                     : throw new LogicException("道具 {$tool->name()} の判定は無い(業務モジュールを読み書きする道具でない)"),
             );
         } catch (ToolCallException $exception) {
             return $this->wrapperException($step, $position, $call, $arguments, $exception);
         }
 
-        if ($judgement->subject === null) {
-            return $this->denied($step, $position, $call, $judgement, $arguments);
+        if ($judgement->confirmation !== null) {
+            return $this->asks->asked($step, $position, $call, $granted, $judgement, $prior);
         }
 
+        return $judgement->subject === null
+            ? $this->denied($step, $position, $call, $judgement, $arguments)
+            : $this->allowed($step, $position, $call, $granted, $judgement->subject, $arguments, $parties);
+    }
+
+    /**
+     * 許す(2.4 の T4): 行を処理中にして道具を呼ぶ。
+     *
+     * @param  array<string, mixed>  $arguments
+     * @return array{Result|null, PriorToolCall}
+     */
+    private function allowed(
+        ToolStep $step,
+        int $position,
+        ModelToolCall $call,
+        GrantedTool $granted,
+        AgentToolSubject $subject,
+        array $arguments,
+        AgentToolParties $parties,
+    ): array {
+        $tool = $granted->tool;
         $row = $this->rows->running($step, $position, $call);
-        $subject = $judgement->subject;
         $executed = function () use ($step, $row, $call, $tool, $arguments, $subject, $granted, $parties): array {
             $result = $tool->execute($arguments, $subject, $granted->scope, $parties);
             $shaped = ToolResultText::shaped($tool, $result, RecordMarkers::neutralize($call->name));
@@ -189,10 +226,10 @@ class ToolCallStages
         ToolJudgement $judgement,
         array $arguments,
     ): array {
-        $values = $judgement->template === null ? [] : [
-            'tool_name' => RecordMarkers::neutralize($call->name),
-            ...array_map(RecordMarkers::neutralize(...), $judgement->values),
-        ];
+        $values = array_map(RecordMarkers::neutralize(...), $judgement->values);
+        $values = $judgement->template === AiInstructionTemplate::RuleDenied
+            ? ['tool_name' => RecordMarkers::neutralize($call->name), ...$values]
+            : $values;
         [$template, $body] = [$judgement->template, $judgement->body];
         $item = ConversationItem::toolResult($call->id, $template, $values, $body, $judgement->isError);
         $ids = $this->rows->finished($step, [[

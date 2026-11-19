@@ -3,16 +3,25 @@
 namespace Tests\Feature\Ai;
 
 use App\Actions\Ai\Api\AgentToolResult;
+use App\Actions\Ai\Api\RecordCurrentValues;
 use App\Actions\Ai\ToolCalls\ToolJudge;
 use App\Actions\Ai\ToolCalls\ToolJudgement;
+use App\Actions\Ai\ToolCalls\ToolResultText;
+use App\Actions\Ai\ToolCalls\ToolRowAccessWrites;
 use App\Enums\Ai\AiInstructionTemplate;
 use App\Enums\Ai\AiToolCallDecision;
 use App\Enums\Ai\AiToolDenialReason;
+use App\Enums\Ai\AiToolPartyForm;
+use App\Models\Records\RecordModule;
 use App\Queries\Records\Api\RecordFormQuery;
 use App\Support\AccessContext;
 use Carbon\CarbonImmutable;
+use Closure;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
 use LogicException;
 use PHPUnit\Framework\Attributes\DataProvider;
+use RuntimeException;
+use Tests\Feature\Ai\Tools\Generic\GenericUpdateTool;
 use Tests\Support\TransactionalTestCase;
 
 /**
@@ -122,21 +131,97 @@ final class ToolJudgeTest extends TransactionalTestCase
         ), $judgement->subject?->accessContext());
     }
 
-    /** 許すに当たる書く道具は作りの誤り(問うはまだ無い) */
-    #[DataProvider('writeTools')]
-    public function test_a_write_tool_with_the_operations_is_a_logic_error(string $tool): void
+    /** 権限のある作るは、確認の内容を作る口を呼んで問う(B5。版は無い。書く値を決めた引数を持つ) */
+    public function test_a_create_with_the_operation_asks_with_the_confirmation(): void
     {
-        $this->expectException(LogicException::class);
+        $judgement = $this->judgeCall('ai_create', 'm_create');
 
-        $this->judgeCall($tool, self::MODULE_OF_TOOL[$tool]);
+        $this->assertSame(AiToolCallDecision::Ask, $judgement->decision);
+        $this->assertSame(['next' => ['module' => 'm_create']], $judgement->confirmation?->content);
+        $this->assertSame([null, ['module' => 'm_create']], [$judgement->version, $judgement->arguments]);
+        $this->assertFalse($judgement->isError);
+    }
+
+    /** 権限のある直すは、1 段目で今の値と版を読み、2 段目で確認の内容を作って問う(B7) */
+    public function test_an_update_with_the_operations_reads_then_asks(): void
+    {
+        $tool = $this->updateTool();
+
+        $judgement = $this->judgeCall('ai_update', 'm_update', ['id' => 3]);
+
+        $this->assertSame(AiToolCallDecision::Ask, $judgement->decision);
+        $content = ['id' => 3, 'next' => ['module' => 'm_update', 'id' => 3]];
+        $this->assertSame($content, $judgement->confirmation?->content);
+        $this->assertSame(['v1', 1, 1], [$judgement->version, $tool->reads, count($tool->confirmedWith)]);
     }
 
     /**
-     * @return array<string, array{string}>
+     * 1 段目の見つからない(null・業務モジュールを問わない見つからないの例外)は B6 で、2 段目を呼ばず失敗の印を付けない。
+     *
+     * @return array<string, array{Closure(): ?RecordCurrentValues}>
      */
-    public static function writeTools(): array
+    public static function missingCurrents(): array
     {
-        return ['作る' => ['ai_create'], '直す' => ['ai_update']];
+        return [
+            '見つからない' => [fn (): ?RecordCurrentValues => null],
+            '判定の後に消えた' => [
+                fn (): ?RecordCurrentValues => throw (new ModelNotFoundException)->setModel(RecordModule::class),
+            ],
+        ];
+    }
+
+    /**
+     * @param  Closure(): ?RecordCurrentValues  $reader
+     */
+    #[DataProvider('missingCurrents')]
+    public function test_an_update_without_the_current_values_is_not_found(Closure $reader): void
+    {
+        $tool = $this->updateTool();
+        $tool->reader = $reader;
+
+        $judgement = $this->judgeCall('ai_update', 'm_update', ['id' => 3]);
+
+        $expected = [AiToolCallDecision::Deny, AiToolDenialReason::NotFound];
+        $this->assertSame($expected, [$judgement->decision, $judgement->reason]);
+        $this->assertSame(ToolResultText::full(AgentToolResult::notFound()), $judgement->body);
+        $this->assertSame([false, []], [$judgement->isError, $tool->confirmedWith]);
+    }
+
+    /** 1 段目のほかの例外は判定の外へ出る(包みの中の例外になる) */
+    public function test_another_exception_of_the_first_stage_is_thrown(): void
+    {
+        $this->updateTool()->reader = fn (): ?RecordCurrentValues => throw new RuntimeException('読めない');
+
+        $this->expectExceptionObject(new RuntimeException('読めない'));
+
+        $this->judgeCall('ai_update', 'm_update', ['id' => 3]);
+    }
+
+    /**
+     * 今の値を使う検証の誤り(元のチェックが外れのレコードに見せる人だけ = W3)は B19: 断る・理由は入力の誤り・道具の検証の誤りと同じ形の文・
+     * 失敗の印あり。2 段目を呼ばない。
+     */
+    public function test_an_update_against_the_current_values_is_an_input_error(): void
+    {
+        $tool = $this->updateTool();
+        $tool->parties = ['row_access' => AiToolPartyForm::InputRowAccess];
+
+        $judgement = $this->judgeCall('ai_update', 'm_update', ['id' => 3, 'row_access' => [
+            'viewers' => [['type' => 'user', 'id' => $this->requester->id]],
+        ]]);
+
+        $expected = [AiToolCallDecision::Deny, AiToolDenialReason::InvalidInput];
+        $this->assertSame($expected, [$judgement->decision, $judgement->reason]);
+        $this->assertSame(AiInstructionTemplate::ToolError, $judgement->template);
+        $this->assertSame(['error' => ToolRowAccessWrites::VIEWERS_WITHOUT_RESTRICTION], $judgement->values);
+        $this->assertSame([true, []], [$judgement->isError, $tool->confirmedWith]);
+    }
+
+    private function updateTool(): GenericUpdateTool
+    {
+        $tool = $this->granted->find('ai_update')?->tool;
+
+        return $tool instanceof GenericUpdateTool ? $tool : throw new LogicException('ai_update が偽の直す道具でない');
     }
 
     /** 規則による断りで、添える文が業務モジュールの名前(テストの業務モジュールの名前はコードと同じ)と理由の文 */

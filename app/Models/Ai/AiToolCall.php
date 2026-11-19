@@ -38,7 +38,7 @@ class AiToolCall extends Model
             'answer' => AiToolCallAnswer::class,
             'status' => AiToolCallStatus::class,
             'records' => 'array',
-            'confirmation_version' => 'integer',
+            'confirmation_version' => 'string',
             'finished_at' => 'datetime',
         ];
     }

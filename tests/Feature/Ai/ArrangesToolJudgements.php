@@ -3,6 +3,7 @@
 namespace Tests\Feature\Ai;
 
 use App\Actions\Ai\Api\AgentRecordTool;
+use App\Actions\Ai\Api\AgentToolParties;
 use App\Actions\Ai\ToolCalls\AgentTools;
 use App\Actions\Ai\ToolCalls\GrantedTools;
 use App\Actions\Ai\ToolCalls\ToolGrants;
@@ -78,8 +79,12 @@ trait ArrangesToolJudgements
         app(RecordFormQuery::class)->allows($subject->requester(), $module, RecordModuleAction::Read, $subject->date());
     }
 
-    /** 道具の呼び出しを、包みと同じく使い回さない区間の中で判定する */
-    private function judgeCall(string $toolName, string $module): ToolJudgement
+    /**
+     * 道具の呼び出しを、包みと同じく使い回さない区間の中で判定する。
+     *
+     * @param  array<string, mixed>  $arguments  業務モジュールのほかの引数
+     */
+    private function judgeCall(string $toolName, string $module, array $arguments = []): ToolJudgement
     {
         $granted = $this->granted->find($toolName) ?? throw new LogicException("{$toolName} を渡していない");
         $tool = $granted->tool;
@@ -88,8 +93,11 @@ trait ArrangesToolJudgements
             throw new LogicException("{$toolName} は業務モジュールの道具でない");
         }
 
+        $arguments = ['module' => $module, ...$arguments];
+        $parties = new AgentToolParties;
+
         return app(AuthorizationReuse::class)->without(
-            fn (): ToolJudgement => app(ToolJudge::class)->judge($tool, ['module' => $module], $granted, $this->run),
+            fn (): ToolJudgement => app(ToolJudge::class)->judge($tool, $arguments, $granted, $this->run, $parties),
         );
     }
 }

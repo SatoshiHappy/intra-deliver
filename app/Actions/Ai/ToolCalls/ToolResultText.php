@@ -10,7 +10,7 @@ use App\Queries\Ai\Api\RecordMarkers;
 
 /**
  * 道具の結果の全文と、上限を当てた本文・定型・値(docs の 設計/AI/道具と権限/まとめた実行と送るデータ.md 10.7)。上限を当てるのは包みの
- * 1 か所だけにし、全文は道具の行に残す(9.4 の 6)。値と先頭の長さは Claude Code の値にそろえる。
+ * 1 か所だけにし、全文は道具の行に残す(9.4 の 6)。
  *
  * @phpstan-type Shaped array{full: string, template: AiInstructionTemplate|null, values: array<string, string>,
  *     body: string|null}

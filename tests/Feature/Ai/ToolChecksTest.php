@@ -13,7 +13,9 @@ use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Illuminate\Support\Facades\Artisan;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Feature\Ai\Tools\FakeTools;
+use Tests\Feature\Ai\Tools\Generic\GenericCreateTool;
 use Tests\Feature\Ai\Tools\Generic\GenericTool;
+use Tests\Feature\Ai\Tools\Generic\GenericUpdateTool;
 use Tests\Feature\Ai\Tools\Generic\PlainTool;
 use Tests\Feature\Ai\Tools\Product\Widget\WidgetTool;
 use Tests\Feature\Ai\Tools\StrayTool;
@@ -92,10 +94,6 @@ final class ToolChecksTest extends TransactionalTestCase
                 fn () => [new GenericTool('ai_r', parties: ['missing' => AiToolPartyForm::Condition])],
                 [self::generic('ai_r').'の相手を名前で書ける引数 missing が引数の形に無い'],
             ],
-            '相手を名前で書ける引数が入れ物の入力の形(書く道具の入力の形の引き当てを足すまで)' => [
-                fn () => [new GenericTool('ai_r', parties: ['module' => AiToolPartyForm::Input])],
-                [self::generic('ai_r').'の相手を名前で書ける引数 module は入れ物の入力の形で、まだ引けない'],
-            ],
         ];
     }
 
@@ -127,7 +125,10 @@ final class ToolChecksTest extends TransactionalTestCase
                 [$impossible('(偽)と要る権限(無し)')],
             ],
             '読む道具が業務モジュールを答えない' => [fn () => [new PlainTool('ai_p', true, AiToolAction::View)], [$plain]],
-            '書く道具が業務モジュールを答えない' => [fn () => [new PlainTool('ai_p', false, AiToolAction::Create)], [$plain]],
+            '書く道具が業務モジュールを答えない' => [fn () => [new PlainTool('ai_p', false, AiToolAction::Create)], [
+                $plain,
+                self::label('ai_p', PlainTool::class).'は作るの性質だが、確認の内容を作る口(AgentCreateTool)を持たない',
+            ]],
             '製品の対象が null' => [fn () => [new WidgetTool('widget_r')], [$noTargets]],
             '製品の対象が空' => [fn () => [new WidgetTool('widget_r', targets: [])], [$noTargets]],
             '上限が先頭の長さより 1 少ない' => [
@@ -142,24 +143,59 @@ final class ToolChecksTest extends TransactionalTestCase
     }
 
     /**
+     * 性質と確認の内容を作る口の確かめ(作る = 1 段・直す = 2 段・ほか = 持たない)。
+     *
+     * @return array<string, array{Closure(): list<AgentTool>, list<string>}>
+     */
+    public static function writeProblems(): array
+    {
+        return [
+            '作るの性質で確認の内容を作る口が無い' => [
+                fn () => [new GenericTool('ai_r', readOnly: false, action: AiToolAction::Create)],
+                [self::generic('ai_r').'は作るの性質だが、確認の内容を作る口(AgentCreateTool)を持たない'],
+            ],
+            '作るの性質で 2 段の口' => [
+                fn () => [new GenericUpdateTool('ai_r', readOnly: false, action: AiToolAction::Create)],
+                [self::label('ai_r', GenericUpdateTool::class).'は作るの性質だが、直すの 2 段の確認の内容を作る口を持つ'],
+            ],
+            '直すの性質で確認の内容を作る口が無い' => [
+                fn () => [new GenericTool('ai_r', readOnly: false, action: AiToolAction::Update)],
+                [self::generic('ai_r').'は直すの性質だが、2 段の確認の内容を作る口(AgentUpdateTool)を持たない'],
+            ],
+            '直すの性質で 1 段の口(2 段でない)' => [
+                fn () => [new GenericCreateTool('ai_r', readOnly: false, action: AiToolAction::Update)],
+                [self::label('ai_r', GenericCreateTool::class).'は直すの性質だが、作るの 1 段の確認の内容を作る口を持つ'],
+            ],
+            '読む道具が確認の内容を作る口を持つ' => [
+                fn () => [new GenericCreateTool('ai_r')],
+                [self::label('ai_r', GenericCreateTool::class).'は書く道具でないが、確認の内容を作る口を持つ'],
+            ],
+        ];
+    }
+
+    /**
      * @param  Closure(): list<AgentTool>  $tools
      * @param  list<string>  $expected
      */
     #[DataProvider('nameProblems')]
     #[DataProvider('argumentProblems')]
     #[DataProvider('shapeProblems')]
+    #[DataProvider('writeProblems')]
     public function test_each_wrong_registration_has_its_problem(Closure $tools, array $expected): void
     {
         $this->assertSame($expected, FakeTools::registry($tools())->problems());
     }
 
-    /** 正しい登録(64 字の名前・別名・製品の対象・上限 1)と登録の無いときは文が無い */
+    /** 正しい登録(64 字の名前・別名・製品の対象・上限 1・作る 1 段と直す 2 段・入れ物の入力の形の相手)と登録の無いときは文が無い */
     public function test_a_right_registration_and_no_registration_have_no_problem(): void
     {
         $tools = FakeTools::registry([
             new GenericTool('ai_'.str_repeat('a', 61), aliases: ['ai_old'], maxLength: ToolResultText::PREVIEW_LENGTH),
             FakeTools::create(),
             FakeTools::update(),
+            new GenericCreateTool('ai_c', readOnly: false, action: AiToolAction::Create, parties: [
+                'tags' => AiToolPartyForm::Input,
+            ]),
             FakeTools::productRead(['m']),
         ]);
 
