@@ -3,7 +3,15 @@
 namespace Tests\Feature\Ai;
 
 use App\Actions\Ai\Api\ConversationItem;
+use App\Actions\Ai\Conversation\AnswerCalls;
+use App\Actions\Ai\Conversation\RunTools;
+use App\Actions\Ai\Conversation\RunToolStep;
+use App\Actions\Ai\Core\CoreToolCall;
+use App\Actions\Ai\Core\ToolLookupAnswer;
+use App\Actions\Ai\ToolCalls\AnswerRunContext;
+use App\Actions\Ai\ToolCalls\GrantedTools;
 use App\Actions\Ai\ToolCalls\ModelToolCall;
+use App\Actions\Ai\ToolCalls\ToolCallStages;
 use App\Actions\Ai\ToolCalls\ToolCallWrapper;
 use App\Actions\Ai\ToolCalls\ToolCallWrites;
 use App\Actions\Ai\ToolCalls\ToolGrants;
@@ -18,6 +26,7 @@ use App\Enums\Ai\AiToolWriteDenial;
 use App\Models\Ai\AiRun;
 use App\Models\Ai\AiRunStep;
 use App\Models\Ai\AiToolCall;
+use App\Models\Ai\AiToolCallText;
 use Closure;
 use Illuminate\Support\Facades\DB;
 
@@ -29,7 +38,7 @@ trait RunsRecordWrites
     private ?AiRun $answerRun = null;
 
     /** 答えの実行の書く時のステップ */
-    private ?ToolStep $answerStep = null;
+    private ?AnswerRunContext $answerContext = null;
 
     /** @var (Closure(): void)|null 答えの実行を作った後、書く前に呼ぶ関数 */
     private ?Closure $beforeAnswer = null;
@@ -65,17 +74,50 @@ trait RunsRecordWrites
     }
 
     /**
-     * 答えの実行で承認した件を書く(定義は今の定義を読み直す = 答えの実行の始め)。
+     * 答えの実行で承認した件を、中核と同じく呼び出しの順に道具を動かす口の探すと動かすで書く(定義は今の定義を読み直す = 答えの実行の始め)。
      *
      * @param  list<AiToolCall>  $rows
-     * @param  (Closure(): ?AiRunStopReason)|null  $stopped
      */
-    private function answer(array $rows, ?Closure $stopped = null): ToolStepOutcome
+    private function answer(array $rows): ToolStepOutcome
+    {
+        $definition = $this->run->agentDefinition()->sole();
+        $granted = $this->answerRun();
+        $fresh = array_map(fn (AiToolCall $row): AiToolCall => $row->refresh(), $rows);
+        $keyed = array_combine(array_map(fn (AiToolCall $row): string => $row->call_id, $fresh), $fresh);
+        $texts = AiToolCallText::query()->whereKey(array_map(fn (AiToolCall $row): int => $row->id, $fresh))->get();
+        $answer = new AnswerCalls($definition, $keyed, $texts->keyBy('ai_tool_call_id')->all());
+        $answerRun = $this->answerRun ?? $this->fail('答えの実行が無い');
+        $cursor = new RunToolStep($answerRun, $granted, $this->store, $answer);
+        $this->answerContext = $cursor->answerContext();
+        $tools = new RunTools($cursor, app(ToolCallStages::class), app(ToolCallWrites::class));
+
+        $this->beforeAnswer === null ? null : ($this->beforeAnswer)();
+        $results = [];
+
+        foreach ($fresh as $row) {
+            $call = new CoreToolCall($row->call_id, $row->tool_name, []);
+            $lookup = $tools->find($call, true);
+            $item = $lookup->answer === ToolLookupAnswer::Found
+                ? $tools->run($call, true)->result
+                : $lookup->missingResult;
+
+            if ($item === null) {
+                return new ToolStepOutcome($results, conversationMissing: true);
+            }
+
+            $results[] = ['callId' => $row->call_id, 'toolCallId' => $row->id, 'item' => $item];
+        }
+
+        return new ToolStepOutcome($results);
+    }
+
+    /** 前の実行に答える答えの実行を作り、会話の保存を続け、答えの実行の始めの渡す道具を返す */
+    private function answerRun(AiConversationAnswer $answer = AiConversationAnswer::Approve): GrantedTools
     {
         $definition = $this->run->agentDefinition()->sole();
         $this->answerRun = AiRun::factory()->conversation()->create([
             'previous_run_id' => $this->run->id,
-            'answer' => AiConversationAnswer::Approve,
+            'answer' => $answer,
             'requester_user_id' => $this->run->requester_user_id,
             'agent_definition_id' => $definition->id,
         ]);
@@ -83,16 +125,8 @@ trait RunsRecordWrites
             ->where('ai_run_id', $this->run->id)
             ->value('conversation_id');
         $this->store->continueConversation($conversationId, $this->answerRun->id);
-        $granted = app(ToolGrants::class)->grant($definition, app(ToolSubjects::class)->for($this->answerRun));
-        $answerStep = AiRunStep::factory()->create(['ai_run_id' => $this->answerRun->id]);
-        $step = new ToolStep($this->answerRun, $answerStep, $granted, $this->store);
-        $this->answerStep = $step;
-        $fresh = array_map(fn (AiToolCall $row): AiToolCall => $row->refresh(), $rows);
 
-        $stopped ??= fn (): ?AiRunStopReason => null;
-        $this->beforeAnswer === null ? null : ($this->beforeAnswer)();
-
-        return app(ToolCallWrites::class)->write($step, $definition, $fresh, $stopped);
+        return app(ToolGrants::class)->grant($definition, app(ToolSubjects::class)->for($this->answerRun));
     }
 
     private function assertRow(AiToolCall $row, AiToolCallStatus $status, ?AiToolWriteDenial $denial): void

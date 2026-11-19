@@ -17,6 +17,7 @@ use App\Actions\Ai\Core\ToolLookupAnswer;
 use App\Actions\Ai\Core\ToolRunAnswer;
 use App\Actions\Ai\ToolCalls\ToolCallRows;
 use App\Actions\Ai\ToolCalls\ToolCallStages;
+use App\Actions\Ai\ToolCalls\ToolCallWrites;
 use App\Enums\Ai\AiInstructionTemplate;
 use App\Enums\Ai\AiToolCallDecision;
 use App\Enums\Ai\AiToolCallStatus;
@@ -44,7 +45,7 @@ final class RunToolsTest extends TransactionalTestCase
         parent::setUp();
         $this->arrangeWrapper();
         $this->cursor = new RunToolStep($this->run, $this->granted, $this->store);
-        $this->tools = new RunTools($this->cursor, app(ToolCallStages::class));
+        $this->tools = new RunTools($this->cursor, app(ToolCallStages::class), app(ToolCallWrites::class));
         $this->notifier()->notify(new BeforeSendNotice($this->step->id, SendKind::Turn, 1, null, 10));
     }
 
@@ -112,7 +113,8 @@ final class RunToolsTest extends TransactionalTestCase
         ]));
     }
 
-    public function test_pre_run_calls_are_not_connected_yet(): void
+    /** 先に動かす呼び出しは答えの実行の承認した件だけ(ほかの実行では作りの誤り) */
+    public function test_a_pre_run_call_outside_an_answer_run_is_a_construction_error(): void
     {
         $this->expectException(LogicException::class);
 

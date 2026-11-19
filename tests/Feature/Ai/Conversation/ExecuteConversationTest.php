@@ -3,6 +3,7 @@
 namespace Tests\Feature\Ai\Conversation;
 
 use App\Actions\Ai\Api\ConversationItem;
+use App\Actions\Ai\Conversation\AnswerNotConfirmed;
 use App\Actions\Ai\Conversation\ExecuteConversation;
 use App\Actions\Ai\Conversation\RunNoLongerRunning;
 use App\Actions\Ai\Core\ConversationCore;
@@ -152,18 +153,21 @@ final class ExecuteConversationTest extends TransactionalTestCase
     }
 
     /** 答えの実行は書く道具の承認と一緒に扱うので、今は作りの誤り(失敗(完了の処理)) */
-    public function test_an_answer_run_is_not_handled_yet(): void
+    /** 答えの実行の始めの確かめが合わない(前の実行に確認待ちの呼び出しが無い)ときは、ループを呼ばずに失敗(確認)で終える(9.3) */
+    public function test_an_answer_run_without_awaiting_calls_fails_as_confirmation(): void
     {
-        $this->core(LoopEnding::succeeded());
+        $core = $this->core(LoopEnding::succeeded());
         $previous = AiRun::factory()->conversation()->failed()->create(['kind' => RecordingConversationKind::CODE]);
         $run = AiRun::factory()->conversation()->create([
             'kind' => RecordingConversationKind::CODE,
             'previous_run_id' => $previous->id,
             'answer' => AiConversationAnswer::Approve,
         ]);
+        $this->store->continueConversation($this->store->startConversation($previous->id), $run->id);
 
-        $this->assertInstanceOf(LogicException::class, $this->executeCatching($run->id));
-        $this->assertSame(AiRunErrorCode::Completion, AiRun::query()->findOrFail($run->id)->error_code);
+        $this->assertInstanceOf(AnswerNotConfirmed::class, $this->executeCatching($run->id));
+        $this->assertSame(AiRunErrorCode::Confirmation, AiRun::query()->findOrFail($run->id)->error_code);
+        $this->assertSame([], $core->loops);
     }
 
     private function core(?LoopEnding $ending, ?Throwable $exception = null): ScriptedCore

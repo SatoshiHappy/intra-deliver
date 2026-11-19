@@ -10,6 +10,7 @@ use App\Actions\Ai\RunCosts;
 use App\Actions\Ai\ToolCalls\GrantedTools;
 use App\Actions\Ai\ToolCalls\ToolCallRows;
 use App\Actions\Ai\ToolCalls\ToolCallStages;
+use App\Actions\Ai\ToolCalls\ToolCallWrites;
 use App\Models\Ai\AiRun;
 use App\Queries\Ai\ConversationSettings;
 use App\Queries\Ai\KindSettings;
@@ -31,6 +32,7 @@ final readonly class ConversationReceivers
         private RunCosts $costs,
         private ToolCallRows $rows,
         private ToolCallStages $stages,
+        private ToolCallWrites $writes,
         private InstructionBuilder $builder,
         private ConversationSettings $settings,
         private KindSettings $kinds,
@@ -39,6 +41,7 @@ final readonly class ConversationReceivers
     /**
      * @param  StepTargets  $targets  実行の送る先(実行ごとに 1 回だけ組む)
      * @param  string  $instructions  エージェントの定義の指示文
+     * @param  AnswerCalls|null  $answer  「実行」と答えた答えの実行の承認した件
      *
      * @throws LogicException 実行が始まっていない・種類の設定が無いとき(作りの誤り)
      */
@@ -48,11 +51,12 @@ final readonly class ConversationReceivers
         ConversationStore $store,
         string $instructions,
         GrantedTools $granted,
+        ?AnswerCalls $answer = null,
     ): LoopReceivers {
         $startedAt = $run->started_at ?? throw new LogicException("実行 {$run->id} が始まっていない");
         $kind = $this->kinds->conversation($run->kind) ?? throw new LogicException("会話の種類 {$run->kind} の設定が無い");
         $clock = new RunClock(DateTimeImmutable::createFromInterface($startedAt), $kind['run_timeout_seconds']);
-        $toolStep = new RunToolStep($run, $granted, $store);
+        $toolStep = new RunToolStep($run, $granted, $store, $answer);
         $notifier = new RunNotifier(
             $run->id,
             $store,
@@ -64,7 +68,7 @@ final readonly class ConversationReceivers
         );
 
         return new LoopReceivers(
-            new RunTools($toolStep, $this->stages),
+            new RunTools($toolStep, $this->stages, $this->writes),
             $notifier,
             new RunChecker($run->id, $targets, $clock, $this->sendCheck),
             $clock,

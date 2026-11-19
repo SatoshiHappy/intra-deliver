@@ -4,18 +4,14 @@ namespace App\Actions\Ai\ToolCalls;
 
 use App\Actions\Ai\Api\AgentCreateTool;
 use App\Actions\Ai\Api\AgentRecordTool;
-use App\Actions\Ai\Api\ConversationItem;
 use App\Actions\Ai\Api\PriorToolCall;
 
 /**
- * 書く時の部品が 1 つの答えの実行の中で積む物(書いた件の結果・前に問うになった件・作った件の仮の名前と id)。後の件のやり直しと前の件を指す
+ * 書く時の部品が 1 つの答えの実行の中で積む物(前に問うになった件・作った件の仮の名前と id)。後の件のやり直しと前の件を指す
  * 印に使う(docs の 設計/AI/道具と権限/まとめた実行と送るデータ.md 10.5 の件どうしのつながり)。
  */
 final class ToolWriteProgress
 {
-    /** @var list<array{callId: string, toolCallId: int, item: ConversationItem}> */
-    public array $results = [];
-
     /** @var list<PriorToolCall> 同じステップで前に問うになった件(引数は書く値の引数) */
     public array $prior = [];
 

@@ -21,7 +21,7 @@ class ToolWriteResults
     ) {}
 
     /** 登録から外した道具(無い道具の失敗の結果) */
-    public function unknown(ToolStep $step, AiToolCall $row): ?ConversationItem
+    public function unknown(AnswerRunContext $step, AiToolCall $row): ?ConversationItem
     {
         $values = ['tool_name' => self::name($row)];
         $item = ToolResultItems::failure($row->call_id, AiInstructionTemplate::UnknownTool, $values);
@@ -34,7 +34,7 @@ class ToolWriteResults
      *
      * @param  list<string>  $shape
      */
-    public function invalid(ToolStep $step, AiToolCall $row, array $shape, ?string $error): ?ConversationItem
+    public function invalid(AnswerRunContext $step, AiToolCall $row, array $shape, ?string $error): ?ConversationItem
     {
         [$denial, $template, $values] = $shape !== []
             ? [AiToolWriteDenial::InvalidShape, AiInstructionTemplate::ToolInputInvalid, [
@@ -51,7 +51,7 @@ class ToolWriteResults
 
     /** 書く時の断り(結果の文は原文の結果にも残す。見つからないは見つからないの本文だけ) */
     public function denied(
-        ToolStep $step,
+        AnswerRunContext $step,
         AiToolCall $row,
         AiToolWriteDenial $denial,
         string $text,
@@ -62,7 +62,7 @@ class ToolWriteResults
     }
 
     /** 包みの中の例外と道具の例外(報告して、道具の名前だけの決まった失敗の文) */
-    public function exception(ToolStep $step, AiToolCall $row, ToolCallException $exception): ?ConversationItem
+    public function exception(AnswerRunContext $step, AiToolCall $row, ToolCallException $exception): ?ConversationItem
     {
         report($exception);
         $item = $this->items->exception($row->call_id, $row->tool_name);
@@ -71,7 +71,7 @@ class ToolWriteResults
     }
 
     private function finish(
-        ToolStep $step,
+        AnswerRunContext $step,
         AiToolCall $row,
         AiToolCallStatus $status,
         ?AiToolWriteDenial $denial,

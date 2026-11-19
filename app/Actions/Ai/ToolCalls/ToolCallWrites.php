@@ -9,7 +9,6 @@ use App\Actions\Ai\Api\AgentUpdateTool;
 use App\Actions\Ai\Api\ConversationItem;
 use App\Actions\Ai\Api\PriorToolCall;
 use App\Actions\Ai\Api\RecordConfirmation;
-use App\Enums\Ai\AiRunStopReason;
 use App\Enums\Ai\AiToolCallDecision;
 use App\Enums\Ai\AiToolCallStatus;
 use App\Enums\Ai\AiToolWriteDenial;
@@ -18,7 +17,6 @@ use App\Models\Ai\AiToolCall;
 use App\Models\Ai\AiToolCallText;
 use App\Queries\Ai\Api\RecordMarkers;
 use App\Queries\Authz\Api\AuthorizationReuse;
-use Closure;
 use Illuminate\Support\Facades\DB;
 use LogicException;
 
@@ -37,56 +35,39 @@ class ToolCallWrites
         private readonly ToolCallRows $rows,
         private readonly AuthorizationReuse $reuse,
         private readonly ToolWriteResults $results,
-        private readonly ToolWriteStops $stops,
     ) {}
 
-    /**
-     * @param  AiAgentDefinition  $definition  答えの実行の始めに読んだ定義
-     * @param  list<AiToolCall>  $approved  承認した件(呼び出しの順。同じステップの問うの件)
-     * @param  Closure(): ?AiRunStopReason  $stopped  止める印(利用者)か時間の上限に当たったときの理由
-     */
-    public function write(
-        ToolStep $step,
-        AiAgentDefinition $definition,
-        array $approved,
-        Closure $stopped,
-    ): ToolStepOutcome {
-        $done = new ToolWriteProgress;
+    /** 承認した件の道具を登録から引く(渡す道具の一覧によらない = 設計/AI/エージェントの実行/README.md 9.3。書く道具でなければ無い道具) */
+    public function tool(AiToolCall $row): AgentCreateTool|AgentUpdateTool|null
+    {
+        $tool = $this->tools->find($row->tool_name);
 
-        foreach ($approved as $index => $row) {
-            $tool = $this->tools->find($row->tool_name);
-            $writes = $tool instanceof AgentCreateTool || $tool instanceof AgentUpdateTool;
-            $reason = $writes ? $stopped() : null;
-
-            if ($reason !== null) {
-                return $this->stops->stopped($step, array_slice($approved, $index), $reason, $done->results);
-            }
-
-            if (! $writes) {
-                $done->prior[] = new PriorToolCall($row->call_id, $row->tool_name, null, AiToolCallDecision::Ask);
-            }
-
-            $item = $writes ? $this->one($step, $definition, $row, $tool, $done) : $this->results->unknown($step, $row);
-
-            if ($item === null) {
-                return new ToolStepOutcome($done->results, conversationMissing: true);
-            }
-
-            $done->results[] = ['callId' => $row->call_id, 'toolCallId' => $row->id, 'item' => $item];
-        }
-
-        return new ToolStepOutcome($done->results);
+        return $tool instanceof AgentCreateTool || $tool instanceof AgentUpdateTool ? $tool : null;
     }
 
-    /** 1 件を通す(会話が無ければ null) */
-    private function one(
-        ToolStep $step,
+    /** 無い道具の件(会話が無ければ null) */
+    public function unknown(AnswerRunContext $step, AiToolCall $row, ToolWriteProgress $done): ?ConversationItem
+    {
+        $done->prior[] = new PriorToolCall($row->call_id, $row->tool_name, null, AiToolCallDecision::Ask);
+
+        return $this->results->unknown($step, $row);
+    }
+
+    /**
+     * 1 件を通す(会話が無ければ null)。
+     *
+     * @param  AiAgentDefinition  $definition  答えの実行の始めに読んだ定義
+     * @param  AiToolCallText|null  $text  答えの実行の始めに読んだ原文の行(期限で消えていれば無い)
+     * @param  ToolWriteProgress  $done  同じ答えの実行の前の件までに積んだ物
+     */
+    public function one(
+        AnswerRunContext $step,
         AiAgentDefinition $definition,
         AiToolCall $row,
+        ?AiToolCallText $text,
         AgentCreateTool|AgentUpdateTool $tool,
         ToolWriteProgress $done,
     ): ?ConversationItem {
-        $text = AiToolCallText::query()->whereKey($row->id)->first();
         $written = $text?->written_arguments;
         $prior = $done->prior;
         $done->prior[] = new PriorToolCall($row->call_id, $row->tool_name, $written, AiToolCallDecision::Ask);
@@ -108,8 +89,12 @@ class ToolCallWrites
     }
 
     /** 書くのに要る値が行に無い件(作りの誤りでも実行を落とさず、包みの中の例外 = T7 の道具の誤り) */
-    private function missing(ToolStep $step, AiToolCall $row, ModelToolCall $call, string $message): ?ConversationItem
-    {
+    private function missing(
+        AnswerRunContext $step,
+        AiToolCall $row,
+        ModelToolCall $call,
+        string $message,
+    ): ?ConversationItem {
         try {
             ToolCallException::during($call, ToolCallException::WRAPPER, fn () => throw new LogicException($message));
         } catch (ToolCallException $exception) {
@@ -123,7 +108,7 @@ class ToolCallWrites
      * @param  list<PriorToolCall>  $prior
      */
     private function checked(
-        ToolStep $step,
+        AnswerRunContext $step,
         AiAgentDefinition $definition,
         ToolWriteCall $write,
         array $prior,
@@ -146,15 +131,13 @@ class ToolCallWrites
             return $this->results->invalid($step, $row, $checks['shape'], $checks['error']);
         }
 
-        if ($checks['denial'] !== null || $checks['subject'] === null) {
+        if ($checks['denial'] !== null || $checks['subject'] === null || $checks['scope'] === null) {
             [$denial, $text] = ToolWriteDenials::denial($checks['denial'] ?? AiToolWriteDenial::NoPermission);
 
             return $this->results->denied($step, $row, $denial, $text);
         }
 
-        $scope = $granted === null ? new AgentToolScope : $granted->scope;
-
-        return $this->written($step, $write, $checks['filled'], $checks['subject'], $scope, $done);
+        return $this->written($step, $write, $checks['filled'], $checks['subject'], $checks['scope'], $done);
     }
 
     /**
@@ -162,17 +145,18 @@ class ToolCallWrites
      *
      * @param  list<PriorToolCall>  $prior
      * @return array{shape: list<string>, error: string|null, denial: AiToolWriteDenial|null,
-     *     subject: AgentToolSubject|null, filled: array<string, mixed>}
+     *     subject: AgentToolSubject|null, scope: AgentToolScope|null, filled: array<string, mixed>}
      */
     private function checks(
-        ToolStep $step,
+        AnswerRunContext $step,
         AiAgentDefinition $definition,
         ToolWriteCall $write,
         ?GrantedTool $granted,
         array $prior,
         ToolWriteProgress $done,
     ): array {
-        $answer = ['shape' => [], 'error' => null, 'denial' => null, 'subject' => null, 'filled' => []];
+        $answer = ['shape' => [], 'error' => null, 'denial' => null, 'subject' => null, 'scope' => null];
+        $answer['filled'] = [];
         $answer['shape'] = $this->problems->of($write->tool, $write->call->arguments);
         $subject = ToolSubjects::forRun($step->run);
         $answer['error'] = $answer['shape'] !== [] || $granted === null ? null : $this->rechecks->problems(
@@ -187,18 +171,26 @@ class ToolCallWrites
         [$answer['denial'], $answer['subject']] = $this->judge->decide(
             $write->tool, $write->written, $definition, $step->run, $priorWritten,
         );
+
+        if ($answer['denial'] === null && $granted === null) {
+            // 渡す道具の外の件を許すと、検証のやり直しと参照制限の範囲なしで書くことになる(判定の関数と渡す道具の食い違い)
+            throw new LogicException("書く道具 {$write->tool->name()} を許したが、答えの実行の渡す道具に無い");
+        }
+
+        $answer['scope'] = $granted?->scope;
+
         $answer['filled'] = $answer['denial'] === null ? ToolCallRefs::filled($write->written, $done->created) : [];
 
         return $answer;
     }
 
     /**
-     * 書く(書く道具のトランザクションと例外の分け方 = 9.4・9.11 の S23)。
+     * 書く(書く道具のトランザクションと例外の分け方 = 9.4・設計/AI/エージェントの実行/状態の移り方.md 9.11 の S23)。
      *
      * @param  array<string, mixed>  $filled
      */
     private function written(
-        ToolStep $step,
+        AnswerRunContext $step,
         ToolWriteCall $write,
         array $filled,
         AgentToolSubject $subject,
@@ -234,7 +226,7 @@ class ToolCallWrites
      * @throws ToolCallException 道具の書く口が投げたとき(入れ物の断りを含む。トランザクションは戻る)
      */
     private function transacted(
-        ToolStep $step,
+        AnswerRunContext $step,
         ToolWriteCall $write,
         array $filled,
         AgentToolSubject $subject,

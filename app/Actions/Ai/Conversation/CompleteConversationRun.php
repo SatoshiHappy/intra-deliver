@@ -26,6 +26,7 @@ final readonly class CompleteConversationRun
     public function __construct(
         private CompletingRun $completing,
         private SumRunSteps $sums,
+        private EndAwaitingToolCalls $cancel,
     ) {}
 
     /**
@@ -56,7 +57,15 @@ final readonly class CompleteConversationRun
                 'stop_budget_period' => $reason === AiRunStopReason::Budget ? $ending->stopReason : null,
             ];
 
-            return $this->inSavepoint($run->id, fn () => $kind->completed($ended), $values);
+            $receiver = function () use ($kind, $ended, $run, $status): void {
+                $kind->completed($ended);
+
+                if ($status === AiRunStatus::Stopped) {
+                    $this->cancel->execute($run);
+                }
+            };
+
+            return $this->inSavepoint($run->id, $receiver, $values);
         });
     }
 

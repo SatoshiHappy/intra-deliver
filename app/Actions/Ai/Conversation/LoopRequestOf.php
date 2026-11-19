@@ -4,6 +4,7 @@ namespace App\Actions\Ai\Conversation;
 
 use App\Actions\Ai\Api\ConversationItem;
 use App\Actions\Ai\Core\AddedTextValues;
+use App\Actions\Ai\Core\CoreToolCall;
 use App\Actions\Ai\Core\LoopReceivers;
 use App\Actions\Ai\Core\LoopRequest;
 use App\Actions\Ai\Core\ModelSpec;
@@ -40,6 +41,7 @@ final readonly class LoopRequestOf
 
     /**
      * @param  list<ConversationItem|TransientText>  $history
+     * @param  list<CoreToolCall>  $preRunCalls  答えの実行の承認した件(呼び出しの順)
      *
      * @throws LogicException 種類の設定・実行の記録の写しが無いとき(作りの誤り)
      */
@@ -50,6 +52,7 @@ final readonly class LoopRequestOf
         GrantedTools $granted,
         AddedTextValues $added,
         LoopReceivers $receivers,
+        array $preRunCalls = [],
     ): LoopRequest {
         $kind = $this->kinds->conversation($run->kind) ?? throw new LogicException("会話の種類 {$run->kind} の設定が無い");
         $options = $this->options($run, $target->provider);
@@ -62,7 +65,7 @@ final readonly class LoopRequestOf
             array_fill_keys(self::LOOP_KINDS, $options),
             $kind['max_turns'],
             self::PROGRESS_SECONDS,
-            [],
+            $preRunCalls,
             $added,
             $receivers,
         );

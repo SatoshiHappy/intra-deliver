@@ -5,6 +5,7 @@ namespace App\Actions\Ai\Conversation;
 use App\Actions\Ai\Api\ConversationItem;
 use App\Actions\Ai\Api\ConversationStore;
 use App\Actions\Ai\Api\PriorToolCall;
+use App\Actions\Ai\ToolCalls\AnswerRunContext;
 use App\Actions\Ai\ToolCalls\GrantedTools;
 use App\Actions\Ai\ToolCalls\ModelToolCall;
 use App\Actions\Ai\ToolCalls\ToolStep;
@@ -34,6 +35,7 @@ final class RunToolStep
         private readonly AiRun $run,
         private readonly GrantedTools $tools,
         private readonly ConversationStore $store,
+        private readonly ?AnswerCalls $answer = null,
     ) {}
 
     /** 回の答えか続きの送信のステップに替わった(送り直しも、応答はその最後の試しのステップに属する) */
@@ -101,6 +103,18 @@ final class RunToolStep
         $step = $this->step ?? throw new LogicException('呼び出しの前に回の答えか続きの送信が無い');
 
         return new ToolStep($this->run, $step, $this->tools, $this->store);
+    }
+
+    /** 答えの実行の承認した件(「実行」と答えた答えの実行だけ) */
+    public function answer(): ?AnswerCalls
+    {
+        return $this->answer;
+    }
+
+    /** 承認した件を通す時 */
+    public function answerContext(): AnswerRunContext
+    {
+        return new AnswerRunContext($this->run, $this->tools, $this->store);
     }
 
     public function nextPosition(): int

@@ -16,6 +16,7 @@ use App\Enums\Ai\AiRunErrorCode;
 use App\Enums\Ai\ConversationItemType;
 use App\Models\Ai\AiAgentDefinition;
 use App\Models\Ai\AiRun;
+use App\Models\Ai\AiToolCall;
 use LogicException;
 use RuntimeException;
 use Throwable;
@@ -35,6 +36,7 @@ final readonly class ExecuteConversation
         private ConversationReceivers $receivers,
         private StepTargetsOf $targets,
         private CompleteConversationRun $complete,
+        private AnswerRunStart $answers,
         private FailRun $failRun,
         private ConversationCore $core,
     ) {}
@@ -81,6 +83,10 @@ final readonly class ExecuteConversation
             }
         } catch (RunNoLongerRunning) {
             return;
+        } catch (AnswerNotConfirmed $notConfirmed) {
+            $this->failRun->execute($run->id, AiRunErrorCode::Confirmation, $notConfirmed, null, $title);
+
+            throw $notConfirmed;
         } catch (Throwable $exception) {
             $this->failRun->execute($run->id, AiRunErrorCode::Completion, $exception, null, $title);
 
@@ -100,10 +106,6 @@ final readonly class ExecuteConversation
      */
     private function proceed(AiRun $run, ConversationKind $kind, ?string &$title): LoopEnding
     {
-        if ($run->answer !== null) {
-            throw new LogicException("会話の実行 {$run->id} は答えの実行(答えは書く道具の承認と一緒に扱う)");
-        }
-
         $store = $kind->store();
         $items = $store->read($run->id);
         $definition = AiAgentDefinition::query()->findOrFail($run->agent_definition_id);
@@ -115,9 +117,22 @@ final readonly class ExecuteConversation
             return LoopEnding::stopped(LoopStop::User);
         }
 
-        [$history, $added] = $this->history->execute($run, $items);
-        $receivers = $this->receivers->loop($run, $targets, $store, (string) $definition->instructions, $granted);
-        $request = $this->requests->of($run, $targets->conversation, $history, $granted, $added, $receivers);
+        $awaiting = $run->answer === null ? [] : $this->answers->awaiting($run);
+        $callIds = array_map(fn (AiToolCall $row): string => $row->call_id, $awaiting);
+        [$history, $added] = $this->history->execute($run, $items, $callIds);
+        $answered = $run->answer === null
+            ? [null, []]
+            : $this->answers->start($run, $store, $definition, $awaiting, $history);
+
+        if ($answered === null) {
+            return LoopEnding::stopped(LoopStop::User);
+        }
+
+        [$answer, $preRunCalls] = $answered;
+        $instructions = (string) $definition->instructions;
+        $receivers = $this->receivers->loop($run, $targets, $store, $instructions, $granted, $answer);
+        $target = $targets->conversation;
+        $request = $this->requests->of($run, $target, $history, $granted, $added, $receivers, $preRunCalls);
 
         return $this->core->loop($request)->ending;
     }

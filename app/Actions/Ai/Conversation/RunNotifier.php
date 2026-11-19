@@ -98,17 +98,31 @@ final readonly class RunNotifier implements CoreNotifier
 
     /**
      * 中核が受け手を通らずに付けた結果は、取り消しの道具の行と一緒に書く(設計/AI/実行の記録.md 2.4 の T1)。結果は知らせの先頭に並び、
-     * 後ろは中断の印(中核の知らせ方)。
+     * 後ろは中断の印(中核の知らせ方)。承認した件は前の実行の行を取り消す(同じ 2.4 の T7)。
      *
      * @param  list<ConversationItem>  $results
      * @param  list<ConversationItem>  $after
      *
-     * @throws LogicException 結果の後ろに結果がある(結果が先頭に並ばない)とき
+     * @throws LogicException 結果の後ろに結果がある(結果が先頭に並ばない)とき・承認した件とほかの件が混ざるとき
      */
     private function withRows(array $results, array $after): bool
     {
         if (array_filter($after, self::isToolResult(...)) !== []) {
             throw new LogicException('中核が付けた結果は知らせの先頭に並ぶ');
+        }
+
+        $answer = $this->toolStep->answer();
+        $approved = array_values(array_filter(
+            $results,
+            fn (ConversationItem $item): bool => (bool) $answer?->has($item->content['call_id']),
+        ));
+
+        if ($answer !== null && $approved !== []) {
+            $rows = array_map(fn (ConversationItem $item) => $answer->row($item->content['call_id']), $approved);
+
+            return count($approved) === count($results)
+                ? $this->rows->cancelledAnswers($this->toolStep->answerContext(), $rows, [...$results, ...$after])
+                : throw new LogicException('中核が付けた結果に、承認した件とほかの件が混ざる');
         }
 
         $entries = array_map(fn (ConversationItem $item): array => [

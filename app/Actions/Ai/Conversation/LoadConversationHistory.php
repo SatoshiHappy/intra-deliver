@@ -21,9 +21,10 @@ final readonly class LoadConversationHistory
 
     /**
      * @param  list<ConversationItem>  $items  会話の保存の口が返した項目(会話が無いときは呼び手が止めた(利用者)にする)
+     * @param  list<string>  $awaitingCallIds  答えの実行の確認待ちの呼び出し(結果がまだ無いが外さない)
      * @return array{list<ConversationItem|TransientText>, AddedTextValues}
      */
-    public function execute(AiRun $run, array $items): array
+    public function execute(AiRun $run, array $items, array $awaitingCallIds = []): array
     {
         $previous = $run->previous_run_id === null ? null : AiRun::query()->find($run->previous_run_id);
         $workerLost = $previous?->status === AiRunStatus::Failed
@@ -32,7 +33,7 @@ final readonly class LoadConversationHistory
         $before = array_slice($items, 0, count($items) - count($current));
 
         return [
-            [...HistoryRepair::repaired($before, $workerLost), ...$current],
+            [...HistoryRepair::repaired($before, $workerLost, $awaitingCallIds), ...$current],
             new AddedTextValues($this->chainStart->firstRunDate($run->id)),
         ];
     }

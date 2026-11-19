@@ -15,7 +15,8 @@ use LogicException;
 
 /**
  * 道具を呼ぶ包みが書く道具の行と原文と、会話の保存へのその結果の足す(docs の 設計/AI/実行の記録.md 2.4・設計/AI/エージェントの実行/道具の包みと止める.md
- * 9.4 の 6)。許すの呼び出しの行を道具の前に処理中で確定するのは、worker が落ちたときに結果不明として拾えるようにするため(9.8)。
+ * 9.4 の 6)。許すの呼び出しの行を道具の前に処理中で確定するのは、worker が落ちたときに結果不明として拾えるようにするため
+ * (設計/AI/エージェントの実行/途中の表示と上限.md 9.8)。
  *
  * @phpstan-type Finished array{position: int, call: ModelToolCall, decision: AiToolCallDecision|null,
  *     status: AiToolCallStatus, reason: AiToolDenialReason|null, item: ConversationItem, text: string|null}
@@ -54,7 +55,7 @@ class ToolCallRows
      * 9.4 の 5)。
      *
      * @param  array<string, mixed>  $confirmation
-     * @param  array<string, mixed>  $written  書く値の引数(書く時にこの値で書く = 10.5)
+     * @param  array<string, mixed>  $written  書く値の引数(書く時にこの値で書く = 設計/AI/道具と権限/まとめた実行と送るデータ.md 10.5)
      */
     public function asked(
         ToolStep $step,
@@ -124,7 +125,7 @@ class ToolCallRows
      *
      * @throws LogicException 行が確認待ちでないとき(呼び手が確認待ちの件だけを渡す)
      */
-    public function approved(ToolStep $step, AiToolCall $row): void
+    public function approved(AnswerRunContext $step, AiToolCall $row): void
     {
         $claimed = DB::transaction(fn (): int => AiToolCall::query()
             ->whereKey($row->id)
@@ -143,41 +144,22 @@ class ToolCallRows
     }
 
     /**
-     * 書く前に止めた件の行をまとめて取り消しにし、項目(続けて $after)を会話の保存に足す(1 つのトランザクション = 一部だけ終えない)。
-     * 会話が無ければ行は書いたまま false。
-     *
-     * @param  list<array{AiToolCall, ConversationItem}>  $entries
-     * @param  list<ConversationItem>  $after
-     */
-    public function cancelledAnswers(ToolStep $step, array $entries, array $after): bool
-    {
-        return DB::transaction(function () use ($step, $entries, $after): bool {
-            $ids = array_map(fn (array $entry): int => $entry[0]->id, $entries);
-            self::ownAnswers($step, $ids, ['status' => AiToolCallStatus::Cancelled, 'finished_at' => now()]);
-
-            return $step->store->append($step->run->id, [...array_column($entries, 1), ...$after]);
-        });
-    }
-
-    /**
-     * 実行の答えの行を終え(2.4 の T7 の済み・断られた・道具の誤り・取り消し)、書く時の断りの理由と原文の結果と書いたレコードを書き、項目
-     * (続けて $after)を会話の保存に足す。答えと答えを書いた実行も書く(書く前に終わる件は処理中を通らない)。会話が無ければ false。
+     * 実行の答えの行を終え(2.4 の T7)、項目を会話の保存に足す。答えと答えを書いた実行も書く(書く前に終わる件は処理中を通らない)。
+     * 会話が無ければ false。
      *
      * @param  list<array{module: string, id: int, name: string}>  $records
-     * @param  list<ConversationItem>  $after
      */
     public function answered(
-        ToolStep $step,
+        AnswerRunContext $step,
         AiToolCall $row,
         AiToolCallStatus $status,
         ?AiToolWriteDenial $denial,
         ?string $text,
         array $records,
         ConversationItem $item,
-        array $after = [],
     ): bool {
-        return DB::transaction(function () use ($step, $row, $status, $denial, $text, $records, $item, $after): bool {
-            self::ownAnswers($step, [$row->id], [
+        return DB::transaction(function () use ($step, $row, $status, $denial, $text, $records, $item): bool {
+            self::ownAnswer($step, $row->id, [
                 'status' => $status,
                 'write_denial_reason' => $denial,
                 'finished_at' => now(),
@@ -191,30 +173,47 @@ class ToolCallRows
                 'record_names' => json_encode($records, JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR),
             ]);
 
-            return $step->store->append($step->run->id, [$item, ...$after]);
+            return $step->store->append($step->run->id, [$item]);
+        });
+    }
+
+    /**
+     * 書く前に止めた承認した件の行を実行の答えのまま取り消し(2.4 の T7)、中核が付けた結果の項目と一緒に 1 つのトランザクションで足す
+     * (結果だけが残って行が確認待ちのまま、にしないため)。会話が無ければ false。
+     *
+     * @param  list<AiToolCall>  $rows
+     * @param  list<ConversationItem>  $items
+     */
+    public function cancelledAnswers(AnswerRunContext $step, array $rows, array $items): bool
+    {
+        return DB::transaction(function () use ($step, $rows, $items): bool {
+            foreach ($rows as $row) {
+                self::ownAnswer($step, $row->id, ['status' => AiToolCallStatus::Cancelled, 'finished_at' => now()]);
+            }
+
+            return $step->store->append($step->run->id, $items);
         });
     }
 
     /**
      * 答えの実行の行の終わりを書く。書けるのは確認待ちの行か、この答えの実行が処理中にした行だけ(同じ件を 2 つの答えの実行が書かない)。
      *
-     * @param  list<int>  $ids
      * @param  array<string, mixed>  $attributes
      *
-     * @throws LogicException どれかの行がどちらでもないとき(作りの誤り。受け手から投げる)
+     * @throws LogicException 行がどちらでもないとき(作りの誤り。受け手から投げる)
      */
-    private static function ownAnswers(ToolStep $step, array $ids, array $attributes): void
+    private static function ownAnswer(AnswerRunContext $step, int $id, array $attributes): void
     {
         $runId = $step->run->id;
         $updated = AiToolCall::query()
-            ->whereKey($ids)
+            ->whereKey($id)
             ->where(fn ($query) => $query->where('status', AiToolCallStatus::AwaitingConfirmation)
                 ->orWhere(fn ($running) => $running->where('status', AiToolCallStatus::Running)
                     ->where('answer_run_id', $runId)))
             ->update(['answer' => AiToolCallAnswer::Approve, 'answer_run_id' => $runId, ...$attributes]);
 
-        if ($updated !== count($ids)) {
-            throw new LogicException('道具の行 '.implode('・', $ids).' に、確認待ちでも、この答えの実行が処理中にした行でもない行がある');
+        if ($updated !== 1) {
+            throw new LogicException("道具の行 {$id} は確認待ちでも、この答えの実行が処理中にした行でもない");
         }
     }
 
