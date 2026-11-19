@@ -41,6 +41,25 @@ class RunEstimates
     }
 
     /**
+     * 会話の型のステップ 1 回の見積もり(式の正本 = docs の 設計/AI/実行と費用/接続先と費用.md 5.3 の「見積もり」。$cached = その送信が
+     * キャッシュに書くか)。キャッシュの読みで安くなる分を見込まないのは、見積もりを実費より下にしないため。
+     *
+     * @throws LogicException 単価が無いとき
+     */
+    public function stepEstimate(
+        string $provider,
+        string $model,
+        int $inputTokens,
+        int $outputTokens,
+        bool $cached,
+    ): string {
+        $tier = $this->tierFor($provider, $model, $inputTokens);
+        $inputPrice = $cached ? max($tier['input'], $tier['cache_write']) : $tier['input'];
+
+        return self::usd(($inputTokens * $inputPrice + $outputTokens * $tier['output']) / self::PER_TOKENS);
+    }
+
+    /**
      * 文字起こしの依頼の時点の見積もり(測った長さで数えるので、実費とほぼ同じ = 設計/AI/実行と費用/接続先と費用.md 5.2)。
      *
      * @throws LogicException 分単価が無いとき

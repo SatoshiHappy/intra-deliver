@@ -39,6 +39,12 @@ class ToolSubjects
         return $userId !== null && $this->users->idsOn([$userId], $subject->date()) === [$userId];
     }
 
+    /** 実行の今日の文脈(有効かは見ない。渡す道具を決める 1 段目が有効を見る = 10.3) */
+    public static function forRun(AiRun $run): AgentToolSubject
+    {
+        return self::subject($run, CarbonImmutable::today(AccessContext::TIMEZONE));
+    }
+
     private static function subject(AiRun $run, CarbonImmutable $date): AgentToolSubject
     {
         return new AgentToolSubject(new AccessContext(

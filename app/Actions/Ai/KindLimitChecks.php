@@ -7,12 +7,14 @@ use App\Queries\Ai\ConversationSettings;
 use App\Queries\Ai\KindSettings;
 use App\Queries\Ai\RunEstimates;
 use App\Queries\Ai\TranscriptionSettings;
+use App\Support\DefaultDatabaseQueue;
 
 /**
  * 種類と予算の区分の設定の食い違い(`ai:check-settings` とテストが落とす = docs の 設計/AI/データと失敗と検査.md 8 節、実行と費用/README.md 4.1・5 節・5.2)。
  * 確かめの単位・読む値・前提の確かめと止め方 = 設計/AI/実行と費用/接続先と費用.md 5.4(形の食い違いの文はどれも返し、ほかの確かめを続ける)。
  *
  * @phpstan-import-type TranscriptionKindSettings from KindSettings
+ * @phpstan-import-type ConversationKindSettings from KindSettings
  * @phpstan-import-type AnyKindSettings from KindSettings
  * @phpstan-import-type AllKindSettings from KindSettings
  */
@@ -25,6 +27,7 @@ class KindLimitChecks
         private AiSettings $settings,
         private TranscriptionSettings $transcription,
         private RunEstimates $estimates,
+        private ConversationSettings $conversation,
     ) {}
 
     /**
@@ -66,7 +69,7 @@ class KindLimitChecks
                 ? $this->jobTimeProblems($code, AiSettings::jobTimeout($kind['timeout_seconds']))
                 : [],
             KindSettings::TRANSCRIPTION => $this->transcriptionProblems($code, $kind),
-            KindSettings::CONVERSATION => [],
+            KindSettings::CONVERSATION => $this->conversationTimeProblems($code, $kind),
         };
 
         return [
@@ -87,6 +90,30 @@ class KindLimitChecks
         return $jobTimeout >= $retryAfter
             ? ["種類 {$code} のジョブの時間 {$jobTimeout} 秒がキューの retry_after {$retryAfter} 秒以上(config/queue.php)"]
             : [];
+    }
+
+    /**
+     * 会話のジョブの時間と、題のステップの最長が回の送信の最長以下か(式 = docs の 設計/AI/エージェントの実行/途中の表示と上限.md 9.7)。
+     * 会話のキューの接続の形の食い違いは会話の設定の確かめが出すので、形が合わないときはジョブの時間を見ない。比べる式 = 文章の型と同じ
+     * 「ジョブの時間 < retry_after」。
+     *
+     * @param  ConversationKindSettings  $kind
+     * @return list<string>
+     */
+    private function conversationTimeProblems(string $code, array $kind): array
+    {
+        $send = $kind['purposes'][ConversationSettings::CONVERSATION]['timeout_seconds'];
+        $title = $kind['purposes'][ConversationSettings::TITLE]['timeout_seconds'];
+        $jobTimeout = AiSettings::conversationJobTimeout($kind['run_timeout_seconds'], $send);
+
+        $retryAfter = DefaultDatabaseQueue::retryAfterOf($this->conversation->connectionName());
+        $tooLong = $retryAfter !== null && $jobTimeout >= $retryAfter;
+
+        return [
+            ...($tooLong ? ["種類 {$code} のジョブの時間 {$jobTimeout} 秒が会話のキューの接続の retry_after {$retryAfter} 秒以上"
+                .'(config/queue.php)'] : []),
+            ...($title > $send ? ["種類 {$code} の題の時間の上限 {$title} 秒が会話の時間の上限 {$send} 秒より長い"] : []),
+        ];
     }
 
     /**

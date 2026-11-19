@@ -5,6 +5,7 @@ namespace Tests\Feature\Ai;
 use App\Actions\Ai\Api\RequestPrompt;
 use App\Actions\Ai\Api\RunRequestDeclined;
 use App\Actions\Ai\RunBudget;
+use App\Queries\Ai\BudgetMessages;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Validation\ValidationException;
@@ -42,13 +43,13 @@ final class RunRequestDeclinedTest extends TransactionalTestCase
         $declined = $this->declinedRequest();
 
         $this->assertSame(RunRequestDeclined::BUDGET, $declined->reason);
-        $this->assertSame([RunBudget::ERROR_KEY => [RunBudget::DAILY_EXCEEDED]], $declined->errors());
+        $this->assertSame([RunBudget::ERROR_KEY => [BudgetMessages::DAILY_EXCEEDED]], $declined->errors());
     }
 
     public function test_the_http_response_is_the_one_of_a_validation_exception(): void
     {
         config(['ai_runs.budget.default.daily_usd' => 0.0001]);
-        $message = [RunBudget::ERROR_KEY => RunBudget::DAILY_EXCEEDED];
+        $message = [RunBudget::ERROR_KEY => BudgetMessages::DAILY_EXCEEDED];
         $request = fn () => app(RequestPrompt::class)->execute($this->requesterContext(), $this->promptRequest());
         Route::post('/test/ai/declined', $request);
         Route::post('/test/ai/plain', fn () => throw ValidationException::withMessages($message));

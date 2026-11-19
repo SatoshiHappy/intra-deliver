@@ -14,6 +14,7 @@ use App\Models\Ai\AiRun;
 use App\Models\Ai\AiRunText;
 use App\Models\Master\Department;
 use App\Models\Upload\Upload;
+use App\Queries\Ai\BudgetMessages;
 use App\Queries\Ai\KindSettings;
 use App\Queries\Ai\TranscriptionSettings;
 use App\Support\AccessContext;
@@ -153,8 +154,8 @@ final class RequestTranscriptionTest extends TransactionalTestCase
     public static function periods(): array
     {
         return [
-            '日' => ['daily_usd', RunBudget::TRANSCRIPTION_DAILY_EXCEEDED],
-            '月' => ['monthly_usd', RunBudget::TRANSCRIPTION_MONTHLY_EXCEEDED],
+            '日' => ['daily_usd', BudgetMessages::TRANSCRIPTION_DAILY_EXCEEDED],
+            '月' => ['monthly_usd', BudgetMessages::TRANSCRIPTION_MONTHLY_EXCEEDED],
         ];
     }
 

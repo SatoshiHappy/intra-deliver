@@ -45,7 +45,7 @@ class ConversationSettings
     /** 会話の接続の名前が無い・空のときの文 */
     private const NO_CONNECTION = self::SECTION.'.queue_connection が空でない文字列でない';
 
-    public function __construct(private AiSettings $settings) {}
+    public function __construct(private AiSettings $settings, private ProviderTraitsSettings $traits) {}
 
     /**
      * 会話のジョブを入れるキューの接続の名前(config/queue.php の connections の鍵)。
@@ -208,6 +208,7 @@ class ConversationSettings
         $problems = [
             ...$this->settings->priceProblems($values['provider'], $values['model']),
             ...($this->settings->pricesEveryInput($values['provider'], $values['model']) === false ? [$short] : []),
+            ...$this->traits->problems($values['provider'], $values['model']),
         ];
 
         foreach (self::RUN_OPTION_KEYS as $key => $meaning) {
@@ -291,7 +292,7 @@ class ConversationSettings
     }
 
     /** 会話の接続の名前(無い・空なら null) */
-    private function connectionName(): ?string
+    public function connectionName(): ?string
     {
         $name = Config::get('ai_runs.conversation.queue_connection');
 

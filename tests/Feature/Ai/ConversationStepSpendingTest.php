@@ -8,6 +8,7 @@ use App\Actions\Ai\RunBudget;
 use App\Models\Ai\AiRun;
 use App\Models\Ai\AiRunStep;
 use App\Queries\Ai\Api\RunBudgetQuery;
+use App\Queries\Ai\BudgetMessages;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Validation\ValidationException;
@@ -26,9 +27,9 @@ final class ConversationStepSpendingTest extends TransactionalTestCase
 
     /** 既定の区分の超えた期間ごとの断りの文 */
     private const MESSAGES = [
-        RunBudgetQuery::DAY => RunBudget::DAILY_EXCEEDED,
-        RunBudgetQuery::MONTH => RunBudget::MONTHLY_EXCEEDED,
-        RunBudgetQuery::TOTAL => RunBudget::TOTAL_EXCEEDED,
+        RunBudgetQuery::DAY => BudgetMessages::DAILY_EXCEEDED,
+        RunBudgetQuery::MONTH => BudgetMessages::MONTHLY_EXCEEDED,
+        RunBudgetQuery::TOTAL => BudgetMessages::TOTAL_EXCEEDED,
     ];
 
     /** 文章の依頼の見積もり(UsesTestPromptKinds::promptRequest) */
@@ -119,7 +120,7 @@ final class ConversationStepSpendingTest extends TransactionalTestCase
             app(RequestPrompt::class)->execute($this->requesterContext(), $this->promptRequest());
             $this->fail('上限を超える依頼が通った');
         } catch (ValidationException $exception) {
-            $this->assertSame([RunBudget::ERROR_KEY => [RunBudget::DAILY_EXCEEDED]], $exception->errors());
+            $this->assertSame([RunBudget::ERROR_KEY => [BudgetMessages::DAILY_EXCEEDED]], $exception->errors());
         }
 
         $this->limits(round(0.5 + self::PROMPT_RESERVED, 6), null, null);

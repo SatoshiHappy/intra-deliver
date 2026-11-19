@@ -55,6 +55,23 @@ return [
         ],
     ],
 
+    // 会話の型の接続先の性質(設計/AI/会話の中核.md 13.6。持たない接続先は会話の用途に使えない = 起動の時の確かめ)。estimate_factors は送る量の
+    // 見積もりの係数(接続先とモデルの組 = 単価と同じ鍵)。値は【推測】で、本物の接続の確かめで直す(設計/AI/データと失敗と検査.md 8 節)。
+    // Anthropic の誤りの見分けは、接続先が返す誤りの文の形(過負荷・入力と出力の上限の和の超え・長すぎる)。
+    'conversation_providers' => [
+        'anthropic' => [
+            'caches_instructions' => true,
+            'caches_history' => true,
+            'estimate_factors' => ['claude-haiku-5-5' => 2, 'claude-sonnet-5-5' => 2],
+            'overloaded_marker' => '"type":"overloaded_error"',
+            'context_overflow_pattern' => '/input length and `max_tokens` exceed context limit:'
+                .' (?<input>\d+) \+ (?<limit>\d+) > (?<window>\d+)/',
+            'retry_header' => 'retry-after',
+            'too_long_patterns' => ['/prompt is too long[^0-9]*(?<actual>\d+)\s*tokens?\s*>\s*(?<limit>\d+)/i'],
+            'context_management_models' => '/^claude-/',
+        ],
+    ],
+
     // コード実行の時間単価(ファイルを作るのモデル。1 時間・1 作業場あたりの米ドルと最小の秒。Anthropic の code execution tool の文書、取得 2026-11-04。
     // 組織ごとの月の無料の時間は数えない = 多めに数える側。設計/AI/実行と費用/接続先と費用.md 5 節)
     'code_execution_pricing' => [

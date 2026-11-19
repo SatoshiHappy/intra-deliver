@@ -7,6 +7,7 @@ use App\Actions\Ai\RunBudget;
 use App\Enums\Ai\AiRunStatus;
 use App\Models\Ai\AiRun;
 use App\Models\Ai\AiSpendingCarryover;
+use App\Queries\Ai\BudgetMessages;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Validation\ValidationException;
@@ -37,9 +38,9 @@ final class RequestPromptBudgetTest extends TransactionalTestCase
     public static function periods(): array
     {
         return [
-            '日' => ['daily_usd', RunBudget::DAILY_EXCEEDED],
-            '月' => ['monthly_usd', RunBudget::MONTHLY_EXCEEDED],
-            '累計' => ['total_usd', RunBudget::TOTAL_EXCEEDED],
+            '日' => ['daily_usd', BudgetMessages::DAILY_EXCEEDED],
+            '月' => ['monthly_usd', BudgetMessages::MONTHLY_EXCEEDED],
+            '累計' => ['total_usd', BudgetMessages::TOTAL_EXCEEDED],
         ];
     }
 
@@ -110,9 +111,9 @@ final class RequestPromptBudgetTest extends TransactionalTestCase
     {
         $this->setKindSetting(RecordingPromptKind::CODE, 'budget', 'transcription');
         $expected = [
-            'daily_usd' => RunBudget::TRANSCRIPTION_DAILY_EXCEEDED,
-            'monthly_usd' => RunBudget::TRANSCRIPTION_MONTHLY_EXCEEDED,
-            'total_usd' => RunBudget::TRANSCRIPTION_TOTAL_EXCEEDED,
+            'daily_usd' => BudgetMessages::TRANSCRIPTION_DAILY_EXCEEDED,
+            'monthly_usd' => BudgetMessages::TRANSCRIPTION_MONTHLY_EXCEEDED,
+            'total_usd' => BudgetMessages::TRANSCRIPTION_TOTAL_EXCEEDED,
         ];
 
         foreach ($expected as $period => $message) {
@@ -148,7 +149,7 @@ final class RequestPromptBudgetTest extends TransactionalTestCase
         $this->aiRun(['created_at' => CarbonImmutable::parse('2026-10-18 00:00:00', 'Asia/Tokyo'), 'cost' => '0.500000']);
 
         $this->setBudget('daily_usd', 0.5 + self::RESERVED - 0.000001);
-        $this->assertRejectedWith(RunBudget::DAILY_EXCEEDED);
+        $this->assertRejectedWith(BudgetMessages::DAILY_EXCEEDED);
 
         $this->setBudget('daily_usd', 0.5 + self::RESERVED);
         app(RequestPrompt::class)->execute($this->requesterContext(), $this->promptRequest());
@@ -162,7 +163,7 @@ final class RequestPromptBudgetTest extends TransactionalTestCase
         $this->aiRun(['created_at' => CarbonImmutable::parse('2026-10-01 00:00:00', 'Asia/Tokyo'), 'cost' => '0.500000']);
 
         $this->setBudget('monthly_usd', 0.5 + self::RESERVED - 0.000001);
-        $this->assertRejectedWith(RunBudget::MONTHLY_EXCEEDED);
+        $this->assertRejectedWith(BudgetMessages::MONTHLY_EXCEEDED);
 
         $this->setBudget('monthly_usd', 0.5 + self::RESERVED);
         app(RequestPrompt::class)->execute($this->requesterContext(), $this->promptRequest());
@@ -174,13 +175,13 @@ final class RequestPromptBudgetTest extends TransactionalTestCase
         $spent = $this->spendWithEveryKindOfRun(now());
         config(['ai_runs.budget.default' => ['daily_usd' => $spent, 'monthly_usd' => $spent, 'total_usd' => $spent]]);
 
-        $this->assertRejectedWith(RunBudget::TOTAL_EXCEEDED);
+        $this->assertRejectedWith(BudgetMessages::TOTAL_EXCEEDED);
     }
 
     public function test_a_numeric_string_is_a_limit_and_a_non_numeric_value_is_a_logic_error(): void
     {
         config(['ai_runs.budget.default.daily_usd' => '0.000269']);
-        $this->assertRejectedWith(RunBudget::DAILY_EXCEEDED);
+        $this->assertRejectedWith(BudgetMessages::DAILY_EXCEEDED);
 
         config(['ai_runs.budget.default.daily_usd' => 'unlimited']);
         $this->expectException(LogicException::class);

@@ -77,4 +77,14 @@ final class DefaultDatabaseQueue
             ? ["設定 {$key}(config/queue.php)が真(ジョブの投入がコミットの後に回り、実行の記録と同じトランザクションに入らない)"]
             : [];
     }
+
+    /**
+     * 接続の配り直すまでの時間(秒)。接続が無い・値が正の整数でなければ null(その食い違いは確かめの文が出す)。
+     */
+    public static function retryAfterOf(?string $connection): ?int
+    {
+        $seconds = $connection === null ? null : config("queue.connections.{$connection}.retry_after");
+
+        return is_int($seconds) && $seconds > 0 ? $seconds : null;
+    }
 }

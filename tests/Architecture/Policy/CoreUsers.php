@@ -20,7 +20,12 @@ final class CoreUsers
      *
      * @var list<array{class: non-empty-string, reason: string}>
      */
-    public const VERSION_PICKERS = [];
+    public const VERSION_PICKERS = [
+        [
+            'class' => 'App\\Actions\\Ai\\Conversation\\CoreVersion',
+            'reason' => '既定の版(代わりの版)を結ぶ。手元だけのリポジトリのプロバイダが後から移した版で結び直す(指示の組み立ての口と同じ形)',
+        ],
+    ];
 
     #[TestRule]
     public function coreContractUsers(): Rule

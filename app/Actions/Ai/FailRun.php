@@ -37,6 +37,7 @@ class FailRun
      * 失敗の書き込みに失敗したら、元の例外を report() してから書き込みの例外を投げる(元の例外をログから失わない)。
      *
      * @param  RunResult|null  $result  分かった分の使用量・費用・原文(不完全のときは細かい理由も)
+     * @param  string|null  $title  会話の型の題のステップが作った題(会話の失敗の受け手に渡す)
      *
      * @throws Throwable 失敗の書き込みに失敗したとき
      */
@@ -45,9 +46,10 @@ class FailRun
         AiRunErrorCode $errorCode,
         ?Throwable $exception,
         ?RunResult $result = null,
+        ?string $title = null,
     ): void {
         try {
-            if (! $this->failWithReceiver($runId, $errorCode, $exception, $result)) {
+            if (! $this->failWithReceiver($runId, $errorCode, $exception, $result, $title)) {
                 $this->markRunFailed->execute($runId, $errorCode, $exception, $result);
             }
         } catch (Throwable $writeError) {
@@ -69,6 +71,7 @@ class FailRun
         AiRunErrorCode $errorCode,
         ?Throwable $exception,
         ?RunResult $result,
+        ?string $title,
     ): bool {
         DB::beginTransaction();
 
@@ -81,7 +84,7 @@ class FailRun
                 return true;
             }
 
-            if (! $this->callReceiver($run, $errorCode, $exception, $result)) {
+            if (! $this->callReceiver($run, $errorCode, $exception, $result, $title)) {
                 DB::rollBack();
 
                 return false;
@@ -113,9 +116,11 @@ class FailRun
         AiRunErrorCode $errorCode,
         ?Throwable $exception,
         ?RunResult $result,
+        ?string $title,
     ): bool {
-        return rescue(function () use ($run, $errorCode, $exception, $result): bool {
-            $receiver = $this->receiverOf($run, $errorCode->value, self::reasonOf($errorCode, $exception, $result));
+        return rescue(function () use ($run, $errorCode, $exception, $result, $title): bool {
+            $reason = self::reasonOf($errorCode, $exception, $result);
+            $receiver = $this->receiverOf($run, $errorCode->value, $reason, $title);
 
             if ($receiver !== null) {
                 $this->failing->during($run->id, $receiver);
@@ -127,11 +132,11 @@ class FailRun
 
     /**
      * 種類の失敗の受け手を呼ぶ処理(実装が引けなければ null)。受け手は行の種類の型で決めた型の種類の一覧から引く(型をまたいで探さない。
-     * その型に登録が無ければ、登録が無いの扱い)。会話の型の種類には対象のレコードの代わりに会話の題を渡す(題を渡すのは会話のジョブ。ここからは無し)。
+     * その型に登録が無ければ、登録が無いの扱い)。会話の型の種類には対象のレコードの代わりに会話の題を渡す(題を作るのは会話のジョブ)。
      *
      * @return (Closure(): void)|null
      */
-    private function receiverOf(AiRun $run, string $errorCode, ?string $reason): ?Closure
+    private function receiverOf(AiRun $run, string $errorCode, ?string $reason, ?string $title): ?Closure
     {
         $failed = fn (): FailedRun => new FailedRun(
             $run->id, $run->kind, $run->record_id, $run->requester_user_id, $errorCode, $reason,
@@ -142,7 +147,7 @@ class FailRun
             AiKindType::Transcription => self::recordReceiver($this->transcriptionKinds->find($run->kind), $failed),
             AiKindType::Conversation => self::conversationReceiver(
                 $this->conversationKinds->find($run->kind),
-                new ConversationFailed($run->id, $run->kind, $run->requester_user_id, $errorCode, $reason, null),
+                new ConversationFailed($run->id, $run->kind, $run->requester_user_id, $errorCode, $reason, $title),
             ),
         };
     }

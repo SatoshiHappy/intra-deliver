@@ -117,7 +117,10 @@ final class ConversationSettingsChecksTest extends TransactionalTestCase
     #[DataProvider('purposes')]
     public function test_detects_a_purpose_without_pricing(string $purpose): void
     {
-        config(["ai_runs.conversation.purposes.{$purpose}.model" => 'claude-unknown']);
+        config([
+            "ai_runs.conversation.purposes.{$purpose}.model" => 'claude-unknown',
+            'ai_runs.conversation_providers.anthropic.estimate_factors.claude-unknown' => 2,
+        ]);
         $problems = app(ConversationSettings::class)->problems();
 
         $unpriced = "会話の用途 {$purpose} の接続先とモデルの単価が無いか、最後の段に入力の上限がある(config/ai_runs.php の pricing)";
@@ -173,6 +176,11 @@ final class ConversationSettingsChecksTest extends TransactionalTestCase
             'ai_runs.code_execution_pricing.other' => ['model-a' => ['usd_per_hour' => 0.05, 'min_seconds' => 300]],
             'ai_runs.conversation.purposes.create_file.provider' => 'other',
             'ai_runs.conversation.purposes.create_file.model' => 'model-a',
+            'ai_runs.conversation_providers.other' => [
+                'caches_instructions' => false,
+                'caches_history' => false,
+                'estimate_factors' => ['model-a' => 2],
+            ],
         ]);
 
         $this->assertSame(

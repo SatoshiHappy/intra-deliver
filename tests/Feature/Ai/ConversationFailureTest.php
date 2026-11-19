@@ -101,6 +101,19 @@ final class ConversationFailureTest extends TransactionalTestCase
         $this->assertNotNull($run->finished_at);
     }
 
+    /** 会話のジョブが渡した題は、失敗の受け手に渡る */
+    public function test_the_title_reaches_the_failure_receiver(): void
+    {
+        $runId = $this->conversationRun(['status' => AiRunStatus::Running, 'started_at' => now()]);
+
+        app(FailRun::class)->execute($runId, AiRunErrorCode::Timeout, new RuntimeException('時間切れ'), null, '題');
+
+        $this->assertSame(['題'], array_map(
+            static fn (ConversationFailed $failed): ?string => $failed->title,
+            $this->conversationKind->failed,
+        ));
+    }
+
     /** 会話の型で増えた失敗の種類も、細かい理由は無し */
     public function test_a_setting_failure_has_no_reason(): void
     {

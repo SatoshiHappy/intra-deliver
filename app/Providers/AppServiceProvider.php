@@ -6,6 +6,7 @@ use App\Actions\Ai\Api\AgentTool;
 use App\Actions\Ai\Api\PromptKind;
 use App\Actions\Ai\Api\TranscriptionKind;
 use App\Actions\Ai\CarryOverSpending;
+use App\Actions\Ai\Conversation\CoreVersion;
 use App\Actions\Ai\Instructions\DefaultInstructionBuilder;
 use App\Actions\Ai\Instructions\InstructionBuilder;
 use App\Actions\Ai\Tools\ReadRecord;
@@ -80,6 +81,9 @@ class AppServiceProvider extends ServiceProvider
         // 指示の組み立ての口の既定は代わりの版(1 つ)。手元だけのリポジトリのプロバイダが後から移した版で結び直す(docs の 設計/AI/設定とプロンプト/README.md 11.4)
         $this->app->singleton(DefaultInstructionBuilder::class);
         $this->app->bind(InstructionBuilder::class, DefaultInstructionBuilder::class);
+
+        // 会話の中核の既定も代わりの版。手元だけのリポジトリのプロバイダが後から移した版で結び直す(docs の 設計/AI/会話の中核.md 13.1)
+        CoreVersion::bindDefault($this->app);
 
         // 依存の逆転(docs の 設計/コード構成/README.md 3 節): Master の業務処理が、後ろのモジュールのユーザーを指す期間の行まで確かめる
         $this->app->tag([UserRoleReferences::class], UserReferences::TAG);

@@ -127,6 +127,52 @@ final class ConversationKindChecksTest extends TransactionalTestCase
         );
     }
 
+    /**
+     * 会話のジョブの時間 = 実行の時間の上限 + (会話の呼び出しの時間の上限 100 + 待ち 10)× 2 + 完了の処理 30 が、会話の接続の
+     * retry_after 600 未満(設計/AI/エージェントの実行/途中の表示と上限.md 9.7)。349 → 599・350 → 600。
+     *
+     * @return array<string, array{int, list<string>}>
+     */
+    public static function jobTimes(): array
+    {
+        $problem = '種類 test.conversation のジョブの時間 600 秒が会話のキューの接続の retry_after 600 秒以上'
+            .'(config/queue.php)';
+
+        return ['retry_after の 1 秒前' => [349, []], 'retry_after と同じ' => [350, [$problem]]];
+    }
+
+    /**
+     * @param  list<string>  $expected
+     */
+    #[DataProvider('jobTimes')]
+    public function test_the_conversation_job_time_stays_below_the_agent_retry_after(
+        int $runTimeout,
+        array $expected,
+    ): void {
+        config(['queue.connections.database-agent.retry_after' => 600]);
+        $this->configureKind(RecordingConversationKind::CODE, [
+            ...self::conversationKindSettings(),
+            'run_timeout_seconds' => $runTimeout,
+        ]);
+        $this->app->tag([RecordingConversationKind::class], ConversationKind::TAG);
+
+        $this->assertSame($expected, app(PromptKinds::class)->problems());
+    }
+
+    /** 題のステップの最長は回の送信の最長以下(同じ値は通す) */
+    public function test_the_title_time_does_not_exceed_the_conversation_time(): void
+    {
+        $settings = self::conversationKindSettings();
+        $settings['purposes']['title']['timeout_seconds'] = 101;
+        $this->configureKind(RecordingConversationKind::CODE, $settings);
+        $this->app->tag([RecordingConversationKind::class], ConversationKind::TAG);
+
+        $this->assertSame(
+            ['種類 test.conversation の題の時間の上限 101 秒が会話の時間の上限 100 秒より長い'],
+            app(PromptKinds::class)->problems(),
+        );
+    }
+
     public function test_detects_a_conversation_kind_whose_budget_is_not_in_the_settings(): void
     {
         $settings = [...self::conversationKindSettings(), 'budget' => 'missing'];

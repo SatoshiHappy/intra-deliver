@@ -3,7 +3,7 @@
 namespace App\Actions\Ai;
 
 use App\Actions\Ai\Api\RunRequestDeclined;
-use App\Queries\Ai\Api\RunBudgetQuery;
+use App\Queries\Ai\BudgetMessages;
 use App\Queries\Ai\RunSpending;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
@@ -18,33 +18,6 @@ class RunBudget
 {
     /** 誤りのキー(画面の欄に依らない AI の依頼そのものの誤り) */
     public const ERROR_KEY = 'ai';
-
-    public const DAILY_EXCEEDED = '今日の AI の利用の上限に達しました。手で入力するか、明日お試しください';
-
-    public const MONTHLY_EXCEEDED = '今月の AI の利用の上限に達しました。手で入力してください';
-
-    public const TOTAL_EXCEEDED = 'AI の利用の上限に達しました。手で入力してください';
-
-    public const TRANSCRIPTION_DAILY_EXCEEDED = '今日の音声の取り込みの上限に達しました。';
-
-    public const TRANSCRIPTION_MONTHLY_EXCEEDED = '今月の音声の取り込みの上限に達しました。';
-
-    /** 配備の設定で累計の上限を置いたときの文(公開デモは累計の上限なし) */
-    public const TRANSCRIPTION_TOTAL_EXCEEDED = '音声の取り込みの上限に達しました。';
-
-    /** 区分と超えた期間ごとの 422 の文(予算の区分の名前は config/ai_runs.php の budget の鍵) */
-    private const MESSAGES = [
-        'default' => [
-            RunBudgetQuery::DAY => self::DAILY_EXCEEDED,
-            RunBudgetQuery::MONTH => self::MONTHLY_EXCEEDED,
-            RunBudgetQuery::TOTAL => self::TOTAL_EXCEEDED,
-        ],
-        'transcription' => [
-            RunBudgetQuery::DAY => self::TRANSCRIPTION_DAILY_EXCEEDED,
-            RunBudgetQuery::MONTH => self::TRANSCRIPTION_MONTHLY_EXCEEDED,
-            RunBudgetQuery::TOTAL => self::TRANSCRIPTION_TOTAL_EXCEEDED,
-        ],
-    ];
 
     /** AI の費用の勧告ロックの鍵(共通マスタ 4,100,000,001・業務モジュール 4,200,000,000,000,000〜 と重ならない値) */
     private const LOCK_KEY = 4_300_000_000_000_000;
@@ -64,7 +37,7 @@ class RunBudget
      */
     public static function hasMessages(string $budget): bool
     {
-        return isset(self::MESSAGES[$budget]);
+        return BudgetMessages::has($budget);
     }
 
     /**
@@ -79,7 +52,8 @@ class RunBudget
         $period = $this->spending->exceededPeriod($budget, CarbonImmutable::now(), $reservedUsd);
 
         if ($period !== null) {
-            $message = self::MESSAGES[$budget][$period] ?? throw new LogicException("予算の区分 {$budget} の上限を超えたときの文が無い");
+            $message = BudgetMessages::of($budget, $period)
+                ?? throw new LogicException("予算の区分 {$budget} の上限を超えたときの文が無い");
 
             throw new RunRequestDeclined(RunRequestDeclined::BUDGET, $message);
         }

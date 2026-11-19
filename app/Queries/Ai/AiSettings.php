@@ -22,6 +22,9 @@ class AiSettings
     /** 送り直しの待ちの上限(ライブラリは 10 秒以内の待ちの指示にだけ従う) */
     private const RETRY_WAIT_SECONDS = 10;
 
+    /** 会話のジョブの時間に足す完了の処理の分(秒。作りの値 = docs の 設計/AI/エージェントの実行/途中の表示と上限.md 9.7 の式の項) */
+    private const COMPLETION_SECONDS = 30;
+
     /**
      * 起動の時の確かめの、種類によらない表の形の食い違い(docs の 設計/AI/データと失敗と検査.md 8 節)。
      *
@@ -170,6 +173,18 @@ class AiSettings
     public static function jobTimeout(int $callTimeoutSeconds): int
     {
         return ($callTimeoutSeconds + self::RETRY_WAIT_SECONDS) * 2;
+    }
+
+    /**
+     * 会話のジョブの時間(秒) = 実行の時間の上限 + 最後に時間を確かめた後に走りうる分の最長(1 回の送信の最長。送り直しの 1 回を含む)
+     * + 完了の処理(docs の 設計/AI/エージェントの実行/途中の表示と上限.md 9.7 の守る結果の式)。送信の項は {@see self::jobTimeout()} で
+     * 送り直しの待ちを 2 回数えるので、1 回の送信の最長より待ち 1 回分長く、その差が式に無い手間(ジョブが取られてから始めの時刻まで・
+     * 最後の確かめから送信を始めるまで)の余裕になる。道具の最長は足さない(読む道具の最長は DB の読み取りの前提で、上限ではない。
+     * ファイルを作る道具 = 設計/AI/ファイルの作業場.md 12.6 を渡す時に、送信と道具の長い方にする)。
+     */
+    public static function conversationJobTimeout(int $runTimeoutSeconds, int $sendTimeoutSeconds): int
+    {
+        return $runTimeoutSeconds + self::jobTimeout($sendTimeoutSeconds) + self::COMPLETION_SECONDS;
     }
 
     /**

@@ -7,7 +7,6 @@ use App\Models\Ai\AiRun;
 use App\Models\Ai\AiRunText;
 use App\Queries\Ai\AiSettings;
 use App\Queries\Ai\KindSettings;
-use Laravel\Ai\Enums\Lab;
 use LogicException;
 use Throwable;
 
@@ -37,7 +36,7 @@ class LlmClient
             $maxOutputTokens,
             $settings['timeout_seconds'],
             $driver,
-            [...$settings['provider_options'], ...self::visitorOptions($driver, $run->visitor_id)],
+            [...$settings['provider_options'], ...VisitorOptions::of($driver, $run->visitor_id)],
         );
 
         try {
@@ -45,18 +44,5 @@ class LlmClient
         } catch (Throwable $exception) {
             throw LlmCallFailed::from($exception);
         }
-    }
-
-    /**
-     * 実行ごとに接続先の要求に足す訪問者の ID。anthropic だけに送るのは、ほかの driver の接続先は識別子の欄を確かめていないため
-     * (送る条件 = docs の 設計/AI/実行と費用/README.md 4.4)。
-     *
-     * @return array<string, mixed>
-     */
-    private static function visitorOptions(?string $driver, ?string $visitorId): array
-    {
-        return $driver === Lab::Anthropic->value && $visitorId !== null
-            ? [KindSettings::RUN_OPTION_KEY => ['user_id' => $visitorId]]
-            : [];
     }
 }
