@@ -54,6 +54,9 @@ final class UpdateRecordToolTest extends TransactionalTestCase
         $unchanged = ['restricted' => false, 'viewers' => []];
         $this->assertEquals(['current' => $unchanged, 'next' => $unchanged], $confirmation['rowAccess']);
         $this->assertFalse($confirmation['audienceChanges']['rowAccess']);
+        // 書く値の引数(参照制限の 2 つのキーを今の値で埋めた物)を、書く時のために残す
+        $written = AiToolCallText::query()->whereKey($row->id)->sole()->written_arguments;
+        $this->assertEquals([...$arguments, 'row_access' => $unchanged], $written);
         $this->assertSame($before, Record::query()->findOrFail($id)->toArray());
         $this->assertSame([
             'RecordViewAccess::canView',

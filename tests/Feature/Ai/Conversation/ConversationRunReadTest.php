@@ -5,7 +5,9 @@ namespace Tests\Feature\Ai\Conversation;
 use App\Enums\Ai\AiRunErrorCode;
 use App\Enums\Ai\AiRunStatus;
 use App\Enums\Ai\AiRunStopReason;
+use App\Enums\Ai\AiToolCallAnswer;
 use App\Enums\Ai\AiToolCallStatus;
+use App\Enums\Ai\AiToolWriteDenial;
 use App\Models\Ai\AiRun;
 use App\Models\Ai\AiRunStep;
 use App\Models\Ai\AiRunText;
@@ -68,17 +70,18 @@ final class ConversationRunReadTest extends TransactionalTestCase
         $this->assertNull($this->show($run->requester_user_id + 1000, $run->id));
     }
 
-    /** 原文の期限で消えた後は、引数・結果・表示の名前を返さない(業務モジュールと id は返す) */
+    /** 原文の期限で消えた後は、引数・結果・表示の名前を返さない(業務モジュールと id と、行の値の書く時の断りの理由は返す) */
     public function test_expired_texts_leave_the_module_and_id(): void
     {
         $run = AiRun::factory()->conversation()->running()->create(['kind' => RecordingConversationKind::CODE]);
-        AiToolCall::factory()->inStep(AiRunStep::factory()->create(['ai_run_id' => $run->id]))->create([
-            'records' => [['module' => 'customer', 'id' => 7]],
-        ]);
+        $step = AiRunStep::factory()->create(['ai_run_id' => $run->id]);
+        AiToolCall::factory()->inStep($step)->create(['records' => [['module' => 'customer', 'id' => 7]]]);
+        AiToolCall::factory()->inStep($step)->answered(AiToolCallAnswer::Approve, AiToolCallStatus::Rejected)->create();
 
         $conversation = $this->show($run->requester_user_id, $run->id)?->conversation;
 
         $this->assertNull($conversation?->toolCalls[0]->arguments ?? null);
+        $this->assertSame(AiToolWriteDenial::NoPermission, $conversation?->toolCalls[1]->writeDenialReason ?? null);
         $expected = [['module' => 'customer', 'module_name' => null, 'id' => 7, 'name' => null]];
         $this->assertSame($expected, $conversation?->records);
         $this->assertSame([], $conversation->partialText);

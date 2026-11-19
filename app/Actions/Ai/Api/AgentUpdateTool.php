@@ -29,4 +29,20 @@ interface AgentUpdateTool extends AgentRecordTool
         AgentToolScope $scope,
         AgentToolParties $parties,
     ): RecordConfirmation;
+
+    /**
+     * 書く(確認の後。判定する更新に呼ばれた時の版を渡す = 10.5 の表 2 の P3〜P7 は入れ物が断る)。結果の書いたレコードは直したレコード 1 件。
+     * 入れ物の断りは投げたまま返す(表 2 の行に直すのは ③ の書く時の部品)。
+     *
+     * @param  array<string, mixed>  $written  書く値の引数(問うの時に残した物。前の件を指す参照は作った id に直した後)
+     * @param  RecordConfirmation  $confirmation  問うの時に残した確認の内容
+     * @param  string  $version  呼ばれた時に読んだ版(道具の行の版。空の文字列も版)
+     */
+    public function write(
+        array $written,
+        AgentToolSubject $subject,
+        AgentToolScope $scope,
+        RecordConfirmation $confirmation,
+        string $version,
+    ): AgentToolResult;
 }

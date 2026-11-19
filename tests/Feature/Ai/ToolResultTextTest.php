@@ -6,9 +6,12 @@ use App\Actions\Ai\Api\AgentToolResult;
 use App\Actions\Ai\Api\RecordMarker;
 use App\Actions\Ai\ToolCalls\ToolResultText;
 use App\Enums\Ai\AiInstructionTemplate;
+use App\Enums\Ai\AiToolAction;
+use App\Queries\Ai\Api\RecordMarkers;
 use PHPUnit\Framework\Attributes\TestWith;
 use PHPUnit\Framework\TestCase;
 use Tests\Feature\Ai\Tools\FakeTools;
+use Tests\Feature\Ai\Tools\Generic\GenericCreateTool;
 use Tests\Feature\Ai\Tools\Generic\GenericTool;
 
 /**
@@ -51,6 +54,26 @@ final class ToolResultTextTest extends TestCase
         $this->assertNull($within['template']);
         $this->assertSame(AiInstructionTemplate::LargeResultTruncated, $above['template']);
         $this->assertSame((string) ToolResultText::PREVIEW_LENGTH, $above['values']['preview_length']);
+    }
+
+    /**
+     * 書く道具の結果が上限を超えると、先頭で切らず書く先の印と成否だけを残す(10.7)。残す形の最大(業務モジュールのコードの最大の長さと
+     * id の最大の印)は先頭の長さを下回るので、上限(先頭の長さ以上 = 起動の時の確かめ)を超えない。
+     */
+    public function test_a_long_write_result_keeps_the_record_and_the_outcome(): void
+    {
+        $tool = new GenericCreateTool('ai_create', readOnly: false, action: AiToolAction::Create, maxLength: 2000);
+        $data = ['record' => new RecordMarker('m_tasks', 7), 'written' => true, 'note' => str_repeat('あ', 3000)];
+
+        $shaped = ToolResultText::shaped($tool, new AgentToolResult($data), 'ai_create');
+
+        $this->assertSame('{"record":"'.RecordMarkers::of('m_tasks', 7).'","written":true}', $shaped['body']);
+        $this->assertNotNull($shaped['template']);
+        $longest = ToolResultText::full(new AgentToolResult([
+            'record' => new RecordMarker(str_repeat('m', 100), PHP_INT_MAX),
+            'written' => true,
+        ]));
+        $this->assertLessThan(ToolResultText::PREVIEW_LENGTH, mb_strlen($longest));
     }
 
     /** 先頭の中の最後の改行が決まった位置(1,000 字目)の前・ちょうどなら先頭のまま、後ろならその改行で切る */

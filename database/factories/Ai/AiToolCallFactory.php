@@ -6,10 +6,12 @@ use App\Enums\Ai\AiConversationAnswer;
 use App\Enums\Ai\AiToolCallAnswer;
 use App\Enums\Ai\AiToolCallDecision;
 use App\Enums\Ai\AiToolCallStatus;
+use App\Enums\Ai\AiToolWriteDenial;
 use App\Models\Ai\AiRun;
 use App\Models\Ai\AiRunStep;
 use App\Models\Ai\AiToolCall;
 use App\Models\Ai\AiToolCallText;
+use BackedEnum;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use LogicException;
 
@@ -93,6 +95,11 @@ class AiToolCallFactory extends Factory
             'answer' => $answer,
             'answer_run_id' => fn (array $attributes): int => $answerRun->id
                 ?? self::followingRun((int) $attributes['ai_run_id'], $answer)->id,
+            // 実行の答えで断られた行は、書く時の断りの理由を持つ(2.4)
+            'write_denial_reason' => fn (array $attributes): ?AiToolWriteDenial => self::approvedRejection(
+                $answer,
+                self::value($attributes['status']),
+            ) ? AiToolWriteDenial::NoPermission : null,
         ]);
     }
 
@@ -138,5 +145,16 @@ class AiToolCallFactory extends Factory
             'previous_run_id' => $runId,
             'answer' => $runAnswer,
         ]);
+    }
+
+    private static function approvedRejection(AiToolCallAnswer $answer, string $status): bool
+    {
+        return $answer === AiToolCallAnswer::Approve && $status === AiToolCallStatus::Rejected->value;
+    }
+
+    /** 列挙か文字列の値の文字列 */
+    private static function value(mixed $value): string
+    {
+        return $value instanceof BackedEnum ? (string) $value->value : (string) $value;
     }
 }

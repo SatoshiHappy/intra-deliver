@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * 作ってから保存期間を過ぎた行を消す(設計/AI/データと失敗と検査.md 6 節)。元の引数はモデルが渡した値のままで、object でないこともある
  * (形の確かめに落ちた呼び出しも記録に残す = 設計/AI/エージェントの実行/道具の包みと止める.md 9.4)。
  */
-#[Fillable(['ai_tool_call_id', 'arguments', 'result_text', 'confirmation', 'record_names'])]
+#[Fillable(['ai_tool_call_id', 'arguments', 'result_text', 'confirmation', 'written_arguments', 'record_names'])]
 class AiToolCallText extends Model
 {
     /** @use HasFactory<AiToolCallTextFactory> */
@@ -33,6 +33,7 @@ class AiToolCallText extends Model
         return [
             'arguments' => 'json',
             'confirmation' => 'array',
+            'written_arguments' => 'array',
             'record_names' => 'array',
         ];
     }

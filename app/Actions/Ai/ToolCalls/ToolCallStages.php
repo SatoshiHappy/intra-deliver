@@ -7,7 +7,6 @@ use App\Actions\Ai\Api\AgentToolParties;
 use App\Actions\Ai\Api\AgentToolSubject;
 use App\Actions\Ai\Api\ConversationItem;
 use App\Actions\Ai\Api\PriorToolCall;
-use App\Actions\Ai\Instructions\SharedInstructionTemplates;
 use App\Enums\Ai\AiInstructionTemplate;
 use App\Enums\Ai\AiToolCallDecision;
 use App\Enums\Ai\AiToolCallStatus;
@@ -30,7 +29,7 @@ class ToolCallStages
         private ToolJudge $judge,
         private ToolCallRows $rows,
         private AuthorizationReuse $reuse,
-        private SharedInstructionTemplates $shared,
+        private ToolResultItems $items,
         private ToolPartyNames $partyNames,
         private ToolCallAsks $asks,
     ) {}
@@ -51,7 +50,7 @@ class ToolCallStages
         $name = RecordMarkers::neutralize($call->name);
 
         if ($granted === null) {
-            $item = self::failure($call, AiInstructionTemplate::UnknownTool, ['tool_name' => $name]);
+            $item = ToolResultItems::failure($call->id, AiInstructionTemplate::UnknownTool, ['tool_name' => $name]);
 
             return $this->failed($step, $position, $call, AiToolCallDecision::UnknownTool, $item, null);
         }
@@ -67,7 +66,7 @@ class ToolCallStages
         }
 
         if ($problems !== []) {
-            $item = self::failure($call, AiInstructionTemplate::ToolInputInvalid, [
+            $item = ToolResultItems::failure($call->id, AiInstructionTemplate::ToolInputInvalid, [
                 'tool_name' => $name,
                 'problems' => array_map(RecordMarkers::neutralize(...), $problems),
             ]);
@@ -126,7 +125,7 @@ class ToolCallStages
 
         if ($error !== null) {
             $values = ['error' => RecordMarkers::neutralize($error)];
-            $item = self::failure($call, AiInstructionTemplate::ToolError, $values);
+            $item = ToolResultItems::failure($call->id, AiInstructionTemplate::ToolError, $values);
 
             return $this->failed($step, $position, $call, AiToolCallDecision::ValidationError, $item, $arguments);
         }
@@ -174,7 +173,7 @@ class ToolCallStages
     }
 
     /**
-     * 許す(2.4 の T4): 行を処理中にして道具を呼ぶ。
+     * 許す(2.4 の T4): 行を処理中にして道具を呼ぶ(道具の例外の範囲 = 9.4)。
      *
      * @param  array<string, mixed>  $arguments
      * @return array{Result|null, PriorToolCall}
@@ -190,23 +189,24 @@ class ToolCallStages
     ): array {
         $tool = $granted->tool;
         $row = $this->rows->running($step, $position, $call);
-        $executed = function () use ($step, $row, $call, $tool, $arguments, $subject, $granted, $parties): array {
+        $executed = function () use ($call, $tool, $arguments, $subject, $granted, $parties): array {
             $result = $tool->execute($arguments, $subject, $granted->scope, $parties);
-            $shaped = ToolResultText::shaped($tool, $result, RecordMarkers::neutralize($call->name));
-            [$template, $values, $body] = [$shaped['template'], $shaped['values'], $shaped['body']];
-            $item = ConversationItem::toolResult($call->id, $template, $values, $body, false);
-            $done = AiToolCallStatus::Done;
 
-            return [$item, $this->rows->completed($step, $row, $done, $shaped['full'], $result->records, $item)];
+            return [$result, ToolResultText::shaped($tool, $result, RecordMarkers::neutralize($call->name))];
         };
 
         try {
-            [$item, $written] = ToolCallException::during($call, ToolCallException::TOOL, $executed);
+            [$result, $shaped] = ToolCallException::during($call, ToolCallException::TOOL, $executed);
+            [$template, $values, $body] = [$shaped['template'], $shaped['values'], $shaped['body']];
+            $item = ConversationItem::toolResult($call->id, $template, $values, $body, false);
+            [$status, $text, $records] = [AiToolCallStatus::Done, $shaped['full'], $result->records];
         } catch (ToolCallException $exception) {
             report($exception);
-            $item = $this->exceptionItem($call);
-            $written = $this->rows->completed($step, $row, AiToolCallStatus::ToolError, null, [], $item);
+            $item = $this->items->exception($call->id, $call->name);
+            [$status, $text, $records] = [AiToolCallStatus::ToolError, null, []];
         }
+
+        $written = $this->rows->completed($step, $row, $status, $text, $records, $item);
 
         $prior = new PriorToolCall($call->id, $call->name, $arguments, AiToolCallDecision::Allow);
 
@@ -288,29 +288,9 @@ class ToolCallStages
         ToolCallException $exception,
     ): array {
         report($exception);
-        $item = $this->exceptionItem($call);
+        $item = $this->items->exception($call->id, $call->name);
 
         return $this->failed($step, $position, $call, AiToolCallDecision::WrapperException, $item, $arguments);
-    }
-
-    /** 道具の例外と包みの中の例外の結果(道具の失敗の包みに、道具の名前だけを入れた決まった失敗の文 = ③ の定型) */
-    private function exceptionItem(ModelToolCall $call): ConversationItem
-    {
-        $name = RecordMarkers::neutralize($call->name);
-        $text = $this->shared->text(AiInstructionTemplate::ToolException, ['tool_name' => $name]);
-
-        return self::failure($call, AiInstructionTemplate::ToolError, ['error' => $text]);
-    }
-
-    /**
-     * @param  array<string, string|list<string>>  $values
-     */
-    private static function failure(
-        ModelToolCall $call,
-        AiInstructionTemplate $template,
-        array $values,
-    ): ConversationItem {
-        return ConversationItem::toolResult($call->id, $template, $values, null, true);
     }
 
     /**

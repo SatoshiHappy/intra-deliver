@@ -64,6 +64,12 @@ final class RecordWriters
             'reason' => '人の操作の会議の作成が会議のレコードを作る 1 か所(docs の 設計/業務ツール/会議/口と検査.md の 12 節)',
         ],
         ['type' => 'path', 'place' => LayerRules::SEEDERS_PATH, 'reason' => '初期データ(seeder は業務処理を呼んでレコードを入れる)'],
+        [
+            'type' => 'class',
+            'place' => 'App\Actions\Ai\Tools\RecordToolWrites',
+            'reason' => '会話の書く道具が、利用者が確認のカードで「実行」を押した件を書く 1 か所(docs の'
+                .' 設計/AI/道具と権限/まとめた実行と送るデータ.md 10.5)',
+        ],
     ];
 
     /**

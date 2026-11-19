@@ -3,6 +3,7 @@
 namespace Tests\Feature\Ai\Tools\Generic;
 
 use App\Actions\Ai\Api\AgentToolParties;
+use App\Actions\Ai\Api\AgentToolResult;
 use App\Actions\Ai\Api\AgentToolScope;
 use App\Actions\Ai\Api\AgentToolSubject;
 use App\Actions\Ai\Api\AgentUpdateTool;
@@ -30,6 +31,12 @@ final class GenericUpdateTool extends FakeRecordTool implements AgentUpdateTool
      */
     public array $confirmedWith = [];
 
+    /** @var (Closure(array<string, mixed>, string): AgentToolResult)|null */
+    public ?Closure $writer = null;
+
+    /** @var list<array{written: array<string, mixed>, version: string}> 書くが受けた物(呼ばれた順) */
+    public array $writtenWith = [];
+
     public function current(array $arguments, AgentToolSubject $subject, AgentToolScope $scope): ?RecordCurrentValues
     {
         $this->reads++;
@@ -52,5 +59,21 @@ final class GenericUpdateTool extends FakeRecordTool implements AgentUpdateTool
         $this->confirmedWith[] = ['current' => $current, 'arguments' => $arguments, 'parties' => $parties];
 
         return new RecordConfirmation(['id' => $current->id, 'next' => $arguments]);
+    }
+
+    public function write(
+        array $written,
+        AgentToolSubject $subject,
+        AgentToolScope $scope,
+        RecordConfirmation $confirmation,
+        string $version,
+    ): AgentToolResult {
+        $this->writtenWith[] = ['written' => $written, 'version' => $version];
+        $module = is_string($written['module'] ?? null) ? $written['module'] : '';
+        $id = is_int($written['id'] ?? null) ? $written['id'] : 0;
+
+        return $this->writer === null
+            ? new AgentToolResult(['written' => true], [['module' => $module, 'id' => $id, 'name' => '直した']])
+            : ($this->writer)($written, $version);
     }
 }

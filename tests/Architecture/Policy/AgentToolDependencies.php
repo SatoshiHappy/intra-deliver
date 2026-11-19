@@ -161,6 +161,14 @@ final class AgentToolDependencies
         ['class' => 'App\Queries\Master\Api\EffectiveUsers', 'reason' => '依頼者の有効・ユーザーの id の確かめ'],
         ['class' => 'App\Queries\Master\Api\DepartmentTree', 'reason' => '組織の候補に添える上位の組織・組織の id の確かめ'],
         ['class' => 'App\Queries\Master\Api\MasterNames', 'reason' => '確かめた id の名前と主所属'],
+        [
+            'class' => 'App\Actions\Records\Api\RecordHolderRefusal',
+            'reason' => '書く時の持ち主の断りの型(表 2 の P5 に読み替える。型を見るだけで呼ばない = 10.5)',
+        ],
+        [
+            'class' => 'App\Actions\Records\Api\RecordStaleRefusal',
+            'reason' => '書く時の開いた後の更新の断りの型(表 2 の P6 に読み替える。型を見るだけで呼ばない = 10.5)',
+        ],
     ];
 
     /** 判定の関数の名前空間の依存を (2) に絞る Records と Master の名前空間 */

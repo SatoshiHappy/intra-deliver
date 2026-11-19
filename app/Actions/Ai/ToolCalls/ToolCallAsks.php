@@ -45,7 +45,7 @@ class ToolCallAsks
         $definition = $granted->scope->modules[$module]['definition'] ?? [];
         $ks = ToolCallLinks::ks($tool, $arguments, $definition, $prior, $step->tools);
         $content = [...$confirmation->content, 'references' => (object) $ks];
-        $row = $this->rows->asked($step, $position, $call, $content, $judgement->version);
+        $row = $this->rows->asked($step, $position, $call, $content, $arguments, $judgement->version);
         $priorCall = new PriorToolCall($call->id, $call->name, $arguments, AiToolCallDecision::Ask);
 
         return [['callId' => $call->id, 'toolCallId' => $row->id, 'item' => null], $priorCall];

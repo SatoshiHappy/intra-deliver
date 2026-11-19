@@ -5,6 +5,7 @@ namespace Tests\Feature\Ai;
 use App\Enums\Ai\AiToolCallAnswer;
 use App\Enums\Ai\AiToolCallDecision;
 use App\Enums\Ai\AiToolCallStatus;
+use App\Enums\Ai\AiToolWriteDenial;
 use App\Models\Ai\AiToolCall;
 use Database\Factories\Ai\AiToolCallFactory;
 use Tests\Support\AssertsConstraintViolations;
@@ -111,6 +112,39 @@ final class ConversationToolCallStatesTest extends TransactionalTestCase
         $this->assertRejectedBy($finished, fn () => $running->create(['finished_at' => now()]));
         $this->assertRejectedBy($finished, fn () => AiToolCall::factory()->asked()->create(['finished_at' => now()]));
         $this->assertRejectedBy($finished, fn () => AiToolCall::factory()->allowed()->create(['finished_at' => null]));
+    }
+
+    /**
+     * 書く時の断りの理由は、実行の答えの行の断られた(P1〜P7 の理由)と道具の誤り(P9 の理由)だけが持ち、実行の答えの断られたは必ず持つ
+     * (2.4。判定の断るの理由とは別)。
+     */
+    public function test_the_write_denial_reason_goes_with_an_approved_rejection_or_tool_error(): void
+    {
+        $any = 'ai_tool_calls_write_denial_reason_check';
+        $required = 'ai_tool_calls_write_denial_reason_required_check';
+        $approved = fn (AiToolCallStatus $status): AiToolCallFactory => AiToolCall::factory()
+            ->answered(AiToolCallAnswer::Approve, $status);
+        $rejected = $approved(AiToolCallStatus::Rejected);
+        $toolError = $approved(AiToolCallStatus::ToolError);
+
+        foreach (AiToolWriteDenial::cases() as $reason) {
+            $row = ['write_denial_reason' => $reason];
+            [$fits, $other] = $reason->isToolError() ? [$toolError, $rejected] : [$rejected, $toolError];
+            $this->assertSame($reason, $fits->createOne($row)->refresh()->write_denial_reason);
+            $this->assertRejectedBy($any, fn () => $other->create($row));
+        }
+
+        $this->assertRejectedBy($required, fn () => $rejected->create(['write_denial_reason' => null]));
+        $this->assertNull($toolError->createOne()->refresh()->write_denial_reason);
+        $reason = ['write_denial_reason' => AiToolWriteDenial::NoPermission];
+        $this->assertRejectedBy($any, fn () => $approved(AiToolCallStatus::Done)->create($reason));
+        $reject = AiToolCall::factory()->answered(AiToolCallAnswer::Reject);
+        $this->assertRejectedBy($any, fn () => $reject->create($reason));
+        $this->assertRejectedBy($any, fn () => AiToolCall::factory()->denied()->create($reason));
+        $this->assertRejectedBy($any, fn () => AiToolCall::factory()->wrapperError()->create($reason));
+        $this->assertRejectedBy($any, fn () => $this->updateRow('ai_tool_calls', $rejected->createOne()->id, [
+            'write_denial_reason' => 'maybe',
+        ]));
     }
 
     public function test_values_out_of_the_lists_are_rejected(): void

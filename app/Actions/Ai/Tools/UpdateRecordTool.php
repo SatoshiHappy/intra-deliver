@@ -28,6 +28,7 @@ final class UpdateRecordTool implements AgentUpdateTool
         private readonly RecordViewAccess $access,
         private readonly RecordFormQuery $forms,
         private readonly RecordConfirmations $confirmations,
+        private readonly RecordToolWrites $writes,
     ) {}
 
     public function name(): string
@@ -128,6 +129,26 @@ final class UpdateRecordTool implements AgentUpdateTool
         AgentToolParties $parties,
     ): RecordConfirmation {
         return $this->confirmations->confirmation($arguments, $subject, $scope, $parties, $current);
+    }
+
+    /**
+     * @throws LogicException 書く値の引数に業務モジュールか id が無いとき(包みの形の検証を通った引数には必ずある)
+     */
+    public function write(
+        array $written,
+        AgentToolSubject $subject,
+        AgentToolScope $scope,
+        RecordConfirmation $confirmation,
+        string $version,
+    ): AgentToolResult {
+        $module = $this->moduleOf($written) ?? throw new LogicException('直すの書く値の引数に業務モジュールが無い');
+        $id = is_int($written['id'] ?? null) ? $written['id'] : throw new LogicException('直すの書く値の引数に id が無い');
+        $this->writes->update($subject, $module, $id, $written, $version);
+        $target = is_array($confirmation->content['target'] ?? null) ? $confirmation->content['target'] : [];
+        $name = is_string($target['name'] ?? null) ? $target['name'] : null;
+        $definition = $scope->modules[$module]['definition'] ?? [];
+
+        return RecordToolWrites::result($module, $id, $written, $definition, $name);
     }
 
     /**

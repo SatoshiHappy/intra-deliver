@@ -21,6 +21,7 @@ class AiToolCallTextFactory extends Factory
             'arguments' => ['query' => '会議'],
             'result_text' => '会議が 1 件見つかった',
             'confirmation' => null,
+            'written_arguments' => null,
             'record_names' => [],
         ];
     }

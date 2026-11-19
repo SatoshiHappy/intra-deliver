@@ -5,6 +5,7 @@ namespace App\Models\Ai;
 use App\Enums\Ai\AiToolCallAnswer;
 use App\Enums\Ai\AiToolCallDecision;
 use App\Enums\Ai\AiToolCallStatus;
+use App\Enums\Ai\AiToolWriteDenial;
 use Database\Factories\Ai\AiToolCallFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -18,7 +19,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
  */
 #[Fillable([
     'ai_run_id', 'ai_run_step_id', 'position', 'call_id', 'tool_name', 'decision', 'decision_reason', 'answer',
-    'answer_run_id', 'status', 'records', 'confirmation_version', 'finished_at',
+    'answer_run_id', 'status', 'records', 'confirmation_version', 'write_denial_reason', 'finished_at',
 ])]
 class AiToolCall extends Model
 {
@@ -39,6 +40,7 @@ class AiToolCall extends Model
             'status' => AiToolCallStatus::class,
             'records' => 'array',
             'confirmation_version' => 'string',
+            'write_denial_reason' => AiToolWriteDenial::class,
             'finished_at' => 'datetime',
         ];
     }

@@ -56,6 +56,40 @@ final class ToolWriteChecks
     }
 
     /**
+     * 書く前の確かめのやり直し(10.3 の「承認待ちの呼び出し」の検証のやり直し): 定義による項目と選択肢・前の件を指す印・W8 を、書く値の引数
+     * (参照制限の 2 つのキーは問うの時に決めた値)で見る。誤りは書く時の入力の誤り(表 2 の P9)の文。範囲の外の業務モジュールは見ない
+     * (表 2 の P2・P3 で断る)。
+     *
+     * @param  array<string, mixed>  $written  問うの時に残した書く値の引数
+     * @param  list<PriorToolCall>  $prior  同じステップで前に問うになった件(引数は書く値の引数)
+     */
+    public static function atWrite(
+        AgentRecordTool $tool,
+        array $written,
+        AgentToolScope $scope,
+        array $prior,
+        GrantedTools $tools,
+    ): ?string {
+        $module = $tool->moduleOf($written);
+
+        if ($module === null || ! $scope->has($module)) {
+            return null;
+        }
+
+        $definition = $scope->modules[$module]['definition'];
+        $problems = [
+            ...self::definitionProblems($tool, $written, $definition),
+            ...ToolCallLinks::problems($tool, $written, $definition, $prior, $tools),
+        ];
+
+        if ($problems === []) {
+            [, $problems] = self::rowAccess($tool, $written, false, []);
+        }
+
+        return $problems === [] ? null : implode("\n", $problems);
+    }
+
+    /**
      * 直すの 1 段目の後の参照制限の確かめ(元 = 今の値)。誤りは B19 の文、通れば書く値を入れた引数。
      *
      * @param  array<string, mixed>  $arguments

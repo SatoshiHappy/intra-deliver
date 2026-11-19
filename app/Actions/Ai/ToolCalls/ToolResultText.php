@@ -2,8 +2,10 @@
 
 namespace App\Actions\Ai\ToolCalls;
 
+use App\Actions\Ai\Api\AgentCreateTool;
 use App\Actions\Ai\Api\AgentTool;
 use App\Actions\Ai\Api\AgentToolResult;
+use App\Actions\Ai\Api\AgentUpdateTool;
 use App\Actions\Ai\Api\RecordMarker;
 use App\Enums\Ai\AiInstructionTemplate;
 use App\Queries\Ai\Api\RecordMarkers;
@@ -22,6 +24,12 @@ final class ToolResultText
 
     /** 上限を超えたときに返す先頭の長さ */
     public const PREVIEW_LENGTH = 2_000;
+
+    /**
+     * 書く道具の結果が上限を超えたときに残す鍵(先頭で切らず、件の書く先の印と成否を残す = 10.7。残す形の最大 = 業務モジュールのコードの
+     * 最大の長さの印と真偽で、先頭の長さを下回る = ToolResultTextTest。上限は先頭の長さ以上 = 起動の時の確かめ)。
+     */
+    public const WRITE_KEPT = ['record', 'written'];
 
     /** 先頭の中の最後の改行がこの位置より後ろなら、その改行で切る */
     public const PREVIEW_BREAK_AFTER = 1_000;
@@ -46,6 +54,11 @@ final class ToolResultText
 
         if ($preview === null) {
             return ['full' => $full, 'template' => null, 'values' => [], 'body' => $full];
+        }
+
+        if ($tool instanceof AgentCreateTool || $tool instanceof AgentUpdateTool) {
+            $kept = array_intersect_key($result->data, array_flip(self::WRITE_KEPT));
+            $preview = self::full(new AgentToolResult($kept));
         }
 
         return ['full' => $full, 'template' => $tool->largeResultTemplate(), 'values' => [

@@ -25,13 +25,16 @@ final class ConversationRecordTextsTest extends TransactionalTestCase
         $records = [['module' => 'meetings', 'id' => 7]];
         $call = AiToolCall::factory()->inStep($step)->withText()->create(['records' => $records]);
         $text = $call->text()->sole();
-        $text->update(['confirmation' => ['target' => 'meetings/7', 'current' => 'a', 'new' => 'b'], 'record_names' => [
-            ['module' => 'meetings', 'id' => 7, 'name' => '定例会'],
-        ]]);
+        $text->update([
+            'confirmation' => ['target' => 'meetings/7', 'current' => 'a', 'new' => 'b'],
+            'written_arguments' => ['module' => 'meetings', 'id' => 7, 'values' => ['title' => 'b']],
+            'record_names' => [['module' => 'meetings', 'id' => 7, 'name' => '定例会']],
+        ]);
 
         $this->assertSame(['query' => '会議'], $text->refresh()->arguments);
         $this->assertSame([7, '定例会'], [$call->records[0]['id'], $text->record_names[0]['name']]);
         $this->assertSame('b', $text->confirmation['new'] ?? null);
+        $this->assertSame(['title' => 'b'], $text->written_arguments['values'] ?? null);
         $this->assertStringContainsString('"role":"user"', (string) $step->text?->sent_text);
         $this->assertNull($step->text?->output_text);
         $noSentText = fn () => AiRunStepText::factory()->create(['sent_text' => null]);
@@ -54,6 +57,17 @@ final class ConversationRecordTextsTest extends TransactionalTestCase
             'ai_tool_call_texts_confirmation_check',
             fn () => AiToolCallText::factory()->create(['confirmation' => ['a', 'b']]),
         );
+        $this->assertRejectedBy(
+            'ai_tool_call_texts_written_arguments_check',
+            fn () => AiToolCallText::factory()->create(['confirmation' => ['k' => 1], 'written_arguments' => ['a']]),
+        );
+        // 書く値の引数を持てるのは確認の内容のある行だけ(前の版の確認の内容だけの行は通る)
+        $this->assertRejectedBy(
+            'ai_tool_call_texts_written_arguments_pair_check',
+            fn () => AiToolCallText::factory()->create(['written_arguments' => ['module' => 'm']]),
+        );
+        $confirmationOnly = AiToolCallText::factory()->create(['confirmation' => ['a' => 1]]);
+        $this->assertNull($confirmationOnly->refresh()->written_arguments);
         $this->assertRejectedBy(
             'ai_tool_call_texts_record_names_check',
             fn () => AiToolCallText::factory()->create(['record_names' => ['a' => 1]]),

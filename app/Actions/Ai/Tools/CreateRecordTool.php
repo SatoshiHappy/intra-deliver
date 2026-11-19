@@ -19,7 +19,10 @@ use LogicException;
  */
 final class CreateRecordTool implements AgentCreateTool
 {
-    public function __construct(private readonly RecordConfirmations $confirmations) {}
+    public function __construct(
+        private readonly RecordConfirmations $confirmations,
+        private readonly RecordToolWrites $writes,
+    ) {}
 
     public function name(): string
     {
@@ -96,6 +99,22 @@ final class CreateRecordTool implements AgentCreateTool
         AgentToolParties $parties,
     ): RecordConfirmation {
         return $this->confirmations->confirmation($arguments, $subject, $scope, $parties, null);
+    }
+
+    /**
+     * @throws LogicException 書く値の引数に業務モジュールが無いとき(包みの形の検証を通った引数には必ずある)
+     */
+    public function write(
+        array $written,
+        AgentToolSubject $subject,
+        AgentToolScope $scope,
+        RecordConfirmation $confirmation,
+    ): AgentToolResult {
+        $module = $this->moduleOf($written) ?? throw new LogicException('作るの書く値の引数に業務モジュールが無い');
+        $id = $this->writes->create($subject, $module, $written);
+        $definition = $scope->modules[$module]['definition'] ?? [];
+
+        return RecordToolWrites::result($module, $id, $written, $definition, null);
     }
 
     /**

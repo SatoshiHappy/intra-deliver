@@ -77,6 +77,7 @@ final readonly class ConversationRunQuery
             $row->text?->confirmation,
             $row->answer,
             $row->text?->result_text,
+            $row->write_denial_reason,
         );
     }
 
