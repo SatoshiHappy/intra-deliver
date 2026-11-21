@@ -185,7 +185,7 @@
     "app/Queries/Workflow/AssigneeCandidates.php": 3,
     "app/Queries/Workflow/CaseCouncils.php": 21,
     "app/Queries/Workflow/CaseDesignations.php": 7,
-    "app/Queries/Workflow/CaseDetailQuery.php": 8,
+    "app/Queries/Workflow/CaseDetailQuery.php": 7,
     "app/Queries/Workflow/CaseDiagram.php": 10,
     "app/Queries/Workflow/CaseEntryGate.php": 2,
     "app/Queries/Workflow/CaseHistories.php": 7,

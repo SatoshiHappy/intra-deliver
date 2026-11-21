@@ -96,42 +96,11 @@ final readonly class CaseSituation
     }
 
     /**
-     * 現在のステップの文字列(設計/ワークフロー/案件の運用/認可と一覧.md の 2.2 節の「現在のステップ」。無ければ null): 写した並びで表示名を「、」で並べ、
-     * 同じ親(親のノードの id で見る)の展開の行が続く所は「{親の名前}({子の名前}、…)」に 1 つにまとめる(詳細の申請情報・ホームの節も同じ値)。
+     * 現在のステップの名前だけの文字(保留中を添えない。無ければ null。まとめ方の 1 か所 = {@see CurrentNodes::namesOf()})。
      */
     public function currentNames(): ?string
     {
-        if ($this->currentNodes === []) {
-            return null;
-        }
-
-        $groups = [];
-
-        foreach ($this->currentNodes as $node) {
-            $last = array_key_last($groups);
-
-            if ($node->parentId !== null && $last !== null && $groups[$last]['parentId'] === $node->parentId) {
-                $groups[$last]['names'][] = $node->childName ?? $node->name;
-            } else {
-                $groups[] = [
-                    'parentId' => $node->parentId,
-                    'parent' => $node->parentName,
-                    'names' => [$node->childName ?? $node->name],
-                ];
-            }
-        }
-
-        return implode('、', array_map(self::groupName(...), $groups));
-    }
-
-    /**
-     * まとめた 1 つの文字(展開の行でなければ表示名、展開の行は「{親の名前}({子の名前}、…)」。子が 1 つでも括弧で囲む)。
-     *
-     * @param  array{parentId: int|null, parent: string|null, names: non-empty-list<string>}  $group
-     */
-    private static function groupName(array $group): string
-    {
-        return $group['parent'] === null ? $group['names'][0] : $group['parent'].'('.implode('、', $group['names']).')';
+        return CurrentNodes::namesOf($this->currentNodes);
     }
 
     /**

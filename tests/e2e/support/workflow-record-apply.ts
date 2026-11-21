@@ -1,5 +1,6 @@
 import { expect } from './test';
-import type { Page } from '@playwright/test';
+import type { Locator, Page } from '@playwright/test';
+import { escapeRegExp } from './app-navigation';
 import { fillVersionTwoBaseDate } from './seed-dates';
 import { submitAndExpectUrl } from './submit';
 import { fillPlanFields, submitApplication } from './workflow-operations';
@@ -117,6 +118,39 @@ export async function expectHeld(page: Page) {
     await expect(
         main.getByRole('link', { name: '複製', exact: true }),
     ).toBeVisible();
+}
+
+/**
+ * 持ち主の 1 行(詳細・編集の見出しの下)の案内(docs の 設計/業務データの入れ物/レコードの共通機能/詳細の画面/README.md の 5.1):
+ * 申請を閲覧できる人には理由に続けて申請番号のリンクと札、suffix があれば「・<suffix>」。notice が null なら理由の 1 行だけ(リンクも札も無い)。
+ * 申請番号のリンクを返す(notice が null なら null)。
+ */
+export async function expectHoldNotice(
+    page: Page,
+    notice: { status: string; suffix: string | null } | null,
+): Promise<Locator | null> {
+    const line = page
+        .getByRole('main')
+        .getByText(HOLD_REASON, { exact: true })
+        .locator('..');
+    const link = line.getByRole('link', { name: /^WF-[0-9]{6,}$/ });
+
+    if (notice === null) {
+        await expect(line).toHaveText(HOLD_REASON);
+        await expect(line.getByRole('link')).toHaveCount(0);
+
+        return null;
+    }
+
+    await expect(link).toBeVisible();
+    const suffix = notice.suffix === null ? '' : `・${notice.suffix}`;
+    await expect(line).toHaveText(
+        new RegExp(
+            `^${HOLD_REASON}WF-[0-9]{6,}${escapeRegExp(notice.status + suffix)}$`,
+        ),
+    );
+
+    return link;
 }
 
 /**

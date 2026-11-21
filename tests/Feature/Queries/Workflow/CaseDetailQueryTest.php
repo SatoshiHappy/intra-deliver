@@ -153,6 +153,7 @@ final class CaseDetailQueryTest extends TransactionalTestCase
         $detail = $this->show($this->users['a'], $case->id);
 
         $this->assertNull($detail['case']['currentSummary']);
+        $this->assertSame([], $detail['case']['currentNodeGroups']);
         $this->assertSame([], array_values(array_filter(array_column(DB::getQueryLog(), 'query'), fn (mixed $sql) => str_contains((string) $sql, '"workflow_case_node_id" is null'))));
     }
 
@@ -168,7 +169,11 @@ final class CaseDetailQueryTest extends TransactionalTestCase
             'flow' => ['code' => $this->flow->code, 'name' => $this->flow->name], 'applicant' => ['id' => $this->users['a']->id, 'code' => 'u0001', 'name' => '佐々木 陽太'],
             'department' => ['id' => $case->department_id, 'code' => $case->department()->sole()->code, 'name' => null],
             'appliedAt' => $case->applied_at?->toIso8601String(), 'completedAt' => null, 'baseDate' => $case->base_date?->format('Y-m-d'), 'version' => 1,
-            'currentSummary' => ['state' => 'waiting', 'name' => $approve2->name], 'deadline' => $due, 'revision' => 0,
+            'currentSummary' => ['state' => 'waiting', 'name' => $approve2->name],
+            'currentNodeGroups' => [['parentName' => null, 'nodes' => [
+                ['id' => $approve2->id, 'name' => $approve2->name, 'hold' => false],
+            ]]],
+            'deadline' => $due, 'revision' => 0,
         ], $detail['case']);
         $this->assertSame([
             [$apply->id, 'apply', 'done', [[$this->users['a']->id, false]], ['apply', $at]],

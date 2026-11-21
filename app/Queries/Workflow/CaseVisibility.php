@@ -165,6 +165,18 @@ class CaseVisibility
     }
 
     /**
+     * 申請の詳細の入口が見せる案件(一時保存でなく閲覧できる)の問い合わせ。入口と同じ人にだけ見せる読み取りが、写しでなく同じ絞り込みを通る。
+     *
+     * @return Builder<WorkflowCase>
+     */
+    public function appliedCase(Requester $requester, DateTimeInterface $date, int $caseId): Builder
+    {
+        $applied = WorkflowCase::query()->whereKey($caseId)->where('state', '<>', WorkflowCaseState::Draft);
+
+        return $this->visible($applied, $requester, $date);
+    }
+
+    /**
      * 案件が閲覧できるか(無い案件は偽)。{@see self::visible()} と同じ絞り込みを、案件の id で実行する。
      */
     public function isVisible(Requester $requester, DateTimeInterface $date, int $caseId): bool

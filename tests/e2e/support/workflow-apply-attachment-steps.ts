@@ -86,24 +86,55 @@ export async function reviseDraft(page: Page, form: Locator, draftUrl: string) {
 
 /**
  * システム管理者に切り替えて、業務モジュール「プロジェクト計画の申請」の「添付ファイルの追加・削除を許可」を外し、申請者に戻る。
+ * 見本に添付を使う進行中の申請があるので、「更新」で数つきの確かめが出る。「キャンセル」で送らずに閉じ(開き直しても許可のまま)、
+ * もう一度「更新」を押して確かめの「更新」で送る(docs の 設計/業務データの入れ物/レコードの共通機能/業務モジュールの管理.md の 2 節の表・7 節の E2E)。
  */
 export async function disableModuleAttachment(page: Page) {
     await chooseUser(page, APPLICANT_LABEL, 'システム管理者');
     await page.goto(`${MODULE_ADMIN_URL}/edit`);
+    const allowed = await uncheckModuleAttachment(page);
     const moduleForm = page.getByRole('form', { name: '業務モジュールの入力' });
-    const allowed = moduleForm.getByRole('checkbox', {
-        name: '添付ファイルの追加・削除を許可',
-        exact: true,
+    const confirm = page.getByRole('dialog', {
+        name: '添付ファイルの追加・削除の許可の解除',
     });
-    await expect(allowed).toBeChecked();
-    await allowed.click();
+
+    await moduleForm.getByRole('button', { name: '更新', exact: true }).click();
+    await expect(confirm).toContainText(
+        /添付ファイルを追加・削除できる進行中の申請が [1-9][0-9]* 件あります。解除すると、これらの申請の再申請と処理でも添付ファイルを追加・削除できなくなります。/,
+    );
+    await expect(confirm).toContainText('このまま更新しますか。');
+    await confirm
+        .getByRole('button', { name: 'キャンセル', exact: true })
+        .click();
+    await expect(confirm).toHaveCount(0);
     await expect(allowed).not.toBeChecked();
+    await page.reload();
+    await uncheckModuleAttachment(page);
+
+    await moduleForm.getByRole('button', { name: '更新', exact: true }).click();
     await submitAndExpectUrl(
         page,
-        moduleForm.getByRole('button', { name: '更新', exact: true }),
+        confirm.getByRole('button', { name: '更新', exact: true }),
         MODULE_ADMIN_URL,
     );
     await chooseUser(page, ADMIN, '申請者');
+}
+
+/**
+ * 業務モジュールの編集で「添付ファイルの追加・削除を許可」が付いている(送っていない)ことを確かめて外し、チェックを返す。
+ */
+async function uncheckModuleAttachment(page: Page): Promise<Locator> {
+    const allowed = page
+        .getByRole('form', { name: '業務モジュールの入力' })
+        .getByRole('checkbox', {
+            name: '添付ファイルの追加・削除を許可',
+            exact: true,
+        });
+    await expect(allowed).toBeChecked();
+    await allowed.click();
+    await expect(allowed).not.toBeChecked();
+
+    return allowed;
 }
 
 /**

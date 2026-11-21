@@ -27,6 +27,14 @@ class WorkflowRecordHolds implements RecordHolds
     }
 
     /**
+     * 持ち主の鍵から案件の id を読む({@see self::holderOf()} の逆。ほかの形の鍵は null)。
+     */
+    public static function caseIdOf(string $holder): ?int
+    {
+        return preg_match('/\Aworkflow-case:([1-9][0-9]*)\z/', $holder, $matches) === 1 ? (int) $matches[1] : null;
+    }
+
+    /**
      * 1 回の問い合わせで引く(渡したレコードが無ければ問い合わせない)。
      *
      * @param  list<int>  $recordIds

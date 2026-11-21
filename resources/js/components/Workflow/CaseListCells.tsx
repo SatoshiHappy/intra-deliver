@@ -5,17 +5,12 @@ import {
     OverdueBadge,
 } from '@/components/Workflow/WorkflowStatusBadge';
 import { EMPTY_VALUE } from '@/lib/recordValues';
-import {
-    currentNodeGroups,
-    dueOf,
-    elapsedDaysOf,
-    sublineNumberOf,
-} from '@/lib/Workflow/caseList';
+import { dueOf, elapsedDaysOf, sublineNumberOf } from '@/lib/Workflow/caseList';
 import { show } from '@/routes/workflow/cases';
 import { edit as editDraft } from '@/routes/workflow/drafts';
 import type {
     WorkflowCaseRow,
-    WorkflowCurrentNode,
+    WorkflowCurrentNodeGroup,
     WorkflowDeadline,
 } from '@/types';
 
@@ -60,8 +55,7 @@ export function CaseTitle({
 }
 
 /**
- * 申請名のセル(docs の 設計/ワークフロー/案件の運用/画面/案件の画面.md の 2 節): リンク = 一時保存は一時保存の画面(申請できる人のときだけ)、
- * ほかは詳細。2 行目は一時保存なら「{フロー名}」。
+ * 申請名のセル(リンクの出し分けと 2 行目 = docs の 設計/ワークフロー/案件の運用/画面/案件の画面.md の 2 節)。
  */
 export function CaseNameCell({ row }: { row: WorkflowCaseRow }) {
     const href =
@@ -82,14 +76,14 @@ export function CaseNameCell({ row }: { row: WorkflowCaseRow }) {
 }
 
 /**
- * ノードの名前を「、」で並べる(展開の行は子の名前。保留中のノードは名前の後に札「保留中」)。
+ * ノードの名前を「、」で並べる(保留中のノードは名前の後に札「保留中」)。
  */
-function NodeNames({ nodes }: { nodes: WorkflowCurrentNode[] }) {
+function NodeNames({ nodes }: { nodes: WorkflowCurrentNodeGroup['nodes'] }) {
     return nodes.map((node, position) => (
         <Fragment key={node.id}>
             {position > 0 && '、'}
-            {node.childName ?? node.name}
-            {node.state === 'hold' && (
+            {node.name}
+            {node.hold && (
                 <>
                     {' '}
                     <HoldBadge />
@@ -100,15 +94,14 @@ function NodeNames({ nodes }: { nodes: WorkflowCurrentNode[] }) {
 }
 
 /**
- * 現在のステップのセル(表示名を「、」で並べ、同じ親の展開の行が続く所は「{親の名前}({子の名前}、…)」にまとめる。
- * 保留中のノードの名前の後に札「保留中」。未完了でなければ「—」)。
+ * 現在のステップ(まとめ方はサーバーが決めるので、ここは描くだけ。書き方 = docs の 設計/ワークフロー/案件の運用/認可と一覧.md の 2.2 節)。一覧の行と詳細の申請情報が使う。
  */
-export function CurrentStepCell({ row }: { row: WorkflowCaseRow }) {
-    if (row.state !== 'active' || row.currentNodes.length === 0) {
-        return EMPTY_VALUE;
-    }
-
-    return currentNodeGroups(row.currentNodes).map((group, position) => (
+export function CurrentNodeGroups({
+    groups,
+}: {
+    groups: WorkflowCurrentNodeGroup[];
+}) {
+    return groups.map((group, position) => (
         <Fragment key={group.nodes.map((node) => node.id).join('-')}>
             {position > 0 && '、'}
             {group.parentName === null ? (
@@ -120,6 +113,17 @@ export function CurrentStepCell({ row }: { row: WorkflowCaseRow }) {
             )}
         </Fragment>
     ));
+}
+
+/**
+ * 現在のステップのセル(未完了でなければ「—」)。
+ */
+export function CurrentStepCell({ row }: { row: WorkflowCaseRow }) {
+    if (row.state !== 'active' || row.currentNodeGroups.length === 0) {
+        return EMPTY_VALUE;
+    }
+
+    return <CurrentNodeGroups groups={row.currentNodeGroups} />;
 }
 
 /**

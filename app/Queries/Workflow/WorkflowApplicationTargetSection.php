@@ -4,13 +4,13 @@ namespace App\Queries\Workflow;
 
 use App\Enums\Workflow\WorkflowCaseState;
 use App\Enums\Workflow\WorkflowCompletionReason;
+use App\Enums\Workflow\WorkflowNodeState;
 use App\Models\Workflow\WorkflowCase;
 use App\Queries\Authz\Api\Requester;
 use App\Queries\Records\Api\RecordShowSections;
 use App\Support\AccessContext;
 use Carbon\CarbonImmutable;
 use Illuminate\Database\Eloquent\Builder;
-use LogicException;
 
 /**
  * 業務レコードの詳細のサイドパネルの節「このレコードを申請対象にする申請」(docs の
@@ -32,8 +32,6 @@ class WorkflowApplicationTargetSection implements RecordShowSections
         ['code' => 'applied-on', 'label' => '申請日', 'type' => 'date'],
         ['code' => 'state', 'label' => '状態', 'type' => 'status'],
     ];
-
-    private const ACTIVE_FALLBACK = ['承認待ち', 'pending'];
 
     public function __construct(
         private ApplicationTargetCases $applicationTargetCases,
@@ -130,27 +128,20 @@ class WorkflowApplicationTargetSection implements RecordShowSections
     }
 
     /**
-     * 状態の札(完了は完了の理由、未完了は現在のノードの状態から引く。完了の理由が当たらないのはデータの不整合なので握らない)。
+     * 状態の札(語と色はサーバーの 1 か所 {@see CaseStateLabels})。
      *
      * @param  CaseRow  $row
      * @return array{string, 'pending'|'rejected'|'returned'|'settled'}
      */
     private static function badgeOf(array $row): array
     {
-        if ($row['state'] === WorkflowCaseState::Completed->value) {
-            $reason = WorkflowCompletionReason::tryFrom((string) ($row['completionReason'] ?? ''))
-                ?? throw new LogicException("完了した案件 {$row['id']} が完了の理由を持たない");
+        $labelState = $row['currentSummary']['state'] ?? null;
 
-            // 札の語と色 = docs の 設計/ワークフロー/画面/ホームと意匠とE2E.md の 8 節。理由を足したら match が漏れを止める
-            return match ($reason) {
-                WorkflowCompletionReason::Approved => ['完了(承認)', 'settled'],
-                WorkflowCompletionReason::ApprovedEarly => ['完了(承認終了)', 'settled'],
-                WorkflowCompletionReason::Rejected => ['完了(否認)', 'rejected'],
-                WorkflowCompletionReason::Withdrawn => ['完了(取止め)', 'settled'],
-            };
-        }
-
-        // 未完了で札の語に当たらないものは承認待ち(画面の案件の状態の札と同じ = docs の 設計/ワークフロー/案件の運用/認可と一覧.md の 2.4 節)
-        return WorkflowHomeLabels::CURRENT_NODE_STATES[$row['currentSummary']['state'] ?? ''] ?? self::ACTIVE_FALLBACK;
+        return CaseStateLabels::of(
+            $row['id'],
+            WorkflowCaseState::from($row['state']),
+            WorkflowCompletionReason::tryFrom((string) ($row['completionReason'] ?? '')),
+            $labelState === null ? null : WorkflowNodeState::from($labelState),
+        );
     }
 }

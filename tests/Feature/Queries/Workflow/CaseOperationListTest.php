@@ -140,9 +140,9 @@ final class CaseOperationListTest extends TransactionalTestCase
         $this->assertSame(['列の見本', 'プロジェクト計画の承認', $applicant->id], $named);
         $this->assertMatchesRegularExpression('/^WF-[0-9]{6,}\z/', (string) $row['number']);
         $this->assertSame(['state' => 'hold', 'name' => 'a1'], $row['currentSummary']);
-        $plain = ['parentId' => null, 'parentName' => null, 'childName' => null];
-        $current = [['id' => $this->caseNode($case, 'a1')->id, 'name' => 'a1', ...$plain, 'state' => 'hold']];
-        $this->assertSame($current, $row['currentNodes']);
+        $a1 = $this->caseNode($case, 'a1')->id;
+        $current = [['parentName' => null, 'nodes' => [['id' => $a1, 'name' => 'a1', 'hold' => true]]]];
+        $this->assertSame($current, $row['currentNodeGroups']);
         $deadline = ['reachedOn' => '2026-10-10', 'elapsedDays' => 3, 'dueOn' => '2026-10-12', 'overdue' => true];
         $this->assertSame($deadline, $row['deadline']);
     }

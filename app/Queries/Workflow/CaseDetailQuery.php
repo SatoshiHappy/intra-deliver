@@ -159,7 +159,7 @@ class CaseDetailQuery
      */
     public function visibleCase(Requester $requester, AccessContext $context, int $caseId): WorkflowCase
     {
-        return $this->visibility->visible(WorkflowCase::query()->whereKey($caseId)->where('state', '<>', WorkflowCaseState::Draft), $requester, $context->date)->firstOrFail();
+        return $this->visibility->appliedCase($requester, $context->date, $caseId)->firstOrFail();
     }
 
     /**
@@ -184,6 +184,7 @@ class CaseDetailQuery
             'baseDate' => $case->base_date?->format(ApplicationBaseDates::FORMAT),
             'version' => $case->workflowFlowVersion()->sole()->number,
             'currentSummary' => CaseRows::currentSummaryOf($situation),
+            'currentNodeGroups' => CurrentNodes::groupsOf($situation->currentNodes),
             'deadline' => $case->state === WorkflowCaseState::Active
                 ? $this->deadlines->viewOf($situation->currentNodes, $context->date)
                 : null,

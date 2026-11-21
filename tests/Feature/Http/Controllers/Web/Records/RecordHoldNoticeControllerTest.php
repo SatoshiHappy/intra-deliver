@@ -27,7 +27,8 @@ final class RecordHoldNoticeControllerTest extends TransactionalTestCase
     use RegistersRecordHoldNotices;
     use RegistersRecordHolds;
 
-    private const HOLDER = 'workflow-case:1';
+    /** テストの持ち主の鍵(起動に登録したワークフローの実装が自分の鍵と読まない形。テストの実装の値だけで、返る・返らないを通す) */
+    private const HOLDER = 'test-holder:1';
 
     private RecordModule $module;
 
