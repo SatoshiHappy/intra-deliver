@@ -113,8 +113,8 @@ test('申請したレコードは、直した値が入り、編集・申請す�
 test('申請を閲覧できない人には、詳細と編集の画面で理由の 1 行だけが出る', async ({
     page,
 }) => {
+    // 押せない形のボタンは作成者の筋(上)で見る。ここは案内だけ(ボタンの出方は権限と作成者で変わる)
     await openAs(page, 'concurrent', recordUrl);
-    await expectHeld(page);
     await expectHoldNotice(page, null);
 
     await page.goto(`${recordUrl}/edit`);
