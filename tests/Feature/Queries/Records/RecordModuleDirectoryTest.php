@@ -3,13 +3,19 @@
 namespace Tests\Feature\Queries\Records;
 
 use App\Enums\Records\RecordFieldType;
+use App\Enums\Records\RecordModuleAction;
+use App\Models\Master\User;
 use App\Models\Records\Record;
 use App\Models\Records\RecordModule;
+use App\Queries\Authz\Api\Requester;
+use App\Queries\Records\Api\RecordFormQuery;
 use App\Queries\Records\Api\RecordModuleDirectory;
 use App\Queries\Records\Api\RecordModuleVisibilityStops;
 use App\Queries\Records\RecordAdminQuery;
 use App\Queries\Records\RecordModuleVisibilityStopCatalog;
 use App\Queries\Workflow\WorkflowRecordModuleVisibilityStops;
+use App\Support\AccessContext;
+use Carbon\CarbonImmutable;
 use Closure;
 use Database\Seeders\WorkflowApplicationModules;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -20,7 +26,7 @@ use Tests\Support\TransactionalTestCase;
 
 /**
  * 業務モジュールの定義の読み取りの口(docs の 設計/ワークフロー/業務データとの接続/公開の口/表示と関係の口.md の 7.3 の表の
- * RecordModuleDirectory の 3 行): 業務モジュールの一覧・表示の止め・項目と選択肢の名前。主体の判定をしない(read を誰にも許さない業務モジュール
+ * RecordModuleDirectory の 3 行): 業務モジュールの一覧・表示の止め・業務モジュールの定義。主体の判定をしない(read を誰にも許さない業務モジュール
  * でも同じに読む)。レコードを返さない。
  */
 final class RecordModuleDirectoryTest extends TransactionalTestCase
@@ -71,34 +77,27 @@ final class RecordModuleDirectoryTest extends TransactionalTestCase
         );
     }
 
-    public function test_the_field_names_follow_the_definition_order_with_options_and_one_level_of_detail_fields(): void
+    /** 判定を通す画面と道具の定義の読み取りと同じ配列を返し、誰にも許さない業務モジュールも読み、レコードの値を含まない */
+    public function test_the_definition_is_the_one_of_the_form_reader_without_judging_the_requester(): void
     {
-        $module = $this->recordModule('secrets', []);
+        $module = $this->recordModule('secrets');
         $this->choiceField($module, 'status', ['open', 'done'], ['sort_key' => 2]);
-        $title = $this->field($module, 'title', attributes: ['sort_key' => 1]);
+        $title = $this->field($module, 'title', attributes: ['sort_key' => 1, 'is_title' => true]);
         $this->field($module, 'members', RecordFieldType::User, ['sort_key' => 3, 'is_multiple' => true]);
         $tasks = $this->detailsField($module, 'tasks', ['sort_key' => 4]);
-        $this->field($this->childOf($tasks), 'task_name', attributes: ['sort_key' => 1]);
         $this->choiceField($this->childOf($tasks), 'priority', ['high', 'low']);
         Record::factory()->create(['record_module_id' => $module->id, 'field_values' => [$title->id => 'レコードの値']]);
-        $leaf = fn (string $code, string $type, array $options = [], bool $multiple = false) => [
-            'code' => $code, 'name' => $code, 'type' => $type, 'isMultiple' => $multiple,
-            'options' => $options, 'fields' => [],
-        ];
-        $option = fn (string $code) => ['code' => $code, 'name' => "{$code}の名称"];
+        $requester = new Requester(User::factory()->create()->id, null);
+        $today = CarbonImmutable::today(AccessContext::TIMEZONE);
+        $form = app(RecordFormQuery::class)->definition($requester, 'secrets', RecordModuleAction::Read, $today);
+        $this->recordModule('closed', []);
 
-        $names = $this->directory()->fieldNames('secrets');
+        $definition = $this->directory()->definitionUnchecked('secrets');
 
-        $this->assertSame([
-            $leaf('title', 'string'),
-            $leaf('status', 'choice', [$option('open'), $option('done')]),
-            $leaf('members', 'user', [], true),
-            [...$leaf('tasks', 'details'), 'fields' => [
-                $leaf('priority', 'choice', [$option('high'), $option('low')]),
-                $leaf('task_name', 'string'),
-            ]],
-        ], $names);
-        $this->assertStringNotContainsString('レコードの値', (string) json_encode($names, JSON_UNESCAPED_UNICODE));
+        $this->assertSame($form, $definition);
+        $this->assertSame('closed', $this->directory()->definitionUnchecked('closed')['code']);
+        $this->assertSame(['title', 'status', 'members', 'tasks'], array_column($definition['fields'], 'code'));
+        $this->assertStringNotContainsString('レコードの値', (string) json_encode($definition, JSON_UNESCAPED_UNICODE));
     }
 
     /**
@@ -106,7 +105,7 @@ final class RecordModuleDirectoryTest extends TransactionalTestCase
      */
     public static function readers(): array
     {
-        return ['表示の止め' => ['visibilityStopReason'], '項目と選択肢の名前' => ['fieldNames']];
+        return ['表示の止め' => ['visibilityStopReason'], '業務モジュールの定義' => ['definitionUnchecked']];
     }
 
     #[DataProvider('readers')]
@@ -131,7 +130,7 @@ final class RecordModuleDirectoryTest extends TransactionalTestCase
         $statements = $this->statementsOf(function (): void {
             $this->directory()->topLevelModules();
             $this->directory()->visibilityStopReason('projects');
-            $this->directory()->fieldNames('projects');
+            $this->directory()->definitionUnchecked('projects');
         });
 
         $this->assertNotSame([], $statements);

@@ -21,6 +21,7 @@ use PHPat\Test\PHPat;
  * (6) その呼び手だけが使う部品 MeetingAudioRequest に依存できるのは、一覧 {@see self::MEETING_AUDIO_REQUEST_CALLERS} の場所だけ。
  * (7) 業務モジュールを非表示にする口: HideRecordModuleUnchecked に依存できるのは、一覧 {@see self::HIDE_MODULE_CALLERS} の場所だけ
  * (主体の判定をせず、止めを立てる書き込みの業務処理が止めを書く前に呼ぶ口なので、その業務処理に絞る = ADR 0031)。
+ * 会話の依頼の口とエージェントの定義を書く口の呼び手は {@see AiApiCallers}(同じ形の規則)。
  * AI の書き込みの口は (1) の一覧に無く、(3) の判定しない更新だけを使う(ADR 0029 の決定 10)。この規則が保証するのは直接呼べる場所の
  * 制限までで、AI の読み書きを完了の受け手の中だけに絞る守りは、書き込みの口と読む口が持つ(設計/AI/公開の口.md の 3.2・3.3「呼べる時」)。
  *
@@ -247,7 +248,7 @@ final class RecordWriters
      * @param  list<array{type: 'namespace'|'class'|'path', place: non-empty-string, reason: string}>  $callers
      * @param  non-empty-list<class-string>  $apis
      */
-    private static function dependenciesOnlyFrom(array $callers, array $apis, string $because): Rule
+    public static function dependenciesOnlyFrom(array $callers, array $apis, string $because): Rule
     {
         $apiSelectors = array_map(fn (string $class): SelectorInterface => Selector::classname($class), $apis);
 

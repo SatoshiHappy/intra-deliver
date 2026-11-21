@@ -3,9 +3,7 @@
 namespace App\Actions\Ai\ToolCalls;
 
 use App\Actions\Ai\Api\AgentTool;
-use App\Actions\Ai\Api\AgentToolScope;
 use App\Actions\Ai\Api\AgentToolSubject;
-use App\Actions\Ai\Core\ConversationMarkers;
 use App\Enums\Ai\AiToolNature;
 use App\Enums\Records\RecordModuleAction;
 use App\Models\Ai\AiAgentDefinition;
@@ -14,7 +12,6 @@ use App\Queries\Records\Api\RecordModuleDirectory;
 use Closure;
 use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
-use LogicException;
 
 /**
  * 1 回の 1 段目の中の判定({@see ToolGrants} が区間の中で作って捨てる)。業務モジュールの一覧・表示の止め・依頼者の有効・操作の判定は、同じ 1 段目の
@@ -48,40 +45,10 @@ final class ToolGrantJudgements
     public function granted(AgentTools $tools, AiAgentDefinition $definition): GrantedTools
     {
         $named = array_values(array_filter((array) $definition->tools, is_string(...)));
-        $knowledge = array_values(array_filter((array) $definition->knowledge, is_string(...)));
-        $ranges = [];
-
-        foreach ($tools->all() as $tool) {
-            if (in_array($tool->name(), $named, true)) {
-                $ranges[] = [$tool, $this->range($tool, $knowledge)];
-            }
-        }
-
+        $ranges = ToolRanges::of($tools, $definition, $this->passes(...));
         $removed = array_values(array_filter($named, fn (string $name): bool => $tools->named($name) === null));
 
         return new GrantedTools($this->scoped($ranges), $removed);
-    }
-
-    /**
-     * 道具の渡せる範囲の業務モジュールのコード(対象の並び。ファイルを作る道具は null = 範囲を見ない = A4)。
-     *
-     * @param  list<string>  $knowledge
-     * @return list<string>|null
-     *
-     * @throws LogicException 性質の起きない組の道具のとき(起動の時の確かめが止める作りの誤り)
-     */
-    private function range(AgentTool $tool, array $knowledge): ?array
-    {
-        $nature = AiToolNature::of($tool->isReadOnly(), $tool->requiredAction())
-            ?? throw new LogicException("道具 {$tool->name()} の読むだけかと要る権限の組は起きない");
-
-        if ($nature === AiToolNature::CreateFile) {
-            return null;
-        }
-
-        $targets = array_values(array_unique($tool->targetModules() ?? $knowledge));
-
-        return array_values(array_filter($targets, fn (string $code): bool => $this->passes($code, $nature)));
     }
 
     /** 業務モジュールを範囲に入れるか(一覧に無い・明細・止めがある・依頼者が有効でない・操作を持たない業務モジュールは入れない) */
@@ -101,7 +68,7 @@ final class ToolGrantJudgements
     }
 
     /**
-     * 範囲が空でない道具に、範囲の業務モジュールの名前と定義と、説明用の名前の写しを添える(A2 は渡さない)。
+     * 範囲が空でない道具だけを渡す(A2 は渡さない)。
      *
      * @param  list<array{AgentTool, list<string>|null}>  $ranges
      * @return list<GrantedTool>
@@ -109,31 +76,8 @@ final class ToolGrantJudgements
     private function scoped(array $ranges): array
     {
         [$definitions, $defaults] = $this->definitions($ranges);
-        $granted = [];
 
-        foreach ($ranges as [$tool, $codes]) {
-            $modules = [];
-            $shown = [];
-            $rowAccessDefaults = [];
-
-            foreach ($codes ?? [] as $code) {
-                if (isset($definitions[$code])) {
-                    $name = $this->modules()[$code];
-                    $modules[$code] = ['name' => $name, 'definition' => $definitions[$code]];
-                    $rowAccessDefaults[$code] = $defaults[$code];
-                    $shown[$code] = [
-                        'name' => ConversationMarkers::broken($name, $this->markerForms),
-                        'definition' => ShownDefinitions::of($definitions[$code], $this->markerForms),
-                    ];
-                }
-            }
-
-            if ($codes === null || $modules !== []) {
-                $granted[] = new GrantedTool($tool, new AgentToolScope($modules, $shown, $rowAccessDefaults));
-            }
-        }
-
-        return $granted;
+        return ToolScopes::of($ranges, $this->modules(), $definitions, $defaults, $this->markerForms);
     }
 
     /**

@@ -15,6 +15,7 @@ class DatabaseSeeder extends Seeder
      * BuiltinSeeder = 組み込みの業務モジュール(業務モジュールのセットと、参照先のプロジェクトを要するので業務データの入れ物の後 =
      * 設計/業務ツール/モジュール境界/組み込みの業務モジュールの置き場.md の「組み込みの業務モジュールの置き場」)。
      * MeetingSeeder = 会議の作成・再作成のルートのリソースとポリシー(設計/業務ツール/会議/処理.md の 3.2・3.7)。
+     * AiAgentDefinitionSeeder = 既定のエージェントの定義(ナレッジは業務モジュールを作る seeder の後の候補の全部 = 設計/AI/設定とプロンプト/README.md 11.1)。
      * MeetingSampleSeeder = 見本の会議(設計/業務ツール/会議/公開デモと画面.md の 8.4)。ほかの初期データの id をずらさないよう最後に入れる。
      */
     public function run(): void
@@ -31,6 +32,7 @@ class DatabaseSeeder extends Seeder
             MeetingSeeder::class,
             NoticeSeeder::class,
             WorkflowSeeder::class,
+            AiAgentDefinitionSeeder::class,
             MeetingSampleSeeder::class,
         ]);
     }

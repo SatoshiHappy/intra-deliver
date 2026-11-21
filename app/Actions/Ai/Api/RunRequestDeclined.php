@@ -24,6 +24,18 @@ final class RunRequestDeclined extends ValidationException
     /** 音声の実体が無い(呼び手が選んだ後に消された・期限で消された) */
     public const MISSING = 'missing';
 
+    /** 会話の前の実行が待ち・処理中(設計/AI/公開の口.md 3 節の B11) */
+    public const PREVIOUS_RUNNING = 'previous_running';
+
+    /** 確認に答える依頼の前の実行が確認待ちでない終わり方で終わっている(B12) */
+    public const CONFIRMATION_GONE = 'confirmation_gone';
+
+    /** 会話の前の実行に続く実行がもうある(B13) */
+    public const CONTINUED = 'continued';
+
+    /** 定義の道具の定義の大きさが上限を超える(設計/AI/設定とプロンプト/README.md 11.3) */
+    public const SETTING = 'setting';
+
     /**
      * @param  string  $reason  理由のコード(このクラスの定数)
      * @param  string  $message  画面に出す文(キー ai)

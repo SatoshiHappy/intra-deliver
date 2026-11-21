@@ -60,6 +60,7 @@ final class AgentToolDependenciesSelfProofTest extends PhpStanSelfProofTestCase
             '持ち主の鍵を名前つきで渡す更新' => [self::OPERATION, 'Actions/Ai/Tools/PassesHolder.php', 25],
             '鍵の引数を決められない callable の更新' => [self::OPERATION, 'Actions/Ai/Tools/PassesHolder.php', 30],
             'editValues を判定の関数が呼ぶ' => [self::OPERATION, 'Actions/Ai/ToolCalls/ReadsEditValues.php', 19],
+            '判定しない定義の読み取りを判定の関数が呼ぶ' => [self::OPERATION, 'Actions/Ai/ToolCalls/ReadsUncheckedDefinition.php', 17],
             'リフレクションのクラスを作る' => [self::REFLECTIVE, 'Actions/Ai/Tools/UsesReflection.php', 20],
             'ReflectionMethod::invoke' => [self::REFLECTIVE, 'Actions/Ai/Tools/UsesReflection.php', 25],
             'ReflectionMethod::invokeArgs' => [self::REFLECTIVE, 'Actions/Ai/Tools/UsesReflection.php', 30],

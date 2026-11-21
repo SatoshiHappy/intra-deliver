@@ -155,7 +155,7 @@ final class AgentToolDependencies
         ],
         [
             'class' => 'App\Queries\Records\Api\RecordModuleDirectory',
-            'reason' => '業務モジュールの一覧・表示の止め・項目と選択肢の名前の読み取り(レコードを返さない)',
+            'reason' => '業務モジュールの一覧と表示の止めの読み取り(topLevelModules・visibilityStopReason だけ。レコードを返さない)',
         ],
         ['class' => 'App\Queries\Master\Api\MasterCandidates', 'reason' => 'ユーザー・組織の名前の解決'],
         ['class' => 'App\Queries\Master\Api\EffectiveUsers', 'reason' => '依頼者の有効・ユーザーの id の確かめ'],
@@ -180,7 +180,8 @@ final class AgentToolDependencies
     ];
 
     /**
-     * 判定の関数の名前空間が呼べる RecordFormQuery の操作(同じクラスのレコードの値を返す判定しない操作を止める)。
+     * 判定の関数の名前空間が呼べる RecordFormQuery と RecordModuleDirectory の操作(同じクラスのレコードの値を返す判定しない操作と、
+     * 判定を通す定義の読み取りを抜ける判定しない定義の読み取りを止める)。
      *
      * @var list<array{class: string, methods: list<string>, reason: string}>
      */
@@ -189,6 +190,11 @@ final class AgentToolDependencies
             'class' => 'App\Queries\Records\Api\RecordFormQuery',
             'methods' => ['allows', 'definition', 'rowAccessRestrictedByDefault'],
             'reason' => '業務モジュールの権限の判定と、判定する定義と参照制限の既定の読み取り(10.4 の (2))',
+        ],
+        [
+            'class' => 'App\Queries\Records\Api\RecordModuleDirectory',
+            'methods' => ['topLevelModules', 'visibilityStopReason'],
+            'reason' => '業務モジュールの一覧と表示の止めの読み取り(10.4 の (2)。判定しない定義の読み取りは大きさの確かめだけが使う)',
         ],
     ];
 
@@ -209,7 +215,10 @@ final class AgentToolDependencies
         [
             'namespaces' => [self::TOOL_CALL_NAMESPACE],
             'receiverNamespaces' => [],
-            'receiverClasses' => ['App\Queries\Records\Api\RecordFormQuery'],
+            'receiverClasses' => [
+                'App\Queries\Records\Api\RecordFormQuery',
+                'App\Queries\Records\Api\RecordModuleDirectory',
+            ],
             'operations' => self::TOOL_CALL_OPERATIONS,
             'keyArguments' => [],
             'strict' => false,

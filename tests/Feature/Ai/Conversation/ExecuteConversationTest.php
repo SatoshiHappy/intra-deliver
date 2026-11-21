@@ -13,9 +13,12 @@ use App\Actions\Ai\Core\LoopOutcome;
 use App\Actions\Ai\Core\ResponseFinish;
 use App\Actions\Ai\Core\SentResponse;
 use App\Enums\Ai\AiConversationAnswer;
+use App\Enums\Ai\AiInstructionTemplate;
 use App\Enums\Ai\AiRunErrorCode;
 use App\Enums\Ai\AiRunStatus;
+use App\Enums\Ai\ConversationItemType;
 use App\Models\Ai\AiRun;
+use App\Models\Ai\AiRunText;
 use LogicException;
 use PHPUnit\Framework\Attributes\DataProvider;
 use RuntimeException;
@@ -65,6 +68,36 @@ final class ExecuteConversationTest extends TransactionalTestCase
 
         $this->assertSame([], $core->sent);
         $this->assertNull($this->conversationKind->completed[0]->title ?? null);
+    }
+
+    /** 前の実行が確認待ちで項目が承認待ちへの断りになった文の実行も、題は利用者の文の原文から作る(9.3 の H3・9.10) */
+    public function test_the_title_comes_from_the_user_text_even_when_the_items_reject_awaiting_calls(): void
+    {
+        $core = $this->core(LoopEnding::succeeded());
+        $rejected = ConversationItem::toolResult('c1', AiInstructionTemplate::ToolUseRejectedWithReason, [
+            ConversationItem::USER_FEEDBACK => '会議の要約を作って',
+        ], null, true);
+
+        app(ExecuteConversation::class)->execute($this->queuedRun(true, [$rejected])->id);
+
+        $history = $core->sent[0]->history ?? [];
+        $first = $history[0] ?? null;
+        $this->assertCount(1, $history);
+        $this->assertInstanceOf(ConversationItem::class, $first);
+        $sent = [$first->type, $first->content['text'] ?? null];
+        $this->assertSame([ConversationItemType::UserText, '会議の要約を作って'], $sent);
+        $this->assertSame(['題'], array_map(static fn ($ended) => $ended->title, $this->conversationKind->completed));
+    }
+
+    /** 題を求めた実行が利用者の文の原文を持たなければ作りの誤り(失敗(完了の処理)) */
+    public function test_a_title_run_without_the_user_text_fails_as_completion(): void
+    {
+        $this->core(LoopEnding::succeeded());
+        $run = $this->queuedRun(true);
+        AiRunText::query()->whereKey($run->id)->delete();
+
+        $this->assertInstanceOf(LogicException::class, $this->executeCatching($run->id));
+        $this->assertSame(AiRunErrorCode::Completion, AiRun::query()->findOrFail($run->id)->error_code);
     }
 
     /** 会話が無ければループを呼ばずに止めた(利用者)(S4) */
@@ -185,7 +218,10 @@ final class ExecuteConversationTest extends TransactionalTestCase
         return $core;
     }
 
-    private function queuedRun(bool $wantsTitle): AiRun
+    /**
+     * @param  list<ConversationItem>|null  $items  実行に結ぶ項目(既定は利用者の文)
+     */
+    private function queuedRun(bool $wantsTitle, ?array $items = null): AiRun
     {
         $previous = AiRun::factory()->conversation()->failed()->create(['kind' => RecordingConversationKind::CODE]);
         $run = AiRun::factory()->conversation()->create([
@@ -195,7 +231,8 @@ final class ExecuteConversationTest extends TransactionalTestCase
         ]);
         $conversation = $this->store->startConversation($previous->id);
         $this->store->continueConversation($conversation, $run->id);
-        $this->store->append($run->id, [ConversationItem::userText('会議の要約を作って')]);
+        $this->store->append($run->id, $items ?? [ConversationItem::userText('会議の要約を作って')]);
+        AiRunText::query()->create(['ai_run_id' => $run->id, 'user_text' => '会議の要約を作って']);
 
         return $run;
     }

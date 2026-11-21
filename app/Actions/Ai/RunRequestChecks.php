@@ -2,9 +2,11 @@
 
 namespace App\Actions\Ai;
 
+use App\Actions\Ai\Api\RequestConversation;
 use App\Actions\Ai\Api\RequestPrompt;
 use App\Actions\Ai\Api\RequestTranscription;
 use App\Actions\Ai\Api\RunRequestMessages;
+use App\Enums\Ai\AiKindType;
 use App\Models\Ai\AiRun;
 use App\Queries\Records\Api\RecordDisplayQuery;
 use App\Support\AccessContext;
@@ -13,9 +15,9 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use LogicException;
 
 /**
- * 2 つの依頼の口({@see RequestPrompt}・{@see RequestTranscription})が共通に断る理由(内部。docs の 設計/AI/公開の口.md 3 節の
- * 「依頼の時点の確かめ」の表 B1〜B7)。依頼者の権限は見ない(呼び手の入口が依頼の時点に確かめる = ADR 0029)。
- * 呼び手の口が、断る理由の順(同じ 3 節の「断る理由が重なったとき」)に合わせて呼ぶ。
+ * 依頼の口({@see RequestPrompt}・{@see RequestTranscription}・{@see RequestConversation})が共通に断る理由(内部。表 = docs の
+ * 設計/AI/公開の口.md 3 節)。依頼者の権限は見ない(呼び手の入口が依頼の時点に確かめる = ADR 0029)。呼び手の口が、同じ 3 節の
+ * 「断る理由が重なったとき」の順に合わせて呼ぶ。
  */
 class RunRequestChecks
 {
@@ -55,7 +57,8 @@ class RunRequestChecks
      * @return ($recordId is null ? null : string) 対象のレコードの業務モジュールのコード(明細の行なら親の業務モジュール。
      *                                             指さなければ null)
      *
-     * @throws LogicException 完了の受け手の中で、依頼者か対象のレコードが完了中の実行と違うとき(作りの誤り)
+     * @throws LogicException 会話の型の種類の完了の受け手の中(B15。会話の実行は依頼の時点にレコードの権限を確かめず、引き継ぐ確かめが
+     *                        無い)か、完了の受け手の中で依頼者か対象のレコードが完了中の実行と違うとき(作りの誤り)
      * @throws ModelNotFoundException 対象のレコードを指したが無いとき(404。呼び手が確かめた後に消された)
      */
     public function targetModuleCode(int $requesterUserId, ?int $recordId): ?string
@@ -64,6 +67,10 @@ class RunRequestChecks
 
         if ($completingId !== null) {
             $completing = AiRun::query()->findOrFail($completingId);
+
+            if ($completing->kind_type === AiKindType::Conversation) {
+                throw new LogicException("会話の型の実行 {$completingId} の完了の受け手の中からの文章・文字起こしの依頼");
+            }
 
             if ($completing->requester_user_id !== $requesterUserId || $completing->original_record_id !== $recordId) {
                 throw new LogicException("完了中の実行 {$completingId} と、依頼者か対象のレコードが違う依頼");

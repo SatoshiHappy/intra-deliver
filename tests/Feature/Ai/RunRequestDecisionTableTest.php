@@ -69,6 +69,7 @@ final class RunRequestDecisionTableTest extends TransactionalTestCase
             'B5 完了の受け手の中・同じ・無い対象' => ['user', 'completing', 'missing', 'none', ...$notFound],
             'B6 完了の受け手の中・同じ・ある対象' => ['user', 'completing', 'present', 'none', 'accepted', ''],
             'B7 失敗の受け手の中' => ['user', 'failing', 'present', 'none', LogicException::class, '失敗の受け手の中'],
+            'B15 会話の型の完了の受け手の中' => ['user', 'completing', 'present', 'conversation', LogicException::class, '会話の型'],
         ];
         $cases = [];
 
@@ -86,7 +87,7 @@ final class RunRequestDecisionTableTest extends TransactionalTestCase
      * @param  'guest'|'user'  $requester
      * @param  'outside'|'completing'|'failing'  $calledFrom
      * @param  'missing'|'present'  $record
-     * @param  'none'|'requester'|'record'  $differs
+     * @param  'none'|'requester'|'record'|'conversation'  $differs
      */
     #[DataProvider('rows')]
     public function test_the_request_follows_the_row(
@@ -116,13 +117,33 @@ final class RunRequestDecisionTableTest extends TransactionalTestCase
         $this->assertOutcome($expected, $message, $result, $runs);
     }
 
+    /** B15 のうち、依頼者が同じで対象のレコードを指さない文章の依頼(会話の実行もレコードを持たないので、違いで止まらない組) */
+    public function test_a_prompt_without_a_record_in_a_conversation_completion_is_a_construction_error(): void
+    {
+        $userId = $this->requesterUserId();
+        $runId = $this->receivingRun('conversation', $userId, 0);
+        $prompt = $this->promptRequest();
+        $context = $this->requesterContext($userId);
+        $runs = AiRun::query()->count();
+
+        $call = fn (): int => app(RequestPrompt::class)->execute($context, $prompt);
+
+        $result = $this->callFrom('completing', $runId, $call);
+
+        $this->assertOutcome(LogicException::class, '会話の型', $result, $runs);
+    }
+
     /**
-     * 受け手を呼んでいる(とする)実行。$differs の値だけ、依頼と違う依頼者か対象のレコードを持つ。
+     * 受け手を呼んでいる(とする)実行。$differs の値だけ、依頼と違う依頼者か対象のレコードを持つ(conversation = 依頼者が同じ会話の型の実行)。
      *
-     * @param  'none'|'requester'|'record'  $differs
+     * @param  'none'|'requester'|'record'|'conversation'  $differs
      */
     private function receivingRun(string $differs, int $userId, int $targetId): int
     {
+        if ($differs === 'conversation') {
+            return AiRun::factory()->conversation()->create(['requester_user_id' => $userId])->id;
+        }
+
         $runRecordId = $differs === 'record' ? $this->transcriptionRecord()->id : $targetId;
 
         return AiRun::factory()->running()->create([

@@ -2,9 +2,6 @@
 
 namespace App\Queries\Records\Api;
 
-use App\Enums\Records\RecordFieldType;
-use App\Models\Records\RecordField;
-use App\Models\Records\RecordFieldOption;
 use App\Models\Records\RecordModule;
 use App\Queries\Records\RecordDefinitionQuery;
 use App\Queries\Records\RecordModuleGate;
@@ -12,12 +9,11 @@ use App\Queries\Records\RecordModuleVisibilityStopCatalog;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 
 /**
- * 業務モジュールの定義の読み取りの口(業務モジュールの一覧・表示の止め・項目と選択肢の名前。主体・認可・検証の範囲・ロック・原子性・結果・失敗の
+ * 業務モジュールの定義の読み取りの口(業務モジュールの一覧・表示の止め・業務モジュールの定義。主体・認可・検証の範囲・ロック・原子性・結果・失敗の
  * 正本 = docs の 設計/ワークフロー/業務データとの接続/公開の口/表示と関係の口.md の 7.3 の表の RecordModuleDirectory の 3 行)。
  * どれもレコードを返さない。鍵を取らない。
  *
- * @phpstan-type FieldName array{code: string, name: string, type: string, isMultiple: bool,
- *     options: list<array{code: string, name: string}>, fields: list<mixed>}
+ * @phpstan-import-type ModuleDefinition from RecordDefinitionQuery
  */
 class RecordModuleDirectory
 {
@@ -56,38 +52,14 @@ class RecordModuleDirectory
     /**
      * 主体の判定をしない。定義の読み取りで、レコードを返さない。
      *
-     * 項目の並び(定義と同じ = {@see RecordDefinitionQuery::load()})で、項目のコード・名前・型・複数を選べるかと、選択肢のコードと名前
-     * (選択肢の並び。選択でない項目は空)。明細の項目は明細のモジュールの項目を fields に 1 段だけ持つ(ほかの項目の fields は空)。
+     * 画面と道具が使う業務モジュールの定義(判定を通す {@see RecordFormQuery::definition()} と同じ形。相対の既定値は読んだ時の値)。
      *
-     * @return list<FieldName>
+     * @return ModuleDefinition
      *
      * @throws ModelNotFoundException<RecordModule> 業務モジュールが無い・明細のモジュールのとき
      */
-    public function fieldNames(string $moduleCode): array
+    public function definitionUnchecked(string $moduleCode): array
     {
-        $module = $this->definitions->load($this->gate->topLevelModule($moduleCode));
-
-        $fields = $module->recordFields->map(fn (RecordField $field) => $this->fieldName($field, true));
-
-        return array_values($fields->all());
-    }
-
-    /**
-     * @return FieldName
-     */
-    private function fieldName(RecordField $field, bool $withChildren): array
-    {
-        $child = $withChildren && $field->type === RecordFieldType::Details ? $field->childRecordModule : null;
-
-        return [
-            'code' => $field->code,
-            'name' => $field->name,
-            'type' => $field->type->value,
-            'isMultiple' => $field->is_multiple,
-            'options' => array_values($field->recordFieldOptions
-                ->map(fn (RecordFieldOption $option) => ['code' => $option->code, 'name' => $option->name])->all()),
-            'fields' => $child === null ? [] : array_values($child->recordFields
-                ->map(fn (RecordField $childField) => $this->fieldName($childField, false))->all()),
-        ];
+        return $this->definitions->definition($this->definitions->load($this->gate->topLevelModule($moduleCode)));
     }
 }

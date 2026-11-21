@@ -9,16 +9,22 @@ use App\Models\Ai\AiAgentDefinition;
 use App\Models\Ai\AiRun;
 
 /**
- * 会話のジョブの 3 のうち、渡す道具を決めて実行の記録に残す所(docs の 設計/AI/エージェントの実行/README.md 9.1 のジョブの順、
- * 決め方 = 設計/AI/道具と権限/道具の判定と今の権限.md 10.3 の 1 段目)。定義の外し方と大きさの確かめ(設計/AI/設定とプロンプト/README.md
- * 11.3)は定義の口と一緒に置く。
+ * 実行の始めの定義の大きさの確かめと、渡す道具の決め方と記録(docs の 設計/AI/エージェントの実行/README.md 9.1、
+ * 確かめ = 設計/AI/設定とプロンプト/README.md 11.3、決め方 = 設計/AI/道具と権限/道具の判定と今の権限.md 10.3)。
  */
 final readonly class PrepareConversationRun
 {
-    public function __construct(private ToolGrants $grants) {}
+    public function __construct(private ToolGrants $grants, private DefinitionToolSize $size) {}
 
+    /**
+     * @throws DefinitionTooLarge 外した後の道具の定義の大きさが上限を超えるとき
+     */
     public function execute(AiRun $run, AiAgentDefinition $definition): GrantedTools
     {
+        if ($this->size->exceeds($definition)) {
+            throw new DefinitionTooLarge("定義 {$definition->id} の道具の定義の大きさが上限を超える(実行 {$run->id})");
+        }
+
         $granted = $this->grants->grant($definition, ToolSubjects::forRun($run));
 
         $names = json_encode($granted->names(), JSON_THROW_ON_ERROR);

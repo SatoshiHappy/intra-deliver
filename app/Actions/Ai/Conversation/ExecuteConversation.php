@@ -13,9 +13,9 @@ use App\Actions\Ai\Core\LoopFailure;
 use App\Actions\Ai\Core\LoopStop;
 use App\Actions\Ai\FailRun;
 use App\Enums\Ai\AiRunErrorCode;
-use App\Enums\Ai\ConversationItemType;
 use App\Models\Ai\AiAgentDefinition;
 use App\Models\Ai\AiRun;
+use App\Models\Ai\AiRunText;
 use App\Models\Ai\AiToolCall;
 use LogicException;
 use RuntimeException;
@@ -83,10 +83,10 @@ final readonly class ExecuteConversation
             }
         } catch (RunNoLongerRunning) {
             return;
-        } catch (AnswerNotConfirmed $notConfirmed) {
-            $this->failRun->execute($run->id, AiRunErrorCode::Confirmation, $notConfirmed, null, $title);
+        } catch (ConversationStartFailure $failure) {
+            $this->failRun->execute($run->id, $failure->errorCode(), $failure, null, $title);
 
-            throw $notConfirmed;
+            throw $failure;
         } catch (Throwable $exception) {
             $this->failRun->execute($run->id, AiRunErrorCode::Completion, $exception, null, $title);
 
@@ -138,9 +138,12 @@ final readonly class ExecuteConversation
     }
 
     /**
-     * 依頼が題を求め、実行に結ばれた最後の項目が利用者の文のときだけ題のステップを通す(9.10)。
+     * 依頼が題を求め、会話があるときだけ題のステップを通す(9.10)。題の元はその実行の利用者の文の原文(docs の
+     * 設計/AI/実行の記録.md 2.2。前の実行が確認待ちで会話の保存の項目が承認待ちへの断りになったときも、利用者の文から作るため)。
      *
      * @param  list<ConversationItem>|null  $items
+     *
+     * @throws LogicException 題を求めた実行が利用者の文の原文を持たないとき(作りの誤り。文を送る依頼の口が必ず書く)
      */
     private function titleOf(
         AiRun $run,
@@ -149,15 +152,16 @@ final readonly class ExecuteConversation
         AiAgentDefinition $definition,
         ?array $items,
     ): ?string {
-        $last = $items === null || $items === [] ? null : $items[array_key_last($items)];
-
-        if ($run->wants_title !== true || $last?->type !== ConversationItemType::UserText) {
+        if ($run->wants_title !== true || $items === null) {
             return null;
         }
 
+        $text = AiRunText::query()->find($run->id)->user_text
+            ?? throw new LogicException("題を求めた会話の実行 {$run->id} が利用者の文の原文を持たない");
         $receivers = $this->receivers->send($run, $targets, $store, (string) $definition->instructions);
+        $userText = ConversationItem::userText($text);
 
-        return $this->title->make($this->core, $run, $definition, $last, $targets->title, $receivers);
+        return $this->title->make($this->core, $run, $definition, $userText, $targets->title, $receivers);
     }
 
     /** 6。ほかの経路が先に終えていたら報告だけする(書いた分は戻さない = 9.1) */
