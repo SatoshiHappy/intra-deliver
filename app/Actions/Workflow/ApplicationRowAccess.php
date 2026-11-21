@@ -112,7 +112,7 @@ class ApplicationRowAccess
 
         $read = $this->forms->editValues($requester, $module, $targetId, $applicant->date, $applicant->localeCode);
 
-        return $read['rowAccessRestricted'] ? true : null;
+        return $read['rowAccess']['restricted'] ? true : null;
     }
 
     /**
