@@ -101,6 +101,49 @@ final class StepRecorderTest extends TransactionalTestCase
     }
 
     /**
+     * 失敗の行の状態コード(5.2 の会話の型の表の「状態コード 400 以上は 0」に使う)。応答の頭で返った誤りの状態だけを書き、流れの途中の誤り
+     * (応答は 200 で始まった)・状態の無い失敗・使用量の届いた失敗には書かない。
+     *
+     * @return array<string, array{int|null, bool, bool, int|null}>
+     */
+    public static function statuses(): array
+    {
+        return [
+            '応答の頭の誤り' => [529, false, false, 529],
+            '400 未満' => [399, false, false, 399],
+            '流れの途中の誤り' => [500, true, false, null],
+            '状態が無い(接続の失敗)' => [null, false, false, null],
+            '使用量が届いた' => [500, true, true, null],
+        ];
+    }
+
+    #[DataProvider('statuses')]
+    public function test_a_failed_step_keeps_the_status_of_the_response_head(
+        ?int $status,
+        bool $midStream,
+        bool $usage,
+        ?int $expected,
+    ): void {
+        $notice = new AfterSendNotice($this->step->id, $usage ? self::USAGE : null, null, $status, $midStream);
+        $this->recorder->afterSend($notice);
+        $this->recorder->failed(new StepFailedNotice($this->step->id, SendFailure::Provider));
+
+        $this->assertSame($expected, self::reloaded($this->step)->provider_status);
+    }
+
+    /** 送り直しで次の試しへ進んだステップの状態コードは、次のステップに持ち越さない */
+    public function test_a_status_stays_with_its_step(): void
+    {
+        $next = AiRunStep::factory()->create(['ai_run_id' => $this->step->ai_run_id]);
+        $this->recorder->afterSend(new AfterSendNotice($this->step->id, null, null, 529, false));
+        $this->recorder->failed(new StepFailedNotice($this->step->id, SendFailure::Provider));
+        $this->recorder->failed(new StepFailedNotice($next->id, SendFailure::Timeout));
+
+        $statuses = [self::reloaded($this->step)->provider_status, self::reloaded($next)->provider_status];
+        $this->assertSame([529, null], $statuses);
+    }
+
+    /**
      * @return array<string, array{SendFailure, AiRunErrorCode}>
      */
     public static function failures(): array

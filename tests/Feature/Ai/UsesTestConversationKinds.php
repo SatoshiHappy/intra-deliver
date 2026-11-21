@@ -38,7 +38,7 @@ trait UsesTestConversationKinds
             'run_timeout_seconds' => 300,
             'purposes' => [
                 'conversation' => ['timeout_seconds' => 100, 'max_output_tokens' => 1000],
-                'title' => ['timeout_seconds' => 100, 'max_output_tokens' => 100],
+                'title' => ['timeout_seconds' => 60, 'max_output_tokens' => 100],
                 'create_file' => ['timeout_seconds' => 100, 'max_output_tokens' => 1000],
             ],
         ];

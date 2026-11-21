@@ -70,7 +70,7 @@ final class ConversationItemShapeTest extends TestCase
      */
     private static function unreadableKindCopies(): array
     {
-        $boundary = ConversationItem::compactBoundary(1, '2026-11-17');
+        $boundary = ConversationItem::compactBoundary(1, '2026-11-17', 1);
 
         return [
             '応答の終わりの使用量に鍵が欠ける' => [self::withContent(self::responseEnd(), ['usage' => ['input_tokens' => 1]])],
@@ -205,7 +205,7 @@ final class ConversationItemShapeTest extends TestCase
     {
         $this->expectException(LogicException::class);
 
-        ConversationItem::compactBoundary(1, '2026-11-17T00:00:00');
+        ConversationItem::compactBoundary(1, '2026-11-17T00:00:00', 1);
     }
 
     /** 使用量の並べ直しの鍵の順は、形の確かめの使用量の鍵の順と同じ(順の正本 = ConversationItemShape::USAGE) */

@@ -24,11 +24,7 @@ final class RunChainCalls
 
         $marks = implode(', ', array_fill(0, count($callIds), 'md5(?)'));
         $found = DB::select(
-            'WITH RECURSIVE chain (id) AS ('
-            .' SELECT id FROM ai_runs WHERE id = ?'
-            .' UNION SELECT ai_runs.previous_run_id FROM ai_runs JOIN chain ON ai_runs.id = chain.id'
-            .' WHERE ai_runs.previous_run_id IS NOT NULL)'
-            .' SELECT call_id FROM ai_tool_calls'
+            RunChain::cte().' SELECT call_id FROM ai_tool_calls'
             ." WHERE ai_run_id IN (SELECT id FROM chain) AND md5(call_id) IN ({$marks})",
             [$runId, ...$callIds],
         );

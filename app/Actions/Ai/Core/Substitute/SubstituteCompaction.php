@@ -57,7 +57,8 @@ final readonly class SubstituteCompaction
             return null;
         }
 
-        $this->state->compacted($this->items($answer, $estimate));
+        $stepId = $outcome->stepId ?? throw new LogicException('済んだ要約にステップの番号が無い');
+        $this->state->compacted($this->items($answer, $estimate, $stepId));
         $this->state->compactFailures = 0;
 
         return null;
@@ -81,7 +82,7 @@ final readonly class SubstituteCompaction
      *
      * @return non-empty-list<ConversationItem>
      */
-    private function items(string $answer, int $estimate): array
+    private function items(string $answer, int $estimate, int $stepId): array
     {
         $texts = $this->receivers->texts;
         $summary = $texts->compactSummary($answer);
@@ -100,7 +101,11 @@ final readonly class SubstituteCompaction
         }
 
         return [
-            ConversationItem::compactBoundary($estimate, SubstituteDates::today($this->receivers->clock->now())),
+            ConversationItem::compactBoundary(
+                $estimate,
+                SubstituteDates::today($this->receivers->clock->now()),
+                $stepId,
+            ),
             ConversationItem::compactSummary($summary),
         ];
     }

@@ -62,7 +62,7 @@ final readonly class SubstituteSender
             $finish = SubstituteUsage::finish($attempt->response->finishReason);
             $notifier->notify(new AfterSendNotice($stepId, $usage, $finish, null, false));
 
-            return SubstituteOutcome::responded($attempt->response, $attempt->reading);
+            return SubstituteOutcome::responded($attempt->response, $attempt->reading, $stepId);
         }
 
         if ($attempt->failure === null) {

@@ -4,7 +4,10 @@ namespace Tests\Feature\Ai\Conversation;
 
 use App\Actions\Ai\Api\StopConversationRun;
 use App\Actions\Ai\Api\StopOutcome;
+use App\Actions\Ai\Core\StoredTexts;
+use App\Actions\Ai\Instructions\InstructionBuilder;
 use App\Enums\Ai\AiConversationAnswer;
+use App\Enums\Ai\AiInstructionTemplate;
 use App\Enums\Ai\AiKindType;
 use App\Enums\Ai\AiRunStatus;
 use App\Enums\Ai\AiRunStopReason;
@@ -57,7 +60,13 @@ final class StopConversationRunTest extends TransactionalTestCase
         $this->assertNotNull($saved->finished_at);
         $items = $this->store->read($run->id) ?? [];
         $this->assertSame([ConversationItemType::Interruption], array_map(static fn ($item) => $item->type, $items));
-        $this->assertSame(['during_tool' => false], $items[0]->content);
+        // 書く時に組んだ文と会話の印の形の一覧の印を持つ(設計/AI/会話の中核.md 13.2)
+        $builder = app(InstructionBuilder::class);
+        $rendered = [
+            'text' => $builder->template(AiInstructionTemplate::Interrupted, []),
+            'forms_id' => StoredTexts::formsId($builder->conversationMarkerForms()),
+        ];
+        $this->assertSame(['during_tool' => false, 'rendered' => $rendered], $items[0]->content);
         $this->assertSame([], $this->conversationKind->completed);
     }
 

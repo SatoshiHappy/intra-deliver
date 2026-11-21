@@ -64,6 +64,11 @@ final class UpdateRecordTool implements AgentUpdateTool
         return false;
     }
 
+    public function isConcurrencySafe(): bool
+    {
+        return false;
+    }
+
     public function requiredAction(): AiToolAction
     {
         return AiToolAction::Update;

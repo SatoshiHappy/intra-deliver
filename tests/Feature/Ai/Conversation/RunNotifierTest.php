@@ -68,7 +68,7 @@ final class RunNotifierTest extends TransactionalTestCase
         $this->assertNull(AiRun::query()->findOrFail($this->run->id)->compacted);
 
         $notifier->notify(new AppendNotice([
-            ConversationItem::compactBoundary(10, '2026-11-19'),
+            ConversationItem::compactBoundary(10, '2026-11-19', 1),
             ConversationItem::compactSummary('要約'),
         ]));
 

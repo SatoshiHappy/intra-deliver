@@ -9,9 +9,11 @@ use App\Actions\Ai\ToolCalls\AnswerRunContext;
 use App\Actions\Ai\ToolCalls\GrantedTools;
 use App\Actions\Ai\ToolCalls\ModelToolCall;
 use App\Actions\Ai\ToolCalls\ToolStep;
+use App\Enums\Ai\AiRunStepStatus;
 use App\Enums\Ai\ConversationItemType;
 use App\Models\Ai\AiRun;
 use App\Models\Ai\AiRunStep;
+use DateTimeImmutable;
 use LogicException;
 
 /**
@@ -96,6 +98,22 @@ final class RunToolStep
     public function tools(): GrantedTools
     {
         return $this->tools;
+    }
+
+    /**
+     * 呼び出しの中で成功した最後の送信の完了の時刻(ファイルを作るの中の呼び出しのステップの行。無ければ null = 思考の文脈の管理の最後の
+     * 完了の時刻 = docs の 設計/AI/会話の中核.md 13.2)。
+     */
+    public function lastSendFinishedAt(string $callId): ?DateTimeImmutable
+    {
+        $finished = AiRunStep::query()
+            ->join('ai_tool_calls', 'ai_tool_calls.id', '=', 'ai_run_steps.ai_tool_call_id')
+            ->where('ai_run_steps.ai_run_id', $this->run->id)
+            ->where('ai_tool_calls.call_id', $callId)
+            ->where('ai_run_steps.status', AiRunStepStatus::Succeeded)
+            ->max('ai_run_steps.finished_at');
+
+        return is_string($finished) ? new DateTimeImmutable($finished) : null;
     }
 
     public function toolStep(): ToolStep

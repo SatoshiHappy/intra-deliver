@@ -48,8 +48,11 @@ class MarkRunFailed
                 report(new LogicException("会話の型の実行 {$runId} の失敗に、実行の行が持てない使用量か出力の文が渡された(書かない)"));
             }
 
+            $usage = $conversation ? [] : ($result->usage ?? []);
+            // 最後の例外の状態コードで足りる(接続先は 1 つで、SDK の中の送り直しは 429・過負荷の応答の後だけ)
             $run->fill([
-                ...($conversation ? [] : ($result->usage ?? [])),
+                ...$usage,
+                ...($conversation || $usage !== [] ? [] : ['provider_status' => ProviderStatus::of($exception)]),
                 'status' => AiRunStatus::Failed,
                 'error_code' => $errorCode,
                 'error_message' => mb_substr($exception?->getMessage() ?? '', 0, self::MESSAGE_MAX_CHARS),

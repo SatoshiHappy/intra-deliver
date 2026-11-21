@@ -8,6 +8,7 @@ use App\Actions\Ai\Instructions\InstructionBuilder;
 use App\Actions\Ai\ToolCalls\AgentTools;
 use App\Queries\Ai\ConversationSettings;
 use App\Queries\Ai\KindSettings;
+use App\Queries\Ai\ToolChildSettings;
 use App\Support\DefaultDatabaseQueue;
 use Illuminate\Container\Attributes\Tag;
 use LogicException;
@@ -32,6 +33,7 @@ class PromptKinds
         private DefaultInstructionBuilder $instructions,
         private InstructionBuilder $boundInstructions,
         private AgentTools $agentTools,
+        private ToolChildSettings $toolChildren,
     ) {}
 
     /**
@@ -80,6 +82,7 @@ class PromptKinds
             ...array_values(array_unique([...$this->instructions->problems(), ...$bound])),
             ...$this->registrationProblems(),
             ...$this->agentTools->problems(),
+            ...$this->toolChildren->problems(),
             ...$this->limits->problems($this->kindSettings->all()),
         ];
     }

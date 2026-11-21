@@ -57,6 +57,11 @@ final class CreateRecordTool implements AgentCreateTool
         return false;
     }
 
+    public function isConcurrencySafe(): bool
+    {
+        return false;
+    }
+
     public function requiredAction(): AiToolAction
     {
         return AiToolAction::Create;

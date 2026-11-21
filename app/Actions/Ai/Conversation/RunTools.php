@@ -9,6 +9,7 @@ use App\Actions\Ai\Core\CoreToolCall;
 use App\Actions\Ai\Core\ToolLookup;
 use App\Actions\Ai\Core\ToolRun;
 use App\Actions\Ai\Core\ToolRunner;
+use App\Actions\Ai\Core\ToolRuns;
 use App\Actions\Ai\ToolCalls\GrantedTool;
 use App\Actions\Ai\ToolCalls\ModelToolCall;
 use App\Actions\Ai\ToolCalls\ToolCallStages;
@@ -32,6 +33,7 @@ final class RunTools implements ToolRunner
         private readonly RunToolStep $step,
         private readonly ToolCallStages $stages,
         private readonly ToolCallWrites $writes,
+        private readonly RunToolChildren $children,
     ) {}
 
     /**
@@ -65,12 +67,36 @@ final class RunTools implements ToolRunner
             return $this->runApproved($call);
         }
 
+        $result = $this->through($call, $this->taken($call));
+
+        return $this->ran($call, $result);
+    }
+
+    /**
+     * @throws LogicException 探すで見つけていない呼び出しのとき
+     */
+    public function runParallel(array $calls, int $concurrency): ToolRuns
+    {
+        $found = array_map(fn (CoreToolCall $call): array => [$call, $this->taken($call)], $calls);
+        $items = $this->children->run($this->step, $found, $concurrency);
+
+        return $items === null ? ToolRuns::noConversation() : ToolRuns::results(array_map(
+            fn (CoreToolCall $call, ConversationItem $item): ToolRun => ToolRun::result(
+                $item,
+                $this->step->lastSendFinishedAt($call->callId),
+            ),
+            $calls,
+            $items,
+        ));
+    }
+
+    /** 探すで見つけた道具を取り出す */
+    private function taken(CoreToolCall $call): GrantedTool
+    {
         $granted = $this->found[$call->callId] ?? throw new LogicException("呼び出し {$call->callId} を探していない");
         unset($this->found[$call->callId]);
 
-        $result = $this->through($call, $granted);
-
-        return $result === null ? ToolRun::noConversation() : ToolRun::result($result);
+        return $granted;
     }
 
     private function through(CoreToolCall $call, ?GrantedTool $granted): ?ConversationItem
@@ -114,7 +140,14 @@ final class RunTools implements ToolRunner
         $text = $answer->text($row);
         $result = $this->writes->one($context, $answer->definition, $row, $text, $tool, $answer->progress);
 
-        return $result === null ? ToolRun::noConversation() : ToolRun::result($result);
+        return $this->ran($call, $result);
+    }
+
+    private function ran(CoreToolCall $call, ?ConversationItem $result): ToolRun
+    {
+        return $result === null
+            ? ToolRun::noConversation()
+            : ToolRun::result($result, $this->step->lastSendFinishedAt($call->callId));
     }
 
     private function answer(): AnswerCalls

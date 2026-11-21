@@ -42,7 +42,6 @@ final class FakeReceivers implements CoreChecker, CoreNotifier
 
         return match ($request->point) {
             CheckPoint::BeforeSend => CheckReply::proceedToSend(++$this->steps),
-            CheckPoint::BeforeRetryWait => CheckReply::proceedToWait(null),
             default => CheckReply::proceed(),
         };
     }

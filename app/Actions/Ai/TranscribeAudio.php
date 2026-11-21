@@ -48,13 +48,18 @@ class TranscribeAudio
         $tokens = [0, 0];
 
         foreach ($chunks as $index => $chunk) {
-            $calledSeconds += $chunk->lengthSeconds;
+            $called = $calledSeconds + $chunk->lengthSeconds;
 
             try {
                 $transcript = $this->client->call($chunk->path, $provider, $model, $kind);
             } catch (LlmCallFailed $failure) {
-                throw $this->stopped($run, $failure->errorCode, $failure, $calledSeconds, null, $segments);
+                // 接続先が誤りの状態コードで断った区切りは数えない(docs の 設計/AI/実行と費用/接続先と費用.md 5.1・5.2)
+                $counted = ProviderStatus::declined($failure) ? $calledSeconds : $called;
+
+                throw $this->stopped($run, $failure->errorCode, $failure, $counted, null, $segments);
             }
+
+            $calledSeconds = $called;
 
             $tokens = [$tokens[0] + $transcript->inputTokens, $tokens[1] + $transcript->outputTokens];
             $segments = [...$segments, ...self::shifted($transcript->segments, $chunk, $index + 1, count($chunks))];

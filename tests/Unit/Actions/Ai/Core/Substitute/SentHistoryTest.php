@@ -134,7 +134,7 @@ final class SentHistoryTest extends CoreTestCase
     public function test_items_that_are_not_sent_are_dropped(): void
     {
         $messages = $this->built([
-            ConversationItem::compactBoundary(10, '2026-11-17'),
+            ConversationItem::compactBoundary(10, '2026-11-17', 1),
             ConversationItem::compactSummary('まとめ'),
             ConversationItem::turnLimit(),
             ConversationItem::cancellation('r0'),

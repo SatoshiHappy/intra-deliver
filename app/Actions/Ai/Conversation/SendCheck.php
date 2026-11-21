@@ -4,27 +4,27 @@ namespace App\Actions\Ai\Conversation;
 
 use App\Actions\Ai\Core\SendKind;
 use App\Actions\Ai\Core\StopKind;
-use App\Actions\Ai\RunBudget;
 use App\Enums\Ai\AiRunStatus;
 use App\Enums\Ai\AiRunStepSendKind;
 use App\Enums\Ai\AiRunStepStatus;
 use App\Models\Ai\AiRun;
 use App\Models\Ai\AiRunStep;
 use App\Queries\Ai\AiSettings;
+use App\Queries\Ai\Api\RunBudgetQuery;
 use App\Queries\Ai\RunEstimates;
 use App\Queries\Ai\RunSpending;
 use Carbon\CarbonImmutable;
 use Illuminate\Support\Facades\DB;
 
 /**
- * 送る前の確かめの関数(表の正本 = docs の 設計/AI/エージェントの実行/README.md 9.2 の C1〜C6、見積もりと鍵 =
- * 設計/AI/実行と費用/接続先と費用.md 5.3)。鍵は見積もりをステップの行に積んで確定するまでだけ持つ。実行の行は外部キーの確かめと同じ
- * 共有の鍵で読み、失敗の書き込みと同時に処理中のステップの行を足さない。
+ * 送る前の確かめの関数(表の正本 = docs の 設計/AI/エージェントの実行/README.md 9.2 の C1〜C6、費用の比べ方と見積もり =
+ * 設計/AI/実行と費用/接続先と費用.md 5.3)。費用は使った額だけで比べ、見積もりは比べに足さずにステップの行に書く(使用量が分からないまま
+ * 終わったときに数える額)。積む物が無いので予算の鍵を取らない。実行の行は外部キーの確かめと同じ共有の鍵で読み、失敗の書き込みと同時に
+ * 処理中のステップの行を足さない。
  */
 final readonly class SendCheck
 {
     public function __construct(
-        private RunBudget $budget,
         private RunSpending $spending,
         private RunEstimates $estimates,
         private AiSettings $settings,
@@ -33,8 +33,6 @@ final readonly class SendCheck
     public function check(SendCheckInput $input): SendCheckOutcome
     {
         return DB::transaction(function () use ($input): SendCheckOutcome {
-            $this->budget->lock();
-
             /** @var AiRun|null $run */
             $run = AiRun::query()->whereKey($input->runId)->lock('FOR KEY SHARE')->first();
 
@@ -44,6 +42,18 @@ final readonly class SendCheck
 
             return $this->decide($run, $input);
         });
+    }
+
+    /**
+     * 実行の区分の使った額が上限以上の期間(回の応答を読み終えた後の確かめ = 設計/AI/実行と費用/接続先と費用.md 5.3。比べは送る前と同じ)。
+     *
+     * @return RunBudgetQuery::DAY|RunBudgetQuery::MONTH|RunBudgetQuery::TOTAL|null
+     */
+    public function reachedPeriod(int $runId): ?string
+    {
+        $budget = AiRun::query()->whereKey($runId)->value('budget');
+
+        return $this->spending->reachedPeriod((string) $budget, CarbonImmutable::now());
     }
 
     /** 結果の優先と、会話の題が見る物の正本 = 設計/AI/エージェントの実行/README.md 9.2 の表 */
@@ -61,7 +71,7 @@ final readonly class SendCheck
 
         $now = CarbonImmutable::now();
         $estimate = $this->estimate($input);
-        $period = $this->spending->exceededPeriod((string) $run->budget, $now, $estimate);
+        $period = $this->spending->reachedPeriod((string) $run->budget, $now);
 
         if ($period !== null) {
             return $loop ? SendCheckOutcome::stop(StopKind::CostLimit, $period) : SendCheckOutcome::notSent();

@@ -24,6 +24,7 @@ final readonly class LoopPlans
         private LoopRequest $request,
         private CompactThresholds $thresholds,
         private array $toolNames,
+        private SubstituteThinking $thinking,
     ) {
         $this->toolChars = SubstitutePlans::toolChars($request->tools);
     }
@@ -71,7 +72,7 @@ final readonly class LoopPlans
             $request->stream,
             [
                 ...$request->providerOptions[$kind->value] ?? [],
-                ...SubstituteThinking::options($history, $request->target, $kind, $request->receivers->clock->now()),
+                ...$this->thinking->options($request->target, $kind, $request->receivers->clock->now()),
             ],
             $writesCache,
             $request->target->model->maxOutputTokens,

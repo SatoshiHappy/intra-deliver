@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Deploy;
 
+use App\Queries\Ai\ToolChildSettings;
 use Illuminate\Support\Facades\Artisan;
 use Tests\Support\BootsWithEnvironmentOverrides;
 use Tests\Support\PublishSettingsTemplate;
@@ -33,6 +34,7 @@ final class PublishedAiSettingsTest extends TestCase
     {
         $this->assertSame('5', config('ai_runs.budget.default.daily_usd'));
         $this->assertNull(config('ai_runs.budget.transcription.total_usd'));
+        $this->assertSame(2, app(ToolChildSettings::class)->concurrency());
     }
 
     public function test_the_startup_check_passes_with_the_template_values(): void

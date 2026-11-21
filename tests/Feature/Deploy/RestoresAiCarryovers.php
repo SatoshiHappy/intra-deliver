@@ -25,11 +25,11 @@ trait RestoresAiCarryovers
     /** 会話の型の実行の行(費用と見積もりを持たない。数える額はステップの行が持つ) */
     private const CONVERSATION_ROW = "9\tdefault\tsucceeded\t2026-10-17 01:00:00+00\t\\N\t\\N\tconversation";
 
-    private const STEPS_HEADER = 'COPY public.ai_run_steps (id, ai_run_id, sequence, started_at, cost_usd,'
+    private const STEPS_HEADER = 'COPY public.ai_run_steps (id, ai_run_id, sequence, status, started_at, cost_usd,'
         .' reserved_cost_usd) FROM stdin;';
 
-    /** 会話の型の実行 9 のステップの行(実行・番号・開始の時刻・費用・見積もり。費用の分からない行) */
-    private const STEP_ROW = "1\t9\t1\t2026-10-17 15:00:00+00\t\\N\t0.500000";
+    /** 会話の型の実行 9 のステップの行(実行・番号・状態・開始の時刻・費用・見積もり。終わって費用の分からない行) */
+    private const STEP_ROW = "1\t9\t1\tfailed\t2026-10-17 15:00:00+00\t\\N\t0.500000";
 
     private const CARRYOVERS_HEADER = 'COPY public.ai_spending_carryovers (budget, spent_on, cost_usd) FROM stdin;';
 

@@ -20,6 +20,7 @@ use App\Models\Ai\AiRun;
 use App\Queries\Ai\AiSettings;
 use App\Queries\Ai\ConversationSettings;
 use App\Queries\Ai\KindSettings;
+use App\Queries\Ai\TitleBudget;
 use Illuminate\JsonSchema\JsonSchemaTypeFactory;
 use Laravel\Ai\AiManager;
 use LogicException;
@@ -37,6 +38,7 @@ final readonly class ConversationTitle
         private KindSettings $kinds,
         private InstructionBuilder $builder,
         private AiManager $ai,
+        private TitleBudget $budget,
     ) {}
 
     /**
@@ -67,6 +69,7 @@ final readonly class ConversationTitle
                 ...$this->settings->purpose(ConversationSettings::TITLE)['provider_options'],
                 ...VisitorOptions::of($this->aiSettings->providerDriver($target->provider), $run->visitor_id),
             ],
+            $this->budgetOf($run),
             $receivers,
         ));
 
@@ -86,6 +89,14 @@ final readonly class ConversationTitle
         $title = $result->structured[$field] ?? null;
 
         return is_string($title) ? $title : null;
+    }
+
+    /** 題の持ち時間 = 実行の時間の上限 × 設定の割合(9.10) */
+    private function budgetOf(AiRun $run): int
+    {
+        $kind = $this->kinds->conversation($run->kind) ?? throw new LogicException("会話の種類 {$run->kind} の設定が無い");
+
+        return $this->budget->milliseconds($kind['run_timeout_seconds']);
     }
 
     private function target(AiRun $run, StepTarget $target): SendTarget

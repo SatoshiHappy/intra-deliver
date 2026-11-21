@@ -41,6 +41,11 @@ final class PlainTool implements AgentTool
         return [];
     }
 
+    public function isConcurrencySafe(): bool
+    {
+        return false;
+    }
+
     public function isReadOnly(): bool
     {
         return $this->readOnly;

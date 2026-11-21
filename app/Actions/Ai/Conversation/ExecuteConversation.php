@@ -12,6 +12,7 @@ use App\Actions\Ai\Core\LoopEndingKind;
 use App\Actions\Ai\Core\LoopFailure;
 use App\Actions\Ai\Core\LoopStop;
 use App\Actions\Ai\FailRun;
+use App\Actions\Ai\Instructions\InstructionBuilder;
 use App\Enums\Ai\AiRunErrorCode;
 use App\Models\Ai\AiAgentDefinition;
 use App\Models\Ai\AiRun;
@@ -39,6 +40,7 @@ final readonly class ExecuteConversation
         private AnswerRunStart $answers,
         private FailRun $failRun,
         private ConversationCore $core,
+        private InstructionBuilder $builder,
     ) {}
 
     /**
@@ -106,7 +108,7 @@ final readonly class ExecuteConversation
      */
     private function proceed(AiRun $run, ConversationKind $kind, ?string &$title): LoopEnding
     {
-        $store = $kind->store();
+        $store = new RenderingStore($kind->store(), $this->builder);
         $items = $store->read($run->id);
         $definition = AiAgentDefinition::query()->findOrFail($run->agent_definition_id);
         $targets = $this->targets->targets($run);

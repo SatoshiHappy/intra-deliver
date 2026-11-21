@@ -21,10 +21,11 @@ abstract class CoreTestCase extends EmptyContainerTestCase
         string $model = 'claude-x',
         int $window = 200000,
         int $maxOutput = 32000,
+        bool $thinks = false,
     ): SendTarget {
         $provider = new AnthropicProvider($this->createStub(Gateway::class), [], $this->createStub(Dispatcher::class));
         $provider->useTextGateway($gateway);
-        $spec = new ModelSpec($model, $window, $maxOutput, null, false);
+        $spec = new ModelSpec($model, $window, $maxOutput, null, $thinks);
 
         return new SendTarget($provider, 'anthropic', $spec, $traits ?? new ProviderTraits, 60);
     }

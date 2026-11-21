@@ -52,6 +52,7 @@ abstract class FakeRecordTool implements AgentRecordTool
         public ?Closure $module = null,
         public ?Closure $shape = null,
         public array $parties = [],
+        public bool $concurrencySafe = false,
     ) {}
 
     public function name(): string
@@ -90,6 +91,11 @@ abstract class FakeRecordTool implements AgentRecordTool
     public function isReadOnly(): bool
     {
         return $this->readOnly;
+    }
+
+    public function isConcurrencySafe(): bool
+    {
+        return $this->concurrencySafe;
     }
 
     public function requiredAction(): ?AiToolAction

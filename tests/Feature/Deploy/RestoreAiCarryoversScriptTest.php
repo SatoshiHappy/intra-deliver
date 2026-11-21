@@ -76,7 +76,7 @@ final class RestoreAiCarryoversScriptTest extends TransactionalTestCase
     }
 
     /**
-     * 数える列(実行の id・区分・状態・作った時刻・費用・見積もり。ステップの実行・開始の時刻・費用・見積もり。繰り越しの区分・日・額)が欠けた退避は、
+     * 数える列(実行の id・区分・状態・作った時刻・費用・見積もり。ステップの実行・状態・開始の時刻・費用・見積もり。繰り越しの区分・日・額)が欠けた退避は、
      * 何も入れずに終了 1。
      *
      * @return array<string, array{string, string, string}>
@@ -84,7 +84,7 @@ final class RestoreAiCarryoversScriptTest extends TransactionalTestCase
     public static function dumpsMissingACountedColumn(): array
     {
         $runs = ['id, budget, status, created_at, cost_usd, reserved_cost_usd, kind_type', self::PROMPT_ROW];
-        $steps = ['id, ai_run_id, sequence, started_at, cost_usd, reserved_cost_usd', self::STEP_ROW];
+        $steps = ['id, ai_run_id, sequence, status, started_at, cost_usd, reserved_cost_usd', self::STEP_ROW];
         $carryovers = ['budget, spent_on, cost_usd', "default\t2026-10-17\t3.000000"];
         $without = fn (array $block, string $column, int $position): array => [
             implode(', ', array_diff(explode(', ', $block[0]), [$column])),
@@ -99,9 +99,10 @@ final class RestoreAiCarryoversScriptTest extends TransactionalTestCase
             'runs without cost_usd' => [...$without($runs, 'cost_usd', 4), 'runs'],
             'runs without reserved_cost_usd' => [...$without($runs, 'reserved_cost_usd', 5), 'runs'],
             'steps without ai_run_id' => [...$without($steps, 'ai_run_id', 1), 'steps'],
-            'steps without started_at' => [...$without($steps, 'started_at', 3), 'steps'],
-            'steps without cost_usd' => [...$without($steps, 'cost_usd', 4), 'steps'],
-            'steps without reserved_cost_usd' => [...$without($steps, 'reserved_cost_usd', 5), 'steps'],
+            'steps without status' => [...$without($steps, 'status', 3), 'steps'],
+            'steps without started_at' => [...$without($steps, 'started_at', 4), 'steps'],
+            'steps without cost_usd' => [...$without($steps, 'cost_usd', 5), 'steps'],
+            'steps without reserved_cost_usd' => [...$without($steps, 'reserved_cost_usd', 6), 'steps'],
             'carryovers without budget' => [...$without($carryovers, 'budget', 0), 'carryovers'],
             'carryovers without spent_on' => [...$without($carryovers, 'spent_on', 1), 'carryovers'],
             'carryovers without cost_usd' => [...$without($carryovers, 'cost_usd', 2), 'carryovers'],

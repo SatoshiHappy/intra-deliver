@@ -45,6 +45,9 @@ interface AgentTool
     /** 読むだけか(入力を受けない。入力で読むか書くかが変わる道具は 2 つに分けて登録する) */
     public function isReadOnly(): bool;
 
+    /** 並べてよいか(入力を受けない。真にしてよいのは読むだけの道具 = 10.1) */
+    public function isConcurrencySafe(): bool;
+
     /** 要る権限(対象の業務モジュールの操作。無し = null) */
     public function requiredAction(): ?AiToolAction;
 

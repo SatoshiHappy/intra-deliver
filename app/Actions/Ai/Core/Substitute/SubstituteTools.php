@@ -9,9 +9,13 @@ use App\Actions\Ai\Core\CoreChecker;
 use App\Actions\Ai\Core\CoreToolCall;
 use App\Actions\Ai\Core\LoopEnding;
 use App\Actions\Ai\Core\LoopStop;
+use App\Actions\Ai\Core\ParallelTools;
+use App\Actions\Ai\Core\ToolGroup;
 use App\Actions\Ai\Core\ToolLookupAnswer;
+use App\Actions\Ai\Core\ToolRun;
 use App\Actions\Ai\Core\ToolRunAnswer;
 use App\Actions\Ai\Core\ToolRunner;
+use Laravel\Ai\Contracts\Tool;
 use LogicException;
 
 /**
@@ -20,11 +24,16 @@ use LogicException;
  */
 final readonly class SubstituteTools
 {
+    /**
+     * @param  array<string, Tool>  $given  渡す道具(送る名前 → 道具。組に分けるのに使う)
+     */
     public function __construct(
         private ToolRunner $tools,
         private CoreChecker $checker,
         private SubstituteState $state,
         private SubstituteStops $stops,
+        private array $given,
+        private ParallelTools $parallel,
     ) {}
 
     /**
@@ -38,16 +47,25 @@ final readonly class SubstituteTools
     public function run(array $calls, bool $preRun, int $maxTurns): ?LoopEnding
     {
         $asking = [];
+        $groups = $this->parallel->groups($calls, $this->given);
 
-        foreach ($calls as $index => $call) {
-            $ending = $this->ran($call, $preRun, [$call, ...array_slice($calls, $index + 1)], $asking);
+        foreach ($groups as $index => $group) {
+            $later = array_merge(...array_map(
+                static fn (ToolGroup $later): array => $later->calls,
+                array_slice($groups, $index + 1),
+            ));
+            $ending = $group->parallel
+                ? $this->ranGroup($group->calls, $later, $asking)
+                : $this->ran($group->calls[0], $preRun, [$group->calls[0], ...$later], $asking);
 
             if ($ending !== null) {
                 return $ending;
             }
         }
 
-        return $this->afterTools($asking, ! $preRun && $this->state->turn + 1 > $maxTurns);
+        $next = $preRun ? $this->state->turn : $this->state->turn + 1;
+
+        return $this->afterTools($asking, $next > $maxTurns);
     }
 
     /**
@@ -77,8 +95,77 @@ final readonly class SubstituteTools
             return LoopEnding::stopped(LoopStop::fromStopKind($reply->stop), $reply->reason);
         }
 
-        $run = $this->tools->run($call, $preRun);
+        $this->recorded($call, $this->tools->run($call, $preRun), $preRun, $asking);
 
+        return null;
+    }
+
+    /**
+     * 並べてよい道具の組: 呼び出しの順に探し、組の前に 1 回だけ確かめてから並べて動かす(docs の 設計/AI/会話の中核の口と受け手.md 13.3)。
+     *
+     * @param  non-empty-list<CoreToolCall>  $calls
+     * @param  list<CoreToolCall>  $later  後の組の呼び出し
+     * @param  list<string>  $asking
+     */
+    private function ranGroup(array $calls, array $later, array &$asking): ?LoopEnding
+    {
+        $found = array_values(array_filter($calls, $this->found(...)));
+
+        if ($found === []) {
+            return null;
+        }
+
+        $reply = SubstituteChecks::ask($this->checker, CheckRequest::at(CheckPoint::BeforeTool, $this->state->kind));
+
+        if ($reply->stop !== null) {
+            $left = array_map(static fn (CoreToolCall $call): string => $call->callId, [...$found, ...$later]);
+            $this->stops->beforeTool($reply->stop, [...$asking, ...$left]);
+
+            return LoopEnding::stopped(LoopStop::fromStopKind($reply->stop), $reply->reason);
+        }
+
+        $runs = $this->tools->runParallel($found, $this->parallel->concurrency);
+
+        if ($runs->conversationGone) {
+            throw new ConversationEnded;
+        }
+
+        if (count($runs->runs) !== count($found)) {
+            throw new LogicException('並べて動かした組の結果の数が呼び出しの数と違う');
+        }
+
+        foreach ($found as $index => $call) {
+            $this->recorded($call, $runs->runs[$index], false, $asking);
+        }
+
+        return null;
+    }
+
+    /** 探す(無い道具は結果を足して false) */
+    private function found(CoreToolCall $call): bool
+    {
+        $lookup = $this->tools->find($call, false);
+
+        if ($lookup->answer === ToolLookupAnswer::NoConversation) {
+            throw new ConversationEnded;
+        }
+
+        if ($lookup->missingResult !== null) {
+            $this->state->addToolResult($lookup->missingResult);
+
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * 動かした結果を状態に入れる。
+     *
+     * @param  list<string>  $asking
+     */
+    private function recorded(CoreToolCall $call, ToolRun $run, bool $preRun, array &$asking): void
+    {
         match ($run->answer) {
             ToolRunAnswer::NoConversation => throw new ConversationEnded,
             ToolRunAnswer::Asks => $preRun
@@ -89,7 +176,9 @@ final readonly class SubstituteTools
             ),
         };
 
-        return null;
+        if ($run->lastSendFinishedAt !== null) {
+            $this->state->thinking->completed($run->lastSendFinishedAt);
+        }
     }
 
     /**

@@ -31,14 +31,18 @@ enum CheckPoint: string
     case DuringRetryWait = 'during_retry_wait';
 
     /**
-     * この位置で受け手が止める区分を返してよいか(13.5 のデシジョン表)。$sendKind は送る前の位置でだけ見る(題の送信は費用の上限だけ)。
+     * この位置で受け手が止める区分を返してよいか(13.5 のデシジョン表)。$sendKind は送る前(題の送信は費用の上限だけ)と読み終えた後
+     * (回の答えと続きだけ費用の上限も = 5.3)の位置で見る。
      */
     public function allows(StopKind $kind, SendKind $sendKind): bool
     {
+        $answering = $sendKind === SendKind::Turn || $sendKind === SendKind::Continuation;
+
         return match ($this) {
             self::BeforeSend => $sendKind !== SendKind::Title || $kind === StopKind::CostLimit,
             self::BeforeTool, self::BeforeRetryWait => $kind !== StopKind::CostLimit,
-            self::WhileReading, self::AfterReading, self::AfterTools, self::DuringRetryWait => $kind === StopKind::User,
+            self::AfterReading => $kind === StopKind::User || ($answering && $kind === StopKind::CostLimit),
+            self::WhileReading, self::AfterTools, self::DuringRetryWait => $kind === StopKind::User,
         };
     }
 
@@ -50,10 +54,8 @@ enum CheckPoint: string
         return match ($this) {
             self::BeforeSend => true,
             self::BeforeTool, self::AfterTools => $kind === SendKind::Turn || $kind === SendKind::Continuation,
-            self::WhileReading,
-            self::AfterReading,
-            self::BeforeRetryWait,
-            self::DuringRetryWait => $kind !== SendKind::Title,
+            self::WhileReading, self::AfterReading => $kind !== SendKind::Title,
+            self::BeforeRetryWait, self::DuringRetryWait => true,
         };
     }
 
@@ -67,9 +69,8 @@ enum CheckPoint: string
         }
 
         return match ($this) {
-            self::BeforeSend => $reply->stepId !== null && $reply->waitLimitMs === null,
-            self::BeforeRetryWait => $reply->stepId === null,
-            default => $reply->stepId === null && $reply->waitLimitMs === null,
+            self::BeforeSend => $reply->stepId !== null,
+            default => $reply->stepId === null,
         };
     }
 }

@@ -6,6 +6,7 @@ use App\Actions\Ai\Core\CheckPoint;
 use App\Actions\Ai\Core\CheckReply;
 use App\Actions\Ai\Core\CheckRequest;
 use App\Actions\Ai\Core\CoreChecker;
+use App\Actions\Ai\Core\SendKind;
 use App\Actions\Ai\Core\StopKind;
 use App\Enums\Ai\AiRunStatus;
 use App\Models\Ai\AiRun;
@@ -37,16 +38,29 @@ final readonly class RunChecker implements CoreChecker
             return CheckReply::stop(StopKind::User);
         }
 
-        $timed = $request->point === CheckPoint::BeforeTool || $request->point === CheckPoint::BeforeRetryWait;
-        $remaining = $this->clock->remainingMilliseconds();
+        if ($request->point === CheckPoint::AfterReading) {
+            return $this->afterReading($request->kind);
+        }
 
-        if ($timed && $remaining < 0) {
+        $timed = $request->point === CheckPoint::BeforeTool || $request->point === CheckPoint::BeforeRetryWait;
+
+        if ($timed && $this->clock->remainingMilliseconds() < 0) {
             return CheckReply::stop(StopKind::TimeLimit);
         }
 
-        return $request->point === CheckPoint::BeforeRetryWait
-            ? CheckReply::proceedToWait($remaining)
-            : CheckReply::proceed();
+        return CheckReply::proceed();
+    }
+
+    /** 回の答えと続きの応答を読み終えた後の費用の確かめ(送る前と同じ比べ = 設計/AI/実行と費用/接続先と費用.md 5.3。9.11 の S33) */
+    private function afterReading(SendKind $kind): CheckReply
+    {
+        if ($kind !== SendKind::Turn && $kind !== SendKind::Continuation) {
+            return CheckReply::proceed();
+        }
+
+        $period = $this->sendCheck->reachedPeriod($this->runId);
+
+        return $period === null ? CheckReply::proceed() : CheckReply::stop(StopKind::CostLimit, $period);
     }
 
     private function beforeSend(CheckRequest $request): CheckReply

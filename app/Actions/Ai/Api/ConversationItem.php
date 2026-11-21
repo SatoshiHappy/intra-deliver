@@ -2,10 +2,10 @@
 
 namespace App\Actions\Ai\Api;
 
+use App\Actions\Ai\Core\StoredTexts;
 use App\Enums\Ai\AiInstructionTemplate;
 use App\Enums\Ai\ConversationItemDisplay;
 use App\Enums\Ai\ConversationItemType;
-use DateTimeImmutable;
 use DateTimeInterface;
 use LogicException;
 
@@ -23,8 +23,9 @@ use LogicException;
  * @phpstan-type ToolCallBlock array{type: 'tool_call', id: string, name: string, arguments: array<string, mixed>,
  *     result_id: string|null}
  * @phpstan-type TemplateValues array<string, string|list<string>>
+ * @phpstan-type Rendered array{text: string, forms_id: string}
  * @phpstan-type ToolResultContent array{call_id: string, template: string|null, values: TemplateValues,
- *     body: string|null, is_error: bool}
+ *     body: string|null, is_error: bool, rendered: Rendered|null}
  * @phpstan-type Usage array{input_tokens: int, output_tokens: int, cache_read_input_tokens: int|null,
  *     cache_write_input_tokens: int|null, reasoning_tokens: int|null}
  * @phpstan-type ItemCopy array{type: string, display: string, version: int, content: array<string, mixed>}
@@ -161,8 +162,10 @@ final readonly class ConversationItem
 
     /**
      * 道具の結果(持つ物と出し方 = 9.13 の項目の種類)。理由つきの断りは、理由を値の {@see self::USER_FEEDBACK} に持つ。
+     * $rendered = 会話の保存に書く時に組んだ文と会話の印の形の一覧の印(書く前は null。組み方 = {@see StoredTexts})。
      *
      * @param  TemplateValues  $values  置き換え口の名前 → 値
+     * @param  Rendered|null  $rendered
      */
     public static function toolResult(
         string $callId,
@@ -170,6 +173,7 @@ final readonly class ConversationItem
         array $values,
         ?string $body,
         bool $isError,
+        ?array $rendered = null,
     ): self {
         $display = isset($values[self::USER_FEEDBACK])
             ? ConversationItemDisplay::ReasonAsUserText
@@ -181,13 +185,18 @@ final readonly class ConversationItem
             'values' => $values,
             'body' => $body,
             'is_error' => $isError,
+            'rendered' => $rendered,
         ]);
     }
 
-    /** 中断の印(道具の途中か否かの 2 つの形。画面の履歴に出す) */
-    public static function interruption(bool $duringTool): self
+    /**
+     * 中断の印(道具の途中か否かの 2 つの形。画面の履歴に出す)。$rendered は道具の結果と同じ。
+     *
+     * @param  Rendered|null  $rendered
+     */
+    public static function interruption(bool $duringTool, ?array $rendered = null): self
     {
-        $content = ['during_tool' => $duringTool];
+        $content = ['during_tool' => $duringTool, 'rendered' => $rendered];
 
         return self::of(ConversationItemType::Interruption, ConversationItemDisplay::Show, $content);
     }
@@ -218,10 +227,11 @@ final readonly class ConversationItem
     /**
      * 要約の境目(画面の履歴に境目の 1 行として出し、モデルには送らない = 9.9)。$estimate = 要約の前の送る量の見積もり(① が使えるように持つ)。
      * $date = 要約が済んだ時の時計の口の今日({@see self::DATE_FORMAT}。先頭の日付の文の値 = 設計/AI/会話の中核.md 13.2)。
+     * $stepId = 要約を済ませたステップの行の番号(思考の文脈の管理の始めの値 = 同じ 13.2、設計/AI/エージェントの実行/口と契約.md 9.13)。
      */
-    public static function compactBoundary(int $estimate, string $date): self
+    public static function compactBoundary(int $estimate, string $date, int $stepId): self
     {
-        $content = ['estimate' => $estimate, 'date' => $date];
+        $content = ['estimate' => $estimate, 'date' => $date, 'step_id' => $stepId];
 
         return self::of(ConversationItemType::CompactBoundary, ConversationItemDisplay::BoundaryLine, $content);
     }
@@ -272,55 +282,12 @@ final readonly class ConversationItem
             throw new LogicException('会話の保存の項目の種類・出し方・中身の形が合わない');
         }
 
-        $item = self::rebuilt($type, $content);
+        $item = ConversationItemRebuild::of($type, $content);
 
         if ($item->display !== $display) {
             throw new LogicException("会話の保存の項目の出し方 {$display->value} が種類の中身と合わない");
         }
 
         return $item;
-    }
-
-    /**
-     * 形を確かめた中身から、作り手で作り直す(写しを持つ側が鍵の順を変えても、同じ値になる。モデルの文のブロックは {@see self::modelText()} が作り直す)。
-     *
-     * @param  array<array-key, mixed>  $content
-     */
-    private static function rebuilt(ConversationItemType $type, array $content): self
-    {
-        return match ($type) {
-            ConversationItemType::UserText => self::userText($content['text']),
-            ConversationItemType::ModelText => self::modelText(
-                $content['response_id'],
-                array_values($content['blocks']),
-            ),
-            ConversationItemType::ResponseEnd => self::responseEnd(
-                $content['response_id'],
-                $content['usage'],
-                $content['raw_state'],
-                $content['provider'],
-                $content['model'],
-                $content['block_count'],
-                $content['call_ids'],
-                new DateTimeImmutable($content['finished_at']),
-            ),
-            ConversationItemType::Cancellation => self::cancellation($content['response_id']),
-            ConversationItemType::ToolResult => self::toolResult(
-                $content['call_id'],
-                $content['template'] === null ? null : AiInstructionTemplate::from($content['template']),
-                $content['values'],
-                $content['body'],
-                $content['is_error'],
-            ),
-            ConversationItemType::Interruption => self::interruption($content['during_tool']),
-            ConversationItemType::TurnLimit => self::turnLimit(),
-            ConversationItemType::AddedText => self::addedText(
-                AiInstructionTemplate::from($content['template']),
-                $content['values'],
-                $content['call_ids'],
-            ),
-            ConversationItemType::CompactBoundary => self::compactBoundary($content['estimate'], $content['date']),
-            ConversationItemType::CompactSummary => self::compactSummary($content['text']),
-        };
     }
 }

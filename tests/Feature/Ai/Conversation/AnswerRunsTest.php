@@ -10,6 +10,7 @@ use App\Actions\Ai\Conversation\EndAwaitingToolCalls;
 use App\Actions\Ai\Conversation\RunClock;
 use App\Actions\Ai\Conversation\RunNotifier;
 use App\Actions\Ai\Conversation\RunProgress;
+use App\Actions\Ai\Conversation\RunToolChildren;
 use App\Actions\Ai\Conversation\RunTools;
 use App\Actions\Ai\Conversation\RunToolStep;
 use App\Actions\Ai\Conversation\StepRecorder;
@@ -283,7 +284,9 @@ final class AnswerRunsTest extends TransactionalTestCase
         $answer = new AnswerCalls($run->agentDefinition()->sole(), $keyed, $texts->keyBy('ai_tool_call_id')->all());
         $cursor = new RunToolStep($run, $granted, $this->store, $answer);
 
-        return [new RunTools($cursor, app(ToolCallStages::class), app(ToolCallWrites::class)), $cursor];
+        $stages = app(ToolCallStages::class);
+
+        return [new RunTools($cursor, $stages, app(ToolCallWrites::class), app(RunToolChildren::class)), $cursor];
     }
 
     private function notifier(RunToolStep $cursor): RunNotifier

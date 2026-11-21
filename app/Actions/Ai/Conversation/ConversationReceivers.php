@@ -33,6 +33,7 @@ final readonly class ConversationReceivers
         private ToolCallRows $rows,
         private ToolCallStages $stages,
         private ToolCallWrites $writes,
+        private RunToolChildren $children,
         private InstructionBuilder $builder,
         private ConversationSettings $settings,
         private KindSettings $kinds,
@@ -68,7 +69,7 @@ final readonly class ConversationReceivers
         );
 
         return new LoopReceivers(
-            new RunTools($toolStep, $this->stages, $this->writes),
+            new RunTools($toolStep, $this->stages, $this->writes, $this->children),
             $notifier,
             new RunChecker($run->id, $targets, $clock, $this->sendCheck),
             $clock,

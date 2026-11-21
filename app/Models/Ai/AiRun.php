@@ -29,9 +29,10 @@ use LogicException;
     'original_record_id', 'record_module_code', 'source_record_ids', 'input_upload_id', 'original_input_upload_id',
     'audio_seconds', 'provider', 'model', 'budget', 'max_output_tokens', 'reserved_cost_usd', 'input_tokens',
     'output_tokens', 'cache_read_input_tokens', 'cache_write_input_tokens', 'reasoning_tokens', 'pricing',
-    'cost_usd', 'error_code', 'error_message', 'started_at', 'finished_at', 'agent_definition_id', 'previous_run_id',
+    'cost_usd', 'error_code', 'error_message', 'provider_status', 'started_at', 'finished_at', 'agent_definition_id',
+    'previous_run_id',
     'wants_title', 'answer', 'stop_requested_at', 'stop_reason', 'stop_budget_period', 'purposes', 'passed_tools',
-    'knowledge_modules', 'compacted', 'retry_wait_seconds', 'retry_attempt', 'step_reserved_sum_usd',
+    'knowledge_modules', 'compacted', 'retry_wait_seconds', 'retry_attempt',
     'step_cost_sum_usd', 'step_usage_sum',
 ])]
 class AiRun extends Model
@@ -53,6 +54,7 @@ class AiRun extends Model
             'audio_seconds' => 'decimal:3',
             'max_output_tokens' => 'integer',
             'reserved_cost_usd' => 'decimal:6',
+            'provider_status' => 'integer',
             'input_tokens' => 'integer',
             'output_tokens' => 'integer',
             'cache_read_input_tokens' => 'integer',
@@ -73,7 +75,6 @@ class AiRun extends Model
             'compacted' => 'boolean',
             'retry_wait_seconds' => 'integer',
             'retry_attempt' => 'integer',
-            'step_reserved_sum_usd' => 'decimal:6',
             'step_cost_sum_usd' => 'decimal:6',
             'step_usage_sum' => 'array',
         ];

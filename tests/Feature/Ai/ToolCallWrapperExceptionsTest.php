@@ -114,7 +114,7 @@ final class ToolCallWrapperExceptionsTest extends TransactionalTestCase
         $stored = $this->storedContents();
 
         $expected = ['call_id' => 'c1', 'template' => 'tool_error', 'values' => ['error' => $text]];
-        $this->assertSame([...$expected, 'body' => null, 'is_error' => true], $stored[0]);
+        $this->assertSame([...$expected, 'body' => null, 'is_error' => true, 'rendered' => null], $stored[0]);
         $this->assertStringNotContainsString(self::SECRET, (string) json_encode($stored, JSON_UNESCAPED_UNICODE));
     }
 }

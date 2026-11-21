@@ -26,7 +26,7 @@ final class SumRunStepsTest extends TransactionalTestCase
         'code_execution_seconds' => 0.0,
     ];
 
-    public function test_the_estimates_of_every_step_and_the_costs_and_usage_of_the_known_steps_are_summed(): void
+    public function test_the_costs_and_usage_of_the_known_steps_are_summed(): void
     {
         $run = AiRun::factory()->conversation()->running()->create();
         $step = AiRunStep::factory()->succeeded('0.002000')->create([
@@ -45,7 +45,7 @@ final class SumRunStepsTest extends TransactionalTestCase
         AiRunStep::factory()->create(['ai_run_id' => $run->id, 'reserved_cost_usd' => '0.800000']);
         AiRunStep::factory()->succeeded('9.000000')->create();
 
-        $this->assertSums($run, '1.510000', '0.032500', [
+        $this->assertSums($run, '0.032500', [
             'input_tokens' => 30,
             'output_tokens' => 15,
             'cache_read_input_tokens' => 3,
@@ -59,7 +59,7 @@ final class SumRunStepsTest extends TransactionalTestCase
     {
         $run = AiRun::factory()->conversation()->running()->create();
 
-        $this->assertSums($run, '0.000000', '0.000000', self::ZERO_USAGE);
+        $this->assertSums($run, '0.000000', self::ZERO_USAGE);
     }
 
     public function test_a_run_without_known_steps_has_zero_costs_and_usage(): void
@@ -68,7 +68,7 @@ final class SumRunStepsTest extends TransactionalTestCase
         AiRunStep::factory()->create(['ai_run_id' => $run->id]);
         AiRunStep::factory()->stopped()->create(['ai_run_id' => $run->id]);
 
-        $this->assertSums($run, '0.020000', '0.000000', self::ZERO_USAGE);
+        $this->assertSums($run, '0.000000', self::ZERO_USAGE);
     }
 
     /** 会話の型でない実行は和の列を持てない(作りの誤り) */
@@ -86,11 +86,11 @@ final class SumRunStepsTest extends TransactionalTestCase
      *
      * @param  array<string, int|float>  $usage
      */
-    private function assertSums(AiRun $run, string $reservedUsd, string $costUsd, array $usage): void
+    private function assertSums(AiRun $run, string $costUsd, array $usage): void
     {
         $sums = app(SumRunSteps::class)->columns($run);
 
-        $this->assertSame([$reservedUsd, $costUsd], [$sums['step_reserved_sum_usd'], $sums['step_cost_sum_usd']]);
+        $this->assertSame($costUsd, $sums['step_cost_sum_usd']);
         $this->assertSame($usage, $sums['step_usage_sum']);
     }
 }

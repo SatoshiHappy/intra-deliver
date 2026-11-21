@@ -70,7 +70,7 @@ class RequestConversation
                 throw new RunRequestDeclined(RunRequestDeclined::TOO_LONG, $message);
             }
 
-            $this->budget->ensureWithin($kind['budget'], '0');
+            $this->budget->ensureNotReached($kind['budget']);
             $run = $this->created($context, $request->kindCode, $kind, $requester, $definition, [
                 'previous_run_id' => $request->previousRunId,
                 'wants_title' => $request->wantsTitle,

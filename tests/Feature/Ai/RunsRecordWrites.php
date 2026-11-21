@@ -4,6 +4,7 @@ namespace Tests\Feature\Ai;
 
 use App\Actions\Ai\Api\ConversationItem;
 use App\Actions\Ai\Conversation\AnswerCalls;
+use App\Actions\Ai\Conversation\RunToolChildren;
 use App\Actions\Ai\Conversation\RunTools;
 use App\Actions\Ai\Conversation\RunToolStep;
 use App\Actions\Ai\Core\CoreToolCall;
@@ -89,7 +90,8 @@ trait RunsRecordWrites
         $answerRun = $this->answerRun ?? $this->fail('答えの実行が無い');
         $cursor = new RunToolStep($answerRun, $granted, $this->store, $answer);
         $this->answerContext = $cursor->answerContext();
-        $tools = new RunTools($cursor, app(ToolCallStages::class), app(ToolCallWrites::class));
+        $stages = app(ToolCallStages::class);
+        $tools = new RunTools($cursor, $stages, app(ToolCallWrites::class), app(RunToolChildren::class));
 
         $this->beforeAnswer === null ? null : ($this->beforeAnswer)();
         $results = [];

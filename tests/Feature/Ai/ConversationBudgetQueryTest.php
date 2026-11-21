@@ -48,8 +48,8 @@ final class ConversationBudgetQueryTest extends TransactionalTestCase
     }
 
     /**
-     * 会話の型の種類を渡すと、使った額が上限より 1 刻み少ない・上限と同じでは無し、1 刻み多いと超えた期間を返す
-     * (使った額が「上限 − 1 依頼の見積もりの上限」をとうに超えていても、会話の型は足さないので無し)。
+     * 会話の型の種類を渡すと、使った額が上限より 1 刻み少ないと無し、上限と同じ・1 刻み多いと超えた期間を返す(使った額 ≥ 上限 = 5.2 の
+     * 比べ方の表。使った額が「上限 − 1 依頼の見積もりの上限」をとうに超えていても、会話の型は足さないので上限の手前は無し)。
      */
     public function test_a_conversation_kind_is_counted_by_the_spent_amount_only(): void
     {
@@ -58,13 +58,31 @@ final class ConversationBudgetQueryTest extends TransactionalTestCase
         $this->assertSame(RunBudgetQuery::DAY, $this->ofKind('meeting.minutes'));
 
         $this->spend('0.000001');
-        $this->assertNull($this->ofKind(RecordingConversationKind::CODE));
+        $this->assertSame(RunBudgetQuery::DAY, $this->ofKind(RecordingConversationKind::CODE));
 
         $this->spend('0.000001');
         $this->assertSame(RunBudgetQuery::DAY, $this->ofKind(RecordingConversationKind::CODE));
     }
 
-    /** 種類を渡さない区分の状態は、会話の型の種類を除いた最大(今の設定では議事録)で数える */
+    /** 会話の型だけの区分は、区分だけの呼び出しも種類を渡す呼び出しも、使った額が上限ちょうどで超えた(5.2 の区分だけの呼び出し) */
+    public function test_a_budget_of_conversation_kinds_only_is_reached_at_the_limit_by_both_calls(): void
+    {
+        /** @var array<string, array<string, mixed>> $kinds */
+        $kinds = config('ai_runs.kinds');
+        $kinds[RecordingConversationKind::CODE]['budget'] = 'chat';
+        config([
+            'ai_runs.kinds' => $kinds,
+            'ai_runs.budget.chat' => ['daily_usd' => 1, 'monthly_usd' => null, 'total_usd' => null],
+        ]);
+        $this->spend('0.999999', 'chat');
+        $this->assertSame([null, null], [$this->ofBudget('chat'), $this->ofKind(RecordingConversationKind::CODE)]);
+
+        $this->spend('0.000001', 'chat');
+        $both = [$this->ofBudget('chat'), $this->ofKind(RecordingConversationKind::CODE)];
+        $this->assertSame([RunBudgetQuery::DAY, RunBudgetQuery::DAY], $both);
+    }
+
+    /** 種類を渡さない区分の状態は、文章の種類の最大(今の設定では議事録)の比べと、会話の型の比べのどれか(議事録の比べが先に当たる) */
     public function test_the_state_of_the_budget_counts_the_largest_kind_other_than_the_conversation_kinds(): void
     {
         $this->spend(self::usd(1 - self::MINUTES_CEILING));
@@ -104,7 +122,7 @@ final class ConversationBudgetQueryTest extends TransactionalTestCase
      */
     public function test_conversation_runs_add_nothing_to_the_spent_amount_on_a_day_with_prompt_runs(): void
     {
-        $this->spend('1.000000');
+        $this->spend('0.999999');
         $this->conversationRuns();
 
         $this->assertNull($this->ofKind(RecordingConversationKind::CODE));
@@ -128,9 +146,9 @@ final class ConversationBudgetQueryTest extends TransactionalTestCase
         return app(RunBudgetQuery::class)->exceededPeriodOfKind($kindCode, CarbonImmutable::now());
     }
 
-    private function ofBudget(): ?string
+    private function ofBudget(string $budget = 'default'): ?string
     {
-        return app(RunBudgetQuery::class)->exceededPeriod('default', CarbonImmutable::now());
+        return app(RunBudgetQuery::class)->exceededPeriod($budget, CarbonImmutable::now());
     }
 
     /** 既定の区分に、今日の会話の型の実行の行(待ち・処理中・失敗・止めた・確認待ち)を足す */
@@ -148,11 +166,11 @@ final class ConversationBudgetQueryTest extends TransactionalTestCase
         $conversation->create(['status' => AiRunStatus::AwaitingConfirmation, ...$finished, ...$at]);
     }
 
-    /** 既定の区分に、使用量の分かった文章の実行を足す */
-    private function spend(string $costUsd): void
+    /** 区分(既定 = default)に、使用量の分かった文章の実行を足す */
+    private function spend(string $costUsd, string $budget = 'default'): void
     {
         $now = CarbonImmutable::now()->utc();
-        AiRun::factory()->succeeded($costUsd)->create(['budget' => 'default', 'created_at' => $now]);
+        AiRun::factory()->succeeded($costUsd)->create(['budget' => $budget, 'created_at' => $now]);
     }
 
     private static function usd(float $amount): string

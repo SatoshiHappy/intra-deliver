@@ -24,7 +24,7 @@ use Throwable;
  */
 final class FakeStepGateway implements StepTextGateway
 {
-    /** @var list<array{stream: bool, maxTokens: int|null}> */
+    /** @var list<array{stream: bool, maxTokens: int|null, options: array<string, mixed>}> */
     public array $sent = [];
 
     /**
@@ -103,7 +103,8 @@ final class FakeStepGateway implements StepTextGateway
      */
     private function next(bool $stream, ?TextGenerationOptions $options): StepResponse|Throwable|array
     {
-        $this->sent[] = ['stream' => $stream, 'maxTokens' => $options?->maxTokens];
+        $providerOptions = $options->providerOptions ?? [];
+        $this->sent[] = ['stream' => $stream, 'maxTokens' => $options?->maxTokens, 'options' => $providerOptions];
 
         return array_shift($this->scripts) ?? throw new LogicException('台本が尽きた');
     }

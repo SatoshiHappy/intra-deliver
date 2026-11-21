@@ -24,7 +24,7 @@ class SumRunSteps
      * 使用量の分からないステップは使用量と費用の列が空(docs の 設計/AI/実行の記録.md 2.3 の検査制約)なので、列の和がそのまま分かった分の和になる。
      * 額は列と同じ小数 6 桁で返す(足すステップが無いときの 0 も)。
      *
-     * @return array{step_reserved_sum_usd: string, step_cost_sum_usd: string, step_usage_sum: array<string, int|float>}
+     * @return array{step_cost_sum_usd: string, step_usage_sum: array<string, int|float>}
      *
      * @throws LogicException 会話の型でない実行のとき(作りの誤り。ほかの型の行は和の列を持てない)
      */
@@ -35,7 +35,6 @@ class SumRunSteps
         }
 
         $sums = [
-            'coalesce(sum(reserved_cost_usd), 0)::numeric(12, 6) AS reserved_cost_usd',
             'coalesce(sum(cost_usd), 0)::numeric(12, 6) AS cost_usd',
             ...array_map(
                 fn (string $column): string => "coalesce(sum({$column}), 0) AS {$column}",
@@ -52,7 +51,6 @@ class SumRunSteps
         $usage[self::CODE_EXECUTION_SECONDS] = (float) $row->{self::CODE_EXECUTION_SECONDS};
 
         return [
-            'step_reserved_sum_usd' => (string) $row->reserved_cost_usd,
             'step_cost_sum_usd' => (string) $row->cost_usd,
             'step_usage_sum' => $usage,
         ];

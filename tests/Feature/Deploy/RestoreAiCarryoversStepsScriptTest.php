@@ -15,8 +15,9 @@ final class RestoreAiCarryoversStepsScriptTest extends TransactionalTestCase
     use RestoresAiCarryovers;
 
     /**
-     * ステップの行は、ステップの開始の時刻の東京の日(0:00 の前後)で、実行の区分に足し込む(実行を作った日でなく)。費用の分からないステップは
-     * 見積もりで数え、待ちの実行のステップは数えない。文章の行と混ざる日はその和になる。
+     * ステップの行は、ステップの開始の時刻の東京の日(0:00 の前後)で、実行の区分に足し込む(実行を作った日でなく)。終わって費用の分からないステップと
+     * 処理中のステップは見積もりで数え(繰り越しの場面 = 5.2 の会話の型の表)、待ちの実行のステップは数えない。文章の行と混ざる日はその和になる。
+     * 応答の状態コードの列の無い前の退避は、状態コードの無い行(見積もりで数える)として読む。
      */
     public function test_it_adds_the_steps_by_the_tokyo_day_of_their_start(): void
     {
@@ -29,11 +30,12 @@ final class RestoreAiCarryoversStepsScriptTest extends TransactionalTestCase
             ],
             ["default\t2026-10-17\t3.000000"],
             steps: [
-                "1\t9\t1\t2026-10-17 14:59:59+00\t0.250000\t1.000000",
-                "2\t9\t2\t2026-10-17 15:00:00+00\t\\N\t0.500000",
-                "3\t9\t3\t2026-10-18 14:59:59+00\t0.000000\t2.000000",
-                "4\t10\t1\t2026-10-17 15:00:00+00\t\\N\t0.125000",
-                "5\t11\t1\t2026-10-17 14:00:00+00\t\\N\t9.000000",
+                "1\t9\t1\tsucceeded\t2026-10-17 14:59:59+00\t0.250000\t1.000000",
+                "2\t9\t2\tstopped\t2026-10-17 15:00:00+00\t\\N\t0.500000",
+                "3\t9\t3\tsucceeded\t2026-10-18 14:59:59+00\t0.000000\t2.000000",
+                "4\t10\t1\tfailed\t2026-10-17 15:00:00+00\t\\N\t0.125000",
+                "5\t11\t1\tfailed\t2026-10-17 14:00:00+00\t\\N\t9.000000",
+                "6\t9\t4\trunning\t2026-10-18 01:00:00+00\t\\N\t7.000000",
             ],
         );
 
@@ -42,9 +44,42 @@ final class RestoreAiCarryoversStepsScriptTest extends TransactionalTestCase
         $this->assertSame(0, $result->exitCode, $result->describe());
         $this->assertSame([
             'default 2026-10-17 4.250000',
-            'default 2026-10-18 0.500000',
+            'default 2026-10-18 7.500000',
             'transcription 2026-10-18 0.125000',
         ], $this->carryovers());
+    }
+
+    /**
+     * 状態コード 400 以上の、費用の分からない行は 0 で数え、400 未満か空の行は見積もりで数える(実行の行もステップの行も。境目 399・400 と、
+     * 費用の分かった行は状態コードに関わらず費用 = 5.2)。
+     */
+    public function test_it_counts_declined_rows_without_cost_as_zero(): void
+    {
+        $runsHeader = 'COPY public.ai_runs (id, budget, status, created_at, cost_usd, reserved_cost_usd, kind_type,'
+            .' provider_status) FROM stdin;';
+        $stepsHeader = 'COPY public.ai_run_steps (id, ai_run_id, sequence, status, started_at, cost_usd,'
+            .' reserved_cost_usd, provider_status) FROM stdin;';
+        $dump = $this->writeDump(
+            [
+                "1	default	failed	2026-10-17 01:00:00+00	\N	2.000000	prompt	400",
+                "2	default	failed	2026-10-17 01:00:00+00	\N	0.250000	prompt	399",
+                "3	default	failed	2026-10-17 01:00:00+00	\N	0.125000	prompt	\N",
+                "9	default	succeeded	2026-10-17 01:00:00+00	\N	\N	conversation	\N",
+            ],
+            [],
+            runsHeader: $runsHeader,
+            steps: [
+                "1	9	1	failed	2026-10-17 01:00:00+00	\N	4.000000	529",
+                "2	9	2	failed	2026-10-17 01:00:00+00	\N	0.500000	399",
+                "3	9	3	succeeded	2026-10-17 01:00:00+00	1.000000	8.000000	\N",
+            ],
+            stepsHeader: $stepsHeader,
+        );
+
+        $result = $this->restore($dump);
+
+        $this->assertSame(0, $result->exitCode, $result->describe());
+        $this->assertSame(['default 2026-10-17 1.875000'], $this->carryovers());
     }
 
     /** 戻す先に無い列を持つステップの COPY も、残りの列で戻せる */
@@ -54,8 +89,8 @@ final class RestoreAiCarryoversStepsScriptTest extends TransactionalTestCase
             [self::CONVERSATION_ROW],
             [],
             steps: [self::STEP_ROW."\told"],
-            stepsHeader: 'COPY public.ai_run_steps (id, ai_run_id, sequence, started_at, cost_usd, reserved_cost_usd,'
-                .' "legacy") FROM stdin;',
+            stepsHeader: 'COPY public.ai_run_steps (id, ai_run_id, sequence, status, started_at, cost_usd,'
+                .' reserved_cost_usd, "legacy") FROM stdin;',
         );
 
         $result = $this->restore($dump);

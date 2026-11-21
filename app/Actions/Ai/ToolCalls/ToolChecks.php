@@ -6,6 +6,7 @@ use App\Actions\Ai\Api\AgentCreateTool;
 use App\Actions\Ai\Api\AgentRecordTool;
 use App\Actions\Ai\Api\AgentTool;
 use App\Actions\Ai\Api\AgentUpdateTool;
+use App\Actions\Ai\Core\ToolArguments;
 use App\Enums\Ai\AiInstructionTemplate;
 use App\Enums\Ai\AiToolNature;
 
@@ -99,6 +100,7 @@ final readonly class ToolChecks
             ! $this->tools->isGeneric($tool) && ($targets === null || $targets === [])
                 ? "{$label}は製品の道具だが、対象の業務モジュールを持たない" : null,
             self::writeProblem($tool, $nature),
+            $tool->isConcurrencySafe() && ! $tool->isReadOnly() ? "{$label}は読むだけの道具でないが、並べてよいと答える" : null,
             ...self::resultProblems($tool),
         ];
 
@@ -154,7 +156,7 @@ final readonly class ToolChecks
     private static function argumentProblems(AgentTool $tool): array
     {
         $schema = ToolArgumentSchema::of($tool);
-        $keys = array_map(strval(...), array_keys(ToolArgumentSchema::properties($schema)));
+        $keys = array_map(strval(...), array_keys(ToolArguments::properties($schema)));
         $forms = $tool instanceof AgentRecordTool ? $tool->partyArguments() : [];
         $parties = array_map(strval(...), array_keys($forms));
 

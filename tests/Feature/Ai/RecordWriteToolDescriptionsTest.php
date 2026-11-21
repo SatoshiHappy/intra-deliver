@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Ai;
 
+use App\Actions\Ai\Core\ToolArguments;
 use App\Actions\Ai\Instructions\InstructionBuilder;
 use App\Actions\Ai\ToolCalls\GrantedTool;
 use App\Actions\Ai\ToolCalls\GrantedTools;
@@ -312,8 +313,8 @@ final class RecordWriteToolDescriptionsTest extends TransactionalTestCase
             $schema = $pending[$path];
             unset($pending[$path]);
 
-            foreach (ToolArgumentSchema::properties($schema) as $key => $property) {
-                $key = ToolArgumentSchema::join($path, (string) $key);
+            foreach (ToolArguments::properties($schema) as $key => $property) {
+                $key = ToolArguments::join($path, (string) $key);
                 $texts[$key] = is_string($property['description'] ?? null) ? $property['description'] : '';
                 $pending[$key] = $property;
             }

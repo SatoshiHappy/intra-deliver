@@ -16,7 +16,7 @@ use Tests\Support\TransactionalTestCase;
 
 /**
  * 上限の確かめの使った額は、会話の型の実行をステップの行から数える(docs の 設計/AI/実行と費用/接続先と費用.md 5.2 の「使った額」= ステップの
- * 開始の時刻が期間の中のステップの費用。分からない間は見積もり)。守る結果 = 設計/AI/データと失敗と検査.md 8 節の「テスト」の「予算の区分の状態と
+ * 開始の時刻が期間の中のステップの費用。終わって分からなければ見積もり。処理中は数えない)。守る結果 = 設計/AI/データと失敗と検査.md 8 節の「テスト」の「予算の区分の状態と
  * 依頼の口は同じ式で数える」。区分の状態は会話の型の種類を渡して(1 依頼の見積もりの上限 = 0)使った額だけで見て、依頼の口の確かめは
  * {@see RunBudget::ensureWithin()} に 0 の見積もりを渡して見る。額の刻みは 100 万分の 1 ドル。
  */
@@ -73,8 +73,9 @@ final class ConversationStepSpendingTest extends TransactionalTestCase
     }
 
     /**
-     * 費用の分かったステップは費用(0 を含む)で、分からないステップ(処理中・使用量の分からない失敗と止めた)は見積もりで数える。
-     * 文章の行と混ざる日はその和、ほかの区分のステップは数えない。
+     * 費用の分かったステップは費用(0 を含む)で、分からないステップは、終わっていれば(使用量の分からない失敗と止めた)見積もりで数え、処理中なら数えない。
+     * 状態コード 400 以上の費用の分からない行(ステップも文章の実行も)は 0、399 は見積もり(5.2 の会話の型の表)。文章の行と混ざる日はその和、
+     * ほかの区分のステップは数えない。
      */
     public function test_known_costs_count_by_the_cost_and_unknown_by_the_estimate_with_prompt_runs(): void
     {
@@ -84,16 +85,21 @@ final class ConversationStepSpendingTest extends TransactionalTestCase
         $this->step($run, now()->toIso8601String(), '0.200000');
         AiRunStep::factory()->failed()->create($this->stepAt($run, '0.040000'));
         AiRunStep::factory()->stopped()->create($this->stepAt($run, '0.005000'));
+        AiRunStep::factory()->create($this->stepAt($run, '7.000000'));
+        AiRunStep::factory()->failed()->create([...$this->stepAt($run, '0.300000'), 'provider_status' => 400]);
+        AiRunStep::factory()->failed()->create([...$this->stepAt($run, '0.001000'), 'provider_status' => 399]);
         AiRun::factory()->succeeded('1.000000')->create(['budget' => 'default', 'created_at' => now()]);
+        $declinedPrompt = ['budget' => 'default', 'reserved_cost_usd' => '0.500000', 'provider_status' => 429];
+        AiRun::factory()->failed()->create($declinedPrompt);
         $other = $this->conversationRun(budget: 'transcription');
         $this->step($other, now()->toIso8601String(), '9.000000');
 
-        $this->assertSpent(RunBudgetQuery::DAY, '1.345000');
+        $this->assertSpent(RunBudgetQuery::DAY, '1.346000');
     }
 
     /**
-     * ステップの費用だけで上限に届く日: 使った額が上限より 1 刻み少ない・上限と同じでは超えず、1 刻み多いと超えた期間を返す。区分の状態と
-     * 依頼の口の確かめの両方で通す。
+     * ステップの費用だけで上限に届く日: 使った額が上限より 1 刻み少ないと超えず、上限と同じ・1 刻み多いと超えた期間を返す(会話の型の比べ =
+     * 使った額 ≥ 上限 = 5.2)。区分の状態と会話の依頼の口の確かめの両方で通す。
      */
     public function test_steps_alone_reach_the_limit_by_one_step_of_the_unit(): void
     {
@@ -103,7 +109,7 @@ final class ConversationStepSpendingTest extends TransactionalTestCase
         $this->assertExceeded(null);
 
         $this->step($run, now()->toIso8601String(), '0.000001');
-        $this->assertExceeded(null);
+        $this->assertExceeded(RunBudgetQuery::DAY);
 
         $this->step($run, now()->toIso8601String(), '0.000001');
         $this->assertExceeded(RunBudgetQuery::DAY);
@@ -129,7 +135,8 @@ final class ConversationStepSpendingTest extends TransactionalTestCase
     }
 
     /**
-     * 使った額がちょうど $usd(上限を $usd にすると超えず、1 刻み少なくすると $period を超える)。区分の状態と依頼の口の確かめの両方で見る。
+     * 使った額がちょうど $usd(上限を 1 刻み多くすると届かず、$usd にすると $period に届く = 会話の型の比べ)。区分の状態と会話の依頼の口の
+     * 確かめの両方で見る。
      *
      * @param  RunBudgetQuery::DAY|RunBudgetQuery::MONTH|RunBudgetQuery::TOTAL  $period
      */
@@ -142,10 +149,10 @@ final class ConversationStepSpendingTest extends TransactionalTestCase
             $period === RunBudgetQuery::TOTAL ? $value : null,
         ];
 
-        $this->limits(...$only($limit));
+        $this->limits(...$only(round($limit + 0.000001, 6)));
         $this->assertExceeded(null, "{$period} の使った額が {$usd} を超えた");
 
-        $this->limits(...$only(round($limit - 0.000001, 6)));
+        $this->limits(...$only($limit));
         $this->assertExceeded($period, "{$period} の使った額が {$usd} より少ない");
         $this->limits(null, null, null);
     }
@@ -161,7 +168,7 @@ final class ConversationStepSpendingTest extends TransactionalTestCase
         $state = $query->exceededPeriodOfKind(RecordingConversationKind::CODE, CarbonImmutable::now());
 
         try {
-            app(RunBudget::class)->ensureWithin('default', '0.000000');
+            app(RunBudget::class)->ensureNotReached('default');
             $declined = null;
         } catch (RunRequestDeclined $exception) {
             $declined = [$exception->reason, $exception->errors()];
@@ -188,10 +195,10 @@ final class ConversationStepSpendingTest extends TransactionalTestCase
         ]);
     }
 
-    /** ステップ(費用を渡せば使用量の分かった成功、渡さなければ処理中) */
+    /** ステップ(費用を渡せば使用量の分かった成功、渡さなければ費用の分からない止めた) */
     private function step(AiRun $run, string $startedAt, string $reservedUsd, ?string $costUsd = null): void
     {
-        $factory = $costUsd === null ? AiRunStep::factory() : AiRunStep::factory()->succeeded($costUsd);
+        $factory = $costUsd === null ? AiRunStep::factory()->stopped() : AiRunStep::factory()->succeeded($costUsd);
         $factory->create($this->stepAt($run, $reservedUsd, $startedAt));
     }
 

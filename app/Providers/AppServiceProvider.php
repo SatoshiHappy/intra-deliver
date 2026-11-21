@@ -7,6 +7,8 @@ use App\Actions\Ai\Api\PromptKind;
 use App\Actions\Ai\Api\TranscriptionKind;
 use App\Actions\Ai\CarryOverSpending;
 use App\Actions\Ai\Conversation\CoreVersion;
+use App\Actions\Ai\Conversation\ToolCallChildren;
+use App\Actions\Ai\Conversation\ToolChildRunner;
 use App\Actions\Ai\Instructions\DefaultInstructionBuilder;
 use App\Actions\Ai\Instructions\InstructionBuilder;
 use App\Actions\Ai\Tools\CreateRecordTool;
@@ -17,6 +19,7 @@ use App\Actions\Meeting\MeetingMinutesKind;
 use App\Actions\Meeting\MeetingTranscriptionKind;
 use App\Actions\Reset\Api\ResetParticipant;
 use App\Queries\Account\Api\UserMenuSections;
+use App\Queries\Ai\ToolChildSettings;
 use App\Queries\Authz\Api\ResourceTypes;
 use App\Queries\Authz\AuthorizationMemo;
 use App\Queries\Authz\ServiceResourceTypes;
@@ -75,10 +78,8 @@ use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
 {
-    /**
-     * Register any application services.
-     */
-    public function register(): void
+    /** AI の既定の結び(手元だけのリポジトリのプロバイダが後から移した版で結び直す口を含む) */
+    private function registerAi(): void
     {
         // 指示の組み立ての口の既定は代わりの版(1 つ)。手元だけのリポジトリのプロバイダが後から移した版で結び直す(docs の 設計/AI/設定とプロンプト/README.md 11.4)
         $this->app->singleton(DefaultInstructionBuilder::class);
@@ -86,6 +87,19 @@ class AppServiceProvider extends ServiceProvider
 
         // 会話の中核の既定も代わりの版。手元だけのリポジトリのプロバイダが後から移した版で結び直す(docs の 設計/AI/会話の中核.md 13.1)
         CoreVersion::bindDefault($this->app);
+
+        // 並べて動かす組の子の処理は別のプロセス(docs の 設計/AI/エージェントの実行/道具の包みと止める.md 9.4)
+        $this->app->bind(ToolChildRunner::class, static fn (): ToolCallChildren => ToolCallChildren::fromSettings(
+            app(ToolChildSettings::class),
+        ));
+    }
+
+    /**
+     * Register any application services.
+     */
+    public function register(): void
+    {
+        $this->registerAi();
 
         // 依存の逆転(docs の 設計/コード構成/README.md 3 節): Master の業務処理が、後ろのモジュールのユーザーを指す期間の行まで確かめる
         $this->app->tag([UserRoleReferences::class], UserReferences::TAG);

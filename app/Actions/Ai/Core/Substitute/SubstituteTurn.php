@@ -10,6 +10,7 @@ use App\Actions\Ai\Core\LoopStop;
 use App\Actions\Ai\Core\ResponseFinish;
 use App\Actions\Ai\Core\SendFailure;
 use App\Actions\Ai\Core\SendKind;
+use App\Actions\Ai\Core\StopKind;
 use LogicException;
 
 /**
@@ -32,6 +33,7 @@ final readonly class SubstituteTurn
         $receivers = $this->request->receivers;
         $sink = new TurnAnswerSink($this->state, $receivers->notifier, $receivers->clock, $this->request->target);
         $this->state->kind = SendKind::Turn;
+        $this->state->thinking->sending();
         $outcome = $this->sender->send($plan, $sink);
 
         if ($outcome->stop !== null) {
@@ -45,7 +47,9 @@ final readonly class SubstituteTurn
         $reply = SubstituteChecks::at($receivers->checker, CheckPoint::AfterReading, SendKind::Turn);
 
         if ($reply->stop !== null) {
-            $this->stops->whileReading($sink->callIds());
+            if ($reply->stop === StopKind::User) {
+                $this->stops->whileReading($sink->callIds());
+            }
 
             return LoopEnding::stopped(LoopStop::fromStopKind($reply->stop), $reply->reason);
         }

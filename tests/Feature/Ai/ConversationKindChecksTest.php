@@ -28,7 +28,7 @@ final class ConversationKindChecksTest extends TransactionalTestCase
         $this->assertNotNull($kind);
         $values = [$kind['budget'], $kind['max_input_chars'], $kind['max_turns'], $kind['run_timeout_seconds']];
         $this->assertSame(['default', 1000, 10, 300], $values);
-        $this->assertSame(['timeout_seconds' => 100, 'max_output_tokens' => 100], $kind['purposes']['title']);
+        $this->assertSame(['timeout_seconds' => 60, 'max_output_tokens' => 100], $kind['purposes']['title']);
         $this->assertNull(app(KindSettings::class)->prompt(RecordingConversationKind::CODE));
         $this->assertNull(app(KindSettings::class)->conversation('meeting.minutes'));
     }
@@ -159,18 +159,70 @@ final class ConversationKindChecksTest extends TransactionalTestCase
         $this->assertSame($expected, app(PromptKinds::class)->problems());
     }
 
-    /** 題のステップの最長は回の送信の最長以下(同じ値は通す) */
-    public function test_the_title_time_does_not_exceed_the_conversation_time(): void
+    /**
+     * 題のステップの最長 = 題の持ち時間(実行の時間の上限 × 0.1)+ (題の呼び出しの時間の上限 + 待ち 10)× 2 は、回の送信の最長
+     * (100 + 10)× 2 = 220 以下(同じ値は通す)で、実行の時間の上限より短い(設計/AI/エージェントの実行/途中の表示と上限.md 9.7・9.10)。
+     *
+     * @return array<string, array{int, int, list<string>}>
+     */
+    public static function titleTimes(): array
     {
-        $settings = self::conversationKindSettings();
-        $settings['purposes']['title']['timeout_seconds'] = 101;
+        $label = '種類 test.conversation の題のステップの最長';
+
+        return [
+            '回の送信の最長と同じ' => [300, 85, []],
+            '回の送信の最長より 2 秒長い' => [300, 86, ["{$label} 222 秒(題の持ち時間 + 1 回の試しの最長)が回の送信の最長 220 秒より長い"]],
+            '実行の時間の上限より 2 秒短い' => [200, 79, []],
+            '実行の時間の上限と同じ' => [200, 80, ["{$label} 200 秒(題の持ち時間 + 1 回の試しの最長)が実行の時間の上限 200 秒以上"]],
+        ];
+    }
+
+    /**
+     * @param  list<string>  $expected
+     */
+    #[DataProvider('titleTimes')]
+    public function test_the_title_step_fits_the_send_and_the_run(int $runTimeout, int $title, array $expected): void
+    {
+        $settings = [...self::conversationKindSettings(), 'run_timeout_seconds' => $runTimeout];
+        $settings['purposes']['title']['timeout_seconds'] = $title;
         $this->configureKind(RecordingConversationKind::CODE, $settings);
         $this->app->tag([RecordingConversationKind::class], ConversationKind::TAG);
 
-        $this->assertSame(
-            ['種類 test.conversation の題の時間の上限 101 秒が会話の時間の上限 100 秒より長い'],
-            app(PromptKinds::class)->problems(),
-        );
+        $this->assertSame($expected, app(PromptKinds::class)->problems());
+    }
+
+    /**
+     * 題の持ち時間の割合は 0 より大きく 1 より小さい数(境の 0 と 1 と、数でない値は形の誤り。そのときは題のステップを比べない)。
+     *
+     * @return array<string, array{mixed, list<string>}>
+     */
+    public static function titleRatios(): array
+    {
+        $problem = ['config/ai_runs.php の conversation.title_budget_ratio が 0 より大きく 1 より小さい数でない'];
+
+        return [
+            '割合 0' => [0, $problem],
+            '割合 0.01' => [0.01, []],
+            '0.99(題のステップが長すぎる)' => [0.99, [
+                '種類 test.conversation の題のステップの最長 437 秒(題の持ち時間 + 1 回の試しの最長)が回の送信の最長 220 秒より長い',
+                '種類 test.conversation の題のステップの最長 437 秒(題の持ち時間 + 1 回の試しの最長)が実行の時間の上限 300 秒以上',
+            ]],
+            '割合 1' => [1, $problem],
+            '文字' => ['0.1', $problem],
+        ];
+    }
+
+    /**
+     * @param  list<string>  $expected
+     */
+    #[DataProvider('titleRatios')]
+    public function test_the_title_budget_ratio_is_between_zero_and_one(mixed $ratio, array $expected): void
+    {
+        config(['ai_runs.conversation.title_budget_ratio' => $ratio]);
+        $this->configureKind(RecordingConversationKind::CODE, self::conversationKindSettings());
+        $this->app->tag([RecordingConversationKind::class], ConversationKind::TAG);
+
+        $this->assertSame($expected, app(PromptKinds::class)->problems());
     }
 
     public function test_detects_a_conversation_kind_whose_budget_is_not_in_the_settings(): void

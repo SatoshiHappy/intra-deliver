@@ -26,7 +26,7 @@ class CleanUpFailedConversation
      * 持つのは答えの実行 = docs の 設計/AI/エージェントの実行/途中の表示と上限.md 9.8)。
      *
      * @param  AiRun  $run  失敗を埋めた会話の型の実行(鍵を取った行。終わりの時刻と失敗の種類を子の行に写す)
-     * @return array{step_reserved_sum_usd: string, step_cost_sum_usd: string, step_usage_sum: array<string, int|float>}
+     * @return array{step_cost_sum_usd: string, step_usage_sum: array<string, int|float>}
      *
      * @throws LogicException 失敗で終わる会話の型の実行でないとき(作りの誤り)
      */

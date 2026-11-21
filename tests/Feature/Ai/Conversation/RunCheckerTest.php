@@ -89,15 +89,12 @@ final class RunCheckerTest extends TransactionalTestCase
         }
     }
 
-    /** 送り直しの待ちの前は、待ちの上限 = 時間の残りを返す(残り 0 は境で、まだ超えていない) */
-    public function test_the_wait_limit_is_the_time_left(): void
+    /** 送り直しの待ちの前は、時間の残りによらず続ける(残り 0 は境で、まだ超えていない。待ちの長さは比べない = 13.5) */
+    public function test_before_the_retry_wait_it_proceeds_while_time_is_left(): void
     {
-        $this->travelTo(CarbonImmutable::parse(self::STARTED)->addSeconds(45));
-        $this->assertSame(15_000, $this->check(CheckPoint::BeforeRetryWait)->waitLimitMs);
-
         $this->travelTo(CarbonImmutable::parse(self::STARTED)->addSeconds(60));
         $reply = $this->check(CheckPoint::BeforeRetryWait);
-        $this->assertSame([null, 0], [$reply->stop, $reply->waitLimitMs]);
+        $this->assertSame([null, null], [$reply->stop, $reply->stepId]);
     }
 
     /** 送り直しの待ちも実行の時間に数える(待ちを残りで頭打ちにするため) */
@@ -122,12 +119,35 @@ final class RunCheckerTest extends TransactionalTestCase
     public function test_cost_stops_carry_the_period(): void
     {
         config(['ai_runs.budget.default.daily_usd' => 0.000001]);
+        AiRunStep::factory()->succeeded('0.000002')->create();
 
         $turn = $this->checker()->check(CheckRequest::beforeSend(SendKind::Turn, 100, 1000, 10000));
         $title = $this->checker()->check(CheckRequest::beforeSend(SendKind::Title, 100, 1000, 10000));
 
         $this->assertSame([StopKind::CostLimit, 'day'], [$turn->stop, $turn->reason]);
         $this->assertSame(StopKind::CostLimit, $title->stop);
+    }
+
+    /**
+     * 回の答えと続きの応答を読み終えた後も、使った額が上限以上なら費用の上限で止める(期間を添える = 5.3・9.11 の S33)。要約は見ない。
+     * 止める印が先(S12)。上限より少なければ続ける。
+     */
+    public function test_after_reading_an_answer_the_spent_amount_is_checked(): void
+    {
+        config(['ai_runs.budget.default.daily_usd' => 0.000002]);
+        $after = fn (SendKind $kind): CheckReply => $this->checker()
+            ->check(CheckRequest::at(CheckPoint::AfterReading, $kind));
+        AiRunStep::factory()->succeeded('0.000001')->create();
+        $this->assertNull($after(SendKind::Turn)->stop);
+
+        AiRunStep::factory()->succeeded('0.000001')->create();
+        $kinds = [SendKind::Turn, SendKind::Continuation, SendKind::Compaction, SendKind::CompactionFallback];
+        $stops = array_map(fn (SendKind $kind): ?StopKind => $after($kind)->stop, $kinds);
+        $this->assertSame([StopKind::CostLimit, StopKind::CostLimit, null, null], $stops);
+        $this->assertSame('day', $after(SendKind::Continuation)->reason);
+
+        $this->run->forceFill(['stop_requested_at' => now()])->save();
+        $this->assertSame(StopKind::User, $after(SendKind::Turn)->stop);
     }
 
     /**

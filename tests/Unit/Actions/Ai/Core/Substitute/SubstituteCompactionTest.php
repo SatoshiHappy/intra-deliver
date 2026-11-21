@@ -13,10 +13,13 @@ use App\Actions\Ai\Core\LoopOutcome;
 use App\Actions\Ai\Core\ProviderTraits;
 use App\Actions\Ai\Core\SendKind;
 use App\Actions\Ai\Core\Substitute\SubstituteConversationCore;
+use App\Actions\Ai\Core\ThinkingStart;
+use DateTimeImmutable;
 use GuzzleHttp\Psr7\Response as Psr7Response;
 use Illuminate\Http\Client\RequestException;
 use Illuminate\Http\Client\Response;
 use Laravel\Ai\Responses\Data\FinishReason;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Unit\Actions\Ai\Core\Contract\CoreContractTestCase;
 use Tests\Unit\Actions\Ai\Core\Support\FakeStepGateway;
 
@@ -42,6 +45,44 @@ final class SubstituteCompactionTest extends CoreContractTestCase
         $this->assertSame([SendKind::Compaction, SendKind::Turn], $this->sentKinds());
         $appends = $this->receivers->noticesOf(AppendNotice::class);
         $this->assertCount(2, $appends[0]->items);
+    }
+
+    /**
+     * 思考の文脈の管理(docs の 設計/AI/会話の中核.md 13.2): 要約はそれまでの旗で送り(組んだ回の答えの比べを使わない)、境目は要約の
+     * ステップの行を指し、境目の後は旗を下ろして要約の完了から比べる。時計の今 = 12:00、始めの最後の完了 = 8:00。
+     *
+     * @return array<string, array{bool, list<string|array<string, mixed>>}>
+     */
+    public static function thinkingStarts(): array
+    {
+        $last = ['type' => 'thinking_turns', 'value' => 1];
+
+        return [
+            '始めの旗が立っている' => [true, [$last, 'all']],
+            '旗は無いが 4 時間空いた' => [false, ['all', 'all']],
+        ];
+    }
+
+    /**
+     * @param  list<string|array<string, mixed>>  $keeps
+     */
+    #[DataProvider('thinkingStarts')]
+    public function test_compaction_keeps_the_flag_and_the_boundary_lowers_it(bool $idled, array $keeps): void
+    {
+        $this->loop(
+            [FakeStepGateway::response('まとめ'), FakeStepGateway::response('答え')],
+            question: str_repeat('a', self::LONG),
+            window: 40000,
+            traits: new ProviderTraits(contextManagementModels: '/^claude-/'),
+            thinking: new ThinkingStart($idled, new DateTimeImmutable('2026-11-18T08:00:00+09:00')),
+            thinks: true,
+        );
+
+        $keep = static fn (array $one): mixed => $one['options']['context_management']['edits'][0]['keep'] ?? null;
+        $sent = array_map($keep, $this->gateway->sent);
+        $this->assertSame($keeps, $sent);
+        $boundary = $this->receivers->noticesOf(AppendNotice::class)[0]->items[0];
+        $this->assertSame(1, $boundary->content['step_id']);
     }
 
     /** 文が無い・長すぎる・切れた要約は失敗に数え、予備を送らず落とさずに回を続ける */

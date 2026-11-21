@@ -115,7 +115,7 @@ final class ConversationItemTest extends TestCase
                 'added_text',
                 'hide',
             ],
-            '要約の境目' => [ConversationItem::compactBoundary(5000, '2026-11-17'), 'compact_boundary', 'boundary_line'],
+            '要約の境目' => [ConversationItem::compactBoundary(5000, '2026-11-17', 1), 'compact_boundary', 'boundary_line'],
             '要約の文' => [ConversationItem::compactSummary('ここまでの要約'), 'compact_summary', 'hide'],
         ];
     }

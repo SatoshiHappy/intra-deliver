@@ -20,11 +20,7 @@ final class RunChainStart
     public function firstRunDate(int $runId): string
     {
         $row = DB::selectOne(
-            'WITH RECURSIVE chain (id, previous_run_id, started_at, depth) AS ('
-            .' SELECT id, previous_run_id, started_at, 0 FROM ai_runs WHERE id = ?'
-            .' UNION ALL SELECT ai_runs.id, ai_runs.previous_run_id, ai_runs.started_at, chain.depth + 1 FROM ai_runs'
-            .' JOIN chain ON ai_runs.id = chain.previous_run_id)'
-            .' SELECT started_at FROM chain WHERE started_at IS NOT NULL ORDER BY depth DESC LIMIT 1',
+            RunChain::cte().' SELECT started_at FROM chain WHERE started_at IS NOT NULL ORDER BY depth DESC LIMIT 1',
             [$runId],
         );
         $startedAt = is_object($row) && is_string($row->started_at ?? null)

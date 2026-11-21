@@ -12,7 +12,6 @@ final readonly class CheckReply
         public ?StopKind $stop,
         public ?string $reason = null,
         public ?int $stepId = null,
-        public ?int $waitLimitMs = null,
     ) {}
 
     /** 送る前の位置で続ける($stepId = 繋ぎが作ったステップの行の番号) */
@@ -21,13 +20,7 @@ final readonly class CheckReply
         return new self(null, stepId: $stepId);
     }
 
-    /** 送り直しの待ちの前で続ける($waitLimitMs = 待ちの上限。無ければ null) */
-    public static function proceedToWait(?int $waitLimitMs): self
-    {
-        return new self(null, waitLimitMs: $waitLimitMs);
-    }
-
-    /** ほかの位置で続ける */
+    /** ほかの位置で続ける(送り直しの待ちの前も。待ちは実行の時間の残りによらず待つ = docs の 設計/AI/会話の中核.md 13.5) */
     public static function proceed(): self
     {
         return new self(null);

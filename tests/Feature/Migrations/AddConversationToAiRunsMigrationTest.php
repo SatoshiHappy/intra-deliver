@@ -30,6 +30,7 @@ final class AddConversationToAiRunsMigrationTest extends TransactionalTestCase
     private const LATER_MIGRATIONS = [
         '2026_11_09_100004_create_ai_run_steps_table.php',
         '2026_11_09_100005_create_ai_tool_calls_table.php',
+        '2026_11_21_100001_drop_ai_runs_step_reserved_sum.php',
     ];
 
     public function test_the_prompt_and_transcription_runs_from_before_get_their_kind_type(): void

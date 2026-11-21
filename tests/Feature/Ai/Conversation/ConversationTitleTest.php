@@ -62,6 +62,8 @@ final class ConversationTitleTest extends TransactionalTestCase
         $this->assertSame([], $request->tools);
         $this->assertNotNull($request->schema);
         $this->assertCount(1, $request->history);
+        // 題の持ち時間 = 実行の時間の上限 300 秒 × 割合 0.1(9.10)
+        $this->assertSame(30000, $request->budgetMs);
     }
 
     /**

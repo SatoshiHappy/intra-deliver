@@ -27,7 +27,11 @@ final class SubstituteState
     /**
      * @param  list<ConversationItem|TransientText>  $history
      */
-    public function __construct(private readonly CoreNotifier $notifier, public array $history) {}
+    public function __construct(
+        private readonly CoreNotifier $notifier,
+        public array $history,
+        public readonly SubstituteThinking $thinking,
+    ) {}
 
     /**
      * 会話の保存に足し、送る履歴に足す。
@@ -65,5 +69,6 @@ final class SubstituteState
     {
         $this->append($items);
         $this->history = $items;
+        $this->thinking->compacted();
     }
 }

@@ -107,6 +107,15 @@ return [
     // metadata(訪問者の ID)と container(作業場)は実行ごとに入れるので書かない。context_window_tokens = 会話の用途のモデルの読める量(9.9)
     'conversation' => [
         'queue_connection' => 'database-agent',
+        // 題の持ち時間 = 実行の時間の上限 × この割合(設計/AI/エージェントの実行/途中の表示と上限.md 9.10)
+        'title_budget_ratio' => 0.1,
+        // 並べて動かす組の子の処理(設計/AI/エージェントの実行/道具の包みと止める.md 9.4)。同時に動かす数の既定 10、配備の値 = 公開の配備の構成の 3.4。
+        // 子の時間の上限 = 1 つの読む道具の最長。子の PHP のメモリの上限はどの環境も同じ値(構成の 3.6)
+        'tool_children' => [
+            'max_concurrency' => env('AI_MAX_TOOL_USE_CONCURRENCY', 10),
+            'timeout_seconds' => 30,
+            'memory_limit' => '64M',
+        ],
         'purposes' => [
             'conversation' => [
                 'provider' => 'anthropic',

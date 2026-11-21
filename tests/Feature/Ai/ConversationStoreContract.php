@@ -102,12 +102,12 @@ trait ConversationStoreContract
         $first = $this->runInNewConversation();
         $this->conversationStore()->append($first, [
             ConversationItem::userText('前の文'),
-            ConversationItem::compactBoundary(1200, '2026-11-16'),
+            ConversationItem::compactBoundary(1200, '2026-11-16', 1),
             ConversationItem::compactSummary('前の要約'),
         ]);
         $second = $this->nextRunInSameConversation($first);
         $after = [
-            ConversationItem::compactBoundary(3400, '2026-11-17'),
+            ConversationItem::compactBoundary(3400, '2026-11-17', 1),
             ConversationItem::compactSummary('後の要約'),
             ConversationItem::userText('後の文'),
             ConversationItem::toolResult('call_1', null, [], '結果', false),

@@ -16,7 +16,8 @@ use Tests\Support\TransactionalTestCase;
 
 /**
  * 毎日の初期化の繰り越しは、会話の型の実行をステップの行から数える(docs の 設計/AI/実行と費用/接続先と費用.md 5.2 の「繰り越し」、方式 =
- * ADR 0024): ステップの開始の時刻の東京の日で、実行の区分ごとに足し込む(費用が分からなければ見積もり。待ちの実行は数えない)。
+ * ADR 0024): ステップの開始の時刻の東京の日で、実行の区分ごとに足し込む(費用が分からなければ見積もり(処理中を含む)、状態コード 400 以上は 0。
+ * 待ちの実行は数えない)。
  */
 final class ConversationStepCarryoverTest extends TransactionalTestCase
 {
@@ -48,6 +49,29 @@ final class ConversationStepCarryoverTest extends TransactionalTestCase
             ['default', '2026-10-18', '1.400000'],
             ['transcription', '2026-10-18', '0.125000'],
         ], $this->carryovers());
+    }
+
+    /**
+     * 繰り越しの場面の数え方(5.2 の会話の型の表): 処理中のステップは見積もり(上限の確かめでは数えない行)、状態コード 400 以上の費用の分からない
+     * ステップと文章の実行は 0、399 は見積もり。
+     */
+    public function test_running_steps_count_by_the_estimate_and_declined_rows_by_zero(): void
+    {
+        $run = $this->conversationRun('2026-10-18 01:00:00+00');
+        $at = ['ai_run_id' => $run->id, 'started_at' => CarbonImmutable::parse('2026-10-18 01:00:00+00')];
+        AiRunStep::factory()->create([...$at, 'reserved_cost_usd' => '0.700000']);
+        AiRunStep::factory()->failed()->create([...$at, 'reserved_cost_usd' => '3.000000', 'provider_status' => 400]);
+        AiRunStep::factory()->failed()->create([...$at, 'reserved_cost_usd' => '0.050000', 'provider_status' => 399]);
+        AiRun::factory()->failed()->create([
+            'budget' => 'default',
+            'reserved_cost_usd' => '2.000000',
+            'provider_status' => 529,
+            'created_at' => CarbonImmutable::parse('2026-10-18 01:00:00+00'),
+        ]);
+
+        app(CarryOverSpending::class)->beforeTruncate();
+
+        $this->assertSame([['default', '2026-10-18', '0.750000']], $this->carryovers());
     }
 
     /** その日の繰り越しの行が既にあれば、ステップの分を足す(ON CONFLICT の側) */
@@ -112,10 +136,10 @@ final class ConversationStepCarryoverTest extends TransactionalTestCase
         ]);
     }
 
-    /** ステップ(費用を渡せば使用量の分かった成功、渡さなければ処理中。開始の時刻は UTC の文字列) */
+    /** ステップ(費用を渡せば使用量の分かった成功、渡さなければ費用の分からない止めた。開始の時刻は UTC の文字列) */
     private function step(AiRun $run, string $startedAt, string $reservedUsd, ?string $costUsd = null): void
     {
-        $factory = $costUsd === null ? AiRunStep::factory() : AiRunStep::factory()->succeeded($costUsd);
+        $factory = $costUsd === null ? AiRunStep::factory()->stopped() : AiRunStep::factory()->succeeded($costUsd);
         $factory->create([
             'ai_run_id' => $run->id,
             'reserved_cost_usd' => $reservedUsd,

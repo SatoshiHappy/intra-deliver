@@ -516,7 +516,7 @@
     "tests/Feature/Actions/Workflow/RouteDefinitionValidatorTest.php": 38,
     "tests/Feature/Actions/Workflow/SendBackPullBackTest.php": 25,
     "tests/Feature/Ai/AiTablesTest.php": 18,
-    "tests/Feature/Ai/ExecutePromptTest.php": 15,
+    "tests/Feature/Ai/ExecutePromptTest.php": 14,
     "tests/Feature/Ai/PromptKindsTest.php": 2,
     "tests/Feature/Ai/PruneRunTextsTest.php": 4,
     "tests/Feature/Ai/RequestPromptBudgetTest.php": 6,

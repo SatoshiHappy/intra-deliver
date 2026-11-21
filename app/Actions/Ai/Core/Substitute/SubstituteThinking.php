@@ -2,87 +2,85 @@
 
 namespace App\Actions\Ai\Core\Substitute;
 
-use App\Actions\Ai\Api\ConversationItem;
 use App\Actions\Ai\Core\SendKind;
 use App\Actions\Ai\Core\SendTarget;
-use App\Actions\Ai\Core\TransientText;
-use App\Enums\Ai\ConversationItemType;
+use App\Actions\Ai\Core\ThinkingStart;
 use DateTimeImmutable;
 
 /**
- * 思考の文脈の管理の指定(付ける送信と値の正本 = docs の 設計/AI/会話の中核.md 13.2 の「思考の文脈の管理」)。代わりの版は続きを
- * 送らないので、付ける送信は回の答えと要約だけ。旗を処理の中に覚えず履歴から引くのは、実行をまたいで同じ値にするため。
+ * 思考の文脈の管理の旗と最後の完了の時刻(規則 = docs の 設計/AI/会話の中核.md 13.2 の「思考の文脈の管理」。代わりの版は続きを送らない)。
+ * 回の答えは組む時に比べ、送る時に旗へ移す(組んだ後に要約へ進んだとき、要約をそれまでの旗で送るため)。
  */
 final class SubstituteThinking
 {
     private const IDLE_SECONDS = 3_600;
 
+    private bool $idled;
+
+    private ?DateTimeImmutable $lastCompletedAt;
+
+    /** 組んだ回の答えの比べた旗(送る時に旗へ移す) */
+    private ?bool $pending = null;
+
+    public function __construct(ThinkingStart $start)
+    {
+        $this->idled = $start->idled;
+        $this->lastCompletedAt = $start->lastCompletedAt;
+    }
+
     /**
-     * 要求に足す指定(付けない送信では空)。
+     * 要求に足す指定(付けない送信では空)。回の答えは比べた値を覚える。
      *
-     * @param  list<ConversationItem|TransientText>  $history
      * @return array<string, mixed>
      */
-    public static function options(array $history, SendTarget $target, SendKind $kind, DateTimeImmutable $now): array
+    public function options(SendTarget $target, SendKind $kind, DateTimeImmutable $now): array
     {
         $pattern = $target->traits->contextManagementModels;
         $sends = $kind === SendKind::Turn || $kind === SendKind::Compaction;
-
         $managed = $pattern !== null && preg_match($pattern, $target->model->id) === 1;
 
         if (! $sends || ! $managed || ! $target->model->usesThinking) {
             return [];
         }
 
-        $times = self::endTimes($history);
+        $idled = $this->idled;
 
-        if ($kind === SendKind::Turn && $times !== []) {
-            $times[] = $now->getTimestamp();
+        if ($kind === SendKind::Turn) {
+            $idled = $idled || $this->idleSince($now);
+            $this->pending = $idled;
         }
 
-        $keep = self::idled($times) ? ['type' => 'thinking_turns', 'value' => 1] : 'all';
+        $keep = $idled ? ['type' => 'thinking_turns', 'value' => 1] : 'all';
 
         return ['context_management' => ['edits' => [['type' => 'clear_thinking_20251015', 'keep' => $keep]]]];
     }
 
-    /**
-     * @param  list<int>  $times
-     */
-    private static function idled(array $times): bool
+    /** 組んだ回の答えを送り始めた */
+    public function sending(): void
     {
-        foreach (array_slice($times, 1, null, true) as $index => $time) {
-            if ($time - $times[$index - 1] > self::IDLE_SECONDS) {
-                return true;
-            }
-        }
-
-        return false;
+        $this->idled = $this->pending ?? $this->idled;
+        $this->pending = null;
     }
 
-    /**
-     * 最後の境目より後ろの応答の終わりの時刻(秒)。
-     *
-     * @param  list<ConversationItem|TransientText>  $history
-     * @return list<int>
-     */
-    private static function endTimes(array $history): array
+    /** 送信が成功した(どの種別も。道具の中の送信を含む) */
+    public function completed(DateTimeImmutable $at): void
     {
-        $times = [];
-
-        foreach ($history as $item) {
-            if (! $item instanceof ConversationItem) {
-                continue;
-            }
-
-            if ($item->type === ConversationItemType::CompactBoundary) {
-                $times = [];
-            }
-
-            if ($item->type === ConversationItemType::ResponseEnd) {
-                $times[] = (new DateTimeImmutable((string) $item->content['finished_at']))->getTimestamp();
-            }
+        if ($this->lastCompletedAt === null || $at > $this->lastCompletedAt) {
+            $this->lastCompletedAt = $at;
         }
+    }
 
-        return $times;
+    /** 要約の境目を書いた */
+    public function compacted(): void
+    {
+        $this->idled = false;
+        $this->pending = null;
+    }
+
+    private function idleSince(DateTimeImmutable $now): bool
+    {
+        // 秒に切り捨てて比べる(繋ぎの始めの値が引くステップの行の時刻は、秒の端数を書かずに持つので、実行をまたいでも同じ旗にするため)
+        return $this->lastCompletedAt !== null
+            && $now->getTimestamp() - $this->lastCompletedAt->getTimestamp() > self::IDLE_SECONDS;
     }
 }

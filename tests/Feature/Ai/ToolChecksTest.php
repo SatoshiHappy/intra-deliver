@@ -170,6 +170,12 @@ final class ToolChecksTest extends TransactionalTestCase
                 fn () => [new GenericCreateTool('ai_r')],
                 [self::label('ai_r', GenericCreateTool::class).'は書く道具でないが、確認の内容を作る口を持つ'],
             ],
+            '書く道具が並べてよいと答える' => [
+                fn () => [
+                    new GenericCreateTool('ai_c', readOnly: false, action: AiToolAction::Create, concurrencySafe: true),
+                ],
+                [self::label('ai_c', GenericCreateTool::class).'は読むだけの道具でないが、並べてよいと答える'],
+            ],
         ];
     }
 
@@ -197,6 +203,7 @@ final class ToolChecksTest extends TransactionalTestCase
                 'tags' => AiToolPartyForm::Input,
             ]),
             FakeTools::productRead(['m']),
+            new GenericTool('ai_p', concurrencySafe: true),
         ]);
 
         $this->assertSame([[], []], [$tools->problems(), FakeTools::registry([])->problems()]);

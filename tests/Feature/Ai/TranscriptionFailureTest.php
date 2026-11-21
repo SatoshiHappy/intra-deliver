@@ -11,7 +11,10 @@ use App\Jobs\Ai\RunTranscriptionJob;
 use App\Models\Ai\AiRun;
 use App\Models\Ai\AiRunText;
 use App\Models\Upload\Upload;
+use GuzzleHttp\Psr7\Response as Psr7Response;
 use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\RequestException;
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\DB;
 use Laravel\Ai\Transcription;
 use RuntimeException;
@@ -66,6 +69,19 @@ final class TranscriptionFailureTest extends TransactionalTestCase
         $this->assertSame(['一つ目', '1-A'], [$output[0]['text'], $output[0]['speaker_label']]);
         $this->assertCount(1, $output);
         $this->assertSame([['running', $level + 1]], $this->transcriptionKind->failedSeen);
+    }
+
+    /** 接続先が誤りの状態コードで断った区切りは秒に数えない(5.1。数えるのは 1 つ目の区切りの 5.5 秒の分) */
+    public function test_a_chunk_declined_with_an_error_status_is_not_counted(): void
+    {
+        $runId = $this->queuedTranscription($this->audioUpload(self::PAUSED_SPEECH, 25));
+        $declined = new RequestException(new Response(new Psr7Response(429, [], '{"error":"混んでいる"}')));
+        Transcription::fake([
+            $this->transcriptionResponse([['一つ目', 'A', 0, 5.0]]),
+            fn () => throw $declined,
+        ]);
+
+        $this->assertFailed($this->executeTranscriptionFailing($runId), AiRunErrorCode::Provider, null, '0.000458');
     }
 
     public function test_a_timeout_of_the_provider_is_a_timeout(): void

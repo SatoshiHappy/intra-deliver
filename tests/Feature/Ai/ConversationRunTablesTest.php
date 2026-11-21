@@ -40,8 +40,7 @@ final class ConversationRunTablesTest extends TransactionalTestCase
             'compacted' => true,
             'retry_wait_seconds' => 0,
             'retry_attempt' => 1,
-            'step_reserved_sum_usd' => '0.010000',
-            'step_cost_sum_usd' => '0.000000',
+            'step_cost_sum_usd' => '0.010000',
             'step_usage_sum' => ['input_tokens' => 10],
         ])->refresh();
 
@@ -49,7 +48,7 @@ final class ConversationRunTablesTest extends TransactionalTestCase
         $this->assertSame([AiKindType::Conversation, [null, null, null, null]], [$run->kind_type, $common]);
         $ending = [$run->answer, $run->stop_reason, $run->stop_budget_period];
         $this->assertSame([AiConversationAnswer::Approve, AiRunStopReason::Budget, 'day'], $ending);
-        $this->assertSame(['0.010000', ['meetings']], [$run->step_reserved_sum_usd, $run->knowledge_modules]);
+        $this->assertSame(['0.010000', ['meetings']], [$run->step_cost_sum_usd, $run->knowledge_modules]);
         $this->assertSame($previous->id, $run->previousRun?->id);
         $this->assertSame($run->agent_definition_id, $run->agentDefinition?->id);
     }
@@ -220,12 +219,10 @@ final class ConversationRunTablesTest extends TransactionalTestCase
             $this->assertRejectedBy('ai_runs_retry_check', fn () => $this->conversationRun($values));
         }
 
-        foreach (['step_cost_sum_usd', 'step_reserved_sum_usd'] as $column) {
-            $this->assertRejectedBy(
-                'ai_runs_step_sums_check',
-                fn () => $this->conversationRun([$column => '-0.000001']),
-            );
-        }
+        $this->assertRejectedBy(
+            'ai_runs_step_sums_check',
+            fn () => $this->conversationRun(['step_cost_sum_usd' => '-0.000001']),
+        );
 
         $wrongForms = [
             'purposes' => ['a'],

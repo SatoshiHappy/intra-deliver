@@ -37,14 +37,24 @@ final class SubstituteLoop
 
     public function __construct(LoopRequest $given)
     {
-        $request = self::checked($given);
+        $thinking = new SubstituteThinking($given->thinking);
+        $request = self::checked($given, $thinking);
         $receivers = $request->receivers;
         $this->request = $request;
-        $this->state = new SubstituteState($receivers->notifier, $request->history);
+        $this->state = new SubstituteState($receivers->notifier, $request->history, $thinking);
+        $this->state->turn = $request->priorTurns + 1;
         $this->thresholds = SubstituteAmounts::of($request->target->model);
-        $this->plans = new LoopPlans($request, $this->thresholds, SubstitutePlans::toolNames($request->tools));
+        $toolNames = SubstitutePlans::toolNames($request->tools);
+        $this->plans = new LoopPlans($request, $this->thresholds, $toolNames, $thinking);
         $stops = new SubstituteStops($this->state);
-        $this->tools = new SubstituteTools($receivers->tools, $receivers->checker, $this->state, $stops);
+        $this->tools = new SubstituteTools(
+            $receivers->tools,
+            $receivers->checker,
+            $this->state,
+            $stops,
+            array_combine($toolNames, $request->tools),
+            $request->parallelTools,
+        );
         $sender = SubstituteConversationCore::sender(
             new SendReceivers($receivers->checker, $receivers->notifier, $receivers->clock, $receivers->texts),
             $request->target->traits,
@@ -67,7 +77,7 @@ final class SubstituteLoop
 
     private function ran(): LoopEnding
     {
-        if ($this->request->preRunCalls !== []) {
+        if ($this->request->preRunCalls !== [] || $this->request->priorTurns > 0) {
             $ending = $this->tools->run($this->request->preRunCalls, true, $this->request->maxTurns);
 
             if ($ending !== null) {
@@ -160,8 +170,8 @@ final class SubstituteLoop
         return false;
     }
 
-    /** 知らせの口を返り値の確かめで包んだ受け取る物(ループの中のどの知らせも同じ確かめを通す) */
-    private static function checked(LoopRequest $request): LoopRequest
+    /** 知らせの口を返り値の確かめと送信の成功の時刻の受け取りで包んだ受け取る物(ループの中のどの知らせも同じ所を通す) */
+    private static function checked(LoopRequest $request, SubstituteThinking $thinking): LoopRequest
     {
         $given = $request->receivers;
 
@@ -169,15 +179,18 @@ final class SubstituteLoop
             $request->target,
             $request->history,
             $request->tools,
+            $request->parallelTools,
             $request->stream,
             $request->providerOptions,
             $request->maxTurns,
+            $request->priorTurns,
             $request->progressSeconds,
             $request->preRunCalls,
             $request->addedTexts,
+            $request->thinking,
             new LoopReceivers(
                 $given->tools,
-                new CheckedNotices($given->notifier),
+                new CheckedNotices(new ThinkingNotices($given->notifier, $thinking, $given->clock)),
                 $given->checker,
                 $given->clock,
                 $given->texts,

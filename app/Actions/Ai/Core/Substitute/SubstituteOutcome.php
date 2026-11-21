@@ -21,11 +21,13 @@ final readonly class SubstituteOutcome
         public ?int $actualTokens = null,
         public ?int $limitTokens = null,
         public bool $sent = false,
+        public ?int $stepId = null,
     ) {}
 
-    public static function responded(StepResponse $response, SubstituteReading $reading): self
+    /** 応答を受けた($stepId = 応答の属するステップの行。要約の境目が指す = docs の 設計/AI/会話の中核.md 13.2) */
+    public static function responded(StepResponse $response, SubstituteReading $reading, int $stepId): self
     {
-        return new self($response, $reading, sent: true);
+        return new self($response, $reading, sent: true, stepId: $stepId);
     }
 
     /** 送る前の確かめで送らなかった */

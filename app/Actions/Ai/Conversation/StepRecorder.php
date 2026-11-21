@@ -29,6 +29,9 @@ final class StepRecorder
     /** @var array<int, Usage> 終わりの知らせを待つステップの使用量 */
     private array $usages = [];
 
+    /** @var array<int, int> 終わりの知らせを待つステップの、接続先が返した誤りの状態コード(流れの途中の誤りは 200 の後なので持たない) */
+    private array $statuses = [];
+
     public function __construct(
         private readonly RunEstimates $estimates,
         private readonly RunCosts $costs,
@@ -63,17 +66,28 @@ final class StepRecorder
             $this->usages[$notice->stepId] = $notice->usage;
         }
 
+        if ($notice->errorStatus !== null && ! $notice->cutMidStream) {
+            $this->statuses[$notice->stepId] = $notice->errorStatus;
+        }
+
         if ($notice->finish !== null) {
             $this->finish($notice->stepId, ['status' => AiRunStepStatus::Succeeded]);
         }
     }
 
-    /** 長すぎるは接続先が断った送信なので接続先の失敗に数える(実行の終わり方は中核の止めた(長さ)) */
+    /**
+     * 長すぎるは接続先が断った送信なので接続先の失敗に数える(実行の終わり方は中核の止めた(長さ))。接続先が返した状態コードは使用量の
+     * 無い失敗にだけ書く(状態コード 400 以上の費用の分からない行を 0 で数える = 設計/AI/実行と費用/接続先と費用.md 5.2。行の CHECK)。
+     */
     public function failed(StepFailedNotice $notice): void
     {
+        $status = $this->statuses[$notice->stepId] ?? null;
+        $usageKnown = isset($this->usages[$notice->stepId]);
+
         $this->finish($notice->stepId, [
             'status' => AiRunStepStatus::Failed,
             'error_code' => self::errorCode($notice->failure),
+            ...($status === null || $usageKnown ? [] : ['provider_status' => $status]),
         ]);
     }
 
@@ -83,7 +97,7 @@ final class StepRecorder
     }
 
     /**
-     * 行を終える(使用量が届いていれば実費に替える。届かなければ費用は見積もりのまま数える = 設計/AI/実行と費用/接続先と費用.md 5.3)。
+     * 行を終える(使用量が届いていれば実費に替える。届かなければ費用は空のまま、使った額への数え方 = 設計/AI/実行と費用/接続先と費用.md 5.2)。
      *
      * @param  array<string, mixed>  $values
      */
@@ -91,7 +105,7 @@ final class StepRecorder
     {
         $step = $this->step($stepId);
         $usage = $this->usages[$stepId] ?? null;
-        unset($this->usages[$stepId]);
+        unset($this->usages[$stepId], $this->statuses[$stepId]);
 
         $step->update([
             ...$values,

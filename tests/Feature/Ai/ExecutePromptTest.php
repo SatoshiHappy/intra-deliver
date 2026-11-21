@@ -84,6 +84,7 @@ final class ExecutePromptTest extends TransactionalTestCase
         $run = $this->executeFailing($this->queuedRun());
 
         $this->assertFailedWithoutUsage($run, AiRunErrorCode::Provider);
+        $this->assertSame(500, $run->provider_status);
     }
 
     public function test_a_timeout_fails_without_usage_or_cost(): void
@@ -93,6 +94,7 @@ final class ExecutePromptTest extends TransactionalTestCase
         $run = $this->executeFailing($this->queuedRun());
 
         $this->assertFailedWithoutUsage($run, AiRunErrorCode::Timeout);
+        $this->assertNull($run->provider_status);
     }
 
     public function test_an_output_cut_by_the_token_limit_fails_as_incomplete_with_usage_and_cost(): void
@@ -101,7 +103,10 @@ final class ExecutePromptTest extends TransactionalTestCase
 
         $run = $this->executeFailing($this->queuedRun());
 
-        $this->assertSame([AiRunStatus::Failed, AiRunErrorCode::Incomplete, 1200, '0.000117'], [$run->status, $run->error_code, $run->input_tokens, $run->cost_usd]);
+        $this->assertSame(
+            [AiRunStatus::Failed, AiRunErrorCode::Incomplete, 1200, '0.000117', null],
+            [$run->status, $run->error_code, $run->input_tokens, $run->cost_usd, $run->provider_status],
+        );
         $this->assertSame('{"summary":"途中', AiRunText::query()->findOrFail($run->id)->output_text);
         $this->assertSame([], $this->recordingKind->completed);
     }

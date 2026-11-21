@@ -2,7 +2,9 @@
 
 namespace App\Actions\Ai\Api;
 
+use App\Actions\Ai\Conversation\RenderingStore;
 use App\Actions\Ai\ConversationKinds;
+use App\Actions\Ai\Instructions\InstructionBuilder;
 use App\Actions\Ai\SumRunSteps;
 use App\Enums\Ai\AiKindType;
 use App\Enums\Ai\AiRunStatus;
@@ -19,7 +21,11 @@ use LogicException;
  */
 final readonly class StopConversationRun
 {
-    public function __construct(private ConversationKinds $kinds, private SumRunSteps $sums) {}
+    public function __construct(
+        private ConversationKinds $kinds,
+        private SumRunSteps $sums,
+        private InstructionBuilder $builder,
+    ) {}
 
     /**
      * @return StopOutcome|null 依頼者の実行でない・無いとき null
@@ -65,7 +71,8 @@ final readonly class StopConversationRun
 
         $kind = $this->kinds->find($run->kind)
             ?? throw new LogicException(ConversationKinds::notRegistered($run->kind));
-        $kind->store()->append($run->id, [ConversationItem::interruption(false)]);
+        $store = new RenderingStore($kind->store(), $this->builder);
+        $store->append($run->id, [ConversationItem::interruption(false)]);
         $run->fill([
             'status' => AiRunStatus::Stopped,
             'stop_reason' => AiRunStopReason::User,

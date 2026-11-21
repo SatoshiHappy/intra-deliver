@@ -82,13 +82,20 @@ final class ConversationItemShape
                 'values' => 'values',
                 'body' => '?string',
                 'is_error' => 'bool',
+                'rendered' => '?rendered',
             ]),
-            ConversationItemType::Interruption => self::hasOnly($content, ['during_tool' => 'bool']),
+            ConversationItemType::Interruption => self::hasOnly(
+                $content,
+                ['during_tool' => 'bool', 'rendered' => '?rendered'],
+            ),
             ConversationItemType::AddedText => self::hasOnly(
                 $content,
                 ['template' => 'addedTextTemplate', 'values' => 'values', 'call_ids' => 'strings'],
             ),
-            ConversationItemType::CompactBoundary => self::hasOnly($content, ['estimate' => 'count', 'date' => 'date']),
+            ConversationItemType::CompactBoundary => self::hasOnly(
+                $content,
+                ['estimate' => 'count', 'date' => 'date', 'step_id' => 'count'],
+            ),
             ConversationItemType::TurnLimit => $content === [],
         };
     }
@@ -233,6 +240,7 @@ final class ConversationItemShape
             'values' => self::valuesFit($value),
             'blocks' => self::blocksFit($value),
             'usage' => is_array($value) && self::hasOnly($value, self::USAGE),
+            'rendered' => is_array($value) && self::hasOnly($value, ['text' => 'string', 'forms_id' => 'string']),
             'time' => is_string($value) && self::isFormatted($value, DATE_ATOM),
             'date' => self::isDate($value),
             default => false,

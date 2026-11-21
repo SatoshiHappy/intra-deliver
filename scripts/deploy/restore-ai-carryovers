@@ -106,14 +106,18 @@ SQL
     # 書き換えに失敗したら終わりの COMMIT を出さない(psql は COMMIT の無いまま入力が終わり、トランザクションは巻き戻る)
     copy_blocks || return 1
     cat <<'SQL'
+-- 応答の状態コードの列(2026-11-22 に足した)の無い前の退避は、列を空で足す(空は断られていない = 見積もりで数える = 前の数え方と同じ)
+ALTER TABLE pg_temp.restore_ai_runs ADD COLUMN IF NOT EXISTS provider_status text;
+ALTER TABLE pg_temp.restore_ai_run_steps ADD COLUMN IF NOT EXISTS provider_status text;
 -- 数える列の型をそろえた見かけの表(数える列が欠けた退避はここで止まる)
 CREATE TEMP VIEW counted_runs AS
 SELECT id::bigint AS id, budget, status, kind_type, created_at::timestamptz AS created_at,
-    cost_usd::numeric AS cost_usd, reserved_cost_usd::numeric AS reserved_cost_usd
+    cost_usd::numeric AS cost_usd, reserved_cost_usd::numeric AS reserved_cost_usd,
+    provider_status::smallint AS provider_status
 FROM pg_temp.restore_ai_runs;
 CREATE TEMP VIEW counted_steps AS
-SELECT ai_run_id::bigint AS ai_run_id, started_at::timestamptz AS started_at, cost_usd::numeric AS cost_usd,
-    reserved_cost_usd::numeric AS reserved_cost_usd
+SELECT ai_run_id::bigint AS ai_run_id, status, started_at::timestamptz AS started_at, cost_usd::numeric AS cost_usd,
+    reserved_cost_usd::numeric AS reserved_cost_usd, provider_status::smallint AS provider_status
 FROM pg_temp.restore_ai_run_steps;
 -- 退避の繰り越しと、退避の実行とステップの使った額(RunSpending::carryOverRowsSql の写し)を区分 × 東京の日で足し込む
 INSERT INTO public.ai_spending_carryovers (budget, spent_on, cost_usd)
@@ -123,9 +127,12 @@ FROM (
     UNION ALL
     (
         SELECT budget, (counted_at AT TIME ZONE 'Asia/Tokyo')::date AS spent_on, sum(cost_usd) AS cost_usd
-        FROM (SELECT budget, status, created_at AS counted_at, coalesce(cost_usd, reserved_cost_usd) AS cost_usd
+        FROM (SELECT budget, status, created_at AS counted_at,
+                coalesce(cost_usd, CASE WHEN provider_status >= 400 THEN 0 ELSE reserved_cost_usd END) AS cost_usd
             FROM pg_temp.counted_runs WHERE kind_type <> 'conversation'
-            UNION ALL SELECT r.budget, r.status, s.started_at, coalesce(s.cost_usd, s.reserved_cost_usd)
+            UNION ALL SELECT r.budget, r.status, s.started_at,
+                coalesce(s.cost_usd, CASE WHEN s.status = 'running' THEN s.reserved_cost_usd
+                WHEN s.provider_status >= 400 THEN 0 ELSE s.reserved_cost_usd END)
             FROM pg_temp.counted_steps AS s JOIN pg_temp.counted_runs AS r ON r.id = s.ai_run_id
             WHERE r.kind_type = 'conversation') AS spent WHERE status <> 'queued' GROUP BY 1, 2
     )

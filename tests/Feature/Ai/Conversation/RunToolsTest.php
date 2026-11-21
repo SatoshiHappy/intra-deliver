@@ -6,6 +6,7 @@ use App\Actions\Ai\Api\ConversationItem;
 use App\Actions\Ai\Conversation\RunClock;
 use App\Actions\Ai\Conversation\RunNotifier;
 use App\Actions\Ai\Conversation\RunProgress;
+use App\Actions\Ai\Conversation\RunToolChildren;
 use App\Actions\Ai\Conversation\RunTools;
 use App\Actions\Ai\Conversation\RunToolStep;
 use App\Actions\Ai\Conversation\StepRecorder;
@@ -21,9 +22,11 @@ use App\Actions\Ai\ToolCalls\ToolCallWrites;
 use App\Enums\Ai\AiInstructionTemplate;
 use App\Enums\Ai\AiToolCallDecision;
 use App\Enums\Ai\AiToolCallStatus;
+use App\Models\Ai\AiRunStep;
 use App\Models\Ai\AiToolCallText;
 use App\Queries\Ai\RunChainCalls;
 use Carbon\CarbonImmutable;
+use DateTimeZone;
 use LogicException;
 use Tests\Feature\Ai\RunsToolCalls;
 use Tests\Support\TransactionalTestCase;
@@ -45,7 +48,8 @@ final class RunToolsTest extends TransactionalTestCase
         parent::setUp();
         $this->arrangeWrapper();
         $this->cursor = new RunToolStep($this->run, $this->granted, $this->store);
-        $this->tools = new RunTools($this->cursor, app(ToolCallStages::class), app(ToolCallWrites::class));
+        $stages = app(ToolCallStages::class);
+        $this->tools = new RunTools($this->cursor, $stages, app(ToolCallWrites::class), app(RunToolChildren::class));
         $this->notifier()->notify(new BeforeSendNotice($this->step->id, SendKind::Turn, 1, null, 10));
     }
 
@@ -65,6 +69,31 @@ final class RunToolsTest extends TransactionalTestCase
         $this->assertSame([1, AiToolCallDecision::UnknownTool], [$first->position, $first->decision]);
         $this->assertSame([2, AiToolCallStatus::Done], [$this->row('c2')->position, $this->row('c2')->status]);
         $this->assertCount(2, $this->store->read($this->run->id) ?? []);
+    }
+
+    /**
+     * 返り値の道具の中の最後の送信の完了 = その呼び出しの中で成功したステップの行の終わりの最大(失敗の終わり・ほかの呼び出しは数えない。
+     * 中の送信が無ければ空 = docs の 設計/AI/会話の中核.md 13.2)。
+     */
+    public function test_the_run_returns_the_last_completion_inside_the_call(): void
+    {
+        $call = new CoreToolCall('c2', 'ai_read', ['module' => 'm_view']);
+        $this->tools->find($call, false);
+        $this->assertNull($this->tools->run($call, false)->lastSendFinishedAt);
+
+        $inside = AiRunStep::factory()->insideToolCall($this->row('c2'));
+        $at = static fn (string $time): array => [
+            'started_at' => CarbonImmutable::parse("2026-11-18 {$time}+00")->subMinute(),
+            'finished_at' => CarbonImmutable::parse("2026-11-18 {$time}+00"),
+        ];
+        $inside->succeeded()->create($at('01:00:00'));
+        $inside->succeeded()->create($at('02:00:00'));
+        $inside->failed()->create($at('03:00:00'));
+
+        $finished = $this->cursor->lastSendFinishedAt('c2');
+        $utc = $finished?->setTimezone(new DateTimeZone('UTC'))->format(DATE_ATOM);
+        $this->assertSame('2026-11-18T02:00:00+00:00', $utc);
+        $this->assertNull($this->cursor->lastSendFinishedAt('c9'));
     }
 
     public function test_a_gone_conversation_is_reported(): void

@@ -14,7 +14,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
  */
 final class CheckPointTest extends EmptyContainerTestCase
 {
-    /** 表の行(位置 → 返せる区分)。送る前は題とほかの送信で分ける */
+    /** 表の行(位置 → 返せる区分)。送る前は題とほかの送信で、読み終えた後は回の答えと続き(費用の上限も = 5.3)とほかで分ける */
     private const TABLE = [
         'before_send' => ['user', 'time_limit', 'cost_limit'],
         'before_send:title' => ['cost_limit'],
@@ -22,6 +22,7 @@ final class CheckPointTest extends EmptyContainerTestCase
         'before_retry_wait' => ['user', 'time_limit'],
         'while_reading' => ['user'],
         'after_reading' => ['user'],
+        'after_reading:answer' => ['user', 'cost_limit'],
         'after_tools' => ['user'],
         'during_retry_wait' => ['user'],
     ];
@@ -34,7 +35,13 @@ final class CheckPointTest extends EmptyContainerTestCase
         foreach (CheckPoint::cases() as $point) {
             foreach (SendKind::cases() as $kind) {
                 $isTitle = $point === CheckPoint::BeforeSend && $kind === SendKind::Title;
-                $row = $isTitle ? 'before_send:title' : $point->value;
+                $answering = $point === CheckPoint::AfterReading
+                    && ($kind === SendKind::Turn || $kind === SendKind::Continuation);
+                $row = match (true) {
+                    $isTitle => 'before_send:title',
+                    $answering => 'after_reading:answer',
+                    default => $point->value,
+                };
 
                 foreach (StopKind::cases() as $stop) {
                     $allowed = in_array($stop->value, self::TABLE[$row], true);
@@ -68,7 +75,7 @@ final class CheckPointTest extends EmptyContainerTestCase
     /** 続けるの欄の表(位置 → 受ける欄の組: s = ステップの番号、w = 待ちの上限) */
     private const PROCEED_TABLE = [
         'before_send' => ['s'],
-        'before_retry_wait' => ['', 'w'],
+        'before_retry_wait' => [''],
         'before_tool' => [''],
         'while_reading' => [''],
         'after_reading' => [''],
@@ -82,8 +89,7 @@ final class CheckPointTest extends EmptyContainerTestCase
     public static function proceeds(): iterable
     {
         foreach (CheckPoint::cases() as $point) {
-            // 番号と待ちの上限を両方持つ続けるは起きない(作り手が無い。コンストラクタは private)
-            foreach (['', 's', 'w'] as $fields) {
+            foreach (['', 's'] as $fields) {
                 $accepted = in_array($fields, self::PROCEED_TABLE[$point->value], true);
 
                 yield "{$point->value}・欄 {$fields}" => [$point, $fields, $accepted];
@@ -97,11 +103,7 @@ final class CheckPointTest extends EmptyContainerTestCase
         string $fields,
         bool $accepted,
     ): void {
-        $reply = match ($fields) {
-            '' => CheckReply::proceed(),
-            's' => CheckReply::proceedToSend(3),
-            default => CheckReply::proceedToWait(1000),
-        };
+        $reply = $fields === 's' ? CheckReply::proceedToSend(3) : CheckReply::proceed();
 
         $this->assertSame($accepted, $point->accepts($reply, SendKind::Turn));
     }
@@ -118,8 +120,8 @@ final class CheckPointTest extends EmptyContainerTestCase
         'after_tools' => ['turn', 'continuation'],
         'while_reading' => ['turn', 'continuation', 'compaction', 'compaction_fallback'],
         'after_reading' => ['turn', 'continuation', 'compaction', 'compaction_fallback'],
-        'before_retry_wait' => ['turn', 'continuation', 'compaction', 'compaction_fallback'],
-        'during_retry_wait' => ['turn', 'continuation', 'compaction', 'compaction_fallback'],
+        'before_retry_wait' => ['turn', 'continuation', 'compaction', 'compaction_fallback', 'title'],
+        'during_retry_wait' => ['turn', 'continuation', 'compaction', 'compaction_fallback', 'title'],
     ];
 
     /**

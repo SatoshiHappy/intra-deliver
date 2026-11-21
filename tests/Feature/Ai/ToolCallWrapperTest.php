@@ -191,6 +191,7 @@ final class ToolCallWrapperTest extends TransactionalTestCase
             'values' => $values,
             'body' => $body,
             'is_error' => $isError,
+            'rendered' => null,
         ];
     }
 }

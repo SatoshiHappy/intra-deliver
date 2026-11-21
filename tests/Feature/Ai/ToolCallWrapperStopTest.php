@@ -49,12 +49,26 @@ final class ToolCallWrapperStopTest extends TransactionalTestCase
 
         $contents = $this->storedContents();
         $this->assertSame([
-            ['call_id' => 'c3', 'template' => 'user_cancelled', 'values' => [], 'body' => null, 'is_error' => true],
-            ['call_id' => 'c4', 'template' => 'user_cancelled', 'values' => [], 'body' => null, 'is_error' => true],
-            ['during_tool' => true],
+            [
+                'call_id' => 'c3',
+                'template' => 'user_cancelled',
+                'values' => [],
+                'body' => null,
+                'is_error' => true,
+                'rendered' => null,
+            ],
+            [
+                'call_id' => 'c4',
+                'template' => 'user_cancelled',
+                'values' => [],
+                'body' => null,
+                'is_error' => true,
+                'rendered' => null,
+            ],
+            ['during_tool' => true, 'rendered' => null],
         ], array_slice($contents, 2));
         $stop = [$outcome->stopReason, $outcome->interruption?->content];
-        $this->assertSame([AiRunStopReason::User, ['during_tool' => true]], $stop);
+        $this->assertSame([AiRunStopReason::User, ['during_tool' => true, 'rendered' => null]], $stop);
         $this->assertSame(1, $this->tool('ai_read')->executions);
     }
 

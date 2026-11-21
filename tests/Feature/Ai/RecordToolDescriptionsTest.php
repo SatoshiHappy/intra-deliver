@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Ai;
 
+use App\Actions\Ai\Core\ToolArguments;
 use App\Actions\Ai\Instructions\InstructionBuilder;
 use App\Actions\Ai\ToolCalls\GrantedTool;
 use App\Actions\Ai\ToolCalls\ToolArgumentSchema;
@@ -199,7 +200,7 @@ final class RecordToolDescriptionsTest extends TransactionalTestCase
             $granted = $this->granted($name);
             $texts[$name] = $granted->tool->description($granted->scope);
 
-            foreach (ToolArgumentSchema::properties(ToolArgumentSchema::of($granted->tool)) as $key => $property) {
+            foreach (ToolArguments::properties(ToolArgumentSchema::of($granted->tool)) as $key => $property) {
                 $texts["{$name}.{$key}"] = is_string($property['description'] ?? null) ? $property['description'] : '';
             }
         }

@@ -13,4 +13,12 @@ interface ToolRunner
 
     /** 包みを通して動かす(13.3 の動かす。先に動かす呼び出しに問うは起きない) */
     public function run(CoreToolCall $call, bool $preRun): ToolRun;
+
+    /**
+     * 並べてよい道具の組を並べて動かす(13.3 の並べて動かす。どの呼び出しも探すで見つけた物)。
+     *
+     * @param  non-empty-list<CoreToolCall>  $calls  呼び出しの順
+     * @param  positive-int  $concurrency  同時に動かす数の上限
+     */
+    public function runParallel(array $calls, int $concurrency): ToolRuns;
 }

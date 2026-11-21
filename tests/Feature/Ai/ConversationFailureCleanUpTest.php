@@ -101,7 +101,7 @@ final class ConversationFailureCleanUpTest extends TransactionalTestCase
         $this->assertSame(self::CLEANED_UP, $this->statuses($rows));
         $step = AiRunStep::query()->findOrFail($rows['R の処理中のステップ']->id);
         $this->assertSame([$code, null, '0.010000'], [$step->error_code, $step->cost_usd, $step->reserved_cost_usd]);
-        $this->assertSame(['0.030000', '0.001000'], [$run->step_reserved_sum_usd, $run->step_cost_sum_usd]);
+        $this->assertSame('0.001000', $run->step_cost_sum_usd);
         $this->assertSame(10, $run->step_usage_sum['input_tokens'] ?? null);
     }
 

@@ -49,8 +49,25 @@ class RunBudget
      */
     public function ensureWithin(string $budget, string $reservedUsd): void
     {
-        $period = $this->spending->exceededPeriod($budget, CarbonImmutable::now(), $reservedUsd);
+        $this->declineIf($budget, $this->spending->exceededPeriod($budget, CarbonImmutable::now(), $reservedUsd));
+    }
 
+    /**
+     * 会話の型の依頼の確認(使った額が上限以上なら断る = 5.2 の比べ方の表の会話の型の行)。
+     *
+     * @throws RunRequestDeclined 上限以上のとき(422。キー ai)
+     * @throws LogicException 設定に無い区分のとき
+     */
+    public function ensureNotReached(string $budget): void
+    {
+        $this->declineIf($budget, $this->spending->reachedPeriod($budget, CarbonImmutable::now()));
+    }
+
+    /**
+     * @throws RunRequestDeclined 期間があるとき
+     */
+    private function declineIf(string $budget, ?string $period): void
+    {
         if ($period !== null) {
             $message = BudgetMessages::of($budget, $period)
                 ?? throw new LogicException("予算の区分 {$budget} の上限を超えたときの文が無い");

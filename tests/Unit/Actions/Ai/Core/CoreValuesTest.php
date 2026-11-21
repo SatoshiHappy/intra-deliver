@@ -79,11 +79,10 @@ final class CoreValuesTest extends EmptyContainerTestCase
     public function test_a_check_reply_stops_only_when_made_to_stop(): void
     {
         $toSend = CheckReply::proceedToSend(12);
-        $toWait = CheckReply::proceedToWait(30000);
         $stop = CheckReply::stop(StopKind::User, '止める印');
 
-        $this->assertSame([false, 12, null], [$toSend->stops(), $toSend->stepId, $toSend->waitLimitMs]);
-        $this->assertSame([false, null, 30000], [$toWait->stops(), $toWait->stepId, $toWait->waitLimitMs]);
+        $this->assertSame([false, 12], [$toSend->stops(), $toSend->stepId]);
+        $this->assertSame([false, null], [CheckReply::proceed()->stops(), CheckReply::proceed()->stepId]);
         $this->assertSame([true, StopKind::User, '止める印'], [$stop->stops(), $stop->stop, $stop->reason]);
     }
 

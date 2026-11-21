@@ -70,6 +70,11 @@ final class SearchRecords implements AgentRecordTool
         return true;
     }
 
+    public function isConcurrencySafe(): bool
+    {
+        return true;
+    }
+
     public function requiredAction(): AiToolAction
     {
         return AiToolAction::View;

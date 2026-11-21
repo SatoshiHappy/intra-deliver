@@ -6,6 +6,7 @@ use App\Queries\Ai\AiSettings;
 use App\Queries\Ai\ConversationSettings;
 use App\Queries\Ai\KindSettings;
 use App\Queries\Ai\RunEstimates;
+use App\Queries\Ai\TitleBudget;
 use App\Queries\Ai\TranscriptionSettings;
 use App\Support\DefaultDatabaseQueue;
 
@@ -28,6 +29,7 @@ class KindLimitChecks
         private TranscriptionSettings $transcription,
         private RunEstimates $estimates,
         private ConversationSettings $conversation,
+        private TitleBudget $titleBudget,
     ) {}
 
     /**
@@ -39,7 +41,12 @@ class KindLimitChecks
     public function problems(array $all): array
     {
         [$kinds, $kindShape] = $all;
-        $problems = [...$kindShape, ...$this->settings->problems(), ...$this->transcription->problems()];
+        $problems = [
+            ...$kindShape,
+            ...$this->settings->problems(),
+            ...$this->transcription->problems(),
+            ...$this->titleBudget->problems(),
+        ];
         $pricing = [];
         $priced = [];
 
@@ -93,7 +100,8 @@ class KindLimitChecks
     }
 
     /**
-     * 会話のジョブの時間と、題のステップの最長が回の送信の最長以下か(式 = docs の 設計/AI/エージェントの実行/途中の表示と上限.md 9.7)。
+     * 会話のジョブの時間と、題のステップの最長(題の持ち時間 + 1 回の試しの最長)が回の送信の最長以下で実行の時間の上限より短いか(式 =
+     * docs の 設計/AI/エージェントの実行/途中の表示と上限.md 9.7。割合の形が合わなければ題は比べない = 割合の確かめの文が出る)。
      * 会話のキューの接続の形の食い違いは会話の設定の確かめが出すので、形が合わないときはジョブの時間を見ない。比べる式 = 文章の型と同じ
      * 「ジョブの時間 < retry_after」。
      *
@@ -112,7 +120,28 @@ class KindLimitChecks
         return [
             ...($tooLong ? ["種類 {$code} のジョブの時間 {$jobTimeout} 秒が会話のキューの接続の retry_after {$retryAfter} 秒以上"
                 .'(config/queue.php)'] : []),
-            ...($title > $send ? ["種類 {$code} の題の時間の上限 {$title} 秒が会話の時間の上限 {$send} 秒より長い"] : []),
+            ...$this->titleProblems($code, $kind['run_timeout_seconds'], $title, $send),
+        ];
+    }
+
+    /**
+     * @return list<string>
+     */
+    private function titleProblems(string $code, int $runTimeout, int $title, int $send): array
+    {
+        $ratio = $this->titleBudget->ratio();
+
+        if ($ratio === null) {
+            return [];
+        }
+
+        $longest = $this->titleBudget->milliseconds($runTimeout) / 1000 + AiSettings::jobTimeout($title);
+        $sendLongest = AiSettings::jobTimeout($send);
+        $label = "種類 {$code} の題のステップの最長 {$longest} 秒(題の持ち時間 + 1 回の試しの最長)";
+
+        return [
+            ...($longest > $sendLongest ? ["{$label}が回の送信の最長 {$sendLongest} 秒より長い"] : []),
+            ...($longest >= $runTimeout ? ["{$label}が実行の時間の上限 {$runTimeout} 秒以上"] : []),
         ];
     }
 

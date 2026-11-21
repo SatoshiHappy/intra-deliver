@@ -23,7 +23,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
     'ai_run_id', 'run_kind_type', 'sequence', 'purpose', 'send_kind', 'retry_attempt', 'retried_from_step_id',
     'ai_tool_call_id', 'provider', 'model', 'reserved_cost_usd', 'input_tokens', 'output_tokens',
     'cache_read_input_tokens', 'cache_write_input_tokens', 'reasoning_tokens', 'pricing', 'cost_usd',
-    'code_execution_seconds', 'status', 'error_code', 'started_at', 'finished_at',
+    'code_execution_seconds', 'status', 'error_code', 'provider_status', 'started_at', 'finished_at',
 ])]
 class AiRunStep extends Model
 {
@@ -47,6 +47,7 @@ class AiRunStep extends Model
             'send_kind' => AiRunStepSendKind::class,
             'retry_attempt' => 'integer',
             'reserved_cost_usd' => 'decimal:6',
+            'provider_status' => 'integer',
             'input_tokens' => 'integer',
             'output_tokens' => 'integer',
             'cache_read_input_tokens' => 'integer',
