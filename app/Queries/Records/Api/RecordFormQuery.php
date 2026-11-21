@@ -126,7 +126,7 @@ class RecordFormQuery
      * 出し分けにだけ使う(設計/ワークフロー/業務データとの接続/公開の口/README.md 7 節の「行の権限」)。
      *
      * @return array{values: array<string, mixed>, details: array<string, list<DetailRow>>, version: string,
-     *     rowAccessRestricted: bool, rowAccess: ShownRowAccess}
+     *     rowAccess: ShownRowAccess}
      *
      * @throws ModelNotFoundException<RecordModule|Record> 業務モジュールが無い・明細のモジュールのとき、レコードがその業務モジュールに無いとき
      */
@@ -139,7 +139,6 @@ class RecordFormQuery
             'values' => $editable['values'],
             'details' => $editable['details'],
             'version' => $editable['version'],
-            'rowAccessRestricted' => $editable['rowAccess']['restricted'],
             'rowAccess' => $editable['rowAccess'],
         ];
     }

@@ -12,10 +12,9 @@ use Tests\Support\BuildsRowAccessRecords;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * 業務の画面の参照制限の props(docs の 設計/業務データの入れ物/画面/業務の画面.md 2.2・2.3、
- * 設計/業務データの入れ物/レコードの共通機能/複製.md の 2 節・5 節、設計/ワークフロー/業務データとの接続/公開の口/画面の値の口.md の 7.2 の editValues の行):
- * 登録 = rowAccess(業務モジュールの既定と空)、編集・詳細 = record.rowAccess(今の値。参照者は相手の種類と参照の値)、複製 = copySource.rowAccess
- * (元のレコードの値。業務モジュールの既定と違っても)。editValues の rowAccessRestricted = そのレコードのチェック。今日を 2026-10-11 に固定する。
+ * 業務の画面の参照制限の props と editValues の参照制限の今の値(期待の正本 = docs の 設計/業務データの入れ物/画面/業務の画面.md 2.2・2.3、
+ * 設計/業務データの入れ物/レコードの共通機能/複製.md の 2 節・5 節、設計/ワークフロー/業務データとの接続/公開の口/画面の値の口.md の 7.2 の
+ * editValues の行)。今日を 2026-10-11 に固定する。
  *
  * @phpstan-import-type RowAccessFixture from BuildsRowAccessRecords
  */
@@ -97,10 +96,10 @@ final class RecordRowAccessPropsTest extends TransactionalTestCase
 
         $restricted = $forms->editValues($requester, 'meetings', $fixture['recordId'], $date, 'ja');
         $detail = app(RecordDisplayQuery::class)->detail($requester, $fixture['recordId'], $date, 'ja');
-        $this->assertTrue($restricted['rowAccessRestricted']);
+        $this->assertTrue($restricted['rowAccess']['restricted']);
         $this->assertSame($detail['record']['rowAccess'], $restricted['rowAccess']);
         $this->assertNotSame([], $restricted['rowAccess']['viewers']);
-        $this->assertFalse($forms->editValues($requester, 'meetings', $openId, $date, 'ja')['rowAccessRestricted']);
+        $this->assertFalse($forms->editValues($requester, 'meetings', $openId, $date, 'ja')['rowAccess']['restricted']);
     }
 
     /**
