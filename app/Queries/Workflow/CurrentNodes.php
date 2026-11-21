@@ -164,7 +164,7 @@ class CurrentNodes
     }
 
     /**
-     * まとまりを文字にする(形 = 認可と一覧.md の 2.2 節)。保留中のノードの名前の後に $holdText。
+     * まとまりを文字にする(形 = docs の 設計/ワークフロー/案件の運用/認可と一覧.md の 2.2 節)。保留中のノードの名前の後に $holdText。
      *
      * @param  list<CurrentNodeGroup>  $groups
      */

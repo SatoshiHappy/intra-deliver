@@ -133,7 +133,7 @@ final class WorkflowRecordHoldNoticesTest extends TransactionalTestCase
     }
 
     /**
-     * 札の状態の規則(認可と一覧.md の 2.4 節): 保留中のノードだけなら保留中(suffix の名前の後に「(保留中)」)、並列の片方だけが保留中なら承認待ちで、
+     * 札の状態の規則(docs の 設計/ワークフロー/案件の運用/認可と一覧.md の 2.4 節): 保留中のノードだけなら保留中(suffix の名前の後に「(保留中)」)、並列の片方だけが保留中なら承認待ちで、
      * 保留中のノードの名前にだけ添える。再申請待ちがあれば再申請待ち。
      */
     public function test_the_badge_and_the_current_nodes_of_held_and_returned_cases(): void

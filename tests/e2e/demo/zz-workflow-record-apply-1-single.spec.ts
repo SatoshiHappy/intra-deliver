@@ -31,8 +31,8 @@ test.describe.configure({ mode: 'serial' });
 let recordUrl = '';
 let caseUrl = '';
 
-/** 申請した後の現在のステップ(計画のフローの版 2 の「課長」) */
-const CHIEF_STEP = '課長';
+/** 申請した後の現在のステップ(計画のフローの課長の承認) */
+const CHIEF_STEP = '課長の承認';
 
 test('詳細の「申請する」→ 申請の画面(見出しの 1 行・値を直す・一時保存のボタンが無い)→ 申請 → 押せない形', async ({
     page,
@@ -104,7 +104,10 @@ test('申請したレコードは、直した値が入り、編集・申請す�
     ).toBeVisible();
 
     await (await expectHoldNotice(page, notice))?.click();
-    await expect(page).toHaveURL(caseUrl);
+    // 申請の後の URL がクエリを持っても、開く先は同じ申請の詳細
+    await expect(page).toHaveURL(
+        (url) => url.pathname === new URL(caseUrl).pathname,
+    );
 });
 
 test('申請を閲覧できない人には、詳細と編集の画面で理由の 1 行だけが出る', async ({
