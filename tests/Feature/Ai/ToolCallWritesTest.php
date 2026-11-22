@@ -12,6 +12,7 @@ use App\Models\Ai\AiToolCall;
 use App\Models\Ai\AiToolCallText;
 use App\Models\Records\Record;
 use App\Models\Records\RecordRevision;
+use App\Queries\Authz\Api\AuthorizationReuse;
 use App\Queries\Authz\Api\Requester;
 use App\Queries\Records\Api\RecordFormQuery;
 use Carbon\CarbonImmutable;
@@ -134,6 +135,24 @@ final class ToolCallWritesTest extends TransactionalTestCase
 
         $this->assertRow($rows[0], AiToolCallStatus::Rejected, AiToolWriteDenial::NoPermission);
         $this->assertRow($rows[1], AiToolCallStatus::Rejected, AiToolWriteDenial::NoPermission);
+    }
+
+    /** 外の使い回すまとまりで事実を覚えた後でも、書く件は使い回さない区間で判定するので、その後に外したロールが効く(P3) */
+    public function test_a_role_revoked_after_an_outside_check_in_the_same_job_takes_effect_in_the_write(): void
+    {
+        $rows = $this->ask([['ai_create_record', ['module' => 'm_refs']]]);
+
+        app(AuthorizationReuse::class)->within(function () use ($rows): void {
+            $subject = app(ToolSubjects::class)->for($this->run);
+            $allowed = app(RecordFormQuery::class)
+                ->allows($subject->requester(), 'm_refs', RecordModuleAction::Create, $subject->date());
+            $this->assertTrue($allowed);
+            $this->revokeRole();
+
+            $this->answer($rows);
+        });
+
+        $this->assertRow($rows[0], AiToolCallStatus::Rejected, AiToolWriteDenial::NoPermission);
     }
 
     /** P4・P6: 呼ばれた後に消えたレコードは見つからない(失敗の印なし)、ほかの人が先に直したレコードは P6 */
