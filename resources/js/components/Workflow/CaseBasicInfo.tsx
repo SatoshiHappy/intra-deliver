@@ -1,10 +1,11 @@
 import type { ReactNode } from 'react';
 import { DetailItem } from '@/components/DetailItem';
-import { DueCell, ElapsedCell } from '@/components/Workflow/CaseListCells';
 import {
-    CaseStateBadge,
-    HoldBadge,
-} from '@/components/Workflow/WorkflowStatusBadge';
+    CurrentNodeGroups,
+    DueCell,
+    ElapsedCell,
+} from '@/components/Workflow/CaseListCells';
+import { CaseStateBadge } from '@/components/Workflow/WorkflowStatusBadge';
 import { EMPTY_VALUE } from '@/lib/recordValues';
 import { progressItemKeysOf, reachedDateOf } from '@/lib/Workflow/caseDetail';
 import type { ProgressItemKey } from '@/lib/Workflow/caseDetail';
@@ -77,24 +78,14 @@ function ApplicationItems({ data }: { data: CaseData }) {
 }
 
 /**
- * 現在のステップ(保留中の札つき。完了のときは「—」)。
+ * 現在のステップ(保留中のノードの名前の後に札。完了のときは「—」)。
  */
-function CurrentStep({ data }: { data: CaseData }) {
-    if (data.currentSummary === null) {
+function CurrentNodeNames({ data }: { data: CaseData }) {
+    if (data.currentNodeGroups.length === 0) {
         return EMPTY_VALUE;
     }
 
-    return (
-        <>
-            {data.currentSummary.name}
-            {data.currentSummary.state === 'hold' && (
-                <>
-                    {' '}
-                    <HoldBadge />
-                </>
-            )}
-        </>
-    );
+    return <CurrentNodeGroups groups={data.currentNodeGroups} />;
 }
 
 /** 進み具合の項目の見出しと値(並びと出し分けは {@link progressItemKeysOf}) */
@@ -104,7 +95,7 @@ const PROGRESS_ITEMS: Record<
 > = {
     currentStep: {
         label: '現在のステップ',
-        value: (data) => <CurrentStep data={data} />,
+        value: (data) => <CurrentNodeNames data={data} />,
     },
     completedOn: {
         label: '完了日',

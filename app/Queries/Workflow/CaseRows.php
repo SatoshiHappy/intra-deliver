@@ -23,10 +23,12 @@ use LogicException;
  * @phpstan-import-type Deadline from CaseRowExtras
  * @phpstan-import-type RowBulkApproval from CaseRowExtras
  * @phpstan-import-type Steps from CaseConfirmations
+ * @phpstan-import-type CurrentNodeGroup from CurrentNodes
  *
  * @phpstan-type CaseRow array{
  *     id: int, number: string|null, name: string, flowName: string, applicant: Person, appliedAt: string|null,
- *     currentSummary: array{state: string, name: string}|null, currentNodes: list<RowCurrentNode>, state: string,
+ *     currentSummary: array{state: string, name: string}|null, currentNodeGroups: list<CurrentNodeGroup>,
+ *     state: string,
  *     completionReason: string|null, revision: int, can: RowCan, pullBackNodes: list<PullBackNode>,
  *     canAttachOnWithdraw: bool,
  *     deadline: Deadline|null, principals: list<Person>, confirmation: Steps|null, bulkApproval: RowBulkApproval|null,
@@ -34,9 +36,6 @@ use LogicException;
  * @phpstan-type RowCan array{
  *     pullBack: bool, reapply: bool, withdraw: bool, editDraft: bool, deleteDraft: bool,
  *     bulkApprove: bool, confirm: bool,
- * }
- * @phpstan-type RowCurrentNode array{
- *     id: int, name: string, parentId: int|null, parentName: string|null, childName: string|null, state: string,
  * }
  * @phpstan-type PullBackNode array{id: int, name: string, blockedReason: string|null, canAttach: bool}
  */
@@ -87,7 +86,7 @@ class CaseRows
             'applicant' => $applicants[$case->user_id],
             'appliedAt' => $case->applied_at?->toIso8601String(),
             'currentSummary' => self::currentSummaryOf($situations[$case->id]),
-            'currentNodes' => self::currentNodesOf($situations[$case->id]),
+            'currentNodeGroups' => CurrentNodes::groupsOf($situations[$case->id]->currentNodes),
             'state' => $case->state->value,
             'completionReason' => $case->completion_reason?->value,
             'revision' => $case->revision,
@@ -104,27 +103,6 @@ class CaseRows
             'confirmation' => $extras[$case->id]['confirmation'],
             'bulkApproval' => $extras[$case->id]['bulkApproval'],
         ])->all());
-    }
-
-    /**
-     * 現在のノードの並び(現在のステップの保留中の札をノードの名前の後に出し、同じ親の展開の行を親の名前でまとめるため =
-     * 設計/ワークフロー/案件の運用/認可と一覧.md の 2.2 節)。
-     *
-     * @return list<RowCurrentNode>
-     */
-    public static function currentNodesOf(CaseSituation $situation): array
-    {
-        return array_map(
-            fn (CurrentNode $node) => [
-                'id' => $node->id,
-                'name' => $node->name,
-                'parentId' => $node->parentId,
-                'parentName' => $node->parentName,
-                'childName' => $node->childName,
-                'state' => $node->state->value,
-            ],
-            $situation->currentNodes,
-        );
     }
 
     /**

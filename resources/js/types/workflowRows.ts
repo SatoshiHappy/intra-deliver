@@ -33,7 +33,7 @@ export type WorkflowPrincipal = {
     canAttach: boolean; // この操作をこの人として行うときに添付を追加できる
 };
 
-/** 札の状態(再申請待ち > すべて保留中 > 承認待ち = 認可と一覧.md の 2.4 節) */
+/** 札の状態(決めるのはサーバーの 1 か所 = docs の 設計/ワークフロー/案件の運用/認可と一覧.md の 2.4 節) */
 type WorkflowLabelState = 'waiting' | 'reapply' | 'hold';
 
 /** 現在のステップの要約(札の状態と、現在のステップの文字列 = 同じ親の展開の行をまとめた名前。サーバーの 1 か所が作る) */
@@ -42,17 +42,13 @@ export type WorkflowCurrentSummary = {
     name: string;
 };
 
-/** 現在のノード 1 つ(保留中の札を名前の後に出す。同じ親の展開の行は親の名前でまとめる) */
-export type WorkflowCurrentNode = {
-    id: number;
-    name: string; // 表示名(展開の行は「{親の名前} {子の名前}」)
-    parentId: number | null; // 展開の行の親のノードの id(同じ親の子かを見る。展開の行でなければ null)
-    parentName: string | null; // 展開の行の親の名前(展開の行でなければ null)
-    childName: string | null; // 展開の行の子の名前(展開の行でなければ null)
-    state: WorkflowLabelState;
+/** 現在のノードのまとまり 1 つ(まとめ方 = App\Queries\Workflow\CurrentNodes::groupsOf()。規則 = 設計/ワークフロー/案件の運用/認可と一覧.md の 2.2 節) */
+export type WorkflowCurrentNodeGroup = {
+    parentName: string | null;
+    nodes: { id: number; name: string; hold: boolean }[];
 };
 
-/** 期限の表示(案件ごとの値 = 案件の操作/README.md の 1.4 節) */
+/** 期限の表示(案件ごとの値 = 設計/ワークフロー/案件の運用/案件の操作/README.md の 1.4 節) */
 export type WorkflowDeadline = {
     reachedOn: string | null;
     elapsedDays: number | null;
@@ -77,7 +73,7 @@ export type WorkflowCaseRow = {
     applicant: WorkflowPerson;
     appliedAt: string | null;
     currentSummary: WorkflowCurrentSummary | null; // 現在のステップが無ければ null
-    currentNodes: WorkflowCurrentNode[];
+    currentNodeGroups: WorkflowCurrentNodeGroup[];
     state: WorkflowCaseState;
     completionReason: WorkflowCompletionReason | null;
     revision: number;

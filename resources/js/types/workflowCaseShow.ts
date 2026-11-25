@@ -26,6 +26,7 @@ import type {
 } from './workflowOperations';
 import type {
     WorkflowCaseRow,
+    WorkflowCurrentNodeGroup,
     WorkflowCurrentSummary,
     WorkflowDeadline,
     WorkflowPerson,
@@ -49,6 +50,7 @@ type WorkflowCaseShowCaseLayer = {
         baseDate: string; // 申請基準日(YYYY-MM-DD)
         version: number; // 版の番号
         currentSummary: WorkflowCurrentSummary | null;
+        currentNodeGroups: WorkflowCurrentNodeGroup[]; // 現在のステップ(完了なら空)
         deadline: WorkflowDeadline | null; // 未完了だけ(対象 = 現在のステップの全部)
         revision: number;
     };

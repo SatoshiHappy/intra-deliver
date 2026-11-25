@@ -16,14 +16,10 @@ export function caseRow(
         applicant: { id: 1, code: 'u0001', name: '佐々木 陽太' },
         appliedAt: '2026-10-05T00:00:00+00:00',
         currentSummary: { state: 'waiting', name: '部長' },
-        currentNodes: [
+        currentNodeGroups: [
             {
-                id: id * 10,
-                name: '部長',
-                parentId: null,
                 parentName: null,
-                childName: null,
-                state: 'waiting',
+                nodes: [{ id: id * 10, name: '部長', hold: false }],
             },
         ],
         state: 'active',

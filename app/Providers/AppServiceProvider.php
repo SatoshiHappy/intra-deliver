@@ -37,6 +37,7 @@ use App\Queries\Notice\Api\NoticeTypes;
 use App\Queries\Notice\NoticeUserMenuSection;
 use App\Queries\Records\Api\RecordAccessGrants;
 use App\Queries\Records\Api\RecordApplyEntries;
+use App\Queries\Records\Api\RecordHoldNotices;
 use App\Queries\Records\Api\RecordHolds;
 use App\Queries\Records\Api\RecordModuleVisibilityStops;
 use App\Queries\Records\Api\RecordScreenAddons;
@@ -61,6 +62,7 @@ use App\Queries\Workflow\WorkflowLeadHomeSection;
 use App\Queries\Workflow\WorkflowNoticeTargets;
 use App\Queries\Workflow\WorkflowNoticeTypes;
 use App\Queries\Workflow\WorkflowRecordApplyEntries;
+use App\Queries\Workflow\WorkflowRecordHoldNotices;
 use App\Queries\Workflow\WorkflowRecordHolds;
 use App\Queries\Workflow\WorkflowRecordModuleVisibilityStops;
 use App\Queries\Workflow\WorkflowUserMenuSection;
@@ -169,12 +171,16 @@ class AppServiceProvider extends ServiceProvider
     }
 
     /**
-     * 業務データの入れ物の書き込みと閲覧を守る依存の逆転の口(レコードの持ち主・業務モジュールの表示の止め・申請の経路の閲覧)を、ワークフローの実装で登録する。
+     * 業務データの入れ物の書き込みと閲覧を守る依存の逆転の口(レコードの持ち主・業務モジュールの表示の止め・申請の経路の閲覧)と、持ち主の案内の口を、ワークフローの実装で登録する。
      */
     private function tagRecordWriteGuards(): void
     {
         // 依存の逆転: 業務データの入れ物の書き込みが、未完了の案件が指すレコードを持ち主の規則で守る(docs の 設計/ワークフロー/業務データとの接続/申請と書き込み.md 4 節)
         $this->app->tag([WorkflowRecordHolds::class], RecordHolds::TAG);
+
+        // 依存の逆転: 業務データの入れ物の画面(詳細・編集の持ち主の 1 行・更新履歴の欄・業務モジュールの管理の確かめ)に持ち主の案内を出す(ADR 0047。
+        // docs の 設計/ワークフロー/業務データとの接続/申請と書き込み.md 4 節の「持ち主の案内の実装」)
+        $this->app->tag([WorkflowRecordHoldNotices::class], RecordHoldNotices::TAG);
 
         // 依存の逆転: 業務モジュールを変える業務処理と管理の編集の画面が、コンテンツが指す業務モジュールの表示の止めを聞く(ADR 0031。
         // docs の 設計/ワークフロー/業務データとの接続/公開の口/README.md 7 節)

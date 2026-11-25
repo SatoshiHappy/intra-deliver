@@ -3,7 +3,6 @@ import type {
     WorkflowCaseIndexProps,
     WorkflowCaseRow,
     WorkflowCaseTab,
-    WorkflowCurrentNode,
     WorkflowDeadline,
 } from '@/types';
 
@@ -177,43 +176,6 @@ export function emptyTextOf(tab: WorkflowCaseTab, q: string): string {
  */
 export function namesText(names: string[]): string {
     return names.length === 0 ? EMPTY_VALUE : names.join('、');
-}
-
-/** 現在のステップのまとまり 1 つ(展開の行でなければ parentId・parentName = null でノードは 1 つ) */
-export type CurrentNodeGroup = {
-    parentId: number | null;
-    parentName: string | null;
-    nodes: WorkflowCurrentNode[];
-};
-
-/**
- * 現在のステップのまとまり(認可と一覧.md の 2.2 節の「現在のステップ」): 写した並びのまま、同じ親(親のノードの id)の展開の行が続く所を 1 つにまとめる
- * (サーバーの現在のステップの文字列と同じ規則。画面は「{親の名前}({子の名前}、…)」と書く)。
- */
-export function currentNodeGroups(
-    nodes: WorkflowCurrentNode[],
-): CurrentNodeGroup[] {
-    const groups: CurrentNodeGroup[] = [];
-
-    for (const node of nodes) {
-        const last = groups.at(-1);
-
-        if (
-            node.parentId !== null &&
-            last !== undefined &&
-            last.parentId === node.parentId
-        ) {
-            last.nodes.push(node);
-        } else {
-            groups.push({
-                parentId: node.parentId,
-                parentName: node.parentName,
-                nodes: [node],
-            });
-        }
-    }
-
-    return groups;
 }
 
 /**
