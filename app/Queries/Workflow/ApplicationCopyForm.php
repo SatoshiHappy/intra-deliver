@@ -8,6 +8,7 @@ use App\Models\Records\RecordRevision;
 use App\Models\Workflow\WorkflowCase;
 use App\Models\Workflow\WorkflowCaseHistory;
 use App\Models\Workflow\WorkflowFlow;
+use App\Queries\Authz\Api\AuthorizationReuse;
 use App\Queries\Authz\Api\Requester;
 use App\Queries\Records\Api\RecordFormQuery;
 use App\Support\AccessContext;
@@ -33,6 +34,7 @@ class ApplicationCopyForm
         private ApplicationFormQuery $applicationForms,
         private ApplicationTargetValues $applicationTargetValues,
         private CopiedRowAccess $copiedRowAccess,
+        private AuthorizationReuse $reuse,
     ) {}
 
     /**
@@ -79,7 +81,8 @@ class ApplicationCopyForm
             'clearedFields' => $copied['clearedFields'],
             'rowAccess' => $this->copiedRowAccess->seal($restriction, $context->userId, $flow->id),
         ];
-        $this->visibleSource($context, $flow->id, $source->id);
+        // 組み立ての後の判定は、組み立ての間のロール・所属の変化を効かせる(12.3 節の「判定の後」。申請の詳細と同じ置き方)
+        $this->reuse->without(fn () => $this->visibleSource($context, $flow->id, $source->id));
 
         return [...$form, 'initial' => $initial, 'targetValues' => $targetValues, 'copy' => $copy];
     }

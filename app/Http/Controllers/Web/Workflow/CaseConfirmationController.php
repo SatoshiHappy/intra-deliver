@@ -4,9 +4,9 @@ namespace App\Http\Controllers\Web\Workflow;
 
 use App\Actions\Workflow\ConfirmCase;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Workflow\CaseConfirmationRequest;
 use App\Support\AccessContext;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 use Inertia\Inertia;
 
 /**
@@ -19,7 +19,7 @@ class CaseConfirmationController extends Controller
 
     public function __construct(private ConfirmCase $confirmCase) {}
 
-    public function store(Request $request): RedirectResponse
+    public function store(CaseConfirmationRequest $request): RedirectResponse
     {
         // 引数の形 [0-9]{1,18} はルートが限る
         $caseId = (int) $request->route('case');

@@ -27,6 +27,8 @@ function props(overrides: Partial<WorkflowApplyProps>): WorkflowApplyProps {
         targetField: 'project',
         targetEntry: null,
         copy: null,
+        recordId: null,
+        recordVersion: null,
         ...overrides,
     } as WorkflowApplyProps;
 }
@@ -79,6 +81,48 @@ describe('開いた時の props を保つ', () => {
         const { copy: _absent, ...older } = openedOf(props({}));
 
         expect(withOpened(props({}), older).copy).toBeNull();
+    });
+});
+
+describe('そのものを申請する画面の開いた時の版(既存のデータからの申請の 3 節)', () => {
+    it('そのものを申請する画面は、入力の誤りで戻る GET が今の版を返しても、開いた時の版を送る', () => {
+        const record = { mode: 'record' as const, recordId: 7 };
+        const opened = openedOf(props({ ...record, recordVersion: 'v1' }));
+
+        expect(
+            withOpened(props({ ...record, recordVersion: 'v2' }), opened)
+                .recordVersion,
+        ).toBe('v1');
+    });
+
+    it('開いた時に版の無いレコード(null)は、戻る GET が版を返しても null を送る', () => {
+        const record = { mode: 'record' as const, recordId: 7 };
+        const opened = openedOf(props({ ...record, recordVersion: null }));
+
+        expect(
+            withOpened(props({ ...record, recordVersion: 'v2' }), opened)
+                .recordVersion,
+        ).toBeNull();
+    });
+
+    it('別のレコードを申請する画面と、版を覚える前の履歴の項目は、今の版のまま', () => {
+        const opened = openedOf(
+            props({ mode: 'record', recordId: 7, recordVersion: 'v1' }),
+        );
+        const other = props({
+            mode: 'record',
+            recordId: 8,
+            recordVersion: 'v9',
+        });
+        const { recordId: _id, recordVersion: _version, ...older } = opened;
+
+        expect(withOpened(other, opened).recordVersion).toBe('v9');
+        expect(
+            withOpened(
+                props({ mode: 'record', recordId: 7, recordVersion: 'v2' }),
+                older,
+            ).recordVersion,
+        ).toBe('v2');
     });
 });
 

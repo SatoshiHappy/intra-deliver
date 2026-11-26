@@ -37,7 +37,7 @@ function pressFor(
         ? null
         : {
               onPress: () => editor.press(target),
-              saving: editor.isSaving(target),
+              saving: editor.saving,
           };
 }
 

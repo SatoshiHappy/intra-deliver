@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test';
 import type { AuthzGridSetting } from '@/types';
 import {
-    cellKey,
     cellPayload,
     directSettingOf,
     isStaleCellMessage,
@@ -79,13 +78,6 @@ describe('cellPayload', () => {
 
         expect(payload.type).toBe('im-menu-group');
         expect([payload.from, payload.to]).toEqual(['none', 'permit']);
-    });
-});
-
-describe('cellKey', () => {
-    it('行・対象者・アクションの組ごとに別の鍵になる', () => {
-        expect(cellKey(1, 2, 'read')).toBe('1:2:read');
-        expect(cellKey(1, 2, 'read')).not.toBe(cellKey(2, 1, 'read'));
     });
 });
 

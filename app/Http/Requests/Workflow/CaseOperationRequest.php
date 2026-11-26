@@ -16,6 +16,7 @@ use Illuminate\Foundation\Http\FormRequest;
 class CaseOperationRequest extends FormRequest
 {
     use ReadsRevision;
+    use RejectsAttachments;
 
     /** 申請の削除のルート(改訂番号だけを受ける) */
     private const DESTROY_ROUTE = 'workflow.admin.cases.destroy';
@@ -47,6 +48,7 @@ class CaseOperationRequest extends FormRequest
 
         return [
             ...$this->revisionRules(),
+            ...$this->attachmentRules(),
             ...($this->routeIs(self::DESTROY_ROUTE) ? [] : $node),
             ...($this->routeIs(...self::USERS_ROUTES) ? $users : []),
             ...($this->routeIs(self::MOVE_ROUTE) ? $move : []),
@@ -60,6 +62,7 @@ class CaseOperationRequest extends FormRequest
     {
         return [
             ...$this->revisionMessages(),
+            ...$this->attachmentMessages(),
             'node_id.required' => '対象のステップを選択してください',
             'node_id.integer' => '対象のステップの指定が正しくありません',
             'comment.string' => 'コメントの形が正しくありません',

@@ -2,13 +2,13 @@ import { router } from '@inertiajs/react';
 import { useState } from 'react';
 import { toast } from 'sonner';
 import type { CellTarget } from '@/lib/Authz/cellEdit';
-import { cellKey, cellPayload, isStaleCellMessage } from '@/lib/Authz/cellEdit';
+import { cellPayload, isStaleCellMessage } from '@/lib/Authz/cellEdit';
 import { EDITED_PROPS } from '@/lib/Authz/editMode';
 import { updateCell } from '@/routes/authz/settings';
 
-/** セルを押す口(押せる形のセルが受け取る)。保存中のセルは押せない */
+/** セルを押す口(押せる形のセルが受け取る)。保存の間はどのセルも押せない */
 export type CellEditor = {
-    isSaving: (target: CellTarget) => boolean;
+    saving: boolean;
     press: (target: CellTarget) => void;
 };
 
@@ -35,44 +35,62 @@ function toastCellErrors(errors: Record<string, string>): void {
     );
 }
 
+/** 保存の要求を送る口(始まりと終わりの知らせを受ける) */
+export type CellPut = (
+    payload: ReturnType<typeof cellPayload>,
+    handlers: { onStart: () => void; onFinish: () => void },
+) => void;
+
 /**
- * セルを押すたびに 1 回保存する(docs の 設計/ワークフロー/申請の周辺/認可設定の編集.md 2.1)。成功のトーストは出さない(セルの表示が結果)。
- * 失敗したセルは元のまま(サーバーが書かなかったため)。保存中のセルは、応答が返るまで押せない(二重送信を防ぐ)。
+ * 保存の間はどのセルの押下も送らない押す口(保存の印 saving は再描画の後にしか効かず、その前の 2 つ目の押下を止められないので、
+ * 閉じた印で止める)。
  */
-export function useCellEdit(resourceType: string): CellEditor {
-    const [saving, setSaving] = useState<ReadonlySet<string>>(new Set());
-    const keyOf = (target: CellTarget) =>
-        cellKey(target.resourceGroupId, target.subjectGroupId, target.action);
+export function cellPresserOf(
+    put: CellPut,
+    onSaving: (saving: boolean) => void,
+): (payload: ReturnType<typeof cellPayload>) => void {
+    let inFlight = false;
 
-    const mark = (key: string, isSaving: boolean) =>
-        setSaving((current) => {
-            const next = new Set(current);
-
-            if (isSaving) {
-                next.add(key);
-            } else {
-                next.delete(key);
-            }
-
-            return next;
-        });
-
-    const press = (target: CellTarget) => {
-        const key = keyOf(target);
-
-        if (saving.has(key)) {
+    return (payload) => {
+        if (inFlight) {
             return;
         }
 
-        router.put(updateCell().url, cellPayload(resourceType, target), {
-            only: EDITED_PROPS,
-            preserveScroll: true,
-            preserveState: true,
-            onStart: () => mark(key, true),
-            onFinish: () => mark(key, false),
-            onError: toastCellErrors,
+        inFlight = true;
+        put(payload, {
+            onStart: () => onSaving(true),
+            onFinish: () => {
+                inFlight = false;
+                onSaving(false);
+            },
         });
     };
+}
 
-    return { isSaving: (target) => saving.has(keyOf(target)), press };
+/**
+ * セルを押すたびに 1 回保存する(docs の 設計/ワークフロー/申請の周辺/認可設定の編集.md 2.1)。成功のトーストは出さない(セルの表示が結果)。
+ * 失敗したセルは元のまま(サーバーが書かなかったため)。保存の間に別のセルを押せると、その保存が前の保存の応答(誤りのトーストを含む)を
+ * 捨てるため、保存の間は全セルを押せなくする(通知の設定のスイッチと同じ)。
+ */
+export function useCellEdit(resourceType: string): CellEditor {
+    const [saving, setSaving] = useState(false);
+    // 押す口は初めの描画で 1 回だけ作る(保存の間の印を描画をまたいで持つ)
+    const [presser] = useState(() =>
+        cellPresserOf(
+            (payload, handlers) =>
+                router.put(updateCell().url, payload, {
+                    only: EDITED_PROPS,
+                    preserveScroll: true,
+                    preserveState: true,
+                    onError: toastCellErrors,
+                    ...handlers,
+                }),
+            setSaving,
+        ),
+    );
+
+    return {
+        saving,
+        press: (target) => presser(cellPayload(resourceType, target)),
+    };
 }

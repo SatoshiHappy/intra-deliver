@@ -7,9 +7,9 @@ use App\Actions\Workflow\BulkConfirmCases;
 use App\Actions\Workflow\BulkOperationResult;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Workflow\BulkApproveRequest;
+use App\Http\Requests\Workflow\BulkConfirmRequest;
 use App\Support\AccessContext;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Http\Request;
 use Inertia\Inertia;
 
 /**
@@ -31,7 +31,7 @@ class BulkActionController extends Controller
         return $this->redirectToList($result, 'pending', '承認しました');
     }
 
-    public function confirm(Request $request): RedirectResponse
+    public function confirm(BulkConfirmRequest $request): RedirectResponse
     {
         $result = $this->confirmCases->execute(AccessContext::of($request), $request->input('case_ids'));
 

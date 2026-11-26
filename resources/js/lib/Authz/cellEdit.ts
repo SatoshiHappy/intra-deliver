@@ -57,17 +57,6 @@ export function cellPayload(resourceType: string, target: CellTarget) {
 }
 
 /**
- * 保存中のセルを見分ける鍵(行 × 対象者 × アクション)。
- */
-export function cellKey(
-    resourceGroupId: number,
-    subjectGroupId: number,
-    action: string,
-): string {
-    return `${resourceGroupId}:${subjectGroupId}:${action}`;
-}
-
-/**
  * 同時の編集の文か(ほかのセルの誤り = 守りの文と分けて「再読み込み」を添えるため)。
  */
 export function isStaleCellMessage(message: string): boolean {

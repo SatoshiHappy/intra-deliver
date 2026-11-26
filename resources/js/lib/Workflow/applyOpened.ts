@@ -16,6 +16,10 @@ const COPY_ONLY_QUERIES = ['copy', 'target'];
 export type ApplyOpened = {
     mode: Props['mode'];
     caseId: number | null;
+    // 既存のデータからの申請のレコードと、送る開いたときの版(入力の誤りで戻る GET が今の版を返しても、開いた後の更新を上書きしない)。
+    // 版を覚える前の履歴の項目には無い
+    recordId?: Props['recordId'];
+    recordVersion?: Props['recordVersion'];
     targetEntry: Props['targetEntry'];
     // 案件からの複製の前に覚えた履歴の項目には無い
     copy?: Props['copy'];
@@ -46,23 +50,31 @@ export function openedOf(props: Props): ApplyOpened {
     return {
         mode: props.mode,
         caseId: props.case?.id ?? null,
+        recordId: props.recordId,
+        recordVersion: props.recordVersion,
         targetEntry: props.targetEntry,
         copy: props.copy,
     };
 }
 
 /**
- * 開いた時の props を保った props(同じ申請の画面 = mode と案件が開いた時と同じ。違えば今の props のまま)。
+ * 開いた時の props を保った props(同じ申請の画面 = mode と案件とレコードが開いた時と同じ。違えば今の props のまま)。
  * 申請対象からの申請の targetEntry と案件からの複製の copy は同じ規則(docs の 設計/ワークフロー/申請の周辺/画面.md の 5 節)。
  */
 export function withOpened(props: Props, opened: ApplyOpened): Props {
     const isSameScreen =
         props.mode === opened.mode &&
-        (props.case?.id ?? null) === opened.caseId;
+        (props.case?.id ?? null) === opened.caseId &&
+        props.recordId === (opened.recordId ?? props.recordId);
 
     return isSameScreen
         ? {
               ...props,
+              // 版の無いレコード(null)も開いた時の値を送る。キーの無い覚えた値は版を覚える前の形
+              recordVersion:
+                  'recordVersion' in opened
+                      ? (opened.recordVersion ?? null)
+                      : props.recordVersion,
               targetEntry: opened.targetEntry,
               copy: opened.copy ?? null,
           }

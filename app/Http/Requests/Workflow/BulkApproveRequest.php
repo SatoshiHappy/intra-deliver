@@ -11,6 +11,8 @@ use Illuminate\Foundation\Http\FormRequest;
  */
 class BulkApproveRequest extends FormRequest
 {
+    use RejectsAttachments;
+
     /**
      * @return array<string, list<string>>
      */
@@ -18,6 +20,7 @@ class BulkApproveRequest extends FormRequest
     {
         return [
             'comment' => ['nullable', 'string'],
+            ...$this->attachmentRules(),
         ];
     }
 
@@ -28,6 +31,7 @@ class BulkApproveRequest extends FormRequest
     {
         return [
             'comment.string' => 'コメントの形が正しくありません',
+            ...$this->attachmentMessages(),
         ];
     }
 
