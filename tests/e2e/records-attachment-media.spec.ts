@@ -95,9 +95,16 @@ test('音声を添付すると「プレビュー」で Dialog の中に再生の
     await createIssueWithPanel(page);
     await addAudio(page, 'memo.mp3');
 
-    await attachmentRow(page, 'memo.mp3')
-        .getByRole('button', { name: 'プレビュー', exact: true })
-        .click();
+    // 行の操作は名前つきのアイコンのボタン(マウスを載せると名前の Tooltip = docs の 設計/画面の意匠/README.md の方針 12)
+    const preview = attachmentRow(page, 'memo.mp3').getByRole('button', {
+        name: 'プレビュー',
+        exact: true,
+    });
+    await preview.hover();
+    await expect(
+        page.getByRole('tooltip', { name: 'プレビュー', exact: true }),
+    ).toBeVisible();
+    await preview.click();
     const dialog = page.getByRole('dialog', { name: 'memo.mp3' });
     const audio = dialog.locator('audio');
     await expect(audio).toBeVisible();

@@ -351,7 +351,7 @@ test('初期データの見本: 部長の承認待ちを上長が引戻せる', 
     await page
         .getByRole('table', { name: '処理済の申請' })
         .getByRole('link', {
-            name: 'プロジェクト計画の承認 展示会への出展の詳細',
+            name: 'プロジェクト計画の承認 展示会への出展',
             exact: true,
         })
         .click();

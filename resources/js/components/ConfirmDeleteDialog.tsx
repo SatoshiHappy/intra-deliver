@@ -1,6 +1,8 @@
 import { router } from '@inertiajs/react';
+import { Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import type { RefObject } from 'react';
+import { RowActionButton } from '@/components/RowActionButton';
 import { Button } from '@/components/ui/button';
 import {
     Dialog,
@@ -36,8 +38,11 @@ type WithTrigger = Common & {
     triggerText?: string;
     /** 開くボタンの読み上げの名前(省くと見た目の文字) */
     triggerLabel?: string;
-    /** 開くボタンの見た目(詳細の画面の「削除」= destructive、表の行の操作 = outline sm) */
-    triggerVariant?: 'destructive' | 'outline';
+    /**
+     * 開くボタンの見た目(詳細の画面の「削除」= destructive、表の行の操作 = outline sm、行の操作が 3 つ以上の表 = icon =
+     * 赤いゴミ箱のアイコンのボタン。見た目の文字は Tooltip に出す)
+     */
+    triggerVariant?: 'destructive' | 'outline' | 'icon';
     open?: never;
     onOpenChange?: never;
     returnFocusTo?: never;
@@ -62,6 +67,20 @@ function DeleteTrigger({
     triggerLabel,
     triggerVariant = 'outline',
 }: Pick<WithTrigger, 'triggerText' | 'triggerLabel' | 'triggerVariant'>) {
+    if (triggerVariant === 'icon') {
+        return (
+            <DialogTrigger asChild>
+                <RowActionButton
+                    label={triggerText}
+                    aria-label={triggerLabel}
+                    destructive
+                >
+                    <Trash2 aria-hidden="true" />
+                </RowActionButton>
+            </DialogTrigger>
+        );
+    }
+
     return (
         <DialogTrigger asChild>
             <Button

@@ -1,14 +1,15 @@
 import { Link } from '@inertiajs/react';
+import { RefreshCw } from 'lucide-react';
 import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog';
+import { RowActionButton } from '@/components/RowActionButton';
 import { Button } from '@/components/ui/button';
-import { CaseActionButton } from '@/components/Workflow/CaseActionDialog';
-import type { OpenCaseAction } from '@/components/Workflow/CaseActionDialog';
-import { pullBackNodesOf } from '@/lib/Workflow/caseActions';
+import { CaseRowActionButton } from '@/components/Workflow/CaseActionDialog';
 import type {
-    CaseActionTarget,
-    CaseOperation,
-} from '@/lib/Workflow/caseActions';
-import { show } from '@/routes/workflow/cases';
+    OpenCaseAction,
+    RowCaseActionTarget,
+    RowCaseOperation,
+} from '@/components/Workflow/CaseActionDialog';
+import { pullBackNodesOf } from '@/lib/Workflow/caseActions';
 import { destroy, edit } from '@/routes/workflow/drafts';
 import { create as reapply } from '@/routes/workflow/reapplications';
 import type { WorkflowCaseRow } from '@/types';
@@ -47,11 +48,12 @@ function DraftRowActions({ row }: { row: WorkflowCaseRow }) {
 }
 
 /**
- * 申請の行の操作: 再申請・取止めができる =「再申請」「取止め」「詳細」、引戻しができる =「詳細」「引戻し」、ほか =「詳細」だけ。
+ * 申請の行の操作: 再申請・取止めができる =「再申請」「取止め」、引戻しができる =「引戻し」、ほか = 無し。どれも名前つきのアイコンのボタン
+ * (詳細は申請名のリンクで開く = docs の 設計/画面の意匠/README.md の方針 12)。
  * 取止め・引戻しのボタンは、行の値の写しでページの直下のダイアログを開く(onOpen)。
  */
 function CaseRowLinks({ row, commentMaxLength, onOpen }: Props) {
-    const targetOf = (operation: CaseOperation): CaseActionTarget => ({
+    const targetOf = (operation: RowCaseOperation): RowCaseActionTarget => ({
         operation,
         caseId: row.id,
         caseName: row.name,
@@ -65,31 +67,25 @@ function CaseRowLinks({ row, commentMaxLength, onOpen }: Props) {
     return (
         <>
             {row.can.reapply && (
-                <Button variant="outline" size="sm" asChild>
-                    <Link
-                        href={reapply(row.id)}
-                        aria-label={`${row.name}の再申請`}
-                    >
-                        再申請
+                <RowActionButton
+                    label="再申請"
+                    aria-label={`${row.name}の再申請`}
+                    asChild
+                >
+                    <Link href={reapply(row.id)}>
+                        <RefreshCw aria-hidden="true" />
                     </Link>
-                </Button>
+                </RowActionButton>
             )}
             {row.can.withdraw && (
-                <CaseActionButton
+                <CaseRowActionButton
                     target={targetOf('withdraw')}
-                    placement="row"
                     onOpen={onOpen}
                 />
             )}
-            <Button variant="outline" size="sm" asChild>
-                <Link href={show(row.id)} aria-label={`${row.name}の詳細`}>
-                    詳細
-                </Link>
-            </Button>
             {row.can.pullBack && (
-                <CaseActionButton
+                <CaseRowActionButton
                     target={targetOf('pullBack')}
-                    placement="row"
                     onOpen={onOpen}
                 />
             )}

@@ -1,5 +1,5 @@
 import { Eye } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { RowActionButton } from '@/components/RowActionButton';
 import {
     Dialog,
     DialogContent,
@@ -13,7 +13,7 @@ import type { RecordAttachmentRow } from '@/types';
 type Props = { row: RecordAttachmentRow; url: string };
 
 /**
- * 「プレビュー」を押すと開く Dialog(題 = 名前)。中身は呼び手が渡す(画像・音声・動画)。
+ * 「プレビュー」(名前つきのアイコンのボタン)を押すと開く Dialog(題 = 名前)。中身は呼び手が渡す(画像・音声・動画)。
  */
 function PreviewDialog({
     row,
@@ -25,10 +25,9 @@ function PreviewDialog({
     return (
         <Dialog>
             <DialogTrigger asChild>
-                <Button variant="outline" size="sm">
+                <RowActionButton label="プレビュー">
                     <Eye aria-hidden="true" />
-                    プレビュー
-                </Button>
+                </RowActionButton>
             </DialogTrigger>
             <DialogContent className="sm:max-w-3xl">
                 <DialogHeader>
@@ -85,11 +84,10 @@ export function RecordAttachmentPreview({ row, url }: Props) {
     }
 
     return (
-        <Button variant="outline" size="sm" asChild>
+        <RowActionButton label="プレビュー" asChild>
             <a href={url} target="_blank" rel="noopener noreferrer">
                 <Eye aria-hidden="true" />
-                プレビュー
             </a>
-        </Button>
+        </RowActionButton>
     );
 }

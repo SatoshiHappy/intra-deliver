@@ -1,5 +1,8 @@
 import { useRef, useState } from 'react';
 import type { MouseEvent } from 'react';
+import { Ban, Undo2 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
+import { RowActionButton } from '@/components/RowActionButton';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent } from '@/components/ui/dialog';
 import { CaseActionForm } from '@/components/Workflow/CaseActionForm';
@@ -14,18 +17,57 @@ export type OpenCaseAction = (
     button: HTMLElement,
 ) => void;
 
+/** 一覧の行で開ける処理(取止めと引戻しだけ = docs の 設計/ワークフロー/画面/申請と案件.md 4 節) */
+export type RowCaseOperation = 'withdraw' | 'pullBack';
+
+/** 一覧の行の処理の写し(操作を行で開ける処理に絞る。ほかの処理を行に置くと型の誤りになる) */
+export type RowCaseActionTarget = CaseActionTarget & {
+    operation: RowCaseOperation;
+};
+
+const ROW_ICONS: Record<RowCaseOperation, LucideIcon> = {
+    withdraw: Ban,
+    pullBack: Undo2,
+};
+
 /**
- * 処理のダイアログを開くボタン(見た目 = 置き場ごと。一覧の行では「<案件名>の<操作>」を名前にする)。押すと写しとボタンの要素を onOpen へ渡す。
- * 呼ぶ側は can のときだけ描く(ダイアログ本体は {@see CaseActionDialog} でページの直下に 1 つ)。
+ * 一覧の行の処理のダイアログを開くボタン(名前つきのアイコンのボタン。読み上げの名前 =「<案件名>の<操作>」)。
+ * 押すと写しとボタンの要素を onOpen へ渡す。呼ぶ側は can のときだけ描く。
+ */
+export function CaseRowActionButton({
+    target,
+    onOpen,
+}: {
+    target: RowCaseActionTarget;
+    onOpen: OpenCaseAction;
+}) {
+    const definition = OPERATION_TEXTS[target.operation];
+    const Icon = ROW_ICONS[target.operation];
+
+    return (
+        <RowActionButton
+            type="button"
+            label={definition.trigger}
+            aria-label={`${target.caseName}の${definition.trigger}`}
+            aria-haspopup="dialog"
+            onClick={(event: MouseEvent<HTMLButtonElement>) =>
+                onOpen(target, event.currentTarget)
+            }
+        >
+            <Icon aria-hidden="true" />
+        </RowActionButton>
+    );
+}
+
+/**
+ * 詳細の処理のダイアログを開くボタン(見た目 = 操作ごと)。押すと写しとボタンの要素を onOpen へ渡す。
+ * 呼ぶ側は can のときだけ描く(ダイアログ本体は {@see CaseActionDialog} でページの直下に 1 つ。一覧の行は {@see CaseRowActionButton})。
  */
 export function CaseActionButton({
     target,
-    placement,
     onOpen,
 }: {
     target: CaseActionTarget;
-    /** 置き場(詳細の見出しの右 = header、一覧の行の操作 = row) */
-    placement: 'header' | 'row';
     onOpen: OpenCaseAction;
 }) {
     const definition = OPERATION_TEXTS[target.operation];
@@ -34,21 +76,13 @@ export function CaseActionButton({
         <Button
             type="button"
             variant={
-                placement === 'row'
-                    ? 'outline'
-                    : definition.isDestructive
-                      ? 'destructive'
-                      : target.operation === 'approve'
-                        ? 'default'
-                        : 'outline'
+                definition.isDestructive
+                    ? 'destructive'
+                    : target.operation === 'approve'
+                      ? 'default'
+                      : 'outline'
             }
-            size={placement === 'row' ? 'sm' : 'default'}
             aria-haspopup="dialog"
-            aria-label={
-                placement === 'row'
-                    ? `${target.caseName}の${definition.trigger}`
-                    : undefined
-            }
             onClick={(event: MouseEvent<HTMLButtonElement>) =>
                 onOpen(target, event.currentTarget)
             }

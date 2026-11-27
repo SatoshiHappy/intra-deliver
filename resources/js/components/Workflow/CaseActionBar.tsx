@@ -63,7 +63,6 @@ function BarButton({
                         caseName: show.case.name,
                         revision: show.case.revision,
                     })}
-                    placement="header"
                     onOpen={onOpen}
                 />
             );

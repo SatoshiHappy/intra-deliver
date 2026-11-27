@@ -1,7 +1,8 @@
-import { Download, FileText, Plus } from 'lucide-react';
+import { Download, FileText, Plus, Trash2 } from 'lucide-react';
 import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog';
 import { RecordAttachmentPreview } from '@/components/RecordAttachmentPreview';
 import { RecordPanelMore } from '@/components/RecordPanelMore';
+import { RowActionButton } from '@/components/RowActionButton';
 import { SendingProgress } from '@/components/SendingProgress';
 import { Button } from '@/components/ui/button';
 import { useAttachmentUpload } from '@/hooks/use-attachment-upload';
@@ -32,19 +33,20 @@ type ItemProps = Pick<Props, 'canAttach' | 'held'> & {
     deleteAction: RouteDefinition<'delete'>;
 };
 
-/** 行の削除(申請済みは押せない形。押せない間は確かめの Dialog を置かない) */
+/** 行の削除(申請済みは押せない形で、マウスを載せると理由を出す。押せない間は確かめの Dialog を置かない) */
 function DeleteAttachment({ row, held, deleteAction }: ItemProps) {
     return held ? (
-        <Button
-            variant="outline"
-            size="sm"
-            disabled
+        <RowActionButton
+            label="削除"
             aria-label={`${row.name}を削除`}
+            destructive
+            disabledReason="申請済みのため削除できません"
         >
-            削除
-        </Button>
+            <Trash2 aria-hidden="true" />
+        </RowActionButton>
     ) : (
         <ConfirmDeleteDialog
+            triggerVariant="icon"
             triggerLabel={`${row.name}を削除`}
             title="添付ファイルの削除"
             description={`${row.name}を削除しますか。削除したファイルは、更新履歴から表示できます。`}
@@ -54,6 +56,7 @@ function DeleteAttachment({ row, held, deleteAction }: ItemProps) {
     );
 }
 
+/** 行の操作(名前つきのアイコンのボタン = docs の 設計/画面の意匠/README.md の方針 12) */
 function AttachmentActions(props: ItemProps) {
     const { row } = props;
 
@@ -68,12 +71,11 @@ function AttachmentActions(props: ItemProps) {
                 <RecordAttachmentPreview row={row} url={row.previewUrl} />
             )}
             {row.downloadUrl !== null && (
-                <Button variant="outline" size="sm" asChild>
+                <RowActionButton label="ダウンロード" asChild>
                     <a href={row.downloadUrl} download>
                         <Download aria-hidden="true" />
-                        ダウンロード
                     </a>
-                </Button>
+                </RowActionButton>
             )}
             {props.canAttach && <DeleteAttachment {...props} />}
         </span>
