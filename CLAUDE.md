@@ -7,6 +7,7 @@
 設計の指針(機械で止められない判断の目安)= docs リポジトリの `設計/コード構成/否決案と指針.md` の 8 節。
 クラスの分け方・責務の置き方は規約に無い(書き手に任せる)。名前とコメントは機械で止めない規約(`.ai/rules/general.md`。コードレビューで見る)。パスごとの補足は `.ai/rules/index.md` から読む。
 検査は `composer ci:check`(= `scripts/ci/all`。区切りの既定)で走る。コミットの前に通す。D(依存の監査)は依存の入力が最後に成功してから変わっていない同日は飛ばす。全段は `composer ci:full`。区切りの途中の検査は composer・npm の script で走らせ(`composer types:check`・`lint:check`、`npm run check`・`types:check`・`deps:check`・`unused:check`)、バイナリを直接呼ばない(`scripts/ci/record` が結果を記録する。docs の `設計/コード構成/検査/結果の記録.md` 6.6「結果の記録」)。
+PHP のファイルを変えたら、終える前に `composer lint -- --dirty` で変えたファイルをフォーマットする(フォーマットのチェックは `composer lint:check`)。
 
 ## ① 層と置き場
 
@@ -80,7 +81,7 @@ This project has domain-specific skills available in `**/skills/**`. You MUST ac
 ## Application Structure & Architecture
 
 - Stick to existing directory structure; don't create new base folders without approval.
-- Do not change the application's dependencies without approval.
+- 依存を足す・変えるのに承認は要らない。足した依存は報告に書く。外部のサービスの採用と有料の依存は、先にユーザーに確かめる。
 
 ## Frontend Bundling
 
@@ -88,7 +89,7 @@ This project has domain-specific skills available in `**/skills/**`. You MUST ac
 
 ## Documentation Files
 
-- You must only create documentation files if explicitly requested by the user.
+- web に文書のファイルを作るのは、頼まれたときだけ。設計と経緯の文書は web に置かず、docs のリポジトリの規約(docs の README.md)に従って置く。AI の規則(`.ai/`)・skill(`.agents/skills/`・`.claude/skills/`)・README.md は、この行の外。
 
 === boost rules ===
 
@@ -143,12 +144,6 @@ This project has domain-specific skills available in `**/skills/**`. You MUST ac
 - Prefer PHPDoc blocks over inline comments. Only add inline comments for exceptionally complex logic.
 - Use array shape type definitions in PHPDoc blocks.
 
-=== deployments rules ===
-
-# Deployment
-
-- Laravel can be deployed using [Laravel Cloud](https://cloud.laravel.com/), which is the fastest way to deploy and scale production Laravel applications.
-
 === tests rules ===
 
 # Test Enforcement
@@ -196,7 +191,7 @@ This project has domain-specific skills available in `**/skills/**`. You MUST ac
 
 ## APIs & Eloquent Resources
 
-- For APIs, default to using Eloquent API Resources and API versioning unless existing API routes do not, then you should follow existing application convention.
+- 公開の API の形は docs の ADR 0002・0003 に従う(Eloquent API Resources と API のバージョンを既定にしない)。
 
 ## URL Generation
 
@@ -213,13 +208,6 @@ This project has domain-specific skills available in `**/skills/**`. You MUST ac
 # Laravel Wayfinder
 
 Use Wayfinder to generate TypeScript functions for Laravel routes. Import from `@/actions/` (controllers) or `@/routes/` (named routes).
-
-=== pint/core rules ===
-
-# Laravel Pint Code Formatter
-
-- If you have modified any PHP files, you must run `vendor/bin/pint --dirty --format agent` before finalizing changes to ensure your code matches the project's expected style.
-- Do not run `vendor/bin/pint --test --format agent`, simply run `vendor/bin/pint --format agent` to fix any formatting issues.
 
 === phpunit/core rules ===
 
