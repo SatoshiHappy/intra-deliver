@@ -148,7 +148,7 @@ class CaseOperationPanel
 
     /**
      * 操作ごとの、表が許す対象(ルートの execute が偽なら空・偽)。ノードを受ける操作は表が許す現在のノード、指定の変更は前提に合うノード、
-     * 保留解除はルートを見ない(案件の側のルート)。3 つの移動の表の行は前提が同じ(15.2 節)なので、戻るの行で引く。
+     * 保留解除はルートを見ない(案件の側のルート)。3 つの移動の表の行は前提が同じ(設計/ワークフロー/案件の運用/案件の操作/案件操作.md の 15.2 節)なので、戻るの行で引く。
      *
      * @return array{retarget: list<CurrentNode>, reexpand: list<CurrentNode>, move: list<CurrentNode>,
      *     assign: list<WorkflowCaseNode>, release: list<CurrentNode>, destroy: bool}
@@ -229,7 +229,7 @@ class CaseOperationPanel
 
     /**
      * 再展開の「?」の {要約} = 案件のノードの設定から作る要約の可変部(対象者で指定・基準にする人で指定の親のノードだけ。名前は申請基準日。
-     * 処理の時に指定するノードと展開の行は null = 設計/ワークフロー/ルートの深さ/画面/図と意匠とE2E.md の 9.3 節)。
+     * 処理の時に指定するノードと展開の行は null = 設計/ワークフロー/画面/フロー図.md の 11 節)。
      *
      * @param  list<CurrentNode>  $currentNodes
      * @param  Collection<int, WorkflowCaseNode>  $byId  id をキーにした案件のノード
@@ -254,7 +254,7 @@ class CaseOperationPanel
     }
 
     /**
-     * 戻り先の候補 = 祖先の候補の全部(写した並び)、既定 = 直前に当たる最後の候補(15.5 節・管理と通知の画面.md の 7.2 節)。
+     * 戻り先の候補 = 祖先の候補の全部(写した並び)、既定 = 直前に当たる最後の候補(案件の運用/案件の操作/案件操作.md の 15.5 節・案件の運用/画面/管理と通知の画面.md の 7.2 節)。
      *
      * @return MoveNode
      */

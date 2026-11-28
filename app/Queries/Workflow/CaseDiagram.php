@@ -15,12 +15,14 @@ use Illuminate\Database\Eloquent\Collection;
 use LogicException;
 
 /**
- * 案件の詳細のフロー情報(docs の 設計/ワークフロー/ルートの深さ/画面/README.md 1.2 の図の形・7 節・8 節)。
+ * 案件の詳細のフロー情報(docs の 設計/ワークフロー/ルートの深さ/画面/案件の側の画面.md 7 節・設計/ワークフロー/画面/フロー図.md 10 節)。
  * ノードは写した並び({@see WorkflowCaseNode::compareInRoute()})で、
- * 図と表が同じ並びと同じ状態の語({@see WorkflowHomeLabels::detailStep()} = 認可と一覧.md 2 節の写しの表。保留中は state が hold)を読む。表のための処理の種別と日時を持つ。
- * 辺は写した順(id)。名前は表示名({@see WorkflowCaseNode::displayName()} = 案件の操作/README.md 1.3)。辺の条件の文は、写した条件を
+ * 図と表が同じ並びと同じ状態の語({@see WorkflowHomeLabels::detailStep()} = ルートの深さ/認可と一覧.md 2 節の写しの表。保留中は state が hold)を読む。
+ * 表のための処理の種別と日時を持つ。
+ * 辺は写した順(id)。名前は表示名({@see WorkflowCaseNode::displayName()} = 設計/ワークフロー/ルートの深さ/案件の操作/README.md 1.3)。辺の条件の文は、写した条件を
  * コンテンツの業務モジュールの今の定義で作る({@see RecordConditions::describe()}。定義の図と同じ)。
- * awaitingDesignation = 処理の時に指定するノードで、今の指定が無い(指定するノードがまだ指定していない。0 人を指定した = 行が 0 件は含まない) && 到達していない && 案件が未完了(枠の文 = docs の 設計/ワークフロー/ルートの深さ/画面/図と意匠とE2E.md の 8 節。文言の持ち主は WorkflowDiagram.tsx)。
+ * awaitingDesignation = 処理の時に指定するノードで、今の指定が無い(指定するノードがまだ指定していない。
+ * 0 人を指定した = 行が 0 件は含まない) && 到達していない && 案件が未完了(枠の文 = docs の 設計/ワークフロー/画面/フロー図.md の 10 節。文言の持ち主は WorkflowDiagram.tsx)。
  * フロー情報の表の処理担当者 targets(現在のノードの処理対象者)と処理実行者(processed の actor・executor)=
  * 設計/ワークフロー/案件の運用/画面/案件の画面.md の 4 節。
  *
@@ -192,7 +194,7 @@ class CaseDiagram
     }
 
     /**
-     * 縦配置の完了の条件の札(図と意匠とE2E.md 8 節: 進み具合があれば「承認 {a} / {k} 人」= 可決の条件によらず同じ形。k は条件から決めた必要な人数。
+     * 縦配置の完了の条件の札(設計/ワークフロー/画面/フロー図.md 10 節: 進み具合があれば「承認 {a} / {k} 人」= 可決の条件によらず同じ形。k は条件から決めた必要な人数。
      * 進み具合が無い(到達していない・省略)なら定義の条件。定義の条件の文は定義の図と同じ {@see StepDescriptions::consensus()})。
      *
      * @param  Council|null  $council

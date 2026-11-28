@@ -3,7 +3,7 @@ import { show } from '@/routes/workflow/admin/flows';
 import type { WorkflowFlowDefinitionTab } from '@/types';
 
 /**
- * 詳細の URL と部分の再読み込み(docs の 設計/ワークフロー/ルートの深さ/画面/README.md の 1.1)。version・tab・node は URL に残し、
+ * 詳細の URL と部分の再読み込み(docs の 設計/ワークフロー/画面/README.md の 1.1)。version・tab・node は URL に残し、
  * 再読み込み・戻る操作で同じ状態になる。サーバーは解釈した後の値を props で返す。
  */
 

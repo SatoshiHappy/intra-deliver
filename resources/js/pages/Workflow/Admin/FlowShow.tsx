@@ -9,7 +9,7 @@ import type { WorkflowAdminFlowShowProps } from '@/types';
 type Props = WorkflowAdminFlowShowProps;
 
 /**
- * フロー定義の詳細(docs の 設計/ワークフロー/ルートの深さ/画面/定義の管理の画面.md の 3 節): 見出し = フロー名、下に業務モジュールと現在の版の 1 行、
+ * フロー定義の詳細(docs の 設計/ワークフロー/画面/フロー定義の画面.md の 13 節): 見出し = フロー名、下に業務モジュールと現在の版の 1 行、
  * タブ(フロー図・版・設定。リンクの並びで aria-current)と、タブごとの面。選んだ版・タブ・ステップは URL のクエリに残り、
  * タブの切替は部分の再読み込み。
  */

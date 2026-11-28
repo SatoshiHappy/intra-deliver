@@ -36,7 +36,7 @@ function subscribeNothing(): () => void {
 }
 
 /**
- * 図を全画面で見る操作(docs の 設計/ワークフロー/ルートの深さ/画面/図と意匠とE2E.md 8 節)。
+ * 図を全画面で見る操作(docs の 設計/ワークフロー/画面/フロー図.md 10 節)。
  * elementRef を全画面にする要素に渡す。isEnabled = ブラウザが要素の全画面を許すか(許さなければ操作を出さない)。
  */
 export function useDiagramFullscreen() {

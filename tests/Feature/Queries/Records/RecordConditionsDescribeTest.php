@@ -13,7 +13,7 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * 条件の文の口 {@see RecordConditions::describe()}(図の枝の札 = docs の 設計/ワークフロー/ルートの深さ/画面/図と意匠とE2E.md の 8 節): 規則の画面の要約の条件の部分と
+ * 条件の文の口 {@see RecordConditions::describe()}(図の枝の札 = docs の 設計/ワークフロー/画面/フロー図.md の 10 節): 規則の画面の要約の条件の部分と
  * 同じ文。同じ入力の組を resources/js/lib/Records/recordDefinitions.test.ts にも置き、2 か所の文のずれを止める(組を変えるときは両方を変える)。
  *
  * @see resources/js/lib/Records/recordDefinitions.test.ts

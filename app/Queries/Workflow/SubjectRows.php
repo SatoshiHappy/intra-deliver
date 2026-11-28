@@ -9,7 +9,7 @@ use App\Queries\Master\Api\MasterNames;
 use DateTimeInterface;
 
 /**
- * 処理対象者・参照者・確認する人の対象者の行(docs の 設計/ワークフロー/ルートの深さ/画面/定義の管理の画面.md 3 節の SubjectRow)と、
+ * 処理対象者・参照者・確認する人の対象者の行(docs の 設計/ワークフロー/画面/フロー定義の画面.md 13 節の SubjectRow)と、
  * 図の確認の札の名前(設計/ワークフロー/案件の運用/画面/管理と通知の画面.md 7.6 節)を、認可の公開の口
  * {@see SelectionSubjects::conditionsOf()} の結果から作る。名前の無い相手は「#{id}」(認可設定の画面の出し方と同じ)。
  * ユーザーの行の所属は共通マスタの公開の口 {@see MasterNames::mainDepartmentNames()} で引く(名前だけの札は引かない)。

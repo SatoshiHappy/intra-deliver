@@ -7,7 +7,7 @@ import {
 import { node } from './diagramLayout.testing';
 import { stepBoxToneOf } from './diagramMarks';
 
-// 案件の図の箱と枠の見出しの見た目(docs の 設計/ワークフロー/ルートの深さ/画面/図と意匠とE2E.md 8 節)。
+// 案件の図の箱と枠の見出しの見た目(docs の 設計/ワークフロー/画面/フロー図.md 10 節)。
 describe('stepBoxToneOf(申請・承認と展開の行の箱の地)', () => {
     it('処理済みの箱は処理済みの札の地、承認待ちの箱は承認待ちの札の地(太い縁)', () => {
         expect(stepBoxToneOf({ state: 'done', label: '処理済み' })).toBe(

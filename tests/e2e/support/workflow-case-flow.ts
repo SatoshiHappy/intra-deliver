@@ -3,7 +3,7 @@ import type { Page } from '@playwright/test';
 import { openApplicationTab } from './workflow-operations';
 
 // 申請の詳細の左のタブ「フロー」のフロー情報の図・合議の進み具合(ここの手助けを使う前に openFlowTab で開く)と、タブ「申請」の現在のステップを引く手助け
-// (workflow-route.spec.ts。docs の 設計/ワークフロー/ルートの深さ/画面/図と意匠とE2E.md の 10 節)。
+// (workflow-route.spec.ts。docs の 設計/ワークフロー/画面/ホームと意匠とE2E.md の 9.3 節)。
 
 /**
  * 申請情報の「現在のステップ」の値(左のタブ「申請」を開いてから引く)。
@@ -34,7 +34,7 @@ export function diagramStep(page: Page, name: string) {
 }
 
 /**
- * フロー図の点線の辺(通らなかった枝とその続き = 画面/図と意匠とE2E.md 8 節。辺の線に破線の書式が付く)。
+ * フロー図の点線の辺(通らなかった枝とその続き = 画面/フロー図.md 10 節。辺の線に破線の書式が付く)。
  */
 export function dashedEdges(page: Page) {
     return diagram(page).locator(

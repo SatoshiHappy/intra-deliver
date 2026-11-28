@@ -12,7 +12,7 @@ use LogicException;
 
 /**
  * 版のノード・案件のノードの処理対象者の指定を、名前つきの {@see StepTarget} にする(設定から作る文の入力 = docs の
- * 設計/ワークフロー/ルートの深さ/画面/図と意匠とE2E.md 9.3 節)。対象者の名前は {@see SubjectRows}、役職の名前は共通マスタの公開の口で引く。
+ * 設計/ワークフロー/画面/フロー図.md 11 節)。対象者の名前は {@see SubjectRows}、役職の名前は共通マスタの公開の口で引く。
  *
  * @phpstan-import-type SubjectRow from StepTarget
  */

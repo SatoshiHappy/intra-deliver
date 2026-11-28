@@ -3,7 +3,7 @@ import { fieldErrorKeys } from '@/lib/Workflow/stepFields';
 import type { StepFields } from '@/lib/Workflow/stepFields';
 
 /**
- * ステップの設定の誤りのキー(欄の名前 = 422 のキー。docs の 設計/ワークフロー/ルートの深さ/画面/定義の管理の画面.md の 3.3 節):
+ * ステップの設定の誤りのキー(欄の名前 = 422 のキー。docs の 設計/ワークフロー/画面/フロー定義の画面.md の 13.3 節):
  * 欄を変えたときに消すキーと、欄の下に出すキー。
  */
 

@@ -13,7 +13,7 @@ use Tests\Support\SendsFlowDefinitionRequests;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * 定義の管理の入口 9 ルート(docs の 設計/ワークフロー/ルートの深さ/画面/README.md 1.1 節、定義の管理.md 6 節の判定の順、認可と一覧.md 4.2 節・7 節):
+ * 定義の管理の入口 9 ルート(docs の 設計/ワークフロー/画面/README.md 1.1 節、ルートの深さ/定義の管理.md 6 節の判定の順、ルートの深さ/認可と一覧.md 4.2 節・7 節):
  * 結果の優先 = ルートの拒否 > フロー・版・ノードが無い 404 > 封筒の 422 > 業務処理の 422(壊れた入力でも 404 が先)。成功は詳細の
  * 移り先とトースト、移り先の GET が 200、業務処理が書いたこと。拒否の組で何も変わらない。初期データのプロジェクト計画の承認で確かめる。
  */
@@ -105,7 +105,7 @@ final class AdminFlowDefinitionControllerTest extends TransactionalTestCase
     }
 
     /**
-     * 封筒の誤りは業務処理より先(開始日が日付でなければ範囲を見ない)。業務処理の 422 = 定義の管理.md 6 節のキーと文言(同じ状態への無効・有効、
+     * 封筒の誤りは業務処理より先(開始日が日付でなければ範囲を見ない)。業務処理の 422 = ルートの深さ/定義の管理.md 6 節のキーと文言(同じ状態への無効・有効、
      * 最後の版の開始日以前、規則に合わない指定するステップ、無い相手の参照者)。何も変わらない。
      */
     public function test_the_envelope_comes_before_the_business_rules(): void

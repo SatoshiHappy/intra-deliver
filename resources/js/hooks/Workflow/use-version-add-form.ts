@@ -3,7 +3,7 @@ import type { FormEvent } from 'react';
 import { storeVersion } from '@/routes/workflow/admin/flows';
 
 /**
- * 版を追加するダイアログの入力と送信(docs の 設計/ワークフロー/ルートの深さ/画面/定義の管理の画面.md の 4 節)。
+ * 版を追加するダイアログの入力と送信(docs の 設計/ワークフロー/画面/フロー定義の画面.md の 14 節)。
  * 開始日の誤りはキー start_date。成功したら onSucceeded(サーバーのリダイレクトとトースト)。
  */
 export function useVersionAddForm(

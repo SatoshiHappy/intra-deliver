@@ -81,11 +81,11 @@ export type WorkflowApplyProps = {
 
 /**
  * 図の短い文の区切り(文字列 = そのまま出す字、emphasis つき = 文字の色を本文の色にする字。基準にする人の起点と役職名 =
- * docs の 設計/ワークフロー/ルートの深さ/画面/図と意匠とE2E.md の 9.3 節)
+ * docs の 設計/ワークフロー/画面/フロー図.md の 11 節)
  */
 export type WorkflowSubtitlePart = string | { text: string; emphasis: true };
 
-/** 図の 1 ノード(定義と案件で共通。ルートの深さ/画面/README.md 1.2)。並びはサーバーの写した並び(展開の行は親の直後に番号の順) */
+/** 図の 1 ノード(定義と案件で共通。描き方 = docs の 設計/ワークフロー/画面/フロー図.md 10 節)。並びはサーバーの写した並び(展開の行は親の直後に番号の順) */
 export type WorkflowDiagramNode = {
     id: number;
     code: string | null; // 展開の行は null
@@ -110,7 +110,7 @@ export type WorkflowDiagramEdge = {
     taken: boolean | null;
 };
 
-/** 状態の札・表の状態の語(認可と一覧.md 2 節の写しの表。詳細の図・表・合議の行は保留中を 'hold' にする = 案件の画面.md の 4 節) */
+/** 状態の札・表の状態の語(設計/ワークフロー/ルートの深さ/認可と一覧.md 2 節の写しの表。詳細の図・表・合議の行は保留中を 'hold' にする = 設計/ワークフロー/案件の運用/画面/案件の画面.md の 4 節) */
 export type WorkflowStepState = {
     state: RouteStepState | 'hold';
     label: string;
@@ -121,7 +121,7 @@ export type WorkflowCaseDiagramNode = WorkflowDiagramNode & {
     stepState: WorkflowStepState;
     targets: (WorkflowLinkedPerson & { isMe: boolean })[]; // 現在のステップの処理担当者(ほかは空)
     processed: WorkflowProcessedView | null; // 処理済みだけ(処理実行者は名前の札)
-    // 処理の時に指定するステップで、まだ指定が無い。枠の文 = docs の 設計/ワークフロー/ルートの深さ/画面/図と意匠とE2E.md の 8 節(文言の持ち主は WorkflowDiagram.tsx)
+    // 処理の時に指定するステップで、まだ指定が無い。枠の文 = docs の 設計/ワークフロー/画面/フロー図.md の 10 節(文言の持ち主は WorkflowDiagram.tsx)
     awaitingDesignation: boolean;
 };
 

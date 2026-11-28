@@ -22,12 +22,12 @@ import type { WorkflowStepState } from '@/types';
 
 /**
  * フロー図の箱と辺の部品(申請・承認・終了・仮の札・辺。分岐・同期と図の側で足す箱と札は DiagramMarks.tsx、枠は WorkflowDiagram.tsx)。
- * docs の 設計/ワークフロー/ルートの深さ/画面/図と意匠とE2E.md 8 節。
+ * docs の 設計/ワークフロー/画面/フロー図.md 10 節。
  */
 
 /**
  * 状態ごとの箱の縁(状態色 = 札と同じトークン。到達していないは既定の縁、省略は薄い破線の縁。
- * 設計/ワークフロー/ルートの深さ/画面/図と意匠とE2E.md 8 節)
+ * 設計/ワークフロー/画面/フロー図.md 10 節)
  */
 const BORDER_CLASSES: Record<WorkflowStepState['state'], string> = {
     hold: 'border-status-returned-foreground',
@@ -148,7 +148,7 @@ function StateLine({
 
 /**
  * 申請・承認と展開の行の箱: 題(StepTitle)・短い文・人と状態の札。確認する人がいれば箱の下の中央に確認の札(配置は札の分だけ高い)。
- * 処理済み・承認待ちの箱は札を残して地を札の地で塗る(図と意匠とE2E.md 8 節)。
+ * 処理済み・承認待ちの箱は札を残して地を札の地で塗る(フロー図.md 10 節)。
  */
 export function StepNode(nodeProps: NodeProps<Node<StepNodeData>>) {
     const badge = nodeProps.data.node.confirmBadge;
@@ -204,7 +204,7 @@ function StepBox({
 
 /**
  * 定義の図の枠の中の仮の札(「承認 1」と「実行時に選択」、残りをまとめた札は「承認 3〜5」と「任意」。
- * 設計/ワークフロー/ルートの深さ/画面/図と意匠とE2E.md 8 節)。必ず要る席は実線、任意の席は破線の縁。
+ * 設計/ワークフロー/画面/フロー図.md 10 節)。必ず要る席は実線、任意の席は破線の縁。
  */
 export function PlaceholderNode({
     data,
@@ -232,7 +232,7 @@ export function PlaceholderNode({
     );
 }
 
-/** 最後の後の「終了」の印(終了のノードは持たない = 図と意匠とE2E.md 8 節。図の上の印だけ) */
+/** 最後の後の「終了」の印(終了のノードは持たない = フロー図.md 10 節。図の上の印だけ) */
 export function EndNode() {
     return (
         <div

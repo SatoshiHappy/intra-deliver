@@ -6,7 +6,7 @@ use App\Models\Workflow\WorkflowRouteEdge;
 use App\Models\Workflow\WorkflowRouteNode;
 
 /**
- * 1 つの版のルート(ノード・辺とグラフ)を読む(定義の管理の画面の図と選択の欄 = docs の 設計/ワークフロー/ルートの深さ/画面/定義の管理の画面.md 3.3 節)。
+ * 1 つの版のルート(ノード・辺とグラフ)を読む(定義の管理の画面の図と選択の欄 = docs の 設計/ワークフロー/画面/フロー定義の画面.md 13.3 節)。
  * 辺の並び = 出るノードの position・sort_key・id(定義の検査と同じ)。鍵を取らない。
  */
 final readonly class FlowVersionRoute

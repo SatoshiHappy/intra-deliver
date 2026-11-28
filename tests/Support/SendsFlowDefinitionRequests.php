@@ -17,7 +17,7 @@ use Illuminate\Testing\TestResponse;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
- * 定義の管理の 9 ルート(docs の 設計/ワークフロー/ルートの深さ/画面/README.md 1.1 節)を、初期データの「プロジェクト計画の承認」
+ * 定義の管理の 9 ルート(docs の 設計/ワークフロー/画面/README.md 1.1 節)を、初期データの「プロジェクト計画の承認」
  * (版 1 = ユーザー無効、版 2、版 3 = 分岐 B = ルートの深さ/初期データ.md 3 節)に送るテストの手助け。システム管理者 = u0004。
  */
 trait SendsFlowDefinitionRequests

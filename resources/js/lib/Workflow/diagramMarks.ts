@@ -8,7 +8,7 @@ import type {
 import type { WorkflowDiagramEdge, WorkflowStepState } from '@/types';
 
 /**
- * 図の側で足す箱と札(docs の 設計/ワークフロー/ルートの深さ/画面/図と意匠とE2E.md 8 節。データは持たない): 分岐開始から対の分岐終了へ直接つながる辺の
+ * 図の側で足す箱と札(docs の 設計/ワークフロー/画面/フロー図.md 10 節。データは持たない): 分岐開始から対の分岐終了へ直接つながる辺の
  * 「何もしない」の箱と、縦配置の枠の下の「同期終了」の札。辺は足した箱・札を通るように付け替える。
  */
 
@@ -19,7 +19,7 @@ export type AddedNode =
 
 /**
  * 申請・承認と展開の行の箱の地(処理済み = 処理済みの札の地 status-settled、承認待ち = 承認待ちの札の地 status-pending と太い緑の縁。
- * どちらも札は残す。ほかは card の地。定義の図は状態を持たないので plain = 図と意匠とE2E.md 8 節)
+ * どちらも札は残す。ほかは card の地。定義の図は状態を持たないので plain = フロー図.md 10 節)
  */
 export function stepBoxToneOf(
     stepState: WorkflowStepState | undefined,

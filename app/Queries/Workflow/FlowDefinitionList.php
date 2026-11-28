@@ -9,10 +9,10 @@ use DateTimeInterface;
 use LogicException;
 
 /**
- * フロー定義の一覧(docs の 設計/ワークフロー/ルートの深さ/画面/定義の管理の画面.md 2 節)。業務モジュールの read によらずすべてのフロー
+ * フロー定義の一覧(docs の 設計/ワークフロー/画面/フロー定義の画面.md 12 節)。業務モジュールの read によらずすべてのフロー
  * (設計/ワークフロー/ルートの深さ/認可と一覧.md 4.2 節)。業務モジュール = 申請対象の業務モジュールの名前(申請対象なしは null)。
  * 今日の版 = 設計/ワークフロー/ルートの深さ/定義の管理.md 2 節の有効な版、
- * 表示の終了日 = 次の版の開始日の前日(設計/ワークフロー/ルートの深さ/画面/定義の管理の画面.md 3.2 節)。鍵を取らない。
+ * 表示の終了日 = 次の版の開始日の前日(設計/ワークフロー/画面/フロー定義の画面.md 13.2 節)。鍵を取らない。
  *
  * @phpstan-type VersionPeriod array{number: int, startDate: string, endDate: string|null}
  * @phpstan-type FlowRow array{code: string, name: string, moduleName: string|null, currentVersion: VersionPeriod|null,
@@ -58,7 +58,7 @@ class FlowDefinitionList
     }
 
     /**
-     * 表示の終了日(次の版の開始日 = 表の終了日の前日。最後の版は null = 定義の管理の画面.md 3.2 節)。
+     * 表示の終了日(次の版の開始日 = 表の終了日の前日。最後の版は null = フロー定義の画面.md 13.2 節)。
      */
     public static function displayEndDateOf(WorkflowFlowVersion $version): ?string
     {

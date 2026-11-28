@@ -8,7 +8,7 @@ import { updateNode } from '@/routes/workflow/admin/flows';
 import type { WorkflowStepSettings } from '@/types';
 
 /**
- * ステップの設定のカードの入力と送信(docs の 設計/ワークフロー/ルートの深さ/画面/定義の管理の画面.md の 3.3 節)。
+ * ステップの設定のカードの入力と送信(docs の 設計/ワークフロー/画面/フロー定義の画面.md の 13.3 節)。
  * 保存は 1 つのステップの全カードを 1 回で送る(送っている間は押せない)。誤りのキーは欄の名前(snake_case)で、
  * 欄を変えたらその欄の誤りを消す。
  */

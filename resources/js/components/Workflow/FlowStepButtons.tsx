@@ -3,7 +3,7 @@ import type { WorkflowDiagramNode } from '@/types';
 
 /**
  * 図の下のステップの名前のボタンの並び(キーボードでも選べる。並び = 写した並びで、図と同じ選択を表す。docs の
- * 設計/ワークフロー/ルートの深さ/画面/定義の管理の画面.md の 3.3 節)。選んだステップは aria-pressed。
+ * 設計/ワークフロー/画面/フロー定義の画面.md の 13.3 節)。選んだステップは aria-pressed。
  */
 export function FlowStepButtons({
     nodes,

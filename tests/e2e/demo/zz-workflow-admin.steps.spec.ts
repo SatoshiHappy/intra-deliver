@@ -3,7 +3,7 @@ import type { Page } from '@playwright/test';
 import { openAsAdministrator } from '../support/records-headings';
 import { submitAndExpectUrl } from '../support/submit';
 
-// 定義の管理の画面(docs の 設計/ワークフロー/ルートの深さ/画面/図と意匠とE2E.md の 10 節)の筋のうち、システム管理者のフロー図での選択と
+// 定義の管理の画面(docs の 設計/ワークフロー/画面/ホームと意匠とE2E.md の 9.3 節)の筋のうち、システム管理者のフロー図での選択と
 // ステップの設定。zz-workflow-admin.spec.ts と同じ組で、名前の順にその後に流れる(この筋は版を足さない)。設定を変えた筋は元に戻す。
 test.use({ viewport: { width: 1280, height: 720 } });
 test.describe.configure({ mode: 'serial' });

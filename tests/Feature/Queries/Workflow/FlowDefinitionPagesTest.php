@@ -21,8 +21,8 @@ use Tests\Support\SendsFlowDefinitionRequests;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * フロー定義の一覧と詳細の props(docs の 設計/ワークフロー/ルートの深さ/画面/定義の管理の画面.md 2 節・3 節、
- * クエリの既定 = 設計/ワークフロー/ルートの深さ/画面/README.md 1.1 節、今日の版 = 設計/ワークフロー/ルートの深さ/定義の管理.md 2 節)。
+ * フロー定義の一覧と詳細の props(docs の 設計/ワークフロー/画面/フロー定義の画面.md 12 節・13 節、
+ * クエリの既定 = 設計/ワークフロー/画面/README.md 1.1 節、今日の版 = 設計/ワークフロー/ルートの深さ/定義の管理.md 2 節)。
  * 初期データのプロジェクト計画の承認(版 1 = ユーザー無効、版 2、版 3 = 分岐 B)と課題の対応の承認(版 1)。
  * 期待値は 設計/ワークフロー/ルートの深さ/初期データ.md の 2 節・3 節の値と画面の文から書いた(日付は流す日からの相対なので版の行から読む)。
  */
@@ -123,9 +123,9 @@ final class FlowDefinitionPagesTest extends TransactionalTestCase
     }
 
     /**
-     * 図で選んだステップの設定(定義の管理の画面.md 3 節の StepSettings)と、選択の欄の指定するステップの候補(定義の検査と同じ式)。
+     * 図で選んだステップの設定(設計/ワークフロー/画面/フロー定義の画面.md 13 節の StepSettings)と、選択の欄の指定するステップの候補(定義の検査と同じ式)。
      * 処理期限と確認する人(案件の運用/定義の管理.md 1 節、初期データ = 案件の運用/初期データ.md 3 節: 版 3 の課長・部長は確認する人
-     * 山田 恵(u0010)、承認・合議は期限の日数)は持てる種類だけ値を持ち、要約に文が続く(7.6 節)。
+     * 山田 恵(u0010)、承認・合議は期限の日数)は持てる種類だけ値を持ち、要約に文が続く(設計/ワークフロー/案件の運用/画面/管理と通知の画面.md 7.6 節)。
      */
     public function test_the_selected_step_and_the_options(): void
     {
@@ -133,7 +133,7 @@ final class FlowDefinitionPagesTest extends TransactionalTestCase
         $council = $this->detail(['node' => 'council']);
         $post = CompanyPost::query()->where('code', 'section-chief')->sole()->id;
         $choice = fn (string $code, string $name) => ['code' => $code, 'name' => $name];
-        // ユーザーの行は今日の主所属の組織の名前を持つ(定義の管理の画面.md 3 節の SubjectRow)
+        // ユーザーの行は今日の主所属の組織の名前を持つ(設計/ワークフロー/画面/フロー定義の画面.md 13 節の SubjectRow)
         $yamadaId = $this->seededAccount('u0010')->id;
         $yamada = ['type' => 'user', 'id' => $yamadaId, 'name' => '山田 恵', 'affiliation' => '経理部'];
 

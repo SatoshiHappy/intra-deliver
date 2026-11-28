@@ -9,7 +9,7 @@ import type {
 } from './workflowValues';
 
 /**
- * 定義の管理の画面の型(docs の 設計/ワークフロー/ルートの深さ/画面/定義の管理の画面.md の 2 節・3 節。App\Queries\Workflow の
+ * 定義の管理の画面の型(docs の 設計/ワークフロー/画面/フロー定義の画面.md の 12 節・13 節。App\Queries\Workflow の
  * FlowDefinitionList・FlowDefinitionDetail・FlowStepSettings の形)。日付は YYYY-MM-DD。
  */
 

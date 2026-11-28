@@ -3,7 +3,7 @@ import type { Locator, Page } from '@playwright/test';
 import { todayInTokyo } from './seed-dates';
 import { submitAndExpectUrl } from './submit';
 
-// 定義の管理の画面の筋(zz-workflow-admin.spec.ts。docs の 設計/ワークフロー/ルートの深さ/画面/図と意匠とE2E.md の 10 節)が共有する、
+// 定義の管理の画面の筋(zz-workflow-admin.spec.ts。docs の 設計/ワークフロー/画面/ホームと意匠とE2E.md の 9.3 節)が共有する、
 // 詳細のタブ・表の行・版を追加するダイアログ・確かめのダイアログの部品。
 
 /** 日付(YYYY-MM-DD)の n 日後 */

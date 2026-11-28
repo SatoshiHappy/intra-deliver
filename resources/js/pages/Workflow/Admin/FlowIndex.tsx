@@ -4,7 +4,7 @@ import { index } from '@/routes/workflow/admin/flows';
 import type { WorkflowAdminFlowIndexProps } from '@/types';
 
 /**
- * フロー定義の一覧(docs の 設計/ワークフロー/ルートの深さ/画面/定義の管理の画面.md の 2 節): 見出しと 1 行、フロー定義の表(全 N 件。
+ * フロー定義の一覧(docs の 設計/ワークフロー/画面/フロー定義の画面.md の 12 節): 見出しと 1 行、フロー定義の表(全 N 件。
  * ページングしない)。行の「詳細」から詳細(フロー図・版・設定)へ移る。
  */
 export default function FlowIndex({ flows }: WorkflowAdminFlowIndexProps) {

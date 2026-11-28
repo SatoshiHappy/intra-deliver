@@ -25,7 +25,7 @@ final class WorkflowRouteAuthorizationTest extends TransactionalTestCase
 {
     /**
      * ゲストと認証済みに許すワークフローのルート 32 本(ワークフローのホーム = 設計/ワークフロー/認可と一覧.md 4 節、設計/ワークフロー/画面/README.md 1.1 の表の順と、
-     * ルートの深さ/画面/README.md 1.1 の処理対象者の候補、案件の運用/画面/README.md の 1.1 節の 11 本、写しの値の入口)
+     * 画面/README.md 1.1 の処理対象者の候補、案件の運用/画面/README.md の 1.1 節の 11 本、写しの値の入口)
      */
     private const ROUTES = [
         'workflow.home', 'workflow.flows.index', 'workflow.applications.create', 'workflow.applications.store', 'workflow.drafts.store', 'workflow.drafts.edit',

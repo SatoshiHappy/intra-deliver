@@ -11,7 +11,7 @@ use DateTimeInterface;
 use PHPUnit\Framework\TestCase;
 
 /**
- * 対象者の候補の群(docs の 設計/ワークフロー/ルートの深さ/画面/README.md 1.1 節): 1 つの語で 4 種類を引き、上限は種類ごと
+ * 対象者の候補の群(docs の 設計/ワークフロー/画面/README.md 1.1 節): 1 つの語で 4 種類を引き、上限は種類ごと
  * (どの口にも上限 20 を渡し、群をまとめて切らない)。空の語は口を呼ばずに 4 つの空の群。公開の口は、上限まで候補を返す偽物に替える。
  */
 final class SubjectCandidatesTest extends TestCase

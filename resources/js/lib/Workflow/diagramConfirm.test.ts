@@ -4,7 +4,7 @@ import { layoutDiagram } from './diagramLayout';
 import { boxOf, edge, edgeOf, node } from './diagramLayout.testing';
 
 /**
- * 図の短い文の区切りと確認の札の配置(docs の 設計/ワークフロー/ルートの深さ/画面/図と意匠とE2E.md の 9.3 節、
+ * 図の短い文の区切りと確認の札の配置(docs の 設計/ワークフロー/画面/フロー図.md の 11 節、
  * 設計/ワークフロー/案件の運用/画面/管理と通知の画面.md の 7.6 節)。
  */
 

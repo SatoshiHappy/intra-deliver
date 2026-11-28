@@ -15,8 +15,8 @@ use Tests\Support\OperatesOnRoutes;
 use Tests\Support\TransactionalTestCase;
 
 /**
- * 案件の詳細のフロー情報と合議の進み具合(docs の 設計/ワークフロー/ルートの深さ/画面/README.md 1.2・画面/案件の側の画面.md 7 節・画面/図と意匠とE2E.md 8 節、
- * 認可と一覧.md 2 節の写しの表、案件の操作/README.md 2.5):
+ * 案件の詳細のフロー情報と合議の進み具合(docs の 設計/ワークフロー/ルートの深さ/画面/案件の側の画面.md 7 節・設計/ワークフロー/画面/フロー図.md 10 節、
+ * ルートの深さ/認可と一覧.md 2 節の写しの表、ルートの深さ/案件の操作/README.md 2.5):
  * nodes は図の形(写した並び・親と番号・短い文・人・縦配置の完了の条件・状態の語・処理の種別と日時)、edges は分岐の評価(taken)、councils は縦配置の進み具合。
  * 期待値は 初期データ.md 4 節の見本(WF-000009〜000012)と設計の表から書く。初期データは DatabaseSeeder が 1 回入れたもの。見本に無い場面(否認の票の途中・
  * 指定の前・可決の後に省いた子の人)は、版 3 と同じ形のルート(R1)に本物の業務処理で申請・処理して作る。名前は表示名(案件の操作/README.md 1.3)。
@@ -79,7 +79,8 @@ final class CaseDiagramTest extends TransactionalTestCase
     }
 
     /**
-     * 合議の進み具合(画面/ホームと意匠とE2E.md 7 節・案件の操作 2.5): WF-000009 = 1 人が承認・必要 2 人・未処理 2、子ごとの行(人・所属 = 申請基準日の主所属・処理日時・状態の語・自分)。
+     * 合議の進み具合(ルートの深さ/画面/案件の側の画面.md 7 節・案件の操作 2.5): WF-000009 = 1 人が承認・必要 2 人・未処理 2、
+     * 子ごとの行(人・所属 = 申請基準日の主所属・処理日時・状態の語・自分)。
      */
     public function test_the_council_in_progress_counts_approvals_and_lists_each_child(): void
     {
@@ -131,7 +132,7 @@ final class CaseDiagramTest extends TransactionalTestCase
     }
 
     /**
-     * 図の札・表の状態の語は写しの表(認可と一覧.md 2 節。保留中の state は詳細だけ hold = 案件の画面.md の 4 節)のとおり:
+     * 図の札・表の状態の語は写しの表(設計/ワークフロー/ルートの深さ/認可と一覧.md 2 節。保留中の state は詳細だけ hold = 設計/ワークフロー/案件の運用/画面/案件の画面.md の 4 節)のとおり:
      * 16 件の見本のすべてのノードで、状態ごとに同じ語。
      */
     public function test_every_node_state_reads_the_one_label_table(): void
@@ -149,7 +150,7 @@ final class CaseDiagramTest extends TransactionalTestCase
     }
 
     /**
-     * 否認の票(画面/ホームと意匠とE2E.md 7 節・区切り 4-2 の修正 #2): 合議の途中で子 1 が否認すると、進み具合の行と図の子の箱が処理の種別(否認)を持ち、否認は承認に数えない。
+     * 否認の票(ルートの深さ/画面/案件の側の画面.md 7 節): 合議の途中で子 1 が否認すると、進み具合の行と図の子の箱が処理の種別(否認)を持ち、否認は承認に数えない。
      * 否認した本人の行と箱だけが自分。
      */
     public function test_a_rejected_vote_carries_its_action_and_is_not_counted_as_an_approval(): void
@@ -187,7 +188,7 @@ final class CaseDiagramTest extends TransactionalTestCase
     }
 
     /**
-     * 指定の前の枠(修正 #8・#31、画面/ホームと意匠とE2E.md 8 節): 処理の時に指定するノードは、今の指定が無い && 到達していない && 案件が未完了のときだけ awaitingDesignation。
+     * 指定の前の枠(設計/ワークフロー/画面/フロー図.md 10 節): 処理の時に指定するノードは、今の指定が無い && 到達していない && 案件が未完了のときだけ awaitingDesignation。
      * 申請の直後(課長がまだ指定していない)= 合議・責任者が真、指定した後 = 偽、指定せずに承認終了で完了した案件 = 偽。ほかのノードはいつも偽。
      */
     public function test_awaiting_designation_only_before_the_designation_of_an_active_case(): void

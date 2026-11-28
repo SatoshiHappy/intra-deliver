@@ -13,7 +13,7 @@ use PHPUnit\Framework\TestCase;
 
 /**
  * 設定から作る文のうち、処理期限と確認する人の文(docs の 設計/ワークフロー/案件の運用/画面/管理と通知の画面.md の 7.6 節)と、
- * 図の短い文の強調の区切り(設計/ワークフロー/ルートの深さ/画面/図と意匠とE2E.md の 9.3 節)。期待値は節の文から書いた。DB を使わない。
+ * 図の短い文の強調の区切り(設計/ワークフロー/画面/フロー図.md の 11 節)。期待値は節の文から書いた。DB を使わない。
  * ほかの文は {@see StepDescriptionsTest}。
  */
 final class StepDescriptionsMarksTest extends TestCase

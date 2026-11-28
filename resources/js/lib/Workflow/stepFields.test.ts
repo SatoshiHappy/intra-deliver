@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vite-plus/test';
 import { fieldErrorKeys, stepFieldsOf } from './stepFields';
 
-// docs の 設計/ワークフロー/ルートの深さ/画面/定義の管理の画面.md の 3.3 節のデシジョン表の行ごと(行の番号は表の番号)。
+// docs の 設計/ワークフロー/画面/フロー定義の画面.md の 13.3.1 節のデシジョン表の行ごと(行の番号は表の番号)。
 // 起きない行(申請・配置で指定の方法が違う、縦配置でない種類に可決の条件、縦配置に可決の条件が無い)は DB の検査制約が止める
 // (tests/Feature/Models/Workflow/WorkflowNodeSettingsTest.php)。
 describe('stepFieldsOf: カード 4 の無い種類', () => {

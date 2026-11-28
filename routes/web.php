@@ -263,7 +263,7 @@ Route::post('/workflow/admin/cases/{case}/assign', [CaseOperationController::cla
 Route::delete('/workflow/admin/cases/{case}', [CaseOperationController::class, 'destroy'])
     ->name('workflow.admin.cases.destroy')->where('case', '[0-9]{1,18}');
 
-// 定義の管理(docs の 設計/ワークフロー/ルートの深さ/画面/README.md 1.1 節)。{flow}・{node} = コード、{version} = 版の番号。
+// 定義の管理(docs の 設計/ワークフロー/画面/README.md 1.1 節)。{flow}・{node} = コード、{version} = 版の番号。
 // システム管理者だけ(ポリシーを置かない = 設計/ワークフロー/ルートの深さ/認可と一覧.md の 4.2 節)。入口の 404 は FormRequest の authorize が持つ。
 $definitionCode = '[a-z][a-z0-9_]{0,49}';
 Route::get('/workflow/admin/flows', [AdminFlowController::class, 'index'])->name('workflow.admin.flows.index');

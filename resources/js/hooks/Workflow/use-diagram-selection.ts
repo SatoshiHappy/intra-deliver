@@ -4,7 +4,7 @@ import type { Node } from '@xyflow/react';
 import type { DiagramInputNode } from '@/lib/Workflow/diagramTypes';
 
 /**
- * 定義の図で選べるステップ(docs の 設計/ワークフロー/ルートの深さ/画面/定義の管理の画面.md の 3.3 節)。
+ * 定義の図で選べるステップ(docs の 設計/ワークフロー/画面/フロー定義の画面.md の 13.3 節)。
  * 押すとステップを選ぶ。案件の図は渡さず、押せない。
  */
 export type DiagramSelection = {

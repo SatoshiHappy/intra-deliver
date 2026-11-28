@@ -14,7 +14,7 @@ use Illuminate\Database\Eloquent\ModelNotFoundException;
 use LogicException;
 
 /**
- * フロー定義の詳細(docs の 設計/ワークフロー/ルートの深さ/画面/定義の管理の画面.md 3 節、クエリの既定 = 画面/README.md 1.1 節)。
+ * フロー定義の詳細(docs の 設計/ワークフロー/画面/フロー定義の画面.md 13 節、クエリの既定 = 画面/README.md 1.1 節)。
  * flow.moduleName = 申請対象の業務モジュールの名前(申請対象なしは null)。
  * クエリは解釈した後の値を返す(version = 無い・数でない・そのフローに無い番号なら今日の版、無ければ最後の版。tab = 既定 diagram。
  * node = 選んだ版に無ければ申請のノード)。today = サーバーの今日(版を追加の開始日の範囲に使う。遅延にしない)。
